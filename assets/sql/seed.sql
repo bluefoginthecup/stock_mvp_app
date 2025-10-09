@@ -1,0 +1,5 @@
+-- Optional starter data
+-- INSERT INTO items (id,name,sku,unit,folder,subfolder,min_qty,qty) VALUES
+-- ('id-1','루앙 그레이 50 기본형 방석커버','LG-50C','EA','finished','cushion',5,12),
+-- ('id-2','루앙 그레이 40 쿠션커버','LG-40C','EA','finished','cushion',5,4),
+-- ('id-3','원단-루앙 그레이','FAB-LG','M','raw','fabric',10,27);

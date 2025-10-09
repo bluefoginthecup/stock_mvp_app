@@ -1,0 +1,33 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.melos_tool/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# macOS
+macos/Flutter/ephemeral/
+
+# VSCode/IntelliJ
+.vscode/
+.idea/
+
+# Misc
+*.iml
+*.log
+.DS_Store
