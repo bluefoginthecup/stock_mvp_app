@@ -74,4 +74,48 @@ class Txn {
   @override
   String toString() =>
       'Txn(id: $id, ts: ${ts.toIso8601String()}, type: ${type.name}, itemId: $itemId, qty: $qty, ref: ${refType.name}/$refId)';
+
+// class Txn { ... } 내부에 추가
+  factory Txn.in_({
+    required String id,
+    required String itemId,
+    required int qty,
+    required RefType refType,
+    required String refId,
+    String? note,
+    DateTime? ts,
+  }) {
+    return Txn(
+      id: id,
+      ts: ts ?? DateTime.now(),
+      type: TxnType.in_,
+      itemId: itemId,
+      qty: qty,
+      refType: refType,
+      refId: refId,
+      note: note,
+    );
+  }
+
+  factory Txn.out_({
+    required String id,
+    required String itemId,
+    required int qty,
+    required RefType refType,
+    required String refId,
+    String? note,
+    DateTime? ts,
+  }) {
+    return Txn(
+      id: id,
+      ts: ts ?? DateTime.now(),
+      type: TxnType.out_,
+      itemId: itemId,
+      qty: qty,
+      refType: refType,
+      refId: refId,
+      note: note,
+    );
+  }
+
 }

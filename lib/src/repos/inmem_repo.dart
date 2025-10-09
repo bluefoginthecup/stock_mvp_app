@@ -1,4 +1,4 @@
-import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/item.dart';
@@ -128,6 +128,55 @@ class InMemoryRepo extends ChangeNotifier
     return list;
   }
 
+  // ===== TxnRepo helpers =====
+  @override
+  Future<void> addInPlanned({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note,
+  }) async {
+    final t = Txn.in_(
+      id: _uuid.v4(),
+      itemId: itemId,
+      qty: qty,
+      refType: RefTypeX.fromString(refType),
+      refId: refId,
+      note: note ?? 'planned inbound',
+    );
+    _txns[t.id] = t;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> addInActual({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note,
+  }) async {
+    final t = Txn.in_(
+      id: _uuid.v4(),
+      itemId: itemId,
+      qty: qty,
+      refType: RefTypeX.fromString(refType),
+      refId: refId,
+      note: note ?? 'actual inbound',
+    );
+    _txns[t.id] = t;
+
+    // 실제 입고 → 재고 증가
+
+    final it = _items[itemId];
+    if (it != null) {
+      _items[itemId] = it.copyWith(qty: it.qty + qty); // ✅
+    }
+
+    notifyListeners();
+  }
+
   // BomRepo
   @override
   Future<List<BomRow>> listBom(String parentItemId) async {
@@ -170,6 +219,29 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
+  // ===== WorkRepo.completeWork =====
+  @override
+  Future<void> completeWork(String id) async {
+    final w = _works[id];
+    if (w == null) return;
+    if (w.status == WorkStatus.done) return;
+
+    // 실제 입고 반영
+    await addInActual(
+      itemId: w.itemId,
+      qty: w.qty,
+      refType: 'work',
+      refId: id,
+      note: '작업 완료 입고',
+    );
+
+    // 상태 업데이트
+    _works[id] = w.copyWith(
+        status: WorkStatus.done,
+        updatedAt: DateTime.now());
+    notifyListeners();
+  }
+
 // ----------------- PurchaseRepo -----------------
   final _purchases = <String, Purchase>{};
 
@@ -191,6 +263,27 @@ class InMemoryRepo extends ChangeNotifier
   @override
   Future<void> updatePurchase(Purchase p) async {
     _purchases[p.id] = p;
+    notifyListeners();
+  }
+// ===== PurchaseRepo.completePurchase =====
+  @override
+  Future<void> completePurchase(String id) async {
+    final p = _purchases[id];
+    if (p == null) return;
+    if (p.status == PurchaseStatus.received) return;
+
+    // 실제 입고 반영
+    await addInActual(
+      itemId: p.itemId,
+      qty: p.qty,
+      refType: 'purchase',
+      refId: id,
+      note: '발주 입고 완료',
+    );
+
+    // 상태 업데이트
+    _purchases[id] =
+        p.copyWith(status: PurchaseStatus.received, updatedAt: DateTime.now());
     notifyListeners();
   }
 

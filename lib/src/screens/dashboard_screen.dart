@@ -42,6 +42,19 @@ class DashboardScreen extends StatelessWidget {
                 icon: const Icon(Icons.swap_vert),
                 label: const Text('입·출고 기록'),
               ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/works'),
+                icon: const Icon(Icons.precision_manufacturing),
+                label: const Text('작업 계획'),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/purchases'),
+                icon: const Icon(Icons.local_shipping),
+                label: const Text('발주 계획'),
+              ),
+
             ],
           );
         },

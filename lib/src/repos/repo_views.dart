@@ -54,6 +54,15 @@ class TxnRepoView implements TxnRepo {
 
   @override
   Future<List<Txn>> listTxns({String? itemId}) => inner.listTxns(itemId: itemId);
+
+  @override
+  Future<void> addInPlanned({required String itemId, required int qty, required String refType, required String refId, String? note})
+  => inner.addInPlanned(itemId: itemId, qty: qty, refType: refType, refId: refId, note: note);
+
+  @override
+  Future<void> addInActual({required String itemId, required int qty, required String refType, required String refId, String? note})
+  => inner.addInActual(itemId: itemId, qty: qty, refType: refType, refId: refId, note: note);
+
 }
 
 class BomRepoView implements BomRepo {
@@ -79,6 +88,9 @@ class WorkRepoView implements WorkRepo {
   @override Future<Work?> getWorkById(String id) => _m.getWorkById(id);
   @override Stream<List<Work>> watchAllWorks() => _m.watchAllWorks();
   @override Future<void> updateWork(Work w) => _m.updateWork(w);
+  @override
+  Future<void> completeWork(String id) => _m.completeWork(id);
+
 }
 
 // --- PurchaseRepoView ---
@@ -90,4 +102,7 @@ class PurchaseRepoView implements PurchaseRepo {
   @override Future<Purchase?> getPurchaseById(String id) => _m.getPurchaseById(id);
   @override Stream<List<Purchase>> watchAllPurchases() => _m.watchAllPurchases();
   @override Future<void> updatePurchase(Purchase p) => _m.updatePurchase(p);
+
+  @override
+  Future<void> completePurchase(String id) => _m.completePurchase(id);
 }

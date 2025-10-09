@@ -22,6 +22,19 @@ abstract class OrderRepo {
 
 abstract class TxnRepo {
   Future<List<Txn>> listTxns({String? itemId});
+  Future<void> addInPlanned({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note});
+  Future<void> addInActual({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note});
+
 }
 
 abstract class BomRepo {
@@ -35,6 +48,7 @@ abstract class WorkRepo {
   Future<Work?> getWorkById(String id);
   Stream<List<Work>> watchAllWorks();
   Future<void> updateWork(Work w);
+  Future<void> completeWork(String id);
 }
 
 // Purchase 전용 — 메서드 이름에 Purchase 접두사
@@ -43,4 +57,5 @@ abstract class PurchaseRepo {
   Future<Purchase?> getPurchaseById(String id);
   Stream<List<Purchase>> watchAllPurchases();
   Future<void> updatePurchase(Purchase p);
+  Future<void> completePurchase(String id);
 }

@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/order.dart';
 import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../services/order_planning_service.dart';
 
 class OrderFormScreen extends StatefulWidget {
   final String orderId;
@@ -48,19 +49,26 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   Future<void> _save() async {
-    final repo = context.read<OrderRepo>();
-    final saved = _order.copyWith();
-    final updated = Order(
-      id: saved.id,
-      date: saved.date,
+    final updated = _order.copyWith(
       customer: _customerC.text.trim(),
       memo: _memoC.text.trim(),
-      status: saved.status,
-      lines: saved.lines,
     );
-    await repo.upsertOrder(updated);
+
+    final svc = OrderPlanningService(
+      items: context.read<ItemRepo>(),
+      orders: context.read<OrderRepo>(),
+      works: context.read<WorkRepo>(),
+      purchases: context.read<PurchaseRepo>(),
+      txns: context.read<TxnRepo>(),
+    );
+
+    await svc.saveOrderAndAutoPlanShortage(updated, preferWork: true);
+
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('저장 + 부족분 자동 계획 생성 완료')),
+    );
+    Navigator.pop(context);
   }
 
   @override

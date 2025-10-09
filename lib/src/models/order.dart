@@ -25,12 +25,17 @@ class Order {
     required this.lines,
   });
 
-  Order copyWith({OrderStatus? status, List<OrderLine>? lines}) {
+  Order copyWith({
+    String? customer,
+    String? memo,
+    OrderStatus? status,
+    List<OrderLine>? lines
+  }) {
     return Order(
       id: id,
       date: date,
-      customer: customer,
-      memo: memo,
+      customer: customer ?? this.customer,
+      memo: memo ?? this.memo,
       status: status ?? this.status,
       lines: lines ?? this.lines,
     );
