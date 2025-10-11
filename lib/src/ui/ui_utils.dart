@@ -1,3 +1,5 @@
+//위젯: 주문아이디 4자리 요약
+
 import 'package:flutter/material.dart';
 
 String shortId(String id) {
@@ -6,6 +8,7 @@ String shortId(String id) {
   return '…$tail'; // 예: …a511
 }
 
+// 위젯 2) 뱃지(진행중...등등)
 Widget badge(String text, Color color, {IconData? icon}) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -23,7 +26,7 @@ Widget badge(String text, Color color, {IconData? icon}) {
     ]),
   );
 }
-
+//3) 위젯 날짜표시
 String fmtYmdHm(DateTime dt) {
   final y = dt.year.toString().padLeft(4, '0');
   final m = dt.month.toString().padLeft(2, '0');

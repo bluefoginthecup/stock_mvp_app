@@ -5,7 +5,7 @@ import '../../models/work.dart';
 import '../../models/types.dart';
 import 'work_detail_screen.dart';
 import '../../services/inventory_service.dart'; // ✅ 추가
-
+import 'widgets/work_row.dart';
 
 
 class WorkListScreen extends StatelessWidget {
@@ -25,35 +25,36 @@ class WorkListScreen extends StatelessWidget {
           if (list.isEmpty) {
             return const Center(child: Text('작업 계획이 없습니다.'));
           }
-          return ListView.builder(
+          return ListView.separated(
             itemCount: list.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (_, i) {
               final w = list[i];
               final done = w.status == WorkStatus.done;
 
-return ListTile(
-                title: Text('${w.itemId}  x${w.qty}'),
-                subtitle: Text('${w.status.name} • order=${w.orderId}'),
-                trailing: done
-                    ? const Icon(Icons.check, color: Colors.green)
-                    : _WorkStatusButton(
-                        work: w,
-                    // ✅ planned → inProgress : planned Txn 생성 + 상태 전환
-                                     onStart:   () => inv.startWork(w.id),
-                                      // ✅ inProgress → done : actual Txn 생성 + 완료 처리
-                                      onComplete:() => inv.completeWork(w.id),
-                      ),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => WorkDetailScreen(work: w)),
-                ),
-);
-},
-);
-},
-),
-);
-}
+              return WorkRow(
+                w: w,
+                // ✅ planned → inProgress : planned Txn 생성 + 상태 전환
+                onStart:   (w.status == WorkStatus.planned)
+                    ? () => inv.startWork(w.id)
+                    : null,
+                // ✅ inProgress → done : actual Txn 생성 + 완료 처리
+                onDone:    (w.status == WorkStatus.inProgress)
+                    ? () => inv.completeWork(w.id)
+                    : null,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => WorkDetailScreen(work: w)),
+                  );
+                },
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
 }
 class _WorkStatusButton extends StatelessWidget {
     final Work work;
