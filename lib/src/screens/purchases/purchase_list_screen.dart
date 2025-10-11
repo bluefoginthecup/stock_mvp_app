@@ -4,12 +4,15 @@ import '../../repos/repo_interfaces.dart';
 import '../../models/purchase.dart';
 import '../../models/types.dart';
 
+import '../../services/inventory_service.dart';
+
 class PurchaseListScreen extends StatelessWidget {
   const PurchaseListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final repo = context.read<PurchaseRepo>();
+    final inv  = context.read<InventoryService>();
     return Scaffold(
       appBar: AppBar(title: const Text('발주 계획')),
       body: StreamBuilder<List<Purchase>>(
@@ -23,17 +26,30 @@ class PurchaseListScreen extends StatelessWidget {
             itemCount: list.length,
             itemBuilder: (_, i) {
               final p = list[i];
-              final done = p.status == PurchaseStatus.received;
               return ListTile(
                 title: Text('${p.itemId}  x${p.qty}'),
                 subtitle: Text('${p.status.name} • ${p.note ?? ''}'),
-                trailing: done
-                    ? const Icon(Icons.inventory_2, color: Colors.blueGrey)
-                    : ElevatedButton(
-                  onPressed: () => repo.completePurchase(p.id),
-                  child: const Text('입고완료'),
 
-                ),
+                                  trailing: switch (p.status) {
+                                  // planned → ordered : 입고 예정(Planned Txn)  상태 전환
+                                  PurchaseStatus.planned   =>
+                                    ElevatedButton(
+                                          onPressed: () => inv.orderPurchase(p.id),
+                                    child: const Text('Order'),
+                                  ),
+                                // ordered → received : Actual Txn 생성 + 입고 완료
+                                PurchaseStatus.ordered   =>
+                                  ElevatedButton(
+                                    onPressed: () => inv.receivePurchase(p.id),
+                                    child: const Text('Receive'),
+                                  ),
+                                // 완료 상태
+                                PurchaseStatus.received  =>
+                                  const Icon(Icons.inventory_2, color: Colors.blueGrey),
+                                // 취소 상태(누락 방지)
+                                PurchaseStatus.canceled  =>
+                                  const Icon(Icons.block, color: Colors.grey),
+                              },
               );
             },
           );

@@ -75,7 +75,7 @@ class InMemoryRepo extends ChangeNotifier
     final it = _items[itemId];
     if (it == null) return;
 
-    final updated = it.copyWith(qty: it.qty + delta);
+    final updated = it.copyWith(qty: it.qty  + delta);
     _items[itemId] = updated;
 
     // String? -> enum 매핑 (null 안전)
@@ -103,6 +103,11 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
+  @override
+  Future<String?> nameOf(String itemId) async {
+    return _items[itemId]?.name; // 없으면 null
+  }
+
   // OrderRepo
   @override
   Future<List<Order>> listOrders() async {
@@ -119,6 +124,13 @@ class InMemoryRepo extends ChangeNotifier
     _orders[order.id] = order;
     notifyListeners();
   }
+
+  @override
+  Future<String?> customerNameOf(String orderId) async {
+    final o = _orders[orderId];
+    return o?.customer; // ✅ Order 클래스에 있는 필드명과 일치
+  }
+
 
   // TxnRepo
   @override
@@ -137,43 +149,45 @@ class InMemoryRepo extends ChangeNotifier
     required String refId,
     String? note,
   }) async {
-    final t = Txn.in_(
+    final txn = Txn(
       id: _uuid.v4(),
+      ts: DateTime.now(),
+      type: TxnType.in_,
       itemId: itemId,
       qty: qty,
       refType: RefTypeX.fromString(refType),
       refId: refId,
       note: note ?? 'planned inbound',
     );
-    _txns[t.id] = t;
+    _txns[txn.id] = txn;
     notifyListeners();
   }
 
-  @override
-  Future<void> addInActual({
-    required String itemId,
-    required int qty,
-    required String refType,
-    required String refId,
-    String? note,
-  }) async {
-    final t = Txn.in_(
-      id: _uuid.v4(),
-      itemId: itemId,
-      qty: qty,
-      refType: RefTypeX.fromString(refType),
-      refId: refId,
-      note: note ?? 'actual inbound',
-    );
-    _txns[t.id] = t;
-
-    // 실제 입고 → 재고 증가
+// addInActual
+@override
+Future<void> addInActual({
+  required String itemId,
+  required int qty,
+  required String refType,
+  required String refId,
+  String? note,
+}) async {
+  final txn = Txn(
+    id: _uuid.v4(),
+    ts: DateTime.now(),
+    type: TxnType.in_,
+    itemId: itemId,
+    qty: qty,
+    refType: RefTypeX.fromString(refType),
+    refId: refId,
+    note: note ?? 'actual inbound',
+  );
+  _txns[txn.id] = txn;       // ✅ Map 저장
 
     final it = _items[itemId];
     if (it != null) {
       _items[itemId] = it.copyWith(qty: it.qty + qty); // ✅
     }
-
     notifyListeners();
   }
 
@@ -218,6 +232,19 @@ class InMemoryRepo extends ChangeNotifier
     _works[w.id] = w;
     notifyListeners();
   }
+
+  @override
+    Future<void> updateWorkStatus(String id, WorkStatus status) async {
+        final w = _works[id];
+        if (w == null) return;
+        _works[id] = w.copyWith(status: status, updatedAt: DateTime.now());
+        notifyListeners();
+      }
+
+  @override
+    Future<void> cancelWork(String id) async {
+        await updateWorkStatus(id, WorkStatus.canceled);
+      }
 
   // ===== WorkRepo.completeWork =====
   @override
@@ -265,6 +292,18 @@ class InMemoryRepo extends ChangeNotifier
     _purchases[p.id] = p;
     notifyListeners();
   }
+
+  @override
+    Future<void> updatePurchaseStatus(String id, PurchaseStatus status) async {
+        final p = _purchases[id];
+        if (p == null) return;
+        _purchases[id] = p.copyWith(status: status, updatedAt: DateTime.now());
+        notifyListeners();
+      }
+  @override
+    Future<void> cancelPurchase(String id) async {
+        await updatePurchaseStatus(id, PurchaseStatus.canceled);
+      }
 // ===== PurchaseRepo.completePurchase =====
   @override
   Future<void> completePurchase(String id) async {
@@ -283,7 +322,8 @@ class InMemoryRepo extends ChangeNotifier
 
     // 상태 업데이트
     _purchases[id] =
-        p.copyWith(status: PurchaseStatus.received, updatedAt: DateTime.now());
+        p.copyWith(status: PurchaseStatus.received,
+            updatedAt: DateTime.now());
     notifyListeners();
   }
 

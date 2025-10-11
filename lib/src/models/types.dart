@@ -1,9 +1,10 @@
-// lib/models/types.dart
+//lib/models/types.dart
 // Shared enums for inventory and order flow. No external dependencies.
 
 /// Reference source type for a transaction (what produced this stock movement).
+/// 트랜잭션의 출처(원인)
+enum RefType { order, work, purchase, manual }
 
-enum RefType { order, work, purchase }
 class RefTypeX {
   static RefType fromString(String s) {
     switch (s) {
@@ -17,6 +18,9 @@ class RefTypeX {
 
 /// Transaction type: inbound (stock increases) or outbound (stock decreases).
 enum TxnType { in_, out_ }
+enum TxnStatus { planned, actual }
+
+
 
 /// Production (work) status lifecycle.
 enum WorkStatus { planned, inProgress, done, canceled }

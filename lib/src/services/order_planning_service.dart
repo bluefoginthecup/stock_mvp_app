@@ -13,8 +13,7 @@ class OrderPlanningService {
   final WorkRepo works;
   final PurchaseRepo purchases;
   final TxnRepo txns;
-
-
+  final _uuid = const Uuid();
 
   OrderPlanningService({
     required this.items,
@@ -41,8 +40,9 @@ class OrderPlanningService {
       if (short <= 0) continue;
 
       if (preferWork) {
+        final wid = _uuid.v4();
         final w = Work(
-          id: const Uuid().v4(),
+          id: wid,
           itemId: ln.itemId,
           qty: short,
           orderId: order.id,
@@ -50,8 +50,7 @@ class OrderPlanningService {
           createdAt: DateTime.now(),
           updatedAt: null,
         );
-
-        final wid = await works.createWork(w);
+        await works.createWork(w);
         await txns.addInPlanned(
           itemId: ln.itemId,
           qty: short,
@@ -60,8 +59,9 @@ class OrderPlanningService {
           note: '예정입고 (order:${order.id})',
         );
       } else {
+        final pid = _uuid.v4();
         final p = Purchase(
-          id: const Uuid().v4(),
+          id: pid,
           itemId: ln.itemId,
           qty: short,
           orderId: order.id,
@@ -71,7 +71,7 @@ class OrderPlanningService {
           vendorId: null,
           note: 'Auto from Order:${order.id}',
         );
-        final pid = await purchases.createPurchase(p);
+        await purchases.createPurchase(p);
         await txns.addInPlanned(
           itemId: ln.itemId,
           qty: short,

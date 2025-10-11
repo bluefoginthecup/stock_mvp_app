@@ -5,7 +5,8 @@ import 'package:stockapp_mvp/src/repos/repo_interfaces.dart';
 import 'package:stockapp_mvp/src/repos/inmem_repo.dart';
 
 import 'package:stockapp_mvp/src/models/txn.dart';
-import 'package:stockapp_mvp/src/models/types.dart'; // ✅ TxnType, RefType 여기서 옴
+import 'widgets/txn_row.dart';
+
 
 class TxnListScreen extends StatelessWidget {
   const TxnListScreen({super.key});
@@ -27,26 +28,7 @@ class TxnListScreen extends StatelessWidget {
           return ListView.separated(
             itemCount: txns.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (_, i) {
-              final t = txns[i];
-
-              // ✅ enum 값은 in_ / out_
-              final isIn = t.type == TxnType.in_;
-              final sign = isIn ? '+' : '-';
-
-              return ListTile(
-                leading: Icon(
-                  isIn ? Icons.call_received : Icons.call_made,
-                ),
-                // itemId만 있으므로 우선 그대로 표시 (원하면 item 이름 lookup 해도 됨)
-                title: Text('$sign${t.qty} • ${t.itemId}'),
-                // ✅ refType은 enum, nullable 아님 → name 사용
-                subtitle: Text(
-                  '${t.ts.toIso8601String()} • ${t.refType.name} / ${t.refId}',
-                ),
-                dense: true,
-              );
-            },
+            itemBuilder: (_, i) => TxnRow(t: txns[i]),
           );
         },
       ),

@@ -6,6 +6,7 @@ import '../models/work.dart';
 import '../models/purchase.dart';
 import 'repo_interfaces.dart';
 import 'inmem_repo.dart';
+import '../models/types.dart';
 
 class ItemRepoView implements ItemRepo {
   final InMemoryRepo inner;
@@ -32,6 +33,10 @@ class ItemRepoView implements ItemRepo {
     String? refId,
     String? note}) =>
       inner.adjustQty(itemId: itemId, delta: delta, refType: refType, refId: refId, note: note);
+
+  @override
+  Future<String?> nameOf(String itemId) => inner.nameOf(itemId); // ✅ 추가
+
 }
 
 class OrderRepoView implements OrderRepo {
@@ -46,6 +51,10 @@ class OrderRepoView implements OrderRepo {
 
   @override
   Future<void> upsertOrder(Order order) => inner.upsertOrder(order);
+
+  @override
+  Future<String?> customerNameOf(String orderId) => inner.customerNameOf(orderId); // ✅ 추가
+
 }
 
 class TxnRepoView implements TxnRepo {
@@ -56,11 +65,21 @@ class TxnRepoView implements TxnRepo {
   Future<List<Txn>> listTxns({String? itemId}) => inner.listTxns(itemId: itemId);
 
   @override
-  Future<void> addInPlanned({required String itemId, required int qty, required String refType, required String refId, String? note})
+  Future<void> addInPlanned({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note})
   => inner.addInPlanned(itemId: itemId, qty: qty, refType: refType, refId: refId, note: note);
 
   @override
-  Future<void> addInActual({required String itemId, required int qty, required String refType, required String refId, String? note})
+  Future<void> addInActual({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note})
   => inner.addInActual(itemId: itemId, qty: qty, refType: refType, refId: refId, note: note);
 
 }
@@ -90,6 +109,10 @@ class WorkRepoView implements WorkRepo {
   @override Future<void> updateWork(Work w) => _m.updateWork(w);
   @override
   Future<void> completeWork(String id) => _m.completeWork(id);
+  @override
+    Future<void> updateWorkStatus(String id, WorkStatus status) => _m.updateWorkStatus(id, status);
+    @override
+    Future<void> cancelWork(String id) => _m.cancelWork(id);
 
 }
 
@@ -105,4 +128,10 @@ class PurchaseRepoView implements PurchaseRepo {
 
   @override
   Future<void> completePurchase(String id) => _m.completePurchase(id);
+  @override
+    Future<void> updatePurchaseStatus(String id, PurchaseStatus status) => _m.updatePurchaseStatus(id, status);
+
+    @override
+    Future<void> cancelPurchase(String id) => _m.cancelPurchase(id);
+
 }
