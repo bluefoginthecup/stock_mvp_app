@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../ui/common/ui.dart';
 
 class AdjustForm extends StatefulWidget {
   final Item item;
@@ -26,12 +27,12 @@ class _AdjustFormState extends State<AdjustForm> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(widget.item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(widget.item.name, style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text('현재 수량: ${widget.item.qty} (min ${widget.item.minQty})'),
               const SizedBox(height: 12),
-              TextField(controller: _deltaC, decoration: const InputDecoration(labelText: '변경 수량 (+입고 / -출고)'), keyboardType: TextInputType.number),
-              TextField(controller: _noteC, decoration: const InputDecoration(labelText: '메모(선택)')),
+              TextField(controller: _deltaC, decoration: const InputDecoration(labelText: 'context.t.adjust_delta_hint'), keyboardType: TextInputType.number),
+              TextField(controller: _noteC, decoration: const InputDecoration(labelText: 'context.t.field_memo_optional')),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: () async {
@@ -40,7 +41,7 @@ class _AdjustFormState extends State<AdjustForm> {
                   if (!mounted) return;
                   Navigator.pop(context);
                 },
-                child: const Text('적용'),
+                child: Text(context.t.btn_apply),
               ),
             ],
           ),

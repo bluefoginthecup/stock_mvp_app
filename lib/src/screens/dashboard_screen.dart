@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../repos/repo_interfaces.dart';
+import '../ui/common/ui.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -9,7 +10,7 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final itemRepo = context.read<ItemRepo>();
     return Scaffold(
-      appBar: AppBar(title: const Text('대시보드')),
+      appBar: AppBar(title: Text(context.t.dashboard_title)),
       body: FutureBuilder(
         future: itemRepo.listItems(),
         builder: (context, snap) {
@@ -18,7 +19,7 @@ class DashboardScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const Text('요약', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('요약', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Wrap(spacing: 12, runSpacing: 12, children: [
                 _StatCard(title: '전체 품목', value: items.length.toString()),
@@ -28,37 +29,37 @@ class DashboardScreen extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/orders'),
                 icon: const Icon(Icons.assignment),
-                label: const Text('주문 관리'),
+                label: Text(context.t.dashboard_orders),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/stock'),
                 icon: const Icon(Icons.inventory_2),
-                label: const Text('재고 관리'),
+                label: Text(context.t.dashboard_stock),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/txns'),
                 icon: const Icon(Icons.swap_vert),
-                label: const Text('입·출고 기록'),
+                label: Text(context.t.dashboard_txns),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/works'),
                 icon: const Icon(Icons.precision_manufacturing),
-                label: const Text('작업 계획'),
+                label: Text(context.t.dashboard_works),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/purchases'),
                 icon: const Icon(Icons.local_shipping),
-                label: const Text('발주 계획'),
+                label: Text(context.t.dashboard_purchases),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/settings/language'),
                 icon: const Icon(Icons.settings),
-                label: const Text('언어설정'),
+                label: Text(context.t.settings_language_title),
               ),
 
             ],
@@ -83,9 +84,9 @@ class _StatCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(title, style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            Text(value, style: const TextStyle(fontSize: 20)),
+            Text(value, style: TextStyle(fontSize: 20)),
           ],
         ),
       ),

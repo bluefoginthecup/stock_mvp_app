@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app/lang_controller.dart';
 import '../../l10n/l10n.dart';
+import '../../ui/common/ui.dart';
 
 class LanguageSettingsScreen extends StatelessWidget {
   const LanguageSettingsScreen({super.key});
@@ -16,26 +17,26 @@ class LanguageSettingsScreen extends StatelessWidget {
       body: ListView(
         children: [
           RadioListTile<String?>(
-            title: const Text('System Default'),
+            title: Text(context.t.settings_language_system),
             value: null,
             groupValue: current,
             onChanged: (_) => lang.setLocale(null),
           ),
           RadioListTile<String?>(
-            title: const Text('한국어'),
+            title: Text(context.t.settings_language_korean),
             value: 'ko',
             groupValue: current,
             onChanged: (_) => lang.setLocale(const Locale('ko')),
           ),
           RadioListTile<String?>(
-            title: const Text('English'),
+            title: Text(context.t.settings_language_english),
             value: 'en',
             groupValue: current,
             onChanged: (_) => lang.setLocale(const Locale('en')),
           ),
           // 스페인어 추가 시:
           RadioListTile<String?>(
-            title: const Text('Español'),
+            title: Text(context.t.settings_language_spanish),
             value: 'es',
             groupValue: current,
             onChanged: (_) => lang.setLocale(const Locale('es')),

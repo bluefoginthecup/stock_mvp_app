@@ -1,0 +1,53 @@
+{
+  "수량 줄이기": "qty_decrease",
+  "수량 늘리기": "qty_increase",
+
+  "대시보드": "dashboard_title",
+  "요약": "dashboard_summary",
+  "주문 관리": "dashboard_orders",
+  "재고 관리": "dashboard_stock",
+  "입·출고 기록": "dashboard_txns",
+  "작업 계획": "dashboard_works",
+  "발주 계획": "dashboard_purchases",
+  "상세 보기 / 필터로 이동": "dashboard_goto_details",
+
+  "언어설정": "settings_language_title",
+  "System Default": "settings_language_system",
+  "한국어": "settings_language_korean",
+  "English": "settings_language_english",
+  "Español": "settings_language_spanish",
+
+  "발주 상세": "purchase_detail_title",
+  "발주 계획이 없습니다.": "purchases_list_empty",
+  "Order": "purchase_action_order",
+  "Receive": "purchase_action_receive",
+
+  "변경 수량 (+입고 / -출고)": "adjust_delta_hint",
+  "메모(선택)": "field_memo_optional",
+  "적용": "btn_apply",
+
+  "기록이 없습니다.": "txns_empty",
+
+  "작업 계획이 없습니다.": "work_list_empty",
+  "Start": "work_action_start",
+  "Done": "work_action_done",
+  "상태:": "field_status_label",
+  "작업 상세": "work_detail_title",
+
+  "주문 목록": "order_list_title",
+  "주문이 없습니다. + 버튼으로 추가하세요.": "order_list_empty_hint",
+
+  "재고 목록": "stock_list_title",
+  "이름/코드 검색": "search_name_code_hint",
+  "재고가 없습니다. +로 추가하세요.": "stock_list_empty_hint",
+
+  "새 품목": "stock_new_item_title",
+  "이름": "field_name",
+  "코드(SKU)": "field_sku",
+  "단위(EA/SET/ROLL 등)": "field_unit_hint",
+  "폴더(finished/semi/raw/sub)": "field_folder_hint",
+  "서브폴더(선택)": "field_subfolder_optional",
+  "임계치": "field_threshold",
+  "초기수량": "field_initial_qty",
+  "추가": "btn_add"
+}

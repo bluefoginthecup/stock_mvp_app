@@ -26,7 +26,7 @@ class WorkListScreen extends StatelessWidget {
         builder: (context, snap) {
           final list = snap.data ?? const [];
           if (list.isEmpty) {
-            return const Center(child: Text('작업 계획이 없습니다.'));
+            return Center(child: Text(context.t.work_list_empty));
           }
           return ListView.separated(
             itemCount: list.length,
@@ -74,9 +74,9 @@ class _WorkStatusButton extends StatelessWidget {
     Widget build(BuildContext context) {
       switch (work.status) {
         case WorkStatus.planned:
-          return ElevatedButton(onPressed: onStart, child: const Text('Start'));
+          return ElevatedButton(onPressed: onStart, child: Text(context.t.work_action_start));
         case WorkStatus.inProgress:
-          return ElevatedButton(onPressed: onComplete, child: const Text('Done'));
+          return ElevatedButton(onPressed: onComplete, child: Text(context.t.work_action_done));
         case WorkStatus.done:
           return const Icon(Icons.check, color: Colors.green);
         case WorkStatus.canceled: // ✅ enum에 있으니 누락 금지

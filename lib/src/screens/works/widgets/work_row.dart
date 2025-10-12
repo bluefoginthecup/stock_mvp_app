@@ -5,6 +5,7 @@ import '../../../models/work.dart';
 import '../../../models/types.dart';
 import '../../../repos/repo_interfaces.dart';
 import '../../../ui/ui_utils.dart';
+import '../../../ui/common/ui.dart';
 
 class WorkRow extends StatelessWidget {
   final Work w;
@@ -71,16 +72,16 @@ class WorkRow extends StatelessWidget {
         // 오른쪽 버튼 영역
         Widget? trailing;
         if (w.status == WorkStatus.planned && onStart != null) {
-          trailing = OutlinedButton(onPressed: onStart, child: const Text('Start'));
+          trailing = OutlinedButton(onPressed: onStart, child: Text(context.t.work_action_start));
         } else if (w.status == WorkStatus.inProgress && onDone != null) {
-          trailing = OutlinedButton(onPressed: onDone, child: const Text('Done'));
+          trailing = OutlinedButton(onPressed: onDone, child: Text(context.t.work_action_done));
         } else if (w.status == WorkStatus.done) {
           trailing = const Icon(Icons.check, color: Colors.green);
         }
 
         return ListTile(
           title: Text('$itemName   x${w.qty}',
-              style: const TextStyle(fontWeight: FontWeight.w600)),
+              style: TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Wrap(
             spacing: 8,
             runSpacing: 4,

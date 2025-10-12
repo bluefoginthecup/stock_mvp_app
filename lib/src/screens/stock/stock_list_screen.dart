@@ -4,7 +4,7 @@ import '../../repos/repo_interfaces.dart';
 import '../../models/item.dart';
 import 'stock_new_item_sheet.dart';
 import '../txns/adjust_form.dart';
-
+import '../../ui/common/ui.dart';
 import 'package:stockapp_mvp/src/repos/inmem_repo.dart';
 
 class StockListScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class _StockListScreenState extends State<StockListScreen> {
     final repo = context.read<ItemRepo>();
     context.watch<InMemoryRepo>(); // 🔔 재고 변경 시 화면 리빌드 트리거
     return Scaffold(
-      appBar: AppBar(title: const Text('재고 목록')),
+      appBar: AppBar(title: Text(context.t.stock_list_title)),
       body: Column(
         children: [
           Padding(
@@ -30,7 +30,7 @@ class _StockListScreenState extends State<StockListScreen> {
             child: TextField(
               controller: _kw,
               decoration: InputDecoration(
-                hintText: '이름/코드 검색',
+                hintText: 'context.t.search_name_code_hint',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: IconButton(icon: const Icon(Icons.clear), onPressed: () { _kw.clear(); setState(() {}); }),
               ),
@@ -42,7 +42,7 @@ class _StockListScreenState extends State<StockListScreen> {
               future: repo.listItems(keyword: _kw.text),
               builder: (context, snap) {
                 final items = (snap.data ?? <Item>[]);
-                if (items.isEmpty) return const Center(child: Text('재고가 없습니다. +로 추가하세요.'));
+                if (items.isEmpty) return Center(child: Text(context.t.stock_list_empty_hint));
                 return ListView.separated(
                   itemCount: items.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
@@ -56,7 +56,7 @@ class _StockListScreenState extends State<StockListScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text('${it.qty}', style: TextStyle(fontWeight: FontWeight.bold, color: low ? Colors.red : null)),
-                          Text('min ${it.minQty}', style: const TextStyle(fontSize: 12)),
+                          Text('min ${it.minQty}', style: TextStyle(fontSize: 12)),
                         ],
                       ),
                       onTap: () => showModalBottomSheet(context: context, builder: (_) => AdjustForm(item: it)),

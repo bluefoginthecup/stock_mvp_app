@@ -110,7 +110,7 @@ class _QtyControlState extends State<QtyControl> {
         constraints: const BoxConstraints(),
         icon: const Icon(Icons.remove),
         onPressed: () => _stepBy(-widget.step),
-        tooltip: '수량 줄이기',
+        tooltip: 'context.t.qty_decrease',
       ),
     );
 
@@ -123,7 +123,7 @@ class _QtyControlState extends State<QtyControl> {
         constraints: const BoxConstraints(),
         icon: const Icon(Icons.add),
         onPressed: () => _stepBy(widget.step),
-        tooltip: '수량 늘리기',
+        tooltip: 'context.t.qty_increase',
       ),
     );
 

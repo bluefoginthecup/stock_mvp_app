@@ -5,6 +5,7 @@ import '../../models/order.dart';
 import '../../repos/repo_interfaces.dart';
 import 'order_form_screen.dart';
 import 'package:stockapp_mvp/src/repos/inmem_repo.dart';
+import '../../ui/common/ui.dart';
 
 class OrderListScreen extends StatelessWidget {
   const OrderListScreen({super.key});
@@ -15,13 +16,13 @@ class OrderListScreen extends StatelessWidget {
     context.watch<InMemoryRepo>(); // 🔔 주문 변경 시 리빌드
 
     return Scaffold(
-      appBar: AppBar(title: const Text('주문 목록')),
+      appBar: AppBar(title: Text(context.t.order_list_title)),
       body: FutureBuilder(
         future: repo.listOrders(),
         builder: (context, snap) {
           final orders = (snap.data ?? <Order>[]);
           if (orders.isEmpty) {
-            return const Center(child: Text('주문이 없습니다. + 버튼으로 추가하세요.'));
+            return Center(child: Text(context.t.order_list_empty_hint));
           }
           return ListView.separated(
             itemCount: orders.length,

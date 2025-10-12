@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../ui/common/ui.dart';
 
 class StockNewItemSheet extends StatefulWidget {
   const StockNewItemSheet({super.key});
@@ -32,14 +33,14 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('새 품목', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              TextField(controller: _nameC, decoration: const InputDecoration(labelText: '이름')),
-              TextField(controller: _skuC, decoration: const InputDecoration(labelText: '코드(SKU)')),
-              TextField(controller: _unitC, decoration: const InputDecoration(labelText: '단위(EA/SET/ROLL 등)')),
-              TextField(controller: _folderC, decoration: const InputDecoration(labelText: '폴더(finished/semi/raw/sub)')),
-              TextField(controller: _subC, decoration: const InputDecoration(labelText: '서브폴더(선택)')),
-              TextField(controller: _minC, decoration: const InputDecoration(labelText: '임계치'), keyboardType: TextInputType.number),
-              TextField(controller: _qtyC, decoration: const InputDecoration(labelText: '초기수량'), keyboardType: TextInputType.number),
+              Text('새 품목', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              TextField(controller: _nameC, decoration: const InputDecoration(labelText: 'context.t.field_name')),
+              TextField(controller: _skuC, decoration: const InputDecoration(labelText: 'context.t.field_sku')),
+              TextField(controller: _unitC, decoration: const InputDecoration(labelText: 'context.t.field_unit_hint')),
+              TextField(controller: _folderC, decoration: const InputDecoration(labelText: 'context.t.field_folder_hint')),
+              TextField(controller: _subC, decoration: const InputDecoration(labelText: 'context.t.field_subfolder_optional')),
+              TextField(controller: _minC, decoration: const InputDecoration(labelText: 'context.t.field_threshold'), keyboardType: TextInputType.number),
+              TextField(controller: _qtyC, decoration: const InputDecoration(labelText: 'context.t.field_initial_qty'), keyboardType: TextInputType.number),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: () async {
@@ -58,7 +59,7 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
                   if (!mounted) return;
                   Navigator.pop(context);
                 },
-                child: const Text('추가'),
+                child: Text(context.t.btn_add),
               ),
             ],
           ),

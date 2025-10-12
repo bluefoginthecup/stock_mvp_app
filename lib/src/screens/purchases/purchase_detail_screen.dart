@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase.dart';
 import '../../models/types.dart';
+import '../../ui/common/ui.dart';
 
 class PurchaseDetailScreen extends StatelessWidget {
   final PurchaseRepo repo;
@@ -23,7 +24,7 @@ class PurchaseDetailScreen extends StatelessWidget {
     final canNext = p.status != PurchaseStatus.received && p.status != PurchaseStatus.canceled;
     final next = _next(p.status);
     return Scaffold(
-      appBar: AppBar(title: const Text('발주 상세')),
+      appBar: AppBar(title: Text(context.t.purchase_detail_title)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Card(
@@ -41,7 +42,7 @@ class PurchaseDetailScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Text('Status: '),
+                    Text('Status: '),
                     Chip(label: Text(p.status.name)),
                   ],
                 ),
@@ -72,7 +73,7 @@ class PurchaseDetailScreen extends StatelessWidget {
                             : () => repo.updatePurchase(
                           p.copyWith(status: PurchaseStatus.canceled, updatedAt: DateTime.now()),
                         ),
-                        child: const Text('Cancel'),
+                        child: Text('Cancel'),
                       ),
                     ),
                   ],

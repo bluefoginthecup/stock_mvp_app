@@ -5,6 +5,7 @@ import '../../models/purchase.dart';
 import '../../models/types.dart';
 
 import '../../services/inventory_service.dart';
+import '../../ui/common/ui.dart';
 
 class PurchaseListScreen extends StatelessWidget {
   const PurchaseListScreen({super.key});
@@ -14,13 +15,13 @@ class PurchaseListScreen extends StatelessWidget {
     final repo = context.read<PurchaseRepo>();
     final inv  = context.read<InventoryService>();
     return Scaffold(
-      appBar: AppBar(title: const Text('발주 계획')),
+      appBar: AppBar(title: Text(context.t.dashboard_purchases)),
       body: StreamBuilder<List<Purchase>>(
         stream: repo.watchAllPurchases(),
         builder: (context, snap) {
           final list = snap.data ?? const [];
           if (list.isEmpty) {
-            return const Center(child: Text('발주 계획이 없습니다.'));
+            return Center(child: Text(context.t.purchases_list_empty));
           }
           return ListView.builder(
             itemCount: list.length,
@@ -35,13 +36,13 @@ class PurchaseListScreen extends StatelessWidget {
                                   PurchaseStatus.planned   =>
                                     ElevatedButton(
                                           onPressed: () => inv.orderPurchase(p.id),
-                                    child: const Text('Order'),
+                                    child: Text(context.t.purchase_action_order),
                                   ),
                                 // ordered → received : Actual Txn 생성 + 입고 완료
                                 PurchaseStatus.ordered   =>
                                   ElevatedButton(
                                     onPressed: () => inv.receivePurchase(p.id),
-                                    child: const Text('Receive'),
+                                    child: Text(context.t.purchase_action_receive),
                                   ),
                                 // 완료 상태
                                 PurchaseStatus.received  =>

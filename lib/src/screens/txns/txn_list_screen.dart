@@ -6,6 +6,7 @@ import 'package:stockapp_mvp/src/repos/inmem_repo.dart';
 
 import 'package:stockapp_mvp/src/models/txn.dart';
 import 'widgets/txn_row.dart';
+import '../../ui/common/ui.dart';
 
 
 class TxnListScreen extends StatelessWidget {
@@ -17,13 +18,13 @@ class TxnListScreen extends StatelessWidget {
     context.watch<InMemoryRepo>(); // 🔔 트랜잭션 변경 시 리빌드
 
     return Scaffold(
-      appBar: AppBar(title: const Text('입·출고 기록')),
+      appBar: AppBar(title: Text(context.t.dashboard_txns)),
       body: FutureBuilder<List<Txn>>(
         future: repo.listTxns(),
         builder: (context, snap) {
           final txns = snap.data ?? const <Txn>[];
           if (txns.isEmpty) {
-            return const Center(child: Text('기록이 없습니다.'));
+            return Center(child: Text(context.t.txns_empty));
           }
           return ListView.separated(
             itemCount: txns.length,

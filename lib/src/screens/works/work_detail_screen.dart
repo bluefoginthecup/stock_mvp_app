@@ -5,6 +5,8 @@ import '../../models/work.dart';
 import '../../models/types.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/ui_utils.dart'; // shortId 사용
+import '../../ui/common/ui.dart'; // shortId 사용
+
 
 class WorkDetailScreen extends StatelessWidget {
   final Work work;
@@ -54,7 +56,7 @@ class WorkDetailScreen extends StatelessWidget {
     final canAdvance = w.status != WorkStatus.done && w.status != WorkStatus.canceled;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('작업 상세')),
+      appBar: AppBar(title: Text(context.t.work_detail_title)),
       body: FutureBuilder<(String, String?)>(
         future: _loadNames(context),
         builder: (ctx, snap) {
