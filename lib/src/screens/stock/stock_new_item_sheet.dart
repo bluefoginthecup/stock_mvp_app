@@ -5,6 +5,7 @@ import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/ui.dart';
 
+
 class StockNewItemSheet extends StatefulWidget {
   const StockNewItemSheet({super.key});
 
@@ -34,13 +35,13 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('새 품목', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              TextField(controller: _nameC, decoration: const InputDecoration(labelText: 'context.t.field_name')),
-              TextField(controller: _skuC, decoration: const InputDecoration(labelText: 'context.t.field_sku')),
-              TextField(controller: _unitC, decoration: const InputDecoration(labelText: 'context.t.field_unit_hint')),
-              TextField(controller: _folderC, decoration: const InputDecoration(labelText: 'context.t.field_folder_hint')),
-              TextField(controller: _subC, decoration: const InputDecoration(labelText: 'context.t.field_subfolder_optional')),
-              TextField(controller: _minC, decoration: const InputDecoration(labelText: 'context.t.field_threshold'), keyboardType: TextInputType.number),
-              TextField(controller: _qtyC, decoration: const InputDecoration(labelText: 'context.t.field_initial_qty'), keyboardType: TextInputType.number),
+              TextField(controller: _nameC, decoration:  InputDecoration(labelText: context.t.field_name)),
+              TextField(controller: _skuC, decoration:  InputDecoration(labelText: context.t.field_sku)),
+              TextField(controller: _unitC, decoration:  InputDecoration(labelText: context.t.field_unit_hint)),
+              TextField(controller: _folderC, decoration:  InputDecoration(labelText: context.t.field_folder_hint)),
+              TextField(controller: _subC, decoration:  InputDecoration(labelText: context.t.field_subfolder_optional)),
+              TextField(controller: _minC, decoration:  InputDecoration(labelText: context.t.field_threshold), keyboardType: TextInputType.number),
+              TextField(controller: _qtyC, decoration:  InputDecoration(labelText: context.t.field_initial_qty), keyboardType: TextInputType.number),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: () async {

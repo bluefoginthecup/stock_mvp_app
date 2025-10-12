@@ -3,6 +3,8 @@ import '../../repos/repo_interfaces.dart';
 import '../../models/purchase.dart';
 import '../../models/types.dart';
 import '../../ui/common/ui.dart';
+import '../../l10n/labels.dart';
+import '../../l10n/l10n_x.dart';
 
 class PurchaseDetailScreen extends StatelessWidget {
   final PurchaseRepo repo;
@@ -33,17 +35,26 @@ class PurchaseDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('발주 품목: ${p.itemId}', style: Theme.of(context).textTheme.titleLarge),
+                Text(context.t.purchase_detail_item(p.itemId), style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 8),
-                Text('ID: ${p.id}'),
-                Text('Qty: ${p.qty}'),
-                if (p.vendorId != null) Text('Vendor: ${p.vendorId}'),
-                if (p.note != null) Text('Note: ${p.note}'),
-                const SizedBox(height: 8),
+            Text(context.t.purchase_detail_id(p.id)),
+                            Text(context.t.purchase_detail_qty(p.qty)),
+                            if (p.vendorId != null)
+                              Text(context.t.purchase_detail_vendor(p.vendorId!)),
+                          if (p.note != null)
+                            Text(context.t.purchase_detail_note(p.note!)),
+
+      const SizedBox(height: 8),
                 Row(
                   children: [
-                    Text('Status: '),
-                    Chip(label: Text(p.status.name)),
+                    Text(context.t.field_status_label),
+                            const SizedBox(width: 6),
+                            Chip(
+                                  label: Text(
+                                    // enum → 라벨 (Labels 없으면 아래 코멘트 참고)
+                                    Labels.purchaseStatus(context, p.status),
+                              ),
+                        ),
                   ],
                 ),
                 const Spacer(),
@@ -56,13 +67,13 @@ class PurchaseDetailScreen extends StatelessWidget {
                           p.copyWith(status: next, updatedAt: DateTime.now()),
                         )
                             : null,
-                        child: Text(
-                          switch (p.status) {
-                            PurchaseStatus.planned  => 'Order (ordered)',
-                            PurchaseStatus.ordered  => 'Receive (received)',
-                            _                        => '입고완료됨'
-                          },
-                        ),
+    child: Text(
+                              switch (p.status) {
+                                PurchaseStatus.planned  => context.t.purchase_action_order,
+                                PurchaseStatus.ordered  => context.t.purchase_action_receive,
+                                _                        => context.t.purchase_already_received,
+                              },
+                            )
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -73,7 +84,7 @@ class PurchaseDetailScreen extends StatelessWidget {
                             : () => repo.updatePurchase(
                           p.copyWith(status: PurchaseStatus.canceled, updatedAt: DateTime.now()),
                         ),
-                        child: Text('Cancel'),
+                        child: Text(context.t.common_cancel),
                       ),
                     ),
                   ],

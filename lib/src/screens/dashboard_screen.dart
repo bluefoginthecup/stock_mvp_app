@@ -19,11 +19,14 @@ class DashboardScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text('요약', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              //요약
+              Text(context.t.dashboard_summary, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Wrap(spacing: 12, runSpacing: 12, children: [
-                _StatCard(title: '전체 품목', value: items.length.toString()),
-                _StatCard(title: '임계치 이하', value: low.length.toString()),
+                //전체품목
+                _StatCard(title: context.t.dashboard_total_items, value: items.length.toString()),
+                //임계치이하
+                _StatCard(title: context.t.dashboard_below_threshold, value: low.length.toString()),
               ]),
               const SizedBox(height: 24),
               ElevatedButton.icon(
