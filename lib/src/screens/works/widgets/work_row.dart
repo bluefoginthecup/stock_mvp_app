@@ -96,6 +96,7 @@ class WorkRow extends StatelessWidget {
           dense: true,
           visualDensity: VisualDensity.compact,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          onTap: onTap,
         );
       },
     );

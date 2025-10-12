@@ -6,6 +6,7 @@ import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/order_planning_service.dart';
 import '../../ui/common/qty_control.dart';
+import '../../ui/common/ui.dart';
 
 class OrderFormScreen extends StatefulWidget {
   final String orderId;
@@ -116,7 +117,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   Widget build(BuildContext context) {
     final itemRepo = context.read<ItemRepo>();
     return Scaffold(
-      appBar: AppBar(title: const Text('주문 편집')),
+      appBar: AppBar(title: Text(context.t.order_form_title)),
       body: FutureBuilder<List<Item>>(
         future: itemRepo.listItems(folder: 'finished'),
         builder: (context, snap) {
@@ -127,15 +128,18 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             children: [
               TextField(
                 controller: _customerC,
-                decoration: const InputDecoration(labelText: '고객명'),
+                decoration: InputDecoration(labelText: context.t.field_customer),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: _memoC,
-                decoration: const InputDecoration(labelText: '메모'),
+                decoration: InputDecoration(labelText: context.t.field_memo),
               ),
               const SizedBox(height: 16),
-              const Text('주문 품목', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                context.t.section_order_items, // ✅
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
 
               // 품목 선택 영역
@@ -145,8 +149,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   child: CircularProgressIndicator(),
                 ))
               else if (finished.isEmpty)
-                const Text('등록된 완제품이 없습니다. 먼저 품목을 추가하세요.')
-              else
+                Text(context.t.empty_finished_items)
+          else
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -168,7 +172,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       (f) => f.id == ln.itemId,
                   orElse: () => Item(
                     id: '?',
-                    name: '(삭제되었거나 찾을 수 없음)',
+                    name: context.t.item_not_found,
                     sku: '',
                     unit: 'EA',
                     folder: 'finished',
@@ -181,7 +185,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                   key: ValueKey(ln.id),
                   leading: const Icon(Icons.shopping_cart),
                   title: Text(item.name),
-                  subtitle: Text('수량: ${ln.qty}'),
+                  subtitle: Text(context.t.order_line_qty(ln.qty)), // ✅ {qty} 치환
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -192,7 +196,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         onChanged: (q) => _updateQty(ln.id, q),
                       ),
                       IconButton(
-                        tooltip: '라인 삭제',
+                        tooltip: context.t.tooltip_delete_line, // ✅
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () => _removeLine(ln.id),
                       ),
@@ -204,7 +208,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               const SizedBox(height: 32),
               FilledButton(
                 onPressed: _save,
-                child: const Text('저장'),
+                child: Text(context.t.btn_save),
               ),
             ],
           );

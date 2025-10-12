@@ -7,6 +7,9 @@ import 'work_detail_screen.dart';
 import '../../services/inventory_service.dart'; // ✅ 추가
 import 'widgets/work_row.dart';
 
+//다국어 앱 셋팅
+import '../../ui/common/ui.dart';
+
 
 class WorkListScreen extends StatelessWidget {
   const WorkListScreen({super.key});
@@ -17,7 +20,7 @@ class WorkListScreen extends StatelessWidget {
     final inv = context.read<InventoryService>();             // ✅ 재고/전이 오케스트레이션
 
     return Scaffold(
-      appBar: AppBar(title: const Text('작업 계획')),
+      appBar: AppBar(title: Text(context.t.work_list_title)),
       body: StreamBuilder<List<Work>>(
         stream: workRepo.watchAllWorks(),
         builder: (context, snap) {
@@ -43,6 +46,7 @@ class WorkListScreen extends StatelessWidget {
                     ? () => inv.completeWork(w.id)
                     : null,
                 onTap: () {
+                  print('📦 tapped work: ${w.id} (${w.itemId})');
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => WorkDetailScreen(work: w)),

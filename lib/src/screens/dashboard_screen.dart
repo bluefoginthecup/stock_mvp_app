@@ -54,6 +54,12 @@ class DashboardScreen extends StatelessWidget {
                 icon: const Icon(Icons.local_shipping),
                 label: const Text('발주 계획'),
               ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/settings/language'),
+                icon: const Icon(Icons.settings),
+                label: const Text('언어설정'),
+              ),
 
             ],
           );
