@@ -6,7 +6,7 @@ class Work {
   final String id;        // unique id
   final String itemId;    // item to produce (finished/semi)
   final int qty;          // planned quantity (positive)
-  final String orderId;   // originating sales order id
+  final String? orderId;   // originating sales order id
   final WorkStatus status;
   final DateTime createdAt;
   final DateTime? updatedAt;

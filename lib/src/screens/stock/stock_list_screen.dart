@@ -69,9 +69,36 @@ class _StockListScreenState extends State<StockListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => const StockNewItemSheet()),
+        onPressed: () async {
+          final repo = context.read<InMemoryRepo>();
+
+          // 간단한 기본 경로: 루트(대분류) 첫 번째 폴더에 생성
+          // (원하면 여기서 중/소분류 선택 UI로 확장 가능)
+          final roots = await repo.listFolderChildren(null);
+          if (roots.isEmpty) {
+            // 루트가 없으면 하나 만들어서 사용
+            final root = await repo.createFolderNode(parentId: null, name: 'Root');
+            roots.add(root);
+          }
+          final path = <String>[roots.first.id]; // 최소 1단계 경로
+
+          // 시트를 띄워 아이템 정보를 입력받음
+          final created = await showModalBottomSheet<Item>(
+            context: context,
+            isScrollControlled: true,
+            builder: (_) => StockNewItemSheet(pathIds: path),
+          );
+
+          // 입력이 완료되면 실제 생성
+          if (created != null) {
+            await repo.createItemUnderPath(pathIds: path, item: created);
+            // 리스트 갱신
+            if (mounted) setState(() {});
+          }
+        },
         child: const Icon(Icons.add),
       ),
+
     );
   }
 }

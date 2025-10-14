@@ -1,7 +1,5 @@
 import '../repos/repo_interfaces.dart';
 import '../models/types.dart';
-import '../models/work.dart';
-import '../models/purchase.dart';
 import '../models/state_guard.dart';
 
 class InventoryService {
@@ -33,11 +31,11 @@ class InventoryService {
       note: 'work planned in',
     );
 
-    // (선택) BOM 소비 planned out — TxnRepo에 out 메서드 없으면 주석 유지
+    // // (선택) BOM 소비 planned out — TxnRepo에 out 메서드 없으면 주석 유지
     // final rows = await boms.listBom(w.itemId);
     // for (final r in rows) {
     //   await txns.addOutPlanned(
-    //     itemId: r.childItemId,
+    //     itemId: r.inputItemId,
     //     qty: r.qty * w.qty,
     //     refType: 'work',
     //     refId: w.id,
@@ -62,7 +60,7 @@ class InventoryService {
       note: 'work actual in',
     );
 
-    // (선택) BOM 소비 actual out — TxnRepo에 out 메서드 없으면 주석 유지
+    // //(선택) BOM 소비 actual out — TxnRepo에 out 메서드 없으면 주석 유지
     // final rows = await boms.listBom(w.itemId);
     // for (final r in rows) {
     //   await txns.addOutActual(

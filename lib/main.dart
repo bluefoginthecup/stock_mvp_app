@@ -7,8 +7,10 @@ import 'src/repos/repo_interfaces.dart';
 import 'src/repos/repo_views.dart';
 import 'src/services/inventory_service.dart';  // ← 추가
 
+
 void main() {
   final inmem = InMemoryRepo.seeded()..bootstrap();
+  print('[main] InMemoryRepo instance = ${identityHashCode(inmem)}'); // ✅ 여기에 추가
 
   runApp(
     MultiProvider(

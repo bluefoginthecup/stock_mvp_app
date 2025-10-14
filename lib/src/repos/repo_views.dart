@@ -13,8 +13,21 @@ class ItemRepoView implements ItemRepo {
   ItemRepoView(this.inner);
 
   @override
-  Future<List<Item>> listItems({String? folder, String? keyword}) =>
-      inner.listItems(folder: folder, keyword: keyword);
+  Future<List<Item>> listItems({String? folder, String? keyword}) async {
+    // folder(대분류 이름) → id로 변환
+    // InMemoryRepo에 pathIdsByNames(...)가 이미 있다고 가정 (없다면 아래 주석 참고)
+    final ids = await inner.pathIdsByNames(
+      l1Name: folder,         // 예: 'Finished' 또는 'finished'
+      createIfMissing: false, // 조회만, 없으면 null
+    );
+    // ids[0] == l1Id
+    return inner.listItemsByFolderPath(
+      l1: ids[0],
+      l2: null,
+      l3: null,
+      keyword: keyword,
+    );
+  }
 
   @override
   Future<Item?> getItem(String id) => inner.getItem(id);
@@ -31,13 +44,20 @@ class ItemRepoView implements ItemRepo {
     required int delta,
     String? refType,
     String? refId,
-    String? note}) =>
-      inner.adjustQty(itemId: itemId, delta: delta, refType: refType, refId: refId, note: note);
+    String? note,
+  }) =>
+      inner.adjustQty(
+        itemId: itemId,
+        delta: delta,
+        refType: refType,
+        refId: refId,
+        note: note,
+      );
 
   @override
-  Future<String?> nameOf(String itemId) => inner.nameOf(itemId); // ✅ 추가
-
+  Future<String?> nameOf(String itemId) => inner.nameOf(itemId);
 }
+
 
 class OrderRepoView implements OrderRepo {
   final InMemoryRepo inner;

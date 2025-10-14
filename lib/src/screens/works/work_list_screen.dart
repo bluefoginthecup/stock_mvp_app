@@ -6,6 +6,7 @@ import '../../models/types.dart';
 import 'work_detail_screen.dart';
 import '../../services/inventory_service.dart'; // ✅ 추가
 import 'widgets/work_row.dart';
+import '../../repos/inmem_repo.dart';
 
 //다국어 앱 셋팅
 import '../../ui/common/ui.dart';
@@ -17,6 +18,8 @@ class WorkListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final workRepo = context.read<WorkRepo>();
+    final inmem = context.read<InMemoryRepo>();
+    print('[WorkListScreen] using InMemoryRepo instance = ${identityHashCode(inmem)}'); // ✅ 추가
     final inv = context.read<InventoryService>();             // ✅ 재고/전이 오케스트레이션
 
     return Scaffold(

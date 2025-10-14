@@ -1,6 +1,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:collection' show SplayTreeSet;
 import '../models/item.dart';
 import '../models/order.dart';
 import '../models/txn.dart';
@@ -10,6 +11,9 @@ import '../models/work.dart';
 import '../models/purchase.dart';
 
 import 'repo_interfaces.dart';
+import 'dart:async'; // ✅ StreamController 사용을 위해 필요
+
+import '../models/folder_node.dart';
 
 class InMemoryRepo extends ChangeNotifier
     implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseRepo {
@@ -19,27 +23,259 @@ class InMemoryRepo extends ChangeNotifier
   final Map<String, Txn> _txns = {};
   final Map<String, BomRow> _bom = {};
 
-  InMemoryRepo();
+  InMemoryRepo() {
+    _seedFolderRootsIfEmpty();   // ← 추가
+  }
+
   InMemoryRepo.seeded() {
-    // a few seed items
-    final i1 = Item(id: _uuid.v4(), name: '루앙 그레이 50 기본형 방석커버', sku: 'LG-50C', unit: 'EA', folder: 'finished', subfolder: 'cushion', minQty: 5, qty: 12);
-    final i2 = Item(id: _uuid.v4(), name: '루앙 그레이 40 쿠션커버', sku: 'LG-40C', unit: 'EA', folder: 'finished', subfolder: 'cushion', minQty: 5, qty: 4);
-    final fabric = Item(id: _uuid.v4(), name: '원단-루앙 그레이', sku: 'FAB-LG', unit: 'M', folder: 'raw', minQty: 10, qty: 27, subfolder: 'fabric');
+    _seedFolderRootsIfEmpty();   // ← 추가 (시드 아이템 전에 호출해도 OK)
+    final i1 = Item(
+      id: _uuid.v4(),
+      name: '루앙 그레이 50 기본형 방석커버',
+      sku: 'LG-50C',
+      unit: 'EA',
+      folder: 'finished',
+      subfolder: 'cushion',
+      minQty: 5,
+      qty: 12,
+    );
+
+    final i2 = Item(
+      id: _uuid.v4(),
+      name: '루앙 그레이 40 쿠션커버',
+      sku: 'LG-40C',
+      unit: 'EA',
+      folder: 'finished',
+      subfolder: 'cushion',
+      minQty: 5,
+      qty: 4,
+    );
+
+    final fabric = Item(
+      id: _uuid.v4(),
+      name: '원단-루앙 그레이',
+      sku: 'FAB-LG',
+      unit: 'M',
+      folder: 'raw',         // 예: 원자재 카테고리
+      subfolder: 'fabric',
+      minQty: 10,
+      qty: 27,
+    );
+
     _items[i1.id] = i1;
     _items[i2.id] = i2;
     _items[fabric.id] = fabric;
+
+    // 시드 아이템 저장 후 ( _items[...] = ... ) 아래에 추가
+    () async {
+      // finished > cushion
+      final finishedPath = await pathIdsByNames(
+        l1Name: 'Finished',
+        l2Name: 'cushion',
+        createIfMissing: true,
+      );
+      final rawPath = await pathIdsByNames(
+        l1Name: 'Raw',
+        l2Name: 'fabric',
+        createIfMissing: true,
+      );
+
+      _itemPaths[i1.id] = List.unmodifiable([finishedPath[0]!, finishedPath[1]!]);
+      _itemPaths[i2.id] = List.unmodifiable([finishedPath[0]!, finishedPath[1]!]);
+      _itemPaths[fabric.id] = List.unmodifiable([rawPath[0]!, rawPath[1]!]);
+    }();
+
   }
 
   void bootstrap() {
     notifyListeners();
   }
+  // ===== Folder tree storage (Stage 6) =====
+  final Map<String, FolderNode> _folders = <String, FolderNode>{};
+
+  /// parentId -> child folderIds (이름순 정렬)
+  final Map<String?, SplayTreeSet<String>> _childrenIndex =
+  <String?, SplayTreeSet<String>>{};
+
+  /// itemId -> [l1Id, l2Id?, l3Id?]
+  final Map<String, List<String>> _itemPaths = <String, List<String>>{};
+
+  final _uuidStage6 = const Uuid(); // 기존 _uuid와 충돌 피하기 위한 별도 uuid
+
+  void _seedFolderRootsIfEmpty() {
+    if (_folders.isNotEmpty) return;
+    for (final name in const ['Finished', 'SemiFinished', 'Raw', 'Sub']) {
+      final id = _uuidStage6.v4();
+      final node = FolderNode(
+        id: id,
+        name: name,
+        depth: 1,
+        parentId: null,
+        order: 0,
+      );
+      _folders[id] = node;
+      _childrenIndex.putIfAbsent(null, () => SplayTreeSet(
+            (a, b) => _folders[a]!.name.compareTo(_folders[b]!.name),
+      )).add(id);
+    }
+  }
+
+  // === 이름 → id 헬퍼 ===
+  Future<String?> _folderIdByNameUnder(String name, String? parentId) async {
+    final kids = await listFolderChildren(parentId);
+    for (final k in kids) {
+      if (k.name == name) return k.id;
+    }
+    return null;
+  }
+
+  Future<List<String?>> pathIdsByNames({
+    String? l1Name,
+    String? l2Name,
+    String? l3Name,
+    bool createIfMissing = false,
+  }) async {
+    String? l1Id, l2Id, l3Id;
+    if (l1Name != null) {
+      l1Id = await _folderIdByNameUnder(l1Name, null);
+      if (l1Id == null && createIfMissing) {
+        l1Id = (await createFolderNode(parentId: null, name: l1Name)).id;
+      }
+    }
+    if (l2Name != null && l1Id != null) {
+      l2Id = await _folderIdByNameUnder(l2Name, l1Id);
+      if (l2Id == null && createIfMissing) {
+        l2Id = (await createFolderNode(parentId: l1Id, name: l2Name)).id;
+      }
+    }
+    if (l3Name != null && l2Id != null) {
+      l3Id = await _folderIdByNameUnder(l3Name, l2Id);
+      if (l3Id == null && createIfMissing) {
+        l3Id = (await createFolderNode(parentId: l2Id, name: l3Name)).id;
+      }
+    }
+    return [l1Id, l2Id, l3Id];
+  }
+
+
+  Future<List<FolderNode>> listFolderChildren(String? parentId) async {
+    final set = _childrenIndex[parentId];
+    if (set == null) return const [];
+    return set.map((id) => _folders[id]!).toList(growable: false);
+  }
+
+  Future<FolderNode> createFolderNode({required String? parentId, required String name}) async {
+    int depth = 1;
+    if (parentId != null) {
+      final p = _folders[parentId];
+      if (p == null) throw StateError('Parent not found');
+      depth = p.depth + 1;
+      if (depth > 3) throw StateError('Depth > 3 is not supported');
+    }
+    final id = _uuidStage6.v4();
+    final node = FolderNode(id: id, name: name, parentId: parentId, depth: depth, order: 0);
+    _folders[id] = node;
+
+    final idx = _childrenIndex.putIfAbsent(parentId, () => SplayTreeSet(
+          (a, b) => _folders[a]!.name.compareTo(_folders[b]!.name),
+    ));
+    idx.add(id);
+
+    notifyListeners();
+    return node;
+  }
+
+  Future<void> renameFolderNode({required String id, required String newName}) async {
+    final cur = _folders[id];
+    if (cur == null) throw StateError('Folder not found');
+    _folders[id] = cur.copyWith(name: newName);
+
+    // 형제 정렬 갱신
+    final parentId = cur.parentId;
+    final idx = _childrenIndex[parentId];
+    if (idx != null) {
+      idx.remove(id);
+      idx.add(id);
+    }
+    notifyListeners();
+  }
+
+  Future<void> deleteFolderNode(String id) async {
+    // 하위 폴더가 있으면 삭제 불가
+    final hasChildren = _childrenIndex[id]?.isNotEmpty == true;
+    if (hasChildren) throw StateError('Folder has subfolders');
+
+    // 어떤 아이템 경로에도 쓰이면 삭제 불가
+    final isUsed = _itemPaths.values.any((path) => path.contains(id));
+    if (isUsed) throw StateError('Folder is referenced by items');
+
+    final node = _folders.remove(id);
+    if (node != null) {
+      _childrenIndex[node.parentId]?.remove(id);
+    }
+    notifyListeners();
+  }
+
+  Future<List<Item>> listItemsByFolderPath({
+    String? l1,
+    String? l2,
+    String? l3,
+    String? keyword,
+  }) async {
+    Iterable<MapEntry<String, Item>> it = _items.entries; // 기존 맵 사용
+
+    bool _pathMatches(String itemId) {
+      final path = _itemPaths[itemId];
+      if (path == null) return false;
+      if (l1 != null && (path.isEmpty || path[0] != l1)) return false;
+      if (l2 != null && (path.length < 2 || path[1] != l2)) return false;
+      if (l3 != null && (path.length < 3 || path[2] != l3)) return false;
+      return true;
+    }
+
+    it = it.where((e) => _pathMatches(e.key));
+
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      final k = keyword.trim().toLowerCase();
+      it = it.where((e) {
+        final v = e.value;
+        return v.name.toLowerCase().contains(k) || v.sku.toLowerCase().contains(k);
+      });
+    }
+    return it.map((e) => e.value).toList(growable: false);
+  }
+
+  Future<void> createItemUnderPath({
+    required List<String> pathIds, // [l1Id, l2Id?, l3Id?]
+    required Item item,
+  }) async {
+    if (pathIds.isEmpty || pathIds.length > 3) {
+      throw ArgumentError('pathIds must have length 1..3');
+    }
+    // 경로 유효성 검증
+    for (int i = 0; i < pathIds.length; i++) {
+      final n = _folders[pathIds[i]];
+      if (n == null) throw StateError('Folder not found: ${pathIds[i]}');
+      if (n.depth != (i + 1)) throw StateError('Folder depth mismatch at index $i');
+      if (i > 0) {
+        final parent = _folders[pathIds[i - 1]];
+        if (n.parentId != parent!.id) throw StateError('Folder parent chain invalid');
+      }
+    }
+
+    _items[item.id] = item;              // ✅ 기존 저장소 사용
+    _itemPaths[item.id] = List.unmodifiable(pathIds);
+    notifyListeners();
+  }
+
+  FolderNode? folderById(String id) => _folders[id];
 
   // ItemRepo
   @override
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
     Iterable<Item> values = _items.values;
     if (folder != null) {
-      values = values.where((e) => e.folder == folder);
+      values = values.where( (e) => e.folder == folder);
     }
     if (keyword != null && keyword.trim().isNotEmpty) {
       final k = keyword.toLowerCase();
@@ -193,8 +429,8 @@ Future<void> addInActual({
 
   // BomRepo
   @override
-  Future<List<BomRow>> listBom(String parentItemId) async {
-    return _bom.values.where((b) => b.parentItemId == parentItemId).toList();
+  Future<List<BomRow>> listBom(String outputItemId) async {
+    return _bom.values.where((b) => b.outputItemId == outputItemId).toList();
   }
 
   @override
@@ -214,18 +450,37 @@ Future<void> addInActual({
 
   @override
   Future<String> createWork(Work w) async {
-    _works[w.id] = w;
+    final now = DateTime.now();
+        final id  = (w.id.isNotEmpty) ? w.id : _uuid.v4();
+        final saved = w.copyWith(
+          id: id,
+          status: w.status, // 모델이 non-null이라면 그대로 사용
+          // 만약 모델이 nullable이라면 아래처럼 안전장치 두세요:
+          // status: w.status ?? WorkStatus.planned,
+          createdAt: w.createdAt ?? now,
+          updatedAt: now,
+        );
+        _works[id] = saved;
+        print('[InMemoryRepo] createWork -> ${saved.id} ${saved.status}');
+
     notifyListeners();
-    return w.id;
+        return id;
   }
 
   @override
   Future<Work?> getWorkById(String id) async => _works[id];
 
   @override
-  Stream<List<Work>> watchAllWorks() async* {
-    yield _works.values.toList();
-  }
+  Stream<List<Work>> watchAllWorks() {
+        // ChangeNotifier -> Stream 브리지
+        final c = StreamController<List<Work>>.broadcast();
+        void emit() => c.add(_works.values.toList());
+        c.onListen = emit;      // 최초 1회
+        final listener = () => emit();    // 변경 시마다 emit
+        addListener(listener);
+        c.onCancel = () => removeListener(listener);
+        return c.stream;
+      }
 
   @override
   Future<void> updateWork(Work w) async {
@@ -283,9 +538,15 @@ Future<void> addInActual({
   Future<Purchase?> getPurchaseById(String id) async => _purchases[id];
 
   @override
-  Stream<List<Purchase>> watchAllPurchases() async* {
-    yield _purchases.values.toList();
-  }
+  Stream<List<Purchase>> watchAllPurchases() {
+        final c = StreamController<List<Purchase>>.broadcast();
+        void emit() => c.add(_purchases.values.toList());
+        c.onListen = emit;
+        final listener = () => emit();
+        addListener(listener);
+        c.onCancel = () => removeListener(listener);
+        return c.stream;
+      }
 
   @override
   Future<void> updatePurchase(Purchase p) async {

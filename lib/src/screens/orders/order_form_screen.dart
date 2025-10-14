@@ -7,6 +7,8 @@ import '../../repos/repo_interfaces.dart';
 import '../../services/order_planning_service.dart';
 import '../../ui/common/qty_control.dart';
 import '../../ui/common/ui.dart';
+import '../../repos/inmem_repo.dart'; // ← 추가
+
 
 class OrderFormScreen extends StatefulWidget {
   final String orderId;
@@ -115,11 +117,22 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final itemRepo = context.read<ItemRepo>();
+    // 데이터 변경 시 자동 리빌드 (권장)
+    context.watch<InMemoryRepo>();
+    final inmem = context.read<InMemoryRepo>(); // ← InMemoryRepo 직접 사용
+
     return Scaffold(
       appBar: AppBar(title: Text(context.t.order_form_title)),
       body: FutureBuilder<List<Item>>(
-        future: itemRepo.listItems(folder: 'finished'),
+        // 변경: 'Finished' 이름 → id 매핑 후 경로 기반 목록
+        future: (() async {
+          // 루트에 'Finished'가 없으면 createIfMissing=true로 생성도 가능
+          final ids = await inmem.pathIdsByNames(
+            l1Name: 'Finished',
+            createIfMissing: true,
+          );
+          return inmem.listItemsByFolderPath(l1: ids[0]);
+        })(),
         builder: (context, snap) {
           final finished = (snap.data ?? <Item>[]);
 

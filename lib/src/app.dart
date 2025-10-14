@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/orders/order_list_screen.dart';
 import 'screens/stock/stock_list_screen.dart';
+import 'screens/stock/stock_browser_screen.dart';
+
 import 'screens/txns/txn_list_screen.dart';
 import 'screens/works/work_list_screen.dart';
 import 'screens/purchases/purchase_list_screen.dart';
+
 //다국어 앱 셋팅
 import '/src/l10n/l10n.dart';
 import '/src/ui/common/ui.dart';
@@ -37,7 +40,8 @@ class StockApp extends StatelessWidget {
       routes: {
         '/': (_) => const DashboardScreen(),    // 아래 AppBar 타이틀도 i18n으로
         '/orders': (_) => const OrderListScreen(),
-        '/stock': (_) => const StockListScreen(),
+       // '/stock': (_) => const StockListScreen(),
+        '/stock': (_) => const StockBrowserScreen(),
         '/txns': (_) => const TxnListScreen(),
         '/works': (_) => const WorkListScreen(),
         '/purchases': (_) => const PurchaseListScreen(),
