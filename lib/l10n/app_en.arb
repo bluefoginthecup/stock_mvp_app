@@ -1,0 +1,280 @@
+{
+  "@@locale": "en",
+  "adjust_current_qty": "Current qty: {qty} (min {minQty})",
+  "@adjust_current_qty": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      },
+      "minQty": {
+        "type": "int"
+      }
+    }
+  },
+  "adjust_delta_hint": "Change quantity (+in / -out)",
+  "app_title": "Inventory",
+  "btn_add": "Add",
+  "btn_apply": "Apply",
+  "btn_save": "Save",
+  "common_cancel": "Cancel",
+  "common_delete": "Delete",
+  "common_ok": "OK",
+  "dashboard_below_threshold": "Below threshold",
+  "dashboard_goto_details": "Go to details / filters",
+  "dashboard_orders": "Order Management",
+  "dashboard_purchases": "Purchase Planning",
+  "dashboard_stock": "Stock Management",
+  "dashboard_summary": "Summary",
+  "dashboard_title": "Dashboard",
+  "dashboard_total_items": "Total items",
+  "dashboard_txns": "Transaction Log",
+  "dashboard_works": "Work Planning",
+  "empty_finished_items": "No finished products. Please add items first.",
+  "field_created_at": "Created At",
+  "field_customer": "Customer",
+  "field_folder_hint": "Folder (finished/semi/raw/sub)",
+  "field_initial_qty": "Initial qty",
+  "field_item": "Item",
+  "field_memo": "메모",
+  "field_memo_optional": "Memo (optional)",
+  "field_name": "Name",
+  "field_qty": "Qty",
+  "field_sku": "SKU",
+  "field_status_label": "Status:",
+  "field_subfolder_optional": "Subfolder (optional)",
+  "field_threshold": "Threshold",
+  "field_unit_hint": "Unit (EA/SET/ROLL, etc.)",
+  "item_not_found": "(Deleted or not found)",
+  "msg_operation_failed": "Operation failed",
+  "msg_status_changed": "Status updated.",
+  "order_form_title": "Edit Order",
+  "order_line_qty": "Qty: {qty}",
+  "@order_line_qty": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "order_list_empty_hint": "No orders. Tap + to add.",
+  "order_list_title": "Order List",
+  "order_row_customer_qty": "{customer} ({totalQty}ea)",
+  "@order_row_customer_qty": {
+    "placeholders": {
+      "customer": {
+        "type": "String"
+      },
+      "totalQty": {
+        "type": "int"
+      }
+    }
+  },
+  "order_row_date_status": "{date} • {status}",
+  "@order_row_date_status": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "order_saved_and_planned": "Saved and auto-planned shortages.",
+  "purchase_action_order": "Order",
+  "purchase_action_receive": "Receive",
+  "purchase_already_received": "Already received",
+  "purchase_detail_id": "ID: {id}",
+  "@purchase_detail_id": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "purchase_detail_item": "Purchase item: {itemId}",
+  "@purchase_detail_item": {
+    "placeholders": {
+      "itemId": {
+        "type": "String"
+      }
+    }
+  },
+  "purchase_detail_note": "Note: {note}",
+  "@purchase_detail_note": {
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "purchase_detail_qty": "Qty: {qty}",
+  "@purchase_detail_qty": {
+    "placeholders": {
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "purchase_detail_status_label": "Status:",
+  "purchase_detail_title": "Purchase Detail",
+  "purchase_detail_vendor": "Vendor: {vendorId}",
+  "@purchase_detail_vendor": {
+    "placeholders": {
+      "vendorId": {
+        "type": "String"
+      }
+    }
+  },
+  "purchase_list_empty": "No purchases.",
+  "purchase_list_title": "Purchase List",
+  "purchase_row_item_qty": "{itemId}  x{qty}",
+  "@purchase_row_item_qty": {
+    "placeholders": {
+      "itemId": {
+        "type": "String"
+      },
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "purchase_row_status_note": "{status} • {note}",
+  "@purchase_row_status_note": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      },
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "purchase_status_canceled": "Canceled",
+  "purchase_status_done": "Done",
+  "purchase_status_in_progress": "In progress",
+  "purchase_status_ordered": "Ordered",
+  "purchase_status_planned": "Planned",
+  "purchase_status_received": "Received",
+  "purchases_list_empty": "No purchase plans.",
+  "purchases_list_title": "Purchase Planning",
+  "qty_decrease": "Decrease quantity",
+  "qty_increase": "Increase quantity",
+  "search_name_code_hint": "Search name/code",
+  "section_order_items": "Order items",
+  "settings_language_english": "English",
+  "settings_language_korean": "한국어",
+  "settings_language_spanish": "Español",
+  "settings_language_system": "System Default",
+  "settings_language_title": "Language Settings",
+  "stock_list_empty_hint": "No stock items. Tap + to add.",
+  "stock_list_title": "Stock List",
+  "stock_new_item_title": "New Item",
+  "stock_row_min_qty": "min {minQty}",
+  "@stock_row_min_qty": {
+    "placeholders": {
+      "minQty": {
+        "type": "int"
+      }
+    }
+  },
+  "stock_row_sku_folder_subfolder": "{sku} • {folder}{subfolder}",
+  "@stock_row_sku_folder_subfolder": {
+    "placeholders": {
+      "sku": {
+        "type": "String"
+      },
+      "folder": {
+        "type": "String"
+      },
+      "subfolder": {
+        "type": "String"
+      }
+    }
+  },
+  "tooltip_delete_line": "라인 삭제",
+  "txn_row_customer": "Customer {customer}",
+  "@txn_row_customer": {
+    "placeholders": {
+      "customer": {
+        "type": "String"
+      }
+    }
+  },
+  "txn_row_item_short": "item {itemShortId}",
+  "@txn_row_item_short": {
+    "placeholders": {
+      "itemShortId": {
+        "type": "String"
+      }
+    }
+  },
+  "txn_row_ref_short": "ref {refShortId}",
+  "@txn_row_ref_short": {
+    "placeholders": {
+      "refShortId": {
+        "type": "String"
+      }
+    }
+  },
+  "txns_empty": "No records.",
+  "txns_list_title": "Transaction Log",
+  "work_detail_item_qty": "{itemName}  x{qty}",
+  "@work_detail_item_qty": {
+    "placeholders": {
+      "itemName": {
+        "type": "String"
+      },
+      "qty": {
+        "type": "int"
+      }
+    }
+  },
+  "work_detail_title": "Work Detail",
+  "work_list_empty": "No works.",
+  "work_list_title": "Work List",
+
+  "work_action_start": "Start",
+  "work_action_done": "Done",
+
+  "work_row_item_fallback": "item {itemShortId}",
+  "@work_row_item_fallback": { "placeholders": { "itemShortId": { "type": "String" } } },
+
+  "work_row_item_qty": "{itemName}   x{qty}",
+  "@work_row_item_qty": {
+    "placeholders": {
+      "itemName": { "type": "String" },
+      "qty": { "type": "int" }
+    }
+  },
+
+  "work_row_order_short": "order {orderShortId}",
+  "@work_row_order_short": { "placeholders": { "orderShortId": { "type": "String" } } },
+
+  "work_row_customer": "Customer {customer}",
+  "@work_row_customer": { "placeholders": { "customer": { "type": "String" } } },
+
+  "work_row_item_short": "item {itemShortId}",
+  "@work_row_item_short": { "placeholders": { "itemShortId": { "type": "String" } } },
+
+  "work_status_planned": "Planned",
+  "work_status_in_progress": "In progress",
+  "work_status_done": "Done",
+  "work_status_canceled": "Canceled",
+
+
+  "label_customer": "Customer",
+  "label_order_no": "Order No.",
+  "label_item_id": "Item ID",
+  "label_created_at": "Created At",
+
+  "work_btn_start": "Start Work",
+  "work_btn_complete": "Complete",
+  "work_btn_already_done": "Already done",
+  "work_btn_canceled": "Canceled"
+
+
+
+
+
+}
