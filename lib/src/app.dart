@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/orders/order_list_screen.dart';
-import 'screens/stock/stock_list_screen.dart';
+//import 'screens/stock/stock_list_screen.dart';
 import 'screens/stock/stock_browser_screen.dart';
 
 import 'screens/txns/txn_list_screen.dart';

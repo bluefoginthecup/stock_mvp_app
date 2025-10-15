@@ -216,20 +216,29 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
+  // === 아이템 목록: 모든 단계 허용 ===
   Future<List<Item>> listItemsByFolderPath({
     String? l1,
     String? l2,
     String? l3,
     String? keyword,
+    bool recursive = false, // ← 추가: 기본 비재귀(직속만)
   }) async {
-    Iterable<MapEntry<String, Item>> it = _items.entries; // 기존 맵 사용
+    Iterable<MapEntry<String, Item>> it = _items.entries;
+
+    final wantedDepth = (l1 == null) ? 0 : (l2 == null) ? 1 : (l3 == null) ? 2 : 3;
 
     bool _pathMatches(String itemId) {
       final path = _itemPaths[itemId];
       if (path == null) return false;
+      // ✅ 경로 일부만 지정돼도 허용
       if (l1 != null && (path.isEmpty || path[0] != l1)) return false;
       if (l2 != null && (path.length < 2 || path[1] != l2)) return false;
       if (l3 != null && (path.length < 3 || path[2] != l3)) return false;
+
+      // 🔑 비재귀면 "직속"만 (경로 길이 정확히 일치)
+      if (!recursive) return path.length == wantedDepth;
+
       return true;
     }
 
@@ -245,30 +254,99 @@ class InMemoryRepo extends ChangeNotifier
     return it.map((e) => e.value).toList(growable: false);
   }
 
-  Future<void> createItemUnderPath({
-    required List<String> pathIds, // [l1Id, l2Id?, l3Id?]
-    required Item item,
-  }) async {
-    if (pathIds.isEmpty || pathIds.length > 3) {
-      throw ArgumentError('pathIds must have length 1..3');
-    }
-    // 경로 유효성 검증
-    for (int i = 0; i < pathIds.length; i++) {
-      final n = _folders[pathIds[i]];
-      if (n == null) throw StateError('Folder not found: ${pathIds[i]}');
-      if (n.depth != (i + 1)) throw StateError('Folder depth mismatch at index $i');
-      if (i > 0) {
-        final parent = _folders[pathIds[i - 1]];
-        if (n.parentId != parent!.id) throw StateError('Folder parent chain invalid');
-      }
-    }
 
-    _items[item.id] = item;              // ✅ 기존 저장소 사용
-    _itemPaths[item.id] = List.unmodifiable(pathIds);
-    notifyListeners();
+
+// === 아이템 생성: 경로 일부만 있어도 가능 ===
+Future<void> createItemUnderPath({
+  required List<String> pathIds, // [l1Id], [l1Id,l2Id], [l1Id,l2Id,l3Id]
+  required Item item,
+}) async {
+  if (pathIds.isEmpty || pathIds.length > 3) {
+    throw ArgumentError('pathIds must have length 1..3');
+  }
+  // ✅ 깊이 검증: 3단계까지만 허용, 중간체인만 확인
+  for (int i = 0; i < pathIds.length; i++) {
+    final n = _folders[pathIds[i]];
+    if (n == null) throw StateError('Folder not found: ${pathIds[i]}');
+    if (n.depth != (i + 1)) throw StateError('Folder depth mismatch at index $i');
+    if (i > 0) {
+      final parent = _folders[pathIds[i - 1]];
+      if (n.parentId != parent!.id) throw StateError('Folder parent chain invalid');
+    }
   }
 
+  _items[item.id] = item;
+  _itemPaths[item.id] = List.unmodifiable(pathIds);
+  notifyListeners();
+}
+
+
   FolderNode? folderById(String id) => _folders[id];
+
+
+// === 폴더+아이템 동시 검색 ===
+Future<(List<FolderNode>, List<Item>)> searchAll({
+  String? l1,
+  String? l2,
+  String? l3,
+  required String keyword,
+  bool recursive = true,
+}) async {
+  final k = keyword.trim().toLowerCase();
+  if (k.isEmpty) return (<FolderNode>[], <Item>[]);
+
+  // 🔍 1) 폴더 검색
+  final folders = _folders.values.where((f) {
+    bool matchesDepth() {
+      if (l1 == null) return true;
+      // 현재 기준 폴더의 경로가 포함되는지 판단
+      if (l1 != null && f.depth == 1 && f.id != l1) return false;
+      if (l2 != null && f.depth == 2 && f.parentId != l1) return false;
+      if (l3 != null && f.depth == 3 && f.parentId != l2) return false;
+      return true;
+    }
+
+    return matchesDepth() && f.name.toLowerCase().contains(k);
+  }).toList();
+
+  // 🔍 2) 아이템 검색 (기존 로직 활용)
+  final items = await searchItems(l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive);
+
+  return (folders, items);
+}
+
+
+// === 기존 searchItems: 재귀 탐색시 모든 단계 아이템 포함 ===
+Future<List<Item>> searchItems({
+  String? l1,
+  String? l2,
+  String? l3,
+  required String keyword,
+  bool recursive = true,
+}) async {
+  final k = keyword.trim().toLowerCase();
+  if (k.isEmpty) return const [];
+
+  bool pathMatchesPrefix(String itemId) {
+    final path = _itemPaths[itemId];
+    if (path == null) return false;
+    if (l1 != null && (path.isEmpty || path[0] != l1)) return false;
+    if (l2 != null && (path.length < 2 || path[1] != l2)) return false;
+    // ✅ 재귀 검색 시 l3 미지정이면 하위 전체 포함
+    if (!recursive && l3 != null) {
+      return path.length >= 3 && path[2] == l3;
+    }
+    return true;
+  }
+
+  return _items.entries
+      .where((e) => pathMatchesPrefix(e.key))
+      .map((e) => e.value)
+      .where((v) =>
+  v.name.toLowerCase().contains(k) ||
+      v.sku.toLowerCase().contains(k))
+      .toList();
+}
 
   // ItemRepo
   @override
@@ -587,6 +665,7 @@ Future<void> addInActual({
             updatedAt: DateTime.now());
     notifyListeners();
   }
+
 
 
 }
