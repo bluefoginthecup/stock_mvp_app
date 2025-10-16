@@ -369,7 +369,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 final dest = await showPathPicker(
                   context,
                   childrenProvider: folderChildrenProvider(repo),
-                  title: '폴더 이동',
+                  title: '폴더 이동..',
                   maxDepth: 2, // ✅ 폴더는 L2까지만 선택 허용
                 ); // dest = [L1] | [L1,L2] | [L1,L2,L3]
                 if (dest != null && dest.isNotEmpty) {
