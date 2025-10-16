@@ -31,35 +31,72 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     _searchC.dispose();
     super.dispose();
   }
-
   Future<void> _createFolder() async {
     final repo = context.read<InMemoryRepo>();
+
+    // 1) 선택 폴더 확인
     final parentId = _l3Id ?? _l2Id ?? _l1Id;
+    if (parentId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('먼저 상위 폴더를 선택하세요.')),
+      );
+      return;
+    }
+
+    // 2) L3(소분류)에서는 폴더 생성 불가
+    final parent = repo.folderById(parentId);
+    if (parent != null && parent.depth >= 3) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('소분류 아래에는 폴더를 만들 수 없습니다.')),
+      );
+      return;
+    }
+
+    // 3) 폴더 이름 입력 모달
     final name = await showNewFolderSheet(context);
     if (name == null || name.trim().isEmpty) return;
+
+    // 4) 실제 생성
     await repo.createFolderNode(parentId: parentId, name: name.trim());
+    if (!mounted) return;
     setState(() {});
   }
+
 
   // ✅ 유연형: 현재 폴더 아래 어디서든 아이템 생성
   Future<void> _createItem() async {
     final repo = context.read<InMemoryRepo>();
-    final parentId = _l3Id ?? _l2Id ?? _l1Id;
 
-    if (parentId == null) {
+    // 현재 선택된 폴더 ID (가장 하위 선택)
+    final selectedId = _l3Id ?? _l2Id ?? _l1Id;
+
+    if (selectedId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('먼저 폴더를 선택하세요.')),
       );
       return;
     }
 
+    // ✅ 상위 폴더까지 체인 만들기
+    final chain = <String>[];
+    var cur = repo.folderById(selectedId);
+    while (cur != null) {
+      chain.insert(0, cur.id); // 앞쪽에 추가해서 [L1, L2, L3] 순서로 만듦
+      cur = (cur.parentId != null) ? repo.folderById(cur.parentId!) : null;
+    }
+
+    // 예: [완제품ID, 방석커버ID, 루앙그레이ID]
+    print('[createItem] path chain = $chain');
+
+    // 아이템 생성창 띄우기
     final created = await showModalBottomSheet<Item>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => StockNewItemSheet(pathIds: [parentId]),
+      builder: (_) => StockNewItemSheet(pathIds: chain), // 이건 그대로 넘기기
     );
+
     if (created != null) {
-      await repo.createItemUnderPath(pathIds: [parentId], item: created);
+      await repo.createItemUnderPath(pathIds: chain, item: created); // ✅ 수정된 부분
       if (!mounted) return;
       setState(() {});
     }

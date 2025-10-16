@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app/lang_controller.dart';
 import '../../l10n/l10n.dart';

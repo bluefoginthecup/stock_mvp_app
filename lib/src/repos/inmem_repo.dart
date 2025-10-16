@@ -278,6 +278,13 @@ Future<void> createItemUnderPath({
   _items[item.id] = item;
   _itemPaths[item.id] = List.unmodifiable(pathIds);
   notifyListeners();
+  void debugDumpItemPaths() {
+    for (final e in _itemPaths.entries) {
+      final itemId = e.key;
+      final path = e.value;
+      print('[itemPath] item=$itemId pathLen=${path.length} path=$path');
+    }
+  }
 }
 
 

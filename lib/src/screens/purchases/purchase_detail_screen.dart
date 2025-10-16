@@ -1,10 +1,7 @@
-import 'package:flutter/material.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase.dart';
 import '../../models/types.dart';
 import '../../ui/common/ui.dart';
-import '../../l10n/labels.dart';
-import '../../l10n/l10n_x.dart';
 
 class PurchaseDetailScreen extends StatelessWidget {
   final PurchaseRepo repo;

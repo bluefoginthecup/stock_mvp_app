@@ -11,8 +11,6 @@ import '../../ui/common/ui.dart';
 
 // ⬇️ l10n
 import '../../l10n/l10n.dart';
-import '../../l10n/l10n_x.dart';
-import '../../l10n/labels.dart'; // 상태 라벨용
 
 class WorkDetailScreen extends StatelessWidget {
   final Work work;

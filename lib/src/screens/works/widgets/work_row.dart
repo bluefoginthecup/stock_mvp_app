@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 
 import '../../../models/work.dart';
@@ -9,9 +9,7 @@ import '../../../ui/common/ui.dart';
 
 // ⬇️ l10n 임포트 (context.t / L10n.of)
 import '../../../l10n/l10n.dart';
-import '../../../l10n/l10n_x.dart';
 // ⬇️ 상태라벨 변환 (없으면 아래 ARB 라벨로 직접 사용해도 됨)
-import '../../../l10n/labels.dart';
 
 class WorkRow extends StatelessWidget {
   final Work w;
