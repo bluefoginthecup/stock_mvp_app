@@ -9,6 +9,9 @@ import '../../repos/inmem_repo.dart';
 import 'sheet_new_folder.dart';
 import 'stock_new_item_sheet.dart';
 import '../../ui/common/search_field.dart'; // 공용 검색 위젯
+import '../../ui/common/path_picker.dart'; // 파일 최상단 import 필요
+import '../../ui/common/entity_actions.dart';
+
 
 class StockBrowserScreen extends StatefulWidget {
   const StockBrowserScreen({super.key});
@@ -360,12 +363,14 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               }
             }
           },
+
         );
       }).toList(),
     );
   }
 
   Widget _buildItemList(List<Item> items) {
+    final repo = context.read<InMemoryRepo>(); // ✅ 추가
     return Column(
       children: items.map((it) {
         final low = it.minQty > 0 && it.qty <= it.minQty;
@@ -382,9 +387,64 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           subtitle: Text('${it.sku} • ${it.unit}'),
           trailing: Text('${it.qty}'),
           onTap: () {/* TODO: item detail */},
-          onLongPress: () {/* TODO: move/edit/delete */},
+          // ✅ 여기! it가 보이는 스코프
+          onLongPress: () async {
+            final action = await showEntityActionsSheet(context);
+            if (action == null) return;
+
+            switch (action) {
+              case EntityAction.rename:
+                final newName = await showRenameDialog(
+                  context,
+                  initial: it.name,
+                  title: '아이템 이름 변경',
+                );
+                if (newName != null && newName.isNotEmpty && newName != it.name) {
+                  await repo.renameItem(id: it.id, newName: newName);
+                  if (!mounted) return;
+                  setState(() {});
+                }
+                break;
+
+              case EntityAction.move:
+                final dest = await showPathPicker(
+                  context,
+                  childrenProvider: folderChildrenProvider(repo),
+                  title: '아이템 이동',
+                );
+                if (dest != null && dest.isNotEmpty) {
+                  await repo.moveItemToPath(itemId: it.id, pathIds: dest);
+                  if (!mounted) return;
+                  setState(() {});
+                }
+                break;
+
+              case EntityAction.delete:
+                final ok = await showDeleteConfirm(
+                  context,
+                  message: '"${it.name}"을(를) 삭제하시겠어요?',
+                );
+                if (ok) {
+                  await repo.deleteItem(it.id);
+                  if (!mounted) return;
+                  setState(() {});
+                }
+                break;
+            }
+          },
         );
       }).toList(),
     );
   }
+
+  // ───────────────────────── Folder Children Provider ─────────────────────────
+
+
+  ChildrenProvider folderChildrenProvider(InMemoryRepo repo) {
+    return (String? parentId) async {
+      final folders = await repo.listFolderChildren(parentId);
+      return folders.map((f) => PathNode(f.id, f.name)).toList();
+    };
+  }
+
 }

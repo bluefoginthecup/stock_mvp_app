@@ -291,6 +291,55 @@ Future<void> createItemUnderPath({
   FolderNode? folderById(String id) => _folders[id];
 
 
+  // ────────────아이템 편집/이동/삭제 ─────────────────────────────────
+
+  Future<void> renameItem({required String id, required String newName}) async {
+    final it = _items[id];
+    if (it == null) throw StateError('Item not found: $id');
+    // Item 모델에 copyWith가 없으면, 생성자 재구성으로 바꿔주세요.
+    final updated = it.copyWith(name: newName);
+    _items[id] = updated;
+    notifyListeners();
+  }
+
+  Future<void> deleteItem(String id) async {
+    if (!_items.containsKey(id)) throw StateError('Item not found: $id');
+    _items.remove(id);
+    _itemPaths.remove(id);
+    notifyListeners();
+  }
+
+  Future<void> moveItemToPath({
+    required String itemId,
+    required List<String> pathIds, // [L1], [L1,L2], [L1,L2,L3] 허용
+  }) async {
+    if (!_items.containsKey(itemId)) {
+      throw StateError('Item not found: $itemId');
+    }
+    if (pathIds.isEmpty || pathIds.length > 3) {
+      throw ArgumentError('pathIds must have length 1..3');
+    }
+
+    // 경로 검증: 깊이/부모체인 일치
+    for (int i = 0; i < pathIds.length; i++) {
+      final n = _folders[pathIds[i]];
+      if (n == null) throw StateError('Folder not found: ${pathIds[i]}');
+      if (n.depth != (i + 1)) {
+        throw StateError('Folder depth mismatch at index $i (got ${n.depth}, want ${i + 1})');
+      }
+      if (i > 0) {
+        final parent = _folders[pathIds[i - 1]];
+        if (n.parentId != parent!.id) {
+          throw StateError('Folder parent chain invalid at index $i');
+        }
+      }
+    }
+
+    _itemPaths[itemId] = List.unmodifiable(pathIds);
+    notifyListeners();
+  }
+
+
 // === 폴더+아이템 동시 검색 ===
 Future<(List<FolderNode>, List<Item>)> searchAll({
   String? l1,
@@ -376,12 +425,6 @@ Future<List<Item>> searchItems({
   @override
   Future<void> upsertItem(Item item) async {
     _items[item.id] = item;
-    notifyListeners();
-  }
-
-  @override
-  Future<void> deleteItem(String id) async {
-    _items.remove(id);
     notifyListeners();
   }
 
