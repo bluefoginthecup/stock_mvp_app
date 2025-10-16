@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:collection' show SplayTreeSet;
@@ -14,6 +13,16 @@ import 'repo_interfaces.dart';
 import 'dart:async'; // ✅ StreamController 사용을 위해 필요
 
 import '../models/folder_node.dart';
+
+// === Common move types (top-level) ===
+enum EntityKind { item, folder }
+
+class MoveRequest {
+  final EntityKind kind;
+  final String id;            // itemId or folderId
+  final List<String> pathIds; // [L1], [L1,L2], [L1,L2,L3]
+  const MoveRequest({required this.kind, required this.id, required this.pathIds});
+}
 
 class InMemoryRepo extends ChangeNotifier
     implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseRepo {
@@ -157,7 +166,6 @@ class InMemoryRepo extends ChangeNotifier
     return [l1Id, l2Id, l3Id];
   }
 
-
   Future<List<FolderNode>> listFolderChildren(String? parentId) async {
     final set = _childrenIndex[parentId];
     if (set == null) return const [];
@@ -254,49 +262,44 @@ class InMemoryRepo extends ChangeNotifier
     return it.map((e) => e.value).toList(growable: false);
   }
 
+  // === 아이템 생성: 경로 일부만 있어도 가능 ===
+  Future<void> createItemUnderPath({
+    required List<String> pathIds, // [l1Id], [l1Id,l2Id], [l1Id,l2Id,l3Id]
+    required Item item,
+  }) async {
+    if (pathIds.isEmpty || pathIds.length > 3) {
+      throw ArgumentError('pathIds must have length 1..3');
+    }
+    // ✅ 깊이 검증: 3단계까지만 허용, 중간체인만 확인
+    for (int i = 0; i < pathIds.length; i++) {
+      final n = _folders[pathIds[i]];
+      if (n == null) throw StateError('Folder not found: ${pathIds[i]}');
+      if (n.depth != (i + 1)) throw StateError('Folder depth mismatch at index $i');
+      if (i > 0) {
+        final parent = _folders[pathIds[i - 1]];
+        if (n.parentId != parent!.id) throw StateError('Folder parent chain invalid');
+      }
+    }
 
-
-// === 아이템 생성: 경로 일부만 있어도 가능 ===
-Future<void> createItemUnderPath({
-  required List<String> pathIds, // [l1Id], [l1Id,l2Id], [l1Id,l2Id,l3Id]
-  required Item item,
-}) async {
-  if (pathIds.isEmpty || pathIds.length > 3) {
-    throw ArgumentError('pathIds must have length 1..3');
-  }
-  // ✅ 깊이 검증: 3단계까지만 허용, 중간체인만 확인
-  for (int i = 0; i < pathIds.length; i++) {
-    final n = _folders[pathIds[i]];
-    if (n == null) throw StateError('Folder not found: ${pathIds[i]}');
-    if (n.depth != (i + 1)) throw StateError('Folder depth mismatch at index $i');
-    if (i > 0) {
-      final parent = _folders[pathIds[i - 1]];
-      if (n.parentId != parent!.id) throw StateError('Folder parent chain invalid');
+    _items[item.id] = item;
+    _itemPaths[item.id] = List.unmodifiable(pathIds);
+    notifyListeners();
+    void debugDumpItemPaths() {
+      for (final e in _itemPaths.entries) {
+        final itemId = e.key;
+        final path = e.value;
+        print('[itemPath] item=$itemId pathLen=${path.length} path=$path');
+      }
     }
   }
-
-  _items[item.id] = item;
-  _itemPaths[item.id] = List.unmodifiable(pathIds);
-  notifyListeners();
-  void debugDumpItemPaths() {
-    for (final e in _itemPaths.entries) {
-      final itemId = e.key;
-      final path = e.value;
-      print('[itemPath] item=$itemId pathLen=${path.length} path=$path');
-    }
-  }
-}
-
 
   FolderNode? folderById(String id) => _folders[id];
-
 
   // ────────────아이템 편집/이동/삭제 ─────────────────────────────────
 
   Future<void> renameItem({required String id, required String newName}) async {
     final it = _items[id];
     if (it == null) throw StateError('Item not found: $id');
-    // Item 모델에 copyWith가 없으면, 생성자 재구성으로 바꿔주세요.
     final updated = it.copyWith(name: newName);
     _items[id] = updated;
     notifyListeners();
@@ -309,18 +312,11 @@ Future<void> createItemUnderPath({
     notifyListeners();
   }
 
-  Future<void> moveItemToPath({
-    required String itemId,
-    required List<String> pathIds, // [L1], [L1,L2], [L1,L2,L3] 허용
-  }) async {
-    if (!_items.containsKey(itemId)) {
-      throw StateError('Item not found: $itemId');
-    }
+  // ─────────────────────────── Move helpers ───────────────────────────
+  void _validatePathIds(List<String> pathIds) {
     if (pathIds.isEmpty || pathIds.length > 3) {
       throw ArgumentError('pathIds must have length 1..3');
     }
-
-    // 경로 검증: 깊이/부모체인 일치
     for (int i = 0; i < pathIds.length; i++) {
       final n = _folders[pathIds[i]];
       if (n == null) throw StateError('Folder not found: ${pathIds[i]}');
@@ -334,75 +330,176 @@ Future<void> createItemUnderPath({
         }
       }
     }
+  }
 
-    _itemPaths[itemId] = List.unmodifiable(pathIds);
+  bool _isDescendantFolder(String ancestorId, String targetId) {
+    // targetId 의 부모를 타고 올라가다 ancestorId가 나오면 true
+    var cur = _folders[targetId];
+    while (cur != null && cur.parentId != null) {
+      if (cur.parentId == ancestorId) return true;
+      cur = _folders[cur.parentId!];
+    }
+    return false;
+  }
+
+
+
+  // ─────────────────────────── Unified move API ───────────────────────────
+  Future<void> moveEntityToPath(MoveRequest req) async {
+    _validatePathIds(req.pathIds);
+
+    switch (req.kind) {
+      case EntityKind.item:
+        if (!_items.containsKey(req.id)) {
+          throw StateError('Item not found: ${req.id}');
+        }
+        _itemPaths[req.id] = List.unmodifiable(req.pathIds);
+        break;
+
+      case EntityKind.folder: {
+        // 1) 대상/새 부모 조회 + 가드
+        final folder = _folders[req.id];
+        if (folder == null) {
+          throw StateError('Folder not found: ${req.id}');
+        }
+
+        final String newParentId = req.pathIds.last;
+        final newParent = _folders[newParentId];
+        if (newParent == null) {
+          throw StateError('Parent folder not found: $newParentId');
+        }
+        if (newParent.depth >= 3) {
+          throw StateError('Cannot move folder under depth 3 node');
+        }
+        if (req.id == newParent.id || _isDescendantFolder(req.id, newParent.id)) {
+          throw StateError('Cannot move folder inside its own subtree');
+        }
+
+        final oldParentId = folder.parentId;
+        if (oldParentId == newParent.id) {
+          // 같은 부모로 이동이면 변경 없음
+          break;
+        }
+
+        // 2) children index에서 부모 관계 갱신
+        _childrenIndex[oldParentId]?.remove(folder.id);
+        final newIdx = _childrenIndex.putIfAbsent(
+          newParent.id,
+              () => SplayTreeSet<String>(
+                (a, b) => _folders[a]!.name.compareTo(_folders[b]!.name),
+          ),
+        );
+        newIdx.add(folder.id);
+
+        // 3) depth delta 계산 (서브트리 전체 depth 보정)
+        final newDepth = newParent.depth + 1;
+        final delta = newDepth - folder.depth;
+
+        // 이동 대상 포함 서브트리 depth 업데이트
+        void _bumpDepthsRecursively(String fid) {
+          final f = _folders[fid];
+          if (f == null) return;
+          _folders[fid] = f.copyWith(depth: f.depth + delta);
+          final kids = _childrenIndex[fid];
+          if (kids == null) return;
+          for (final childId in kids) {
+            _bumpDepthsRecursively(childId);
+          }
+        }
+
+        // 4) 루트 노드의 parentId와 depth부터 갱신 후 서브트리 보정
+        _folders[folder.id] = folder.copyWith(
+          parentId: newParent.id,
+          depth: newDepth,
+        );
+        // 자식들 depth 일괄 보정
+        final children = _childrenIndex[folder.id];
+        if (children != null && children.isNotEmpty) {
+          for (final childId in children) {
+            _bumpDepthsRecursively(childId);
+          }
+        }
+        break;
+      }
+
+
+    }
+
     notifyListeners();
   }
 
+  // (하위호환) 아이템 전용 이동 → 통합 API 위임
+  Future<void> moveItemToPath({
+    required String itemId,
+    required List<String> pathIds, // [L1], [L1,L2], [L1,L2,L3] 허용
+  }) async {
+    await moveEntityToPath(
+      MoveRequest(kind: EntityKind.item, id: itemId, pathIds: pathIds),
+    );
+  }
 
-// === 폴더+아이템 동시 검색 ===
-Future<(List<FolderNode>, List<Item>)> searchAll({
-  String? l1,
-  String? l2,
-  String? l3,
-  required String keyword,
-  bool recursive = true,
-}) async {
-  final k = keyword.trim().toLowerCase();
-  if (k.isEmpty) return (<FolderNode>[], <Item>[]);
+  // === 폴더+아이템 동시 검색 ===
+  Future<(List<FolderNode>, List<Item>)> searchAll({
+    String? l1,
+    String? l2,
+    String? l3,
+    required String keyword,
+    bool recursive = true,
+  }) async {
+    final k = keyword.trim().toLowerCase();
+    if (k.isEmpty) return (<FolderNode>[], <Item>[]);
 
-  // 🔍 1) 폴더 검색
-  final folders = _folders.values.where((f) {
-    bool matchesDepth() {
-      if (l1 == null) return true;
-      // 현재 기준 폴더의 경로가 포함되는지 판단
-      if (l1 != null && f.depth == 1 && f.id != l1) return false;
-      if (l2 != null && f.depth == 2 && f.parentId != l1) return false;
-      if (l3 != null && f.depth == 3 && f.parentId != l2) return false;
+    // 🔍 1) 폴더 검색
+    final folders = _folders.values.where((f) {
+      bool matchesDepth() {
+        if (l1 == null) return true;
+        // 현재 기준 폴더의 경로가 포함되는지 판단
+        if (l1 != null && f.depth == 1 && f.id != l1) return false;
+        if (l2 != null && f.depth == 2 && f.parentId != l1) return false;
+        if (l3 != null && f.depth == 3 && f.parentId != l2) return false;
+        return true;
+      }
+
+      return matchesDepth() && f.name.toLowerCase().contains(k);
+    }).toList();
+
+    // 🔍 2) 아이템 검색 (기존 로직 활용)
+    final items = await searchItems(l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive);
+
+    return (folders, items);
+  }
+
+  // === 기존 searchItems: 재귀 탐색시 모든 단계 아이템 포함 ===
+  Future<List<Item>> searchItems({
+    String? l1,
+    String? l2,
+    String? l3,
+    required String keyword,
+    bool recursive = true,
+  }) async {
+    final k = keyword.trim().toLowerCase();
+    if (k.isEmpty) return const [];
+
+    bool pathMatchesPrefix(String itemId) {
+      final path = _itemPaths[itemId];
+      if (path == null) return false;
+      if (l1 != null && (path.isEmpty || path[0] != l1)) return false;
+      if (l2 != null && (path.length < 2 || path[1] != l2)) return false;
+      // ✅ 재귀 검색 시 l3 미지정이면 하위 전체 포함
+      if (!recursive && l3 != null) {
+        return path.length >= 3 && path[2] == l3;
+      }
       return true;
     }
 
-    return matchesDepth() && f.name.toLowerCase().contains(k);
-  }).toList();
-
-  // 🔍 2) 아이템 검색 (기존 로직 활용)
-  final items = await searchItems(l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive);
-
-  return (folders, items);
-}
-
-
-// === 기존 searchItems: 재귀 탐색시 모든 단계 아이템 포함 ===
-Future<List<Item>> searchItems({
-  String? l1,
-  String? l2,
-  String? l3,
-  required String keyword,
-  bool recursive = true,
-}) async {
-  final k = keyword.trim().toLowerCase();
-  if (k.isEmpty) return const [];
-
-  bool pathMatchesPrefix(String itemId) {
-    final path = _itemPaths[itemId];
-    if (path == null) return false;
-    if (l1 != null && (path.isEmpty || path[0] != l1)) return false;
-    if (l2 != null && (path.length < 2 || path[1] != l2)) return false;
-    // ✅ 재귀 검색 시 l3 미지정이면 하위 전체 포함
-    if (!recursive && l3 != null) {
-      return path.length >= 3 && path[2] == l3;
-    }
-    return true;
+    return _items.entries
+        .where((e) => pathMatchesPrefix(e.key))
+        .map((e) => e.value)
+        .where((v) =>
+    v.name.toLowerCase().contains(k) ||
+        v.sku.toLowerCase().contains(k))
+        .toList();
   }
-
-  return _items.entries
-      .where((e) => pathMatchesPrefix(e.key))
-      .map((e) => e.value)
-      .where((v) =>
-  v.name.toLowerCase().contains(k) ||
-      v.sku.toLowerCase().contains(k))
-      .toList();
-}
 
   // ItemRepo
   @override
@@ -460,7 +557,6 @@ Future<List<Item>> searchItems({
       qty: delta.abs(),
       refType: _parseRefType(refType),                 // ✅ enum으로 변환
       refId: refId ?? 'unknown',                       // ✅ null 방지
-
       note: note,
     );
     _txns[txn.id] = txn;
@@ -495,7 +591,6 @@ Future<List<Item>> searchItems({
     return o?.customer; // ✅ Order 클래스에 있는 필드명과 일치
   }
 
-
   // TxnRepo
   @override
   Future<List<Txn>> listTxns({String? itemId}) async {
@@ -527,26 +622,26 @@ Future<List<Item>> searchItems({
     notifyListeners();
   }
 
-// addInActual
-@override
-Future<void> addInActual({
-  required String itemId,
-  required int qty,
-  required String refType,
-  required String refId,
-  String? note,
-}) async {
-  final txn = Txn(
-    id: _uuid.v4(),
-    ts: DateTime.now(),
-    type: TxnType.in_,
-    itemId: itemId,
-    qty: qty,
-    refType: RefTypeX.fromString(refType),
-    refId: refId,
-    note: note ?? 'actual inbound',
-  );
-  _txns[txn.id] = txn;       // ✅ Map 저장
+  // addInActual
+  @override
+  Future<void> addInActual({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note,
+  }) async {
+    final txn = Txn(
+      id: _uuid.v4(),
+      ts: DateTime.now(),
+      type: TxnType.in_,
+      itemId: itemId,
+      qty: qty,
+      refType: RefTypeX.fromString(refType),
+      refId: refId,
+      note: note ?? 'actual inbound',
+    );
+    _txns[txn.id] = txn;       // ✅ Map 저장
 
     final it = _items[itemId];
     if (it != null) {
@@ -579,20 +674,18 @@ Future<void> addInActual({
   @override
   Future<String> createWork(Work w) async {
     final now = DateTime.now();
-        final id  = (w.id.isNotEmpty) ? w.id : _uuid.v4();
-        final saved = w.copyWith(
-          id: id,
-          status: w.status, // 모델이 non-null이라면 그대로 사용
-          // 만약 모델이 nullable이라면 아래처럼 안전장치 두세요:
-          // status: w.status ?? WorkStatus.planned,
-          createdAt: w.createdAt ?? now,
-          updatedAt: now,
-        );
-        _works[id] = saved;
-        print('[InMemoryRepo] createWork -> ${saved.id} ${saved.status}');
+    final id  = (w.id.isNotEmpty) ? w.id : _uuid.v4();
+    final saved = w.copyWith(
+      id: id,
+      status: w.status,
+      createdAt: w.createdAt ?? now,
+      updatedAt: now,
+    );
+    _works[id] = saved;
+    print('[InMemoryRepo] createWork -> ${saved.id} ${saved.status}');
 
     notifyListeners();
-        return id;
+    return id;
   }
 
   @override
@@ -600,15 +693,15 @@ Future<void> addInActual({
 
   @override
   Stream<List<Work>> watchAllWorks() {
-        // ChangeNotifier -> Stream 브리지
-        final c = StreamController<List<Work>>.broadcast();
-        void emit() => c.add(_works.values.toList());
-        c.onListen = emit;      // 최초 1회
-        final listener = () => emit();    // 변경 시마다 emit
-        addListener(listener);
-        c.onCancel = () => removeListener(listener);
-        return c.stream;
-      }
+    // ChangeNotifier -> Stream 브리지
+    final c = StreamController<List<Work>>.broadcast();
+    void emit() => c.add(_works.values.toList());
+    c.onListen = emit;      // 최초 1회
+    final listener = () => emit();    // 변경 시마다 emit
+    addListener(listener);
+    c.onCancel = () => removeListener(listener);
+    return c.stream;
+  }
 
   @override
   Future<void> updateWork(Work w) async {
@@ -617,17 +710,17 @@ Future<void> addInActual({
   }
 
   @override
-    Future<void> updateWorkStatus(String id, WorkStatus status) async {
-        final w = _works[id];
-        if (w == null) return;
-        _works[id] = w.copyWith(status: status, updatedAt: DateTime.now());
-        notifyListeners();
-      }
+  Future<void> updateWorkStatus(String id, WorkStatus status) async {
+    final w = _works[id];
+    if (w == null) return;
+    _works[id] = w.copyWith(status: status, updatedAt: DateTime.now());
+    notifyListeners();
+  }
 
   @override
-    Future<void> cancelWork(String id) async {
-        await updateWorkStatus(id, WorkStatus.canceled);
-      }
+  Future<void> cancelWork(String id) async {
+    await updateWorkStatus(id, WorkStatus.canceled);
+  }
 
   // ===== WorkRepo.completeWork =====
   @override
@@ -647,12 +740,13 @@ Future<void> addInActual({
 
     // 상태 업데이트
     _works[id] = w.copyWith(
-        status: WorkStatus.done,
-        updatedAt: DateTime.now());
+      status: WorkStatus.done,
+      updatedAt: DateTime.now(),
+    );
     notifyListeners();
   }
 
-// ----------------- PurchaseRepo -----------------
+  // ----------------- PurchaseRepo -----------------
   final _purchases = <String, Purchase>{};
 
   @override
@@ -667,14 +761,14 @@ Future<void> addInActual({
 
   @override
   Stream<List<Purchase>> watchAllPurchases() {
-        final c = StreamController<List<Purchase>>.broadcast();
-        void emit() => c.add(_purchases.values.toList());
-        c.onListen = emit;
-        final listener = () => emit();
-        addListener(listener);
-        c.onCancel = () => removeListener(listener);
-        return c.stream;
-      }
+    final c = StreamController<List<Purchase>>.broadcast();
+    void emit() => c.add(_purchases.values.toList());
+    c.onListen = emit;
+    final listener = () => emit();
+    addListener(listener);
+    c.onCancel = () => removeListener(listener);
+    return c.stream;
+  }
 
   @override
   Future<void> updatePurchase(Purchase p) async {
@@ -683,17 +777,19 @@ Future<void> addInActual({
   }
 
   @override
-    Future<void> updatePurchaseStatus(String id, PurchaseStatus status) async {
-        final p = _purchases[id];
-        if (p == null) return;
-        _purchases[id] = p.copyWith(status: status, updatedAt: DateTime.now());
-        notifyListeners();
-      }
+  Future<void> updatePurchaseStatus(String id, PurchaseStatus status) async {
+    final p = _purchases[id];
+    if (p == null) return;
+    _purchases[id] = p.copyWith(status: status, updatedAt: DateTime.now());
+    notifyListeners();
+  }
+
   @override
-    Future<void> cancelPurchase(String id) async {
-        await updatePurchaseStatus(id, PurchaseStatus.canceled);
-      }
-// ===== PurchaseRepo.completePurchase =====
+  Future<void> cancelPurchase(String id) async {
+    await updatePurchaseStatus(id, PurchaseStatus.canceled);
+  }
+
+  // ===== PurchaseRepo.completePurchase =====
   @override
   Future<void> completePurchase(String id) async {
     final p = _purchases[id];
@@ -716,6 +812,13 @@ Future<void> addInActual({
     notifyListeners();
   }
 
-
-
+  // (하위호환) 폴더 전용 이동 → 통합 API 위임
+  Future<void> moveFolderToPath({
+    required String folderId,
+    required List<String> pathIds, // [L1], [L1,L2], [L1,L2,L3]
+  }) async {
+    await moveEntityToPath(
+      MoveRequest(kind: EntityKind.folder, id: folderId, pathIds: pathIds),
+    );
+  }
 }

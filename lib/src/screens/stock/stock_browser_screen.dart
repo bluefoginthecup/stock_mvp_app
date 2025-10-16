@@ -345,24 +345,68 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             });
           },
           onLongPress: () async {
-            final choice = await showFolderContextMenu(context, n);
-            if (choice == FolderMenu.rename) {
-              final newName = await showNewFolderSheet(context, initial: n.name);
-              if (newName != null && newName.trim().isNotEmpty) {
-                await repo.renameFolderNode(id: n.id, newName: newName.trim());
-                setState(() {});
-              }
-            } else if (choice == FolderMenu.delete) {
-              try {
-                await repo.deleteFolderNode(n.id);
-                setState(() {});
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('삭제 실패: $e')),
+            // 공통 액션 시트(이름변경/이동/삭제)
+            final action = await showEntityActionsSheet(
+              context,
+              moveLabel: '폴더 이동',
+            );
+            if (action == null) return;
+
+            final repo = context.read<InMemoryRepo>();
+
+            switch (action) {
+              case EntityAction.rename:
+                final newName = await showNewFolderSheet(context, initial: n.name);
+                if (newName != null && newName.trim().isNotEmpty) {
+                  await repo.renameFolderNode(id: n.id, newName: newName.trim());
+                  if (!mounted) return;
+                  setState(() {});
+                }
+                break;
+
+              case EntityAction.move:
+              // 트리 선택 → 통합 이동 API
+                final dest = await showPathPicker(
+                  context,
+                  childrenProvider: folderChildrenProvider(repo),
+                  title: '폴더 이동',
+                  maxDepth: 2, // ✅ 폴더는 L2까지만 선택 허용
+                ); // dest = [L1] | [L1,L2] | [L1,L2,L3]
+                if (dest != null && dest.isNotEmpty) {
+                  try {
+                    await repo.moveEntityToPath(
+                      MoveRequest(kind: EntityKind.folder, id: n.id, pathIds: dest),
+                    );
+                    if (!mounted) return;
+                    setState(() {});
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('이동 실패: $e')),
+                    );
+                  }
+                }
+                break;
+
+              case EntityAction.delete:
+                final ok = await showDeleteConfirm(
+                  context,
+                  message: '"${n.name}" 폴더를 삭제하시겠어요?',
                 );
-              }
+                if (ok) {
+                  try {
+                    await repo.deleteFolderNode(n.id);
+                    if (!mounted) return;
+                    setState(() {});
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('삭제 실패: $e')),
+                    );
+                  }
+                }
+                break;
             }
           },
+
 
         );
       }).toList(),
@@ -413,7 +457,9 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   title: '아이템 이동',
                 );
                 if (dest != null && dest.isNotEmpty) {
-                  await repo.moveItemToPath(itemId: it.id, pathIds: dest);
+                  await repo.moveEntityToPath( // ✅ 통합 API
+                    MoveRequest(kind: EntityKind.item, id: it.id, pathIds: dest),
+                  );
                   if (!mounted) return;
                   setState(() {});
                 }
