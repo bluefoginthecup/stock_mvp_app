@@ -45,6 +45,7 @@
   "field_threshold": "Umbral",
   "field_unit_hint": "Unidad (EA/SET/ROLL, etc.)",
   "item_not_found": "(Eliminado o no encontrado)",
+  "item_loading_or_missing": "Cargando artículos...",
   "msg_operation_failed": "No se pudo completar la operación.",
   "msg_status_changed": "Estado actualizado.",
   "order_form_title": "Editar pedido",

@@ -307,6 +307,12 @@ abstract class L10n {
   /// **'(삭제되었거나 찾을 수 없음)'**
   String get item_not_found;
 
+  /// No description provided for @item_loading_or_missing.
+  ///
+  /// In ko, this message translates to:
+  /// **'품목 불러오는 중...'**
+  String get item_loading_or_missing;
+
   /// No description provided for @msg_operation_failed.
   ///
   /// In ko, this message translates to:

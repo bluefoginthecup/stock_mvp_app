@@ -2,9 +2,11 @@ class Item {
   final String id;
   final String name;
   final String sku;
-  final String unit; // 'EA','SET','ROLL' etc.
-  final String folder; // finished / semi / raw / sub
-  final String? subfolder;
+  final String unit; // 'EA','SET','ROLL' etc.=
+  @Deprecated('Use tree path via repo (itemPathIds / itemPathNames).')
+  final String folder;     // 레거시 카테고리
+  @Deprecated('Use tree path via repo (itemPathIds / itemPathNames).')
+  final String? subfolder; // 레거시 서브카테고리
   final int minQty; // threshold
   final int qty;    // current stock
 
@@ -19,7 +21,14 @@ class Item {
     required this.qty,
   });
 
-  Item copyWith({String? name, String? sku, String? unit, String? folder, String? subfolder, int? minQty, int? qty}) {
+  Item copyWith({
+    String? name,
+    String? sku,
+    String? unit,
+    @Deprecated('Use tree path via repo.') String? folder,
+    @Deprecated('Use tree path via repo.') String? subfolder,
+    int? minQty,
+    int? qty}) {
     return Item(
       id: id,
       name: name ?? this.name,

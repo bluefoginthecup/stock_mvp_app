@@ -6,7 +6,7 @@ import '../../repos/repo_interfaces.dart';
 import '../../services/order_planning_service.dart';
 import '../../ui/common/qty_control.dart';
 import '../../ui/common/ui.dart';
-import '../../repos/inmem_repo.dart'; // ← 추가
+import '../../ui/common/search_field.dart'; // 🔍 공용 검색필드 (디바운스 내장)
 
 
 class OrderFormScreen extends StatefulWidget {
@@ -25,6 +25,9 @@ class OrderFormScreen extends StatefulWidget {
 class _OrderFormScreenState extends State<OrderFormScreen> {
   final _customerC = TextEditingController();
   final _memoC = TextEditingController();
+    final _searchC = TextEditingController();           // 🔍 검색 입력
+    bool _searching = false;                            // 🔍 로딩 표시
+    List<Item> _results = <Item>[];                     // 🔍 결과 버퍼
   late Order _order;
 
   @override
@@ -39,6 +42,14 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       lines: [],
     );
   }
+
+  @override
+    void dispose() {
+        _customerC.dispose();
+        _memoC.dispose();
+        _searchC.dispose(); // 🔍
+        super.dispose();
+      }
 
   Future<void> _ensureLoaded() async {
     final repo = context.read<OrderRepo>();
@@ -62,11 +73,21 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   void _addLine(Item item) {
-    final id = const Uuid().v4();
-    final line = OrderLine(id: id, itemId: item.id, qty: 1);
-    setState(() {
-      _order = _order.copyWith(lines: [..._order.lines, line]);
-    });
+
+        // ✅ 이미 있으면 수량 +1, 없으면 추가
+        final idx = _order.lines.indexWhere((l) => l.itemId == item.id);
+        setState(() {
+          if (idx >= 0) {
+            final cur = _order.lines[idx];
+            final next = cur.copyWith(qty: cur.qty + 1);
+            final newLines = [..._order.lines]..[idx] = next;
+            _order = _order.copyWith(lines: newLines);
+          } else {
+            final id = const Uuid().v4();
+            final line = OrderLine(id: id, itemId: item.id, qty: 1);
+            _order = _order.copyWith(lines: [..._order.lines, line]);
+          }
+        });
   }
 
   void _updateQty(String lineId, int newQty) {
@@ -116,28 +137,40 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 데이터 변경 시 자동 리빌드 (권장)
-    context.watch<InMemoryRepo>();
-    final inmem = context.read<InMemoryRepo>(); // ← InMemoryRepo 직접 사용
+    final itemsRepo = context.read<ItemRepo>();   // 🔍 전역검색용
 
     return Scaffold(
       appBar: AppBar(title: Text(context.t.order_form_title)),
-      body: FutureBuilder<List<Item>>(
-        // 변경: 'Finished' 이름 → id 매핑 후 경로 기반 목록
-        future: (() async {
-          // 루트에 'Finished'가 없으면 createIfMissing=true로 생성도 가능
-          final ids = await inmem.pathIdsByNames(
-            l1Name: 'Finished',
-            createIfMissing: true,
-          );
-          return inmem.listItemsByFolderPath(l1: ids[0]);
-        })(),
-        builder: (context, snap) {
-          final finished = (snap.data ?? <Item>[]);
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
+     // 변경: 전역 검색만 사용 (검색어 없으면 결과 섹션 숨김)
+     body: ListView(
+       padding: const EdgeInsets.all(16),
+       children: [
+         AppSearchField(
+           controller: _searchC,
+           hint: '품목 검색: 이름 또는 SKU',
+           onChanged: (q) async {
+             final qq = q.trim();
+             if (qq.isEmpty) { setState(() { _results = []; _searching = false; }); return; }
+             setState(() => _searching = true);
+              final res = await itemsRepo.searchItemsGlobal(qq);
+             if (!mounted) return;
+             setState(() { _results = res; _searching = false; });
+           },
+         ),
+         if (_searching) const LinearProgressIndicator(),
+         if (!_searching && _searchC.text.trim().isNotEmpty) ...[
+           const SizedBox(height: 8),
+           if (_results.isEmpty) Text('검색 결과가 없습니다.'),
+           ..._results.map((it) => ListTile(
+             leading: const Icon(Icons.inventory_2),
+             title: Text(it.name),
+             subtitle: Text('SKU: ${it.sku}'),
+             trailing: FilledButton(onPressed: () => _addLine(it), child: const Text('+ 추가')),
+           )),
+           const Divider(height: 24),
+         ],
+              // 고객/메모
               TextField(
                 controller: _customerC,
                 decoration: InputDecoration(labelText: context.t.field_customer),
@@ -148,84 +181,48 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 decoration: InputDecoration(labelText: context.t.field_memo),
               ),
               const SizedBox(height: 16),
-              Text(
-                context.t.section_order_items, // ✅
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+              Text(context.t.section_order_items, style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
 
-              // 품목 선택 영역
-              if (snap.connectionState == ConnectionState.waiting)
-                const Center(child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: CircularProgressIndicator(),
-                ))
-              else if (finished.isEmpty)
-                Text(context.t.empty_finished_items)
-          else
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: finished
-                      .map((it) => ActionChip(
-                    label: Text(it.name),
-                    onPressed: () => _addLine(it),
-                  ))
-                      .toList(),
-                ),
-
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-
-              // 주문 라인 목록
+              // 주문 라인 목록 (각 라인에서 ItemRepo로 이름 조회)
               ..._order.lines.map((ln) {
-                final item = finished.firstWhere(
-                      (f) => f.id == ln.itemId,
-                  orElse: () => Item(
-                    id: '?',
-                    name: context.t.item_not_found,
-                    sku: '',
-                    unit: 'EA',
-                    folder: 'finished',
-                    minQty: 0,
-                    qty: 0,
-                  ),
-                );
-
-                return ListTile(
-                  key: ValueKey(ln.id),
-                  leading: const Icon(Icons.shopping_cart),
-                  title: Text(item.name),
-                  subtitle: Text(context.t.order_line_qty(ln.qty)), // ✅ {qty} 치환
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      QtyControl(
-                        value: ln.qty,
-                        min: 1,
-                        step: 1,
-                        onChanged: (q) => _updateQty(ln.id, q),
+                return FutureBuilder<Item?>(
+                  future: itemsRepo.getItem(ln.itemId),
+                  builder: (context, snap) {
+                    final itemName = snap.data?.name ?? context.t.item_loading_or_missing;
+                    return ListTile(
+                      key: ValueKey(ln.id),
+                      leading: const Icon(Icons.shopping_cart),
+                      title: Text(itemName),
+                      subtitle: Text(context.t.order_line_qty(ln.qty)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          QtyControl(
+                            value: ln.qty,
+                            min: 1,
+                            step: 1,
+                            onChanged: (q) => _updateQty(ln.id, q),
+                          ),
+                          IconButton(
+                            tooltip: context.t.tooltip_delete_line,
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _removeLine(ln.id),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        tooltip: context.t.tooltip_delete_line, // ✅
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _removeLine(ln.id),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               }),
-
               const SizedBox(height: 32),
               FilledButton(
                 onPressed: _save,
                 child: Text(context.t.btn_save),
               ),
             ],
-          );
-        },
-      ),
+          ),
     );
   }
 }
+

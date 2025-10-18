@@ -428,7 +428,14 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          subtitle: Text('${it.sku} • ${it.unit}'),
+            subtitle: FutureBuilder<List<String>>(
+               future: repo.itemPathNames(it.id),
+               builder: (_, snap) {
+             final path = (snap.data ?? const []);
+             final pathStr = path.isEmpty ? '' : ' • ${path.join(' / ')}';
+             return Text('${it.sku} • ${it.unit}$pathStr');
+           },
+         ),
           trailing: Text('${it.qty}'),
           onTap: () {/* TODO: item detail */},
           // ✅ 여기! it가 보이는 스코프

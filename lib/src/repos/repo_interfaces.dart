@@ -9,6 +9,16 @@ import '../models/types.dart';
 
 abstract class ItemRepo {
   Future<List<Item>> listItems({String? folder, String? keyword});
+  // ✅ 추가: 전역(경로 무시) 간단 검색
+  Future<List<Item>> searchItemsGlobal(String keyword);
+
+  // ✅ 추가(선택): 경로기반 검색 표준화
+  Future<List<Item>> searchItemsByPath({
+    String? l1, String? l2, String? l3,
+    required String keyword,
+    bool recursive = true,
+  });
+
   Future<Item?> getItem(String id);
   Future<void> upsertItem(Item item);
   Future<void> deleteItem(String id);

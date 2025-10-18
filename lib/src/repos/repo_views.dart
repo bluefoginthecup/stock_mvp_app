@@ -9,53 +9,74 @@ import 'inmem_repo.dart';
 import '../models/types.dart';
 
 class ItemRepoView implements ItemRepo {
-  final InMemoryRepo inner;
-  ItemRepoView(this.inner);
+final InMemoryRepo inner;
+ItemRepoView(this.inner);
 
-  @override
+@override
+
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
-    // folder(대분류 이름) → id로 변환
-    // InMemoryRepo에 pathIdsByNames(...)가 이미 있다고 가정 (없다면 아래 주석 참고)
-    final ids = await inner.pathIdsByNames(
-      l1Name: folder,         // 예: 'Finished' 또는 'finished'
-      createIfMissing: false, // 조회만, 없으면 null
-    );
-    // ids[0] == l1Id
-    return inner.listItemsByFolderPath(
-      l1: ids[0],
-      l2: null,
-      l3: null,
-      keyword: keyword,
-    );
+    // 레거시 호환: folder 이름이 있으면 L1 이름으로 간주해 경로 검색으로 위임
+    if (folder != null && folder.trim().isNotEmpty) {
+      final ids = await inner.pathIdsByNames(
+        l1Name: folder,
+        createIfMissing: false,
+      );
+      return inner.listItemsByFolderPath(
+        l1: ids[0],
+        keyword: keyword,
+        recursive: true,
+      );
+    }
+    // 폴더 없으면 전역 검색
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      return inner.searchItemsGlobal(keyword);
+    }
+    // 키워드도 없으면 전체(이름순)
+    return inner.listItemsByFolderPath(recursive: true);
   }
 
-  @override
-  Future<Item?> getItem(String id) => inner.getItem(id);
-
-  @override
-  Future<void> upsertItem(Item item) => inner.upsertItem(item);
-
-  @override
-  Future<void> deleteItem(String id) => inner.deleteItem(id);
-
-  @override
-  Future<void> adjustQty({
+@override
+Future<Item?> getItem(String id) => inner.getItem(id);
+@override
+Future<void> upsertItem(Item item) => inner.upsertItem(item);
+@override
+Future<void> deleteItem(String id) => inner.deleteItem(id);
+Future<void> adjustQty({
     required String itemId,
     required int delta,
     String? refType,
     String? refId,
     String? note,
-  }) =>
-      inner.adjustQty(
-        itemId: itemId,
-        delta: delta,
-        refType: refType,
-        refId: refId,
-        note: note,
-      );
+  }) {
+    return inner.adjustQty(
+      itemId: itemId,
+      delta: delta,
+      refType: refType,
+      refId: refId,
+      note: note,
+    );
+  }
+@override
+Future<String?> nameOf(String itemId) => inner.nameOf(itemId);
+
+  // ★ 추가: 새 인터페이스 구현
+  @override
+  Future<List<Item>> searchItemsGlobal(String keyword) {
+    return inner.searchItemsGlobal(keyword);
+  }
 
   @override
-  Future<String?> nameOf(String itemId) => inner.nameOf(itemId);
+  Future<List<Item>> searchItemsByPath({
+    String? l1,
+    String? l2,
+    String? l3,
+    required String keyword,
+    bool recursive = true,
+  }) {
+    return inner.searchItemsByPath(
+      l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive,
+    );
+  }
 }
 
 

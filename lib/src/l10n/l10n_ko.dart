@@ -116,6 +116,9 @@ class L10nKo extends L10n {
   String get item_not_found => '(삭제되었거나 찾을 수 없음)';
 
   @override
+  String get item_loading_or_missing => '품목 불러오는 중...';
+
+  @override
   String get msg_operation_failed => '작업을 완료할 수 없습니다.';
 
   @override

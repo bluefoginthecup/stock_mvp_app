@@ -109,12 +109,11 @@ class InMemoryRepo extends ChangeNotifier
   /// itemId -> [l1Id, l2Id?, l3Id?]
   final Map<String, List<String>> _itemPaths = <String, List<String>>{};
 
-  final _uuidStage6 = const Uuid(); // 기존 _uuid와 충돌 피하기 위한 별도 uuid
 
   void _seedFolderRootsIfEmpty() {
     if (_folders.isNotEmpty) return;
     for (final name in const ['Finished', 'SemiFinished', 'Raw', 'Sub']) {
-      final id = _uuidStage6.v4();
+      final id = _uuid.v4();
       final node = FolderNode(
         id: id,
         name: name,
@@ -128,6 +127,50 @@ class InMemoryRepo extends ChangeNotifier
       )).add(id);
     }
   }
+
+    /// 레거시 Item.folder/subfolder 를 트리 경로(_itemPaths)로 백필.
+    /// 이미 경로가 있으면 건너뜀. 없는 것만 채움.
+    Future<void> backfillPathsFromLegacy({bool createFolders = true}) async {
+      for (final e in _items.entries) {
+        final item = e.value;
+        if (_itemPaths.containsKey(item.id)) continue;
+        // 레거시 필드가 비면 스킵
+        final legacyL1 = (item.folder).trim();
+        final legacyL2 = (item.subfolder ?? '').trim();
+        if (legacyL1.isEmpty && legacyL2.isEmpty) continue;
+
+        final l1Name = _mapLegacyL1Name(legacyL1);
+        final l2Name = legacyL2.isEmpty ? null : legacyL2;
+
+        final path = await pathIdsByNames(
+          l1Name: l1Name,
+          l2Name: l2Name,
+          createIfMissing: createFolders,
+        );
+        final ids = path.whereType<String>().toList();
+        if (ids.isNotEmpty) {
+          _itemPaths[item.id] = List.unmodifiable(ids);
+        }
+      }
+      notifyListeners();
+    }
+
+    /// 레거시 L1 이름 → 트리 L1 이름 매핑
+    String _mapLegacyL1Name(String legacy) {
+      final v = legacy.trim().toLowerCase();
+      switch (v) {
+        case 'finished': return 'Finished';
+        case 'semifinished':
+        case 'semi_finished':
+        case 'semi-finished': return 'SemiFinished';
+        case 'raw': return 'Raw';
+        case 'sub': return 'Sub';
+        default: // 모르는 값은 TitleCase 정도로
+          if (v.isEmpty) return 'Finished';
+          return v[0].toUpperCase() + v.substring(1);
+      }
+    }
+
 
   // === 이름 → id 헬퍼 ===
   Future<String?> _folderIdByNameUnder(String name, String? parentId) async {
@@ -180,7 +223,7 @@ class InMemoryRepo extends ChangeNotifier
       depth = p.depth + 1;
       if (depth > 3) throw StateError('Depth > 3 is not supported');
     }
-    final id = _uuidStage6.v4();
+    final id = _uuid.v4();
     final node = FolderNode(id: id, name: name, parentId: parentId, depth: depth, order: 0);
     _folders[id] = node;
 
@@ -223,45 +266,60 @@ class InMemoryRepo extends ChangeNotifier
     }
     notifyListeners();
   }
+//=== 경로매칭 로직 헬퍼===//
+
+  int _wantedDepth(String? l1, String? l2, String? l3) {
+    // l1/l2/l3 지정 개수 → 0..3
+    if (l1 == null) return 0;
+    if (l2 == null) return 1;
+    if (l3 == null) return 2;
+    return 3;
+  }
+
+  /// 경로 prefix 매칭 + 재귀 여부까지 단일 처리
+  bool _pathMatches(
+      String itemId, {
+        String? l1,
+        String? l2,
+        String? l3,
+        required bool recursive,
+      }) {
+    final path = _itemPaths[itemId];
+    if (path == null) return false;
+
+    // 1) prefix 체크
+    if (l1 != null && (path.isEmpty || path[0] != l1)) return false;
+    if (l2 != null && (path.length < 2 || path[1] != l2)) return false;
+    if (l3 != null && (path.length < 3 || path[2] != l3)) return false;
+
+    // 2) 재귀 여부
+    if (!recursive) {
+      // 비재귀는 "직속만": 경로 길이가 정확히 원하는 깊이와 동일해야 함
+      return path.length == _wantedDepth(l1, l2, l3);
+    }
+
+    // 재귀면 prefix만 맞으면 OK
+    return true;
+  }
 
   // === 아이템 목록: 모든 단계 허용 ===
-  Future<List<Item>> listItemsByFolderPath({
+  @Deprecated('Use searchItemsByPath; pass keyword=null/empty and set recursive as needed')
+    Future<List<Item>> listItemsByFolderPath({
     String? l1,
     String? l2,
     String? l3,
     String? keyword,
     bool recursive = false, // ← 추가: 기본 비재귀(직속만)
   }) async {
-    Iterable<MapEntry<String, Item>> it = _items.entries;
-
-    final wantedDepth = (l1 == null) ? 0 : (l2 == null) ? 1 : (l3 == null) ? 2 : 3;
-
-    bool _pathMatches(String itemId) {
-      final path = _itemPaths[itemId];
-      if (path == null) return false;
-      // ✅ 경로 일부만 지정돼도 허용
-      if (l1 != null && (path.isEmpty || path[0] != l1)) return false;
-      if (l2 != null && (path.length < 2 || path[1] != l2)) return false;
-      if (l3 != null && (path.length < 3 || path[2] != l3)) return false;
-
-      // 🔑 비재귀면 "직속"만 (경로 길이 정확히 일치)
-      if (!recursive) return path.length == wantedDepth;
-
-      return true;
-    }
-
-    it = it.where((e) => _pathMatches(e.key));
-
-    if (keyword != null && keyword.trim().isNotEmpty) {
-      final k = keyword.trim().toLowerCase();
-      it = it.where((e) {
-        final v = e.value;
-        return v.name.toLowerCase().contains(k) || v.sku.toLowerCase().contains(k);
-      });
-    }
-    return it.map((e) => e.value).toList(growable: false);
+// 코어로 위임: keyword가 null/empty면 "목록", 있으면 "검색"
+    return _queryItemsByPath(
+      l1: l1,
+      l2: l2,
+      l3: l3,
+      keyword: keyword,
+      recursive: recursive,
+    );
   }
-
   // === 아이템 생성: 경로 일부만 있어도 가능 ===
   Future<void> createItemUnderPath({
     required List<String> pathIds, // [l1Id], [l1Id,l2Id], [l1Id,l2Id,l3Id]
@@ -284,16 +342,20 @@ class InMemoryRepo extends ChangeNotifier
     _items[item.id] = item;
     _itemPaths[item.id] = List.unmodifiable(pathIds);
     notifyListeners();
-    void debugDumpItemPaths() {
-      for (final e in _itemPaths.entries) {
-        final itemId = e.key;
-        final path = e.value;
-        print('[itemPath] item=$itemId pathLen=${path.length} path=$path');
-      }
-    }
+
   }
 
   FolderNode? folderById(String id) => _folders[id];
+
+  /// itemId -> [l1Id, l2Id?, l3Id?] (없으면 null)
+    List<String>? itemPathIds(String itemId) => _itemPaths[itemId];
+
+    /// itemId의 경로를 사람이 읽는 이름들로 반환. 예: ['Finished','cushion']
+    Future<List<String>> itemPathNames(String itemId) async {
+        final ids = _itemPaths[itemId];
+        if (ids == null) return const [];
+        return ids.map((fid) => _folders[fid]?.name ?? '(deleted)').toList();
+      }
 
   // ────────────아이템 편집/이동/삭제 ─────────────────────────────────
 
@@ -429,6 +491,7 @@ class InMemoryRepo extends ChangeNotifier
   }
 
   // (하위호환) 아이템 전용 이동 → 통합 API 위임
+  @Deprecated('Use moveEntityToPath instead.')
   Future<void> moveItemToPath({
     required String itemId,
     required List<String> pathIds, // [L1], [L1,L2], [L1,L2,L3] 허용
@@ -464,57 +527,67 @@ class InMemoryRepo extends ChangeNotifier
     }).toList();
 
     // 🔍 2) 아이템 검색 (기존 로직 활용)
-    final items = await searchItems(l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive);
+    final items = await searchItemsByPath(l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive);
 
     return (folders, items);
   }
+// === 내부 코어: 경로 + (옵션)키워드로 아이템 조회 ===
+    Future<List<Item>> _queryItemsByPath({
+      String? l1, String? l2, String? l3,
+      String? keyword,
+      bool recursive = true,
+    }) async {
+    // ⚠️ _pathMatches 는 앞서 공통헬퍼로 뺀 것을 사용한다고 가정
+    Iterable<MapEntry<String, Item>> it = _items.entries
+        .where((e) => _pathMatches(e.key, l1: l1, l2: l2, l3: l3, recursive: recursive));
 
-  // === 기존 searchItems: 재귀 탐색시 모든 단계 아이템 포함 ===
-  Future<List<Item>> searchItems({
-    String? l1,
-    String? l2,
-    String? l3,
+    final k = keyword?.trim().toLowerCase();
+    if (k != null && k.isNotEmpty) {
+      it = it.where((e) {
+        final v = e.value;
+        return v.name.toLowerCase().contains(k) || v.sku.toLowerCase().contains(k);
+      });
+    }
+    return it.map((e) => e.value).toList(growable: false);
+  }
+  @override
+  Future<List<Item>> searchItemsGlobal(String keyword) async {
+    if (keyword.trim().isEmpty) return const [];
+        // 전역 검색: 경로 제한 없음 → 코어로 위임
+        return _queryItemsByPath(keyword: keyword, recursive: true);
+  }
+
+  @override
+  Future<List<Item>> searchItemsByPath({
+    String? l1, String? l2, String? l3,
     required String keyword,
     bool recursive = true,
-  }) async {
-    final k = keyword.trim().toLowerCase();
-    if (k.isEmpty) return const [];
-
-    bool pathMatchesPrefix(String itemId) {
-      final path = _itemPaths[itemId];
-      if (path == null) return false;
-      if (l1 != null && (path.isEmpty || path[0] != l1)) return false;
-      if (l2 != null && (path.length < 2 || path[1] != l2)) return false;
-      // ✅ 재귀 검색 시 l3 미지정이면 하위 전체 포함
-      if (!recursive && l3 != null) {
-        return path.length >= 3 && path[2] == l3;
-      }
-      return true;
-    }
-
-    return _items.entries
-        .where((e) => pathMatchesPrefix(e.key))
-        .map((e) => e.value)
-        .where((v) =>
-    v.name.toLowerCase().contains(k) ||
-        v.sku.toLowerCase().contains(k))
-        .toList();
+  }) {
+    if (keyword.trim().isEmpty) return Future.value(const []);
+        return _queryItemsByPath(
+          l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive,
+        );
   }
+
 
   // ItemRepo
-  @override
-  Future<List<Item>> listItems({String? folder, String? keyword}) async {
-    Iterable<Item> values = _items.values;
-    if (folder != null) {
-      values = values.where( (e) => e.folder == folder);
-    }
-    if (keyword != null && keyword.trim().isNotEmpty) {
-      final k = keyword.toLowerCase();
-      values = values.where((e) => e.name.toLowerCase().contains(k) || e.sku.toLowerCase().contains(k));
-    }
-    final list = values.toList()..sort((a, b) => a.name.compareTo(b.name));
-    return list;
-  }
+
+    @override
+    @Deprecated('Use searchItemsByPath / listItemsByFolderPath (path-based).')
+    Future<List<Item>> listItems({String? folder, String? keyword}) async {
+        // 레거시 호환: folder가 오면 L1 이름으로 간주하여 경로 기반으로 변환
+        if (folder != null) {
+          final mapped = _mapLegacyL1Name(folder); // Finished/Raw 등으로 매핑
+          final ids = await pathIdsByNames(l1Name: mapped, createIfMissing: true);
+          return _queryItemsByPath(
+            l1: ids[0],
+            keyword: keyword,
+            recursive: true,
+          );
+        }
+        // folder가 없으면 전체 검색
+        return _queryItemsByPath(keyword: keyword, recursive: true);
+      }
 
   @override
   Future<Item?> getItem(String id) async => _items[id];
@@ -539,23 +612,14 @@ class InMemoryRepo extends ChangeNotifier
     final updated = it.copyWith(qty: it.qty  + delta);
     _items[itemId] = updated;
 
-    // String? -> enum 매핑 (null 안전)
-    RefType _parseRefType(String? s) {
-      switch (s) {
-        case 'order':    return RefType.order;
-        case 'work':     return RefType.work;
-        case 'purchase': return RefType.purchase;
-        default:         return RefType.order; // 기본값
-      }
-    }
-
     final txn = Txn(
       id: _uuid.v4(),
       ts: DateTime.now(),
       type: delta >= 0 ? TxnType.in_ : TxnType.out_, // ← enum 값 수정
       itemId: itemId,
       qty: delta.abs(),
-      refType: _parseRefType(refType),                 // ✅ enum으로 변환
+      refType: RefTypeX.fromString(refType ?? 'order'),
+
       refId: refId ?? 'unknown',                       // ✅ null 방지
       note: note,
     );
@@ -813,6 +877,7 @@ class InMemoryRepo extends ChangeNotifier
   }
 
   // (하위호환) 폴더 전용 이동 → 통합 API 위임
+  @Deprecated('Use moveEntityToPath instead.')
   Future<void> moveFolderToPath({
     required String folderId,
     required List<String> pathIds, // [L1], [L1,L2], [L1,L2,L3]

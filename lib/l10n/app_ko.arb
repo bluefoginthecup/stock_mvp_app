@@ -45,6 +45,7 @@
   "field_threshold": "임계치",
   "field_unit_hint": "단위(EA/SET/ROLL 등)",
   "item_not_found": "(삭제되었거나 찾을 수 없음)",
+  "item_loading_or_missing": "품목 불러오는 중...",
   "msg_operation_failed": "작업을 완료할 수 없습니다.",
   "msg_status_changed": "상태가 변경되었습니다.",
   "order_form_title": "주문 편집",

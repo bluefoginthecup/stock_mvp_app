@@ -45,6 +45,7 @@
   "field_threshold": "Threshold",
   "field_unit_hint": "Unit (EA/SET/ROLL, etc.)",
   "item_not_found": "(Deleted or not found)",
+  "item_loading_or_missing": "Loading items...",
   "msg_operation_failed": "Operation failed",
   "msg_status_changed": "Status updated.",
   "order_form_title": "Edit Order",

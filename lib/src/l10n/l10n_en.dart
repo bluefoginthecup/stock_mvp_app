@@ -116,6 +116,9 @@ class L10nEn extends L10n {
   String get item_not_found => '(Deleted or not found)';
 
   @override
+  String get item_loading_or_missing => 'Loading items...';
+
+  @override
   String get msg_operation_failed => 'Operation failed';
 
   @override
