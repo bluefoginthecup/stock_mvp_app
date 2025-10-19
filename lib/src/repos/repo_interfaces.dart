@@ -60,15 +60,23 @@ abstract class TxnRepo {
     Future<void> deleteTxn(String txnId);
     /// (선택) 특정 참조에 묶인 planned 기록 일괄 삭제가 필요하면 제공
     Future<void> deletePlannedByRef({required String refType, required String refId});
-
+    Future<double> sumOnHand(String itemId);
 
 }
+
 
 abstract class BomRepo {
-  Future<List<BomRow>> listBom(String parentItemId);
-  Future<void> upsertBomRow(BomRow row);
-  Future<void> deleteBomRow(String id);
+  Future<List<Bom>> listAllBoms();
+  Future<Bom?> loadBom(String bomId);
+  Future<Bom> createBom(Bom bom);
+  Future<Bom> updateBom(Bom bom);
+  Future<void> deleteBom(String bomId);
+
+  /// 특정 완제품(itemId)에 연결된 BOM
+  Future<Bom?> bomForItem(String itemId);
 }
+
+
 // Work 전용 — 메서드 이름에 Work 접두사
 abstract class WorkRepo {
   Future<String> createWork(Work w);

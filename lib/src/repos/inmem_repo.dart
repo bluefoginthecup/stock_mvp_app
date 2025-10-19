@@ -15,6 +15,8 @@ import 'dart:async'; // ✅ StreamController 사용을 위해 필요
 import '../models/folder_node.dart';
 import '../utils/item_presentation.dart';
 
+
+
 // === Common move types (top-level) ===
 enum EntityKind { item, folder }
 
@@ -31,7 +33,7 @@ class InMemoryRepo extends ChangeNotifier
   final Map<String, Item> _items = {};
   final Map<String, Order> _orders = {};
   final Map<String, Txn> _txns = {};
-  final Map<String, BomRow> _bom = {};
+  final Map<String, Bom> _boms = {}; // bomId -> Bom
 
   // ===== Folder tree storage (Stage 6) =====
   final Map<String, FolderNode> _folders = <String, FolderNode>{};
@@ -684,21 +686,36 @@ class InMemoryRepo extends ChangeNotifier
   }
 
   // =============================== BomRepo ================================
-  @override
-  Future<List<BomRow>> listBom(String outputItemId) async {
-    return _bom.values.where((b) => b.outputItemId == outputItemId).toList();
+
+// BOM CRUD
+  Future<Bom> createBom(Bom bom) async {
+    _boms[bom.id] = bom;
+    notifyListeners();
+    return bom;
   }
 
-  @override
-  Future<void> upsertBomRow(BomRow row) async {
-    _bom[row.id] = row;
+  Future<Bom> updateBom(Bom bom) async {
+    _boms[bom.id] = bom.copyWith(updatedAt: DateTime.now());
+    notifyListeners();
+    return _boms[bom.id]!;
+  }
+
+  Future<void> deleteBom(String bomId) async {
+    _boms.remove(bomId);
     notifyListeners();
   }
 
-  @override
-  Future<void> deleteBomRow(String id) async {
-    _bom.remove(id);
-    notifyListeners();
+  Future<Bom?> loadBom(String bomId) async => _boms[bomId];
+
+  Future<List<Bom>> listAllBoms() async => _boms.values.toList();
+
+  Future<Bom?> bomForItem(String itemId) async {
+    // 동일 itemId에 여러 BOM 지원한다면 정책 필요. 지금은 첫 매칭 반환.
+    try {
+      return _boms.values.firstWhere((b) => b.itemId == itemId && b.enabled);
+    } catch (_) {
+      return null;
+    }
   }
 
   // ----------------- WorkRepo -----------------
@@ -969,4 +986,9 @@ class InMemoryRepo extends ChangeNotifier
         return v[0].toUpperCase() + v.substring(1);
     }
   }
+    /// TODO: Txn 스키마 확정 후 실제 입/출고 누계로 대체
+    Future<double> sumOnHand(String itemId) async {
+        // 임시: 0.0 반환하여 컴파일만 통과
+        return 0.0;
+      }
 }

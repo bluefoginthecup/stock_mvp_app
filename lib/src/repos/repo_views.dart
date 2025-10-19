@@ -132,26 +132,38 @@ class TxnRepoView implements TxnRepo {
 
   @override
     Future<void> deleteTxn(String txnId) => inner.deleteTxn(txnId);
-    @override
+
+  @override
     Future<void> deletePlannedByRef({required String refType, required String refId})
-      => inner.deletePlannedByRef(refType: refType, refId: refId);
+      => inner.deletePlannedByRef(refType:   refType, refId: refId);
+
+  @override
+  Future<double> sumOnHand(String itemId) => inner.sumOnHand(itemId);
 
 }
-
 class BomRepoView implements BomRepo {
-  final InMemoryRepo inner;
-  BomRepoView(this.inner);
+  final InMemoryRepo _inmem;
+  BomRepoView(this._inmem);
 
   @override
-  Future<List<BomRow>> listBom(String parentItemId) => inner.listBom(parentItemId);
+  Future<Bom> createBom(Bom bom) => _inmem.createBom(bom);
 
   @override
-  Future<void> upsertBomRow(BomRow row) => inner.upsertBomRow(row);
+  Future<void> deleteBom(String bomId) => _inmem.deleteBom(bomId);
 
   @override
-  Future<void> deleteBomRow(String id) => inner.deleteBomRow(id);
+  Future<Bom?> loadBom(String bomId) => _inmem.loadBom(bomId);
 
+  @override
+  Future<List<Bom>> listAllBoms() => _inmem.listAllBoms();
+
+  @override
+  Future<Bom> updateBom(Bom bom) => _inmem.updateBom(bom);
+
+  @override
+  Future<Bom?> bomForItem(String itemId) => _inmem.bomForItem(itemId);
 }
+
 
 // --- WorkRepoView ---
 class WorkRepoView implements WorkRepo {
