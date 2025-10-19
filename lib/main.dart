@@ -28,10 +28,14 @@ void main() {
         Provider<BomRepo>(create: (ctx) => BomRepoView(ctx.read<InMemoryRepo>())),
         Provider<WorkRepo>(create: (ctx) => WorkRepoView(ctx.read<InMemoryRepo>())),
         Provider<PurchaseRepo>(create: (ctx) => PurchaseRepoView(ctx.read<InMemoryRepo>())),
-        Provider<ItemPathProvider>(create: (ctx) => ctx.read<InMemoryRepo>()), // ★ 추가
+
+        // ItemPathProvider는 "비-Listenable 파사드"로 주입 (베이스 Provider OK)
+        Provider<ItemPathProvider>(
+          create: (ctx) => RepoItemPathFacade(ctx.read<InMemoryRepo>()),
+        ),
 
 
-  // ✅ InventoryService 주입 (Repos 뒤에 와야 ctx.read<...>() 가능)
+        // ✅ InventoryService 주입 (Repos 뒤에 와야 ctx.read<...>() 가능)
           Provider<InventoryService>(
             create: (ctx) => InventoryService(
               works:     ctx.read<WorkRepo>(),

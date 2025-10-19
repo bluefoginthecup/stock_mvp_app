@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../models/item.dart';
 import '../repos/repo_interfaces.dart';
+import '../repos/inmem_repo.dart';
+
 
 /// ─────────────────────────────────────────────────────────────
 /// 공통 유틸(라벨 빌더 & 검색 매처) + 경로 Provider + 서비스 +(선택) 위젯
@@ -97,7 +99,20 @@ class _ItemPathAdapter implements ItemPathProvider {
   Future<List<String>> itemPathNames(String itemId) => _inner.itemPathNames(itemId);
 }
 
-/// (선택) 어디서나 쓰는 라벨 위젯
+
+class RepoItemPathFacade implements ItemPathProvider {
+  final InMemoryRepo _repo;
+  RepoItemPathFacade(this._repo);
+
+  @override
+  Future<List<String>> itemPathNames(String itemId) {
+    // InMemoryRepo에 맞춰 호출 (있던 이름에 맞게 바꾸세요)
+    return _repo.itemPathNames(itemId);
+    // or: return _repo.pathNamesFor(itemId);
+  }
+}
+
+///  어디서나 쓰는 라벨 위젯
 class ItemLabel extends StatelessWidget {
   final String itemId;
   final bool full; // true면 breadcrumb, false면 [태그] 이름
