@@ -71,7 +71,7 @@ class InventoryService {
     //   );
     // }
 
-    await works.completeWork(workId); // 내부에서 status=done 처리
+    await works.updateWorkStatus(workId, WorkStatus.done);
   }
 
   /// 취소: planned 예약 롤백(현재 TxnRepo에 remove/cancel planned 없으면 상태만 취소)

@@ -8,6 +8,7 @@ import '../../models/types.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/ui_utils.dart';
 import '../../ui/common/ui.dart';
+import '../../utils/item_presentation.dart';
 
 // ⬇️ l10n
 import '../../l10n/l10n.dart';
@@ -75,11 +76,19 @@ class WorkDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 제목: 사람이 읽을 이름 + 수량
-                    Text(
-                      context.t.work_detail_item_qty(itemName, w.qty),
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
+                // 🧭 제목 라인: [루앙] 50기본형 방석커버 ×10  (옵션②)
+                       Row(
+                         children: [
+                           Expanded(
+                             child: ItemLabel(
+                               itemId: w.itemId,
+                                   full: true, // [루앙] 50기본형…  (full: true 로 바꾸면 전체 브레드크럼)
+                                 ),
+                             ),
+                           const SizedBox(width: 8),
+                           Text('×${w.qty}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                         ],
+                       ),
                     const SizedBox(height: 12),
 
                     // 메타 정보

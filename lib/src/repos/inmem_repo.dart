@@ -873,14 +873,6 @@ class InMemoryRepo extends ChangeNotifier
     if (p == null) return;
     if (p.status == PurchaseStatus.received) return;
 
-    // 실제 입고 반영
-    await addInActual(
-      itemId: p.itemId,
-      qty: p.qty,
-      refType: 'purchase',
-      refId: id,
-      note: '발주 입고 완료',
-    );
 
     // 상태 업데이트
     _purchases[id] =
