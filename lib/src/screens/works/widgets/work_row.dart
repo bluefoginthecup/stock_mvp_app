@@ -6,6 +6,7 @@ import '../../../models/types.dart';
 import '../../../repos/repo_interfaces.dart';
 import '../../../ui/ui_utils.dart';
 import '../../../ui/common/ui.dart';
+import '../../../utils/item_presentation.dart';
 
 // ⬇️ l10n 임포트 (context.t / L10n.of)
 import '../../../l10n/l10n.dart';
@@ -90,9 +91,18 @@ class WorkRow extends StatelessWidget {
 
         return ListTile(
           // "$itemName   x${w.qty}" → 플레이스홀더 키
-          title: Text(
-            context.t.work_row_item_qty(itemName, w.qty),
-            style: const TextStyle(fontWeight: FontWeight.w600),
+
+            title: Row(
+                    children: [
+                  // 🧭 [루앙] 50기본형 방석커버 형태로 표시
+                  Expanded(
+                    child: ItemLabel(itemId: w.itemId, full: true),
+                  ),
+              Text(
+                '×${w.qty}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
           ),
           subtitle: Wrap(
             spacing: 8,
