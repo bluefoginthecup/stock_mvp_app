@@ -15,6 +15,8 @@ import 'dart:async'; // ✅ StreamController 사용을 위해 필요
 import '../models/folder_node.dart';
 import '../utils/item_presentation.dart';
 
+
+
 // === Common move types (top-level) ===
 enum EntityKind { item, folder }
 
@@ -43,53 +45,70 @@ class InMemoryRepo extends ChangeNotifier
   /// itemId -> [l1Id,  l2Id?, l3Id?]
   final Map<String, List<String>> _itemPaths = <String, List<String>>{};
 
+
   InMemoryRepo(); // ← 비워둬도 OK
 
   void bootstrap() {
     notifyListeners();
   }
-
   /// (Undo 전용) 삭제했던 Txn을 그대로 복원
   void restoreTxnForUndo(Txn t) {
     _txns[t.id] = t;
     notifyListeners();
   }
+  /// 레거시 Item.folder/subfolder 를 트리 경로(_itemPaths)로 백필.
+  /// 이미 경로가 있으면 건너뜀. 없는 것만 채움.
+  Future<void> backfillPathsFromLegacy({bool createFolders = true}) async {
+    for (final e in _items.entries) {
+      final item = e.value;
+      if (_itemPaths.containsKey(item.id)) continue;
+      // 레거시 필드가 비면 스킵
+      final legacyL1 = (item.folder).trim();
+      final legacyL2 = (item.subfolder ?? '').trim();
+      if (legacyL1.isEmpty && legacyL2.isEmpty) continue;
 
-  // ======================== 경로 유틸 (정규화/탐색) ========================
-  // 이름 정규화: 대소문자/공백/하이픈/언더스코어 차이를 흡수
-  String _norm(String s) =>
-      s.trim().toLowerCase().replaceAll('-', '_').replaceAll(RegExp(r'\s+'), '_');
+      final l1Name = _mapLegacyL1Name(legacyL1);
+      final l2Name = legacyL2.isEmpty ? null : legacyL2;
 
-  // 부모ID 범위 내에서만 자식 폴더를 이름으로 탐색
-  String? _findChildFolderIdByName({
-    required String? parentId, // null 이면 루트(depth=1 후보들)
-    required String name,
-  }) {
-    if (name.trim().isEmpty) return null;
-    final want = _norm(name);
-    final kids = _childrenIndex[parentId];
-    if (kids == null || kids.isEmpty) return null;
-
-    for (final id in kids) {
-      final f = _folders[id];
-      if (f == null) continue;
-      if (_norm(f.name) == want) return id;
+      final path = await pathIdsByNames(
+        l1Name: l1Name,
+        l2Name: l2Name,
+        createIfMissing: createFolders,
+      );
+      final ids = path.whereType<String>().toList();
+      if (ids.isNotEmpty) {
+        _itemPaths[item.id] = List.unmodifiable(ids);
+      }
     }
-    return null;
+    notifyListeners();
   }
 
-  // === 이름 → id 헬퍼 (정규화 버전) ===
+  /// 레거시 L1 이름 → 트리 L1 이름 매핑
+  String _mapLegacyL1Name(String legacy) {
+    final v = legacy.trim().toLowerCase();
+    switch (v) {
+      case 'finished': return 'Finished';
+      case 'semifinished':
+      case 'semi_finished':
+      case 'semi-finished': return 'SemiFinished';
+      case 'raw': return 'Raw';
+      case 'sub': return 'Sub';
+      default: // 모르는 값은 TitleCase 정도로
+        if (v.isEmpty) return 'Finished';
+        return v[0].toUpperCase() + v.substring(1);
+    }
+  }
+
+
+  // === 이름 → id 헬퍼 ===
   Future<String?> _folderIdByNameUnder(String name, String? parentId) async {
-    // 정규화 비교 적용
     final kids = await listFolderChildren(parentId);
-    final want = _norm(name);
     for (final k in kids) {
-      if (_norm(k.name) == want) return k.id;
+      if (k.name == name) return k.id;
     }
     return null;
   }
 
-  /// 이름들(l1/l2/l3)로 경로 id들을 찾거나(선택) 생성
   Future<List<String?>> pathIdsByNames({
     String? l1Name,
     String? l2Name,
@@ -97,20 +116,19 @@ class InMemoryRepo extends ChangeNotifier
     bool createIfMissing = false,
   }) async {
     String? l1Id, l2Id, l3Id;
-
-    if (l1Name != null && l1Name.trim().isNotEmpty) {
+    if (l1Name != null) {
       l1Id = await _folderIdByNameUnder(l1Name, null);
       if (l1Id == null && createIfMissing) {
         l1Id = (await createFolderNode(parentId: null, name: l1Name)).id;
       }
     }
-    if (l2Name != null && l2Name.trim().isNotEmpty && l1Id != null) {
+    if (l2Name != null && l1Id != null) {
       l2Id = await _folderIdByNameUnder(l2Name, l1Id);
       if (l2Id == null && createIfMissing) {
         l2Id = (await createFolderNode(parentId: l1Id, name: l2Name)).id;
       }
     }
-    if (l3Name != null && l3Name.trim().isNotEmpty && l2Id != null) {
+    if (l3Name != null && l2Id != null) {
       l3Id = await _folderIdByNameUnder(l3Name, l2Id);
       if (l3Id == null && createIfMissing) {
         l3Id = (await createFolderNode(parentId: l2Id, name: l3Name)).id;
@@ -119,7 +137,6 @@ class InMemoryRepo extends ChangeNotifier
     return [l1Id, l2Id, l3Id];
   }
 
-  // ============================== 폴더 CRUD ===============================
   Future<List<FolderNode>> listFolderChildren(String? parentId) async {
     final set = _childrenIndex[parentId];
     if (set == null) return const [];
@@ -177,8 +194,8 @@ class InMemoryRepo extends ChangeNotifier
     }
     notifyListeners();
   }
+//=== 경로매칭 로직 헬퍼===//
 
-  // ========================= 경로/검색 매칭 헬퍼 =========================
   int _wantedDepth(String? l1, String? l2, String? l3) {
     // l1/l2/l3 지정 개수 → 0..3
     if (l1 == null) return 0;
@@ -220,9 +237,9 @@ class InMemoryRepo extends ChangeNotifier
     String? l2,
     String? l3,
     String? keyword,
-    bool recursive = false, // ← 기본 비재귀(직속만)
+    bool recursive = false, // ← 추가: 기본 비재귀(직속만)
   }) async {
-    // 코어로 위임: keyword가 null/empty면 "목록", 있으면 "검색"
+// 코어로 위임: keyword가 null/empty면 "목록", 있으면 "검색"
     return _queryItemsByPath(
       l1: l1,
       l2: l2,
@@ -231,7 +248,6 @@ class InMemoryRepo extends ChangeNotifier
       recursive: recursive,
     );
   }
-
   // === 아이템 생성: 경로 일부만 있어도 가능 ===
   Future<void> createItemUnderPath({
     required List<String> pathIds, // [l1Id], [l1Id,l2Id], [l1Id,l2Id,l3Id]
@@ -254,6 +270,7 @@ class InMemoryRepo extends ChangeNotifier
     _items[item.id] = item;
     _itemPaths[item.id] = List.unmodifiable(pathIds);
     notifyListeners();
+
   }
 
   FolderNode? folderById(String id) => _folders[id];
@@ -268,7 +285,8 @@ class InMemoryRepo extends ChangeNotifier
     return ids.map((fid) => _folders[fid]?.name ?? '(deleted)').toList();
   }
 
-  // ──────────── 아이템 편집/이동/삭제 ────────────
+  // ────────────아이템 편집/이동/삭제 ─────────────────────────────────
+
   Future<void> renameItem({required String id, required String newName}) async {
     final it = _items[id];
     if (it == null) throw StateError('Item not found: $id');
@@ -284,7 +302,7 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
-  // ──────────── Move helpers ────────────
+  // ─────────────────────────── Move helpers ───────────────────────────
   void _validatePathIds(List<String> pathIds) {
     if (pathIds.isEmpty || pathIds.length > 3) {
       throw ArgumentError('pathIds must have length 1..3');
@@ -314,7 +332,9 @@ class InMemoryRepo extends ChangeNotifier
     return false;
   }
 
-  // ──────────── Unified move API ────────────
+
+
+  // ─────────────────────────── Unified move API ───────────────────────────
   Future<void> moveEntityToPath(MoveRequest req) async {
     _validatePathIds(req.pathIds);
 
@@ -326,72 +346,73 @@ class InMemoryRepo extends ChangeNotifier
         _itemPaths[req.id] = List.unmodifiable(req.pathIds);
         break;
 
-      case EntityKind.folder:
-        {
-          // 1) 대상/새 부모 조회 + 가드
-          final folder = _folders[req.id];
-          if (folder == null) {
-            throw StateError('Folder not found: ${req.id}');
-          }
+      case EntityKind.folder: {
+        // 1) 대상/새 부모 조회 + 가드
+        final folder = _folders[req.id];
+        if (folder == null) {
+          throw StateError('Folder not found: ${req.id}');
+        }
 
-          final String newParentId = req.pathIds.last;
-          final newParent = _folders[newParentId];
-          if (newParent == null) {
-            throw StateError('Parent folder not found: $newParentId');
-          }
-          if (newParent.depth >= 3) {
-            throw StateError('Cannot move folder under depth 3 node');
-          }
-          if (req.id == newParent.id || _isDescendantFolder(req.id, newParent.id)) {
-            throw StateError('Cannot move folder inside its own subtree');
-          }
+        final String newParentId = req.pathIds.last;
+        final newParent = _folders[newParentId];
+        if (newParent == null) {
+          throw StateError('Parent folder not found: $newParentId');
+        }
+        if (newParent.depth >= 3) {
+          throw StateError('Cannot move folder under depth 3 node');
+        }
+        if (req.id == newParent.id || _isDescendantFolder(req.id, newParent.id)) {
+          throw StateError('Cannot move folder inside its own subtree');
+        }
 
-          final oldParentId = folder.parentId;
-          if (oldParentId == newParent.id) {
-            // 같은 부모로 이동이면 변경 없음
-            break;
-          }
-
-          // 2) children index에서 부모 관계 갱신
-          _childrenIndex[oldParentId]?.remove(folder.id);
-          final newIdx = _childrenIndex.putIfAbsent(
-            newParent.id,
-                () => SplayTreeSet<String>(
-                  (a, b) => _folders[a]!.name.compareTo(_folders[b]!.name),
-            ),
-          );
-          newIdx.add(folder.id);
-
-          // 3) depth delta 계산 (서브트리 전체 depth 보정)
-          final newDepth = newParent.depth + 1;
-          final delta = newDepth - folder.depth;
-
-          // 이동 대상 포함 서브트리 depth 업데이트
-          void _bumpDepthsRecursively(String fid) {
-            final f = _folders[fid];
-            if (f == null) return;
-            _folders[fid] = f.copyWith(depth: f.depth + delta);
-            final kids = _childrenIndex[fid];
-            if (kids == null) return;
-            for (final childId in kids) {
-              _bumpDepthsRecursively(childId);
-            }
-          }
-
-          // 4) 루트 노드의 parentId와 depth부터 갱신 후 서브트리 보정
-          _folders[folder.id] = folder.copyWith(
-            parentId: newParent.id,
-            depth: newDepth,
-          );
-          // 자식들 depth 일괄 보정
-          final children = _childrenIndex[folder.id];
-          if (children != null && children.isNotEmpty) {
-            for (final childId in children) {
-              _bumpDepthsRecursively(childId);
-            }
-          }
+        final oldParentId = folder.parentId;
+        if (oldParentId == newParent.id) {
+          // 같은 부모로 이동이면 변경 없음
           break;
         }
+
+        // 2) children index에서 부모 관계 갱신
+        _childrenIndex[oldParentId]?.remove(folder.id);
+        final newIdx = _childrenIndex.putIfAbsent(
+          newParent.id,
+              () => SplayTreeSet<String>(
+                (a, b) => _folders[a]!.name.compareTo(_folders[b]!.name),
+          ),
+        );
+        newIdx.add(folder.id);
+
+        // 3) depth delta 계산 (서브트리 전체 depth 보정)
+        final newDepth = newParent.depth + 1;
+        final delta = newDepth - folder.depth;
+
+        // 이동 대상 포함 서브트리 depth 업데이트
+        void _bumpDepthsRecursively(String fid) {
+          final f = _folders[fid];
+          if (f == null) return;
+          _folders[fid] = f.copyWith(depth: f.depth + delta);
+          final kids = _childrenIndex[fid];
+          if (kids == null) return;
+          for (final childId in kids) {
+            _bumpDepthsRecursively(childId);
+          }
+        }
+
+        // 4) 루트 노드의 parentId와 depth부터 갱신 후 서브트리 보정
+        _folders[folder.id] = folder.copyWith(
+          parentId: newParent.id,
+          depth: newDepth,
+        );
+        // 자식들 depth 일괄 보정
+        final children = _childrenIndex[folder.id];
+        if (children != null && children.isNotEmpty) {
+          for (final childId in children) {
+            _bumpDepthsRecursively(childId);
+          }
+        }
+        break;
+      }
+
+
     }
 
     notifyListeners();
@@ -438,8 +459,7 @@ class InMemoryRepo extends ChangeNotifier
 
     return (folders, items);
   }
-
-  // === 내부 코어: 경로 + (옵션)키워드로 아이템 조회 ===
+// === 내부 코어: 경로 + (옵션)키워드로 아이템 조회 ===
   Future<List<Item>> _queryItemsByPath({
     String? l1,
     String? l2,
@@ -457,14 +477,18 @@ class InMemoryRepo extends ChangeNotifier
     if (k.isNotEmpty) {
       it = it.where((e) {
         final item = e.value;
-        final names = _itemPaths[e.key]?.map((fid) => _folders[fid]?.name ?? '').toList() ?? const <String>[];
+        final names = _itemPaths[e.key]
+            ?.map((fid) => _folders[fid]?.name ?? '')
+            .toList() ??
+            const <String>[];
         return matchesItemOrPath(item: item, pathNames: names, keyword: k);
       });
     }
 
-    // 3) ✅ 항상 반환
+    // 3) ✅ 항상 반환 (여기가 빠지면 body_might_complete_normally 경고 발생)
     return it.map((e) => e.value).toList(growable: false);
   }
+
 
   @override
   Future<List<Item>> searchItemsGlobal(String keyword) async {
@@ -475,23 +499,19 @@ class InMemoryRepo extends ChangeNotifier
 
   @override
   Future<List<Item>> searchItemsByPath({
-    String? l1,
-    String? l2,
-    String? l3,
+    String? l1, String? l2, String? l3,
     required String keyword,
     bool recursive = true,
   }) {
     if (keyword.trim().isEmpty) return Future.value(const []);
     return _queryItemsByPath(
-      l1: l1,
-      l2: l2,
-      l3: l3,
-      keyword: keyword,
-      recursive: recursive,
+      l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive,
     );
   }
 
-  // =============================== ItemRepo ===============================
+
+  // ItemRepo
+
   @override
   @Deprecated('Use searchItemsByPath / listItemsByFolderPath (path-based).')
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
@@ -522,25 +542,25 @@ class InMemoryRepo extends ChangeNotifier
   Future<void> adjustQty({
     required String itemId,
     required int delta,
-    String? refType, // ← 인터페이스에 맞춰 String
-    String? refId,   // ← 인터페이스에 맞춰 String
-    String? note,
-  }) async {
+    String? refType,  // ← 인터페이스에 맞춰 String?
+    String? refId,    // ← 인터페이스에 맞춰 String?
+    String? note})
+  async {
     final it = _items[itemId];
     if (it == null) return;
 
-    final updated = it.copyWith(qty: it.qty + delta);
+    final updated = it.copyWith(qty: it.qty  + delta);
     _items[itemId] = updated;
 
     final txn = Txn(
       id: _uuid.v4(),
       ts: DateTime.now(),
-      type: delta >= 0 ? TxnType.in_ : TxnType.out_,
+      type: delta >= 0 ? TxnType.in_ : TxnType.out_, // ← enum 값 수정
       status: TxnStatus.actual,
       itemId: itemId,
       qty: delta.abs(),
       refType: RefTypeX.fromString(refType ?? 'order'),
-      refId: refId ?? 'unknown',
+      refId: refId ?? 'unknown',                       // ✅ null 방지
       note: note,
     );
     _txns[txn.id] = txn;
@@ -552,14 +572,15 @@ class InMemoryRepo extends ChangeNotifier
     return _items[itemId]?.name; // 없으면 null
   }
 
-  // ============================== OrderRepo ===============================
+  // OrderRepo
   @override
   Future<List<Order>> listOrders() async {
-    final list = _orders.values.where((o) => o.isDeleted != true).toList();
+    final list = _orders.values
+        .where((o) => o.isDeleted != true)
+        .toList();
     list.sort((a, b) => b.date.compareTo(a.date));
     return list;
   }
-
   @override
   Future<Order?> getOrder(String id) async => _orders[id];
 
@@ -574,11 +595,11 @@ class InMemoryRepo extends ChangeNotifier
     final o = _orders[orderId];
     return o?.customer; // ✅ Order 클래스에 있는 필드명과 일치
   }
-
   @override
   Future<void> softDeleteOrder(String orderId) async {
     final o = _orders[orderId];
     if (o == null) return;
+    // 모델에 isDeleted 필드가 없다면 추가 필요 (model diff 참고)
     _orders[orderId] = o.copyWith(isDeleted: true, updatedAt: DateTime.now());
     notifyListeners();
   }
@@ -586,7 +607,10 @@ class InMemoryRepo extends ChangeNotifier
   @override
   Future<void> hardDeleteOrder(String orderId) async {
     // 주문과 연결된 작업/예약txn 정리
-    final workIds = _works.values.where((w) => w.orderId == orderId).map((w) => w.id).toList();
+    final workIds = _works.values
+        .where((w) => w.orderId == orderId)
+        .map((w) => w.id)
+        .toList();
     for (final wid in workIds) {
       await hardDeleteWork(wid);
     }
@@ -594,7 +618,7 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
-  // =============================== TxnRepo ================================
+  // TxnRepo
   @override
   Future<List<Txn>> listTxns({String? itemId}) async {
     final list = _txns.values.where((t) => itemId == null || t.itemId == itemId).toList()
@@ -626,6 +650,7 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
+  // addInActual
   @override
   Future<void> addInActual({
     required String itemId,
@@ -645,7 +670,7 @@ class InMemoryRepo extends ChangeNotifier
       refId: refId,
       note: note ?? 'actual inbound',
     );
-    _txns[txn.id] = txn; // ✅ Map 저장
+    _txns[txn.id] = txn;       // ✅ Map 저장
 
     final it = _items[itemId];
     if (it != null) {
@@ -671,8 +696,9 @@ class InMemoryRepo extends ChangeNotifier
     }
     if (toRemove.isNotEmpty) notifyListeners();
   }
-
-  // ===================== HELPERS =====================
+  // =====================
+  // HELPERS
+  // =====================
   Future<void> _removePlannedTxnsByRef({required String refType, required String refId}) async {
     final ids = _txns.values
         .where((t) => t.refType == refType && t.refId == refId && t.isPlanned == true)
@@ -683,7 +709,7 @@ class InMemoryRepo extends ChangeNotifier
     }
   }
 
-  // =============================== BomRepo ================================
+  // BomRepo
   @override
   Future<List<BomRow>> listBom(String outputItemId) async {
     return _bom.values.where((b) => b.outputItemId == outputItemId).toList();
@@ -707,7 +733,7 @@ class InMemoryRepo extends ChangeNotifier
   @override
   Future<String> createWork(Work w) async {
     final now = DateTime.now();
-    final id = (w.id.isNotEmpty) ? w.id : _uuid.v4();
+    final id  = (w.id.isNotEmpty) ? w.id : _uuid.v4();
     final saved = w.copyWith(
       id: id,
       status: w.status,
@@ -715,7 +741,7 @@ class InMemoryRepo extends ChangeNotifier
       updatedAt: now,
     );
     _works[id] = saved;
-    // print('[InMemoryRepo] createWork -> ${saved.id} ${saved.status}');
+    print('[InMemoryRepo] createWork -> ${saved.id} ${saved.status}');
 
     notifyListeners();
     return id;
@@ -728,9 +754,9 @@ class InMemoryRepo extends ChangeNotifier
   Stream<List<Work>> watchAllWorks() {
     // ChangeNotifier -> Stream 브리지
     final c = StreamController<List<Work>>.broadcast();
-    void emit() => c.add(_works.values.where((w) => w.isDeleted != true).toList());
-    c.onListen = emit; // 최초 1회
-    final listener = () => emit(); // 변경 시마다 emit
+    void emit() {c.add(_works.values.where((w) => w.isDeleted != true).toList());};
+    c.onListen = emit;      // 최초 1회
+    final listener = () => emit();    // 변경 시마다 emit
     addListener(listener);
     c.onCancel = () => removeListener(listener);
     return c.stream;
@@ -770,7 +796,7 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
-  // ==== delete work ==== //
+  // ====delete work ====//
   @override
   Future<void> softDeleteWork(String workId) async {
     final w = _works[workId];
@@ -791,7 +817,6 @@ class InMemoryRepo extends ChangeNotifier
     _works.remove(workId);
     notifyListeners();
   }
-
   // ----------------- PurchaseRepo -----------------
   final _purchases = <String, Purchase>{};
 
@@ -842,11 +867,13 @@ class InMemoryRepo extends ChangeNotifier
     if (p == null) return;
     if (p.status == PurchaseStatus.received) return;
 
+
     // 상태 업데이트
-    _purchases[id] = p.copyWith(status: PurchaseStatus.received, updatedAt: DateTime.now());
+    _purchases[id] =
+        p.copyWith(status: PurchaseStatus.received,
+            updatedAt: DateTime.now());
     notifyListeners();
   }
-
   @override
   Future<void> softDeletePurchase(String purchaseId) async {
     final p = _purchases[purchaseId];
@@ -872,7 +899,8 @@ class InMemoryRepo extends ChangeNotifier
     );
   }
 
-  // =============================== 시드 주입 ===============================
+  //=== 시드 주입 ====//
+
 
   // === For seed loader access ===
   Uuid get uuid => _uuid;
@@ -887,12 +915,10 @@ class InMemoryRepo extends ChangeNotifier
     if (folders != null) {
       for (final f in folders) {
         _folders[f.id] = f;
-        _childrenIndex
-            .putIfAbsent(
+        _childrenIndex.putIfAbsent(
           f.parentId,
               () => SplayTreeSet((a, b) => _folders[a]!.name.compareTo(_folders[b]!.name)),
-        )
-            .add(f.id);
+        ).add(f.id);
       }
     }
     if (items != null) {
@@ -901,72 +927,35 @@ class InMemoryRepo extends ChangeNotifier
       }
     }
 
-    // ✅ 아이템의 레거시 필드(folder/subfolder[/subsubfolder])로 경로 백필
+    // ✅ 여기 추가: 아이템의 legacy 필드(folder/subfolder)로 경로 백필
     await backfillPathsFromLegacy(createFolders: false);
 
     notifyListeners();
   }
+// InMemoryRepo 클래스 내부(private 메서드)
 
-  // ===================== 레거시 경로 백필 (L1→L2→L3) =====================
-  /// 레거시 Item.folder/subfolder(/subsubfolder) 를 트리 경로(_itemPaths)로 백필.
-  /// 이미 경로가 있으면 건너뜀. 없는 것만 채움.
-  Future<void> backfillPathsFromLegacy({bool createFolders = true}) async {
-    for (final e in _items.entries) {
-      final item = e.value;
-      if (_itemPaths.containsKey(item.id)) continue; // 이미 배치된 아이템 스킵
+// 이름 정규화: 대소문자/공백/하이픈/언더스코어 차이를 흡수
+  String _norm(String s) =>
+      s.trim().toLowerCase()
+          .replaceAll('-', '_')
+          .replaceAll(RegExp(r'\s+'), '_');
 
-      // 레거시 필드가 전혀 없으면 스킵
-      final legacyL1 = (item.folder).trim();
-      final legacyL2Raw = (item.subfolder ?? '').trim();
-      final legacyL3Raw = (item is dynamic && (item as dynamic).subsubfolder != null)
-          ? ((item as dynamic).subsubfolder as String).trim()
-          : '';
-      if (legacyL1.isEmpty && legacyL2Raw.isEmpty && legacyL3Raw.isEmpty) continue;
+// 부모ID 범위 내에서만 자식 폴더를 이름으로 탐색
+  String? _findChildFolderIdByName({
+    required String? parentId, // null 이면 루트(depth=1 후보들)
+    required String name,
+  }) {
+    if (name.trim().isEmpty) return null;
+    final want = _norm(name);
+    final kids = _childrenIndex[parentId];
+    if (kids == null || kids.isEmpty) return null;
 
-      // L1 이름 매핑 (finished/FINISHED 등 → 'Finished')
-      final l1Name = _mapLegacyL1Name(legacyL1);
-
-      // L2/L3 분해 로직: subsubfolder가 있으면 우선 사용, 없으면 subfolder에서 분해("a/b")
-      String l2Name = legacyL2Raw;
-      String l3Name = legacyL3Raw;
-      if (l3Name.isEmpty && l2Name.contains('/')) {
-        final parts = l2Name.split(RegExp(r'\s*[/|>\u203A]\s*'));
-        l2Name = parts.isNotEmpty ? parts[0] : '';
-        l3Name = parts.length > 1 ? parts[1] : '';
-      }
-
-      // ID 탐색/생성
-      final ids = await pathIdsByNames(
-        l1Name: l1Name,
-        l2Name: l2Name.isEmpty ? null : l2Name,
-        l3Name: l3Name.isEmpty ? null : l3Name,
-        createIfMissing: createFolders,
-      );
-      final path = ids.whereType<String>().toList();
-      if (path.isNotEmpty) {
-        _itemPaths[item.id] = List.unmodifiable(path);
-      }
+    for (final id in kids) {
+      final f = _folders[id];
+      if (f == null) continue;
+      if (_norm(f.name) == want) return id;
     }
-    notifyListeners();
+    return null;
   }
 
-  /// 레거시 L1 이름 → 트리 L1 이름 매핑
-  String _mapLegacyL1Name(String legacy) {
-    final v = legacy.trim().toLowerCase();
-    switch (v) {
-      case 'finished':
-        return 'Finished';
-      case 'semifinished':
-      case 'semi_finished':
-      case 'semi-finished':
-        return 'SemiFinished';
-      case 'raw':
-        return 'Raw';
-      case 'sub':
-        return 'Sub';
-      default: // 모르는 값은 TitleCase 정도로
-        if (v.isEmpty) return 'Finished';
-        return v[0].toUpperCase() + v.substring(1);
-    }
-  }
 }
