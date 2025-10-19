@@ -7,6 +7,7 @@ import 'package:stockapp_mvp/src/repos/inmem_repo.dart';
 import 'package:stockapp_mvp/src/models/txn.dart';
 import 'widgets/txn_row.dart';
 import '../../ui/common/ui.dart';
+import '../../ui/common/delete_more_menu.dart';
 
 
 class TxnListScreen extends StatelessWidget {

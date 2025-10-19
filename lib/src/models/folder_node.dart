@@ -28,4 +28,12 @@ class FolderNode {
         depth: depth ?? this.depth,
         order: order ?? this.order,
       );
+
+  factory FolderNode.fromJson(Map<String, dynamic> json) => FolderNode(
+    id: json['id'],
+    name: json['name'],
+    depth: json['depth'],
+    parentId: json['parentId'],
+    order: json['order'] ?? 0,
+  );
 }

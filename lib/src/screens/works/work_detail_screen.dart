@@ -10,6 +10,8 @@ import '../../ui/ui_utils.dart';
 import '../../ui/common/ui.dart';
 import '../../utils/item_presentation.dart';
 
+import '../../ui/common/delete_more_menu.dart';
+
 // ⬇️ l10n
 import '../../l10n/l10n.dart';
 
@@ -55,7 +57,17 @@ class WorkDetailScreen extends StatelessWidget {
     final canAdvance = w.status != WorkStatus.done && w.status != WorkStatus.canceled;
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.t.work_detail_title)),
+      appBar: AppBar(title: Text(context.t.work_detail_title),
+          actions: [
+                  if (work.id.isNotEmpty)
+                    DeleteMoreMenu<Work>(
+                          entity: work,
+                          onChanged: () {
+                  // 삭제/취소 후 상세화면에서 목록으로 복귀
+                  Navigator.maybePop(context);
+                },
+                  ),
+          ],),
       body: FutureBuilder<(String, String?)>(
         future: _loadNames(context),
         builder: (ctx, snap) {

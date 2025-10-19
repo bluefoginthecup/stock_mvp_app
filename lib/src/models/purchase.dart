@@ -12,6 +12,7 @@ class Purchase {
   final DateTime? updatedAt;
   final String? vendorId;  // optional: supplier reference
   final String? note;      // optional memo
+  final bool isDeleted;
 
   Purchase({
     required this.id,
@@ -20,6 +21,7 @@ class Purchase {
     required this.orderId,
     this.status = PurchaseStatus.planned,
     DateTime? createdAt,
+    this.isDeleted = false,
     this.updatedAt,
     this.vendorId,
     this.note,
@@ -33,6 +35,7 @@ class Purchase {
     String? orderId,
     PurchaseStatus? status,
     DateTime? createdAt,
+    bool? isDeleted,
     DateTime? updatedAt,
     String? vendorId,
     String? note,
@@ -44,6 +47,7 @@ class Purchase {
       orderId: orderId ?? this.orderId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
       vendorId: vendorId ?? this.vendorId,
       note: note ?? this.note,

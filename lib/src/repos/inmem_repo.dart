@@ -15,6 +15,8 @@ import 'dart:async'; // ✅ StreamController 사용을 위해 필요
 import '../models/folder_node.dart';
 import '../utils/item_presentation.dart';
 
+
+
 // === Common move types (top-level) ===
 enum EntityKind { item, folder }
 
@@ -33,73 +35,6 @@ class InMemoryRepo extends ChangeNotifier
   final Map<String, Txn> _txns = {};
   final Map<String, BomRow> _bom = {};
 
-  InMemoryRepo() {
-    _seedFolderRootsIfEmpty();   // ← 추가
-  }
-
-  InMemoryRepo.seeded() {
-    _seedFolderRootsIfEmpty();   // ← 추가 (시드 아이템 전에 호출해도 OK)
-    final i1 = Item(
-      id: _uuid.v4(),
-      name: '루앙 그레이 50 기본형 방석커버',
-      sku: 'LG-50C',
-      unit: 'EA',
-      folder: 'finished',
-      subfolder: 'cushion',
-      minQty: 5,
-      qty: 12,
-    );
-
-    final i2 = Item(
-      id: _uuid.v4(),
-      name: '루앙 그레이 40 쿠션커버',
-      sku: 'LG-40C',
-      unit: 'EA',
-      folder: 'finished',
-      subfolder: 'cushion',
-      minQty: 5,
-      qty: 4,
-    );
-
-    final fabric = Item(
-      id: _uuid.v4(),
-      name: '원단-루앙 그레이',
-      sku: 'FAB-LG',
-      unit: 'M',
-      folder: 'raw',         // 예: 원자재 카테고리
-      subfolder: 'fabric',
-      minQty: 10,
-      qty: 27,
-    );
-
-    _items[i1.id] = i1;
-    _items[i2.id] = i2;
-    _items[fabric.id] = fabric;
-
-    // 시드 아이템 저장 후 ( _items[...] = ... ) 아래에 추가
-    () async {
-      // finished > cushion
-      final finishedPath = await pathIdsByNames(
-        l1Name: 'Finished',
-        l2Name: 'cushion',
-        createIfMissing: true,
-      );
-      final rawPath = await pathIdsByNames(
-        l1Name: 'Raw',
-        l2Name: 'fabric',
-        createIfMissing: true,
-      );
-
-      _itemPaths[i1.id] = List.unmodifiable([finishedPath[0]!, finishedPath[1]!]);
-      _itemPaths[i2.id] = List.unmodifiable([finishedPath[0]!, finishedPath[1]!]);
-      _itemPaths[fabric.id] = List.unmodifiable([rawPath[0]!, rawPath[1]!]);
-    }();
-
-  }
-
-  void bootstrap() {
-    notifyListeners();
-  }
   // ===== Folder tree storage (Stage 6) =====
   final Map<String, FolderNode> _folders = <String, FolderNode>{};
 
@@ -107,28 +42,20 @@ class InMemoryRepo extends ChangeNotifier
   final Map<String?, SplayTreeSet<String>> _childrenIndex =
   <String?, SplayTreeSet<String>>{};
 
-  /// itemId -> [l1Id, l2Id?, l3Id?]
+  /// itemId -> [l1Id,  l2Id?, l3Id?]
   final Map<String, List<String>> _itemPaths = <String, List<String>>{};
 
 
-  void _seedFolderRootsIfEmpty() {
-    if (_folders.isNotEmpty) return;
-    for (final name in const ['Finished', 'SemiFinished', 'Raw', 'Sub']) {
-      final id = _uuid.v4();
-      final node = FolderNode(
-        id: id,
-        name: name,
-        depth: 1,
-        parentId: null,
-        order: 0,
-      );
-      _folders[id] = node;
-      _childrenIndex.putIfAbsent(null, () => SplayTreeSet(
-            (a, b) => _folders[a]!.name.compareTo(_folders[b]!.name),
-      )).add(id);
-    }
-  }
+  InMemoryRepo(); // ← 비워둬도 OK
 
+  void bootstrap() {
+    notifyListeners();
+  }
+  /// (Undo 전용) 삭제했던 Txn을 그대로 복원
+    void restoreTxnForUndo(Txn t) {
+        _txns[t.id] = t;
+        notifyListeners();
+      }
     /// 레거시 Item.folder/subfolder 를 트리 경로(_itemPaths)로 백필.
     /// 이미 경로가 있으면 건너뜀. 없는 것만 채움.
     Future<void> backfillPathsFromLegacy({bool createFolders = true}) async {
@@ -648,11 +575,12 @@ class InMemoryRepo extends ChangeNotifier
   // OrderRepo
   @override
   Future<List<Order>> listOrders() async {
-    final list = _orders.values.toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final list = _orders.values
+        .where((o) => o.isDeleted != true)
+        .toList();
+    list.sort((a, b) => b.date.compareTo(a.date));
     return list;
   }
-
   @override
   Future<Order?> getOrder(String id) async => _orders[id];
 
@@ -667,6 +595,28 @@ class InMemoryRepo extends ChangeNotifier
     final o = _orders[orderId];
     return o?.customer; // ✅ Order 클래스에 있는 필드명과 일치
   }
+  @override
+    Future<void> softDeleteOrder(String orderId) async {
+        final o = _orders[orderId];
+        if (o == null) return;
+        // 모델에 isDeleted 필드가 없다면 추가 필요 (model diff 참고)
+        _orders[orderId] = o.copyWith(isDeleted: true, updatedAt: DateTime.now());
+        notifyListeners();
+      }
+
+    @override
+    Future<void> hardDeleteOrder(String orderId) async {
+        // 주문과 연결된 작업/예약txn 정리
+        final workIds = _works.values
+            .where((w) => w.orderId == orderId)
+            .map((w) => w.id)
+            .toList();
+        for (final wid in workIds) {
+          await hardDeleteWork(wid);
+        }
+        _orders.remove(orderId);
+        notifyListeners();
+      }
 
   // TxnRepo
   @override
@@ -729,6 +679,36 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
+  @override
+    Future<void> deleteTxn(String txnId) async {
+      _txns.remove(txnId);
+      notifyListeners();
+    }
+
+    @override
+    Future<void> deletePlannedByRef({required String refType, required String refId}) async {
+      final toRemove = _txns.values
+          .where((t) => t.refType == refType && t.refId == refId && t.isPlanned == true)
+          .map((t) => t.id)
+          .toList();
+      for (final id in toRemove) {
+        _txns.remove(id);
+      }
+      if (toRemove.isNotEmpty) notifyListeners();
+    }
+    // =====================
+    // HELPERS
+    // =====================
+    Future<void> _removePlannedTxnsByRef({required String refType, required String refId}) async {
+      final ids = _txns.values
+          .where((t) => t.refType == refType && t.refId == refId && t.isPlanned == true)
+          .map((t) => t.id)
+          .toList();
+      for (final id in ids) {
+        _txns.remove(id);
+      }
+    }
+
   // BomRepo
   @override
   Future<List<BomRow>> listBom(String outputItemId) async {
@@ -774,8 +754,8 @@ class InMemoryRepo extends ChangeNotifier
   Stream<List<Work>> watchAllWorks() {
     // ChangeNotifier -> Stream 브리지
     final c = StreamController<List<Work>>.broadcast();
-    void emit() => c.add(_works.values.toList());
-    c.onListen = emit;      // 최초 1회
+    void emit() {c.add(_works.values.where((w) => w.isDeleted != true).toList());};
+  c.onListen = emit;      // 최초 1회
     final listener = () => emit();    // 변경 시마다 emit
     addListener(listener);
     c.onCancel = () => removeListener(listener);
@@ -808,15 +788,6 @@ class InMemoryRepo extends ChangeNotifier
     if (w == null) return;
     if (w.status == WorkStatus.done) return;
 
-    // // 실제 입고 반영
-    // await addInActual(
-    //   itemId: w.itemId,
-    //   qty: w.qty,
-    //   refType: 'work',
-    //   refId: id,
-    //   note: '작업 완료 입고',
-    // );
-
     // 상태 업데이트
     _works[id] = w.copyWith(
       status: WorkStatus.done,
@@ -825,6 +796,27 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
+  // ====delete work ====//
+  @override
+    Future<void> softDeleteWork(String workId) async {
+      final w = _works[workId];
+      if (w == null) return;
+      // 진행/완료면 canceled 권장, planned면 삭제 플래그
+      if (w.status == WorkStatus.inProgress || w.status == WorkStatus.done) {
+        _works[workId] = w.copyWith(status: WorkStatus.canceled, updatedAt: DateTime.now());
+      } else {
+        _works[workId] = w.copyWith(isDeleted: true, updatedAt: DateTime.now());
+      }
+      await _removePlannedTxnsByRef(refType: 'work', refId: workId);
+      notifyListeners();
+    }
+
+    @override
+    Future<void> hardDeleteWork(String workId) async {
+      await _removePlannedTxnsByRef(refType: 'work', refId: workId);
+      _works.remove(workId);
+      notifyListeners();
+    }
   // ----------------- PurchaseRepo -----------------
   final _purchases = <String, Purchase>{};
 
@@ -841,7 +833,7 @@ class InMemoryRepo extends ChangeNotifier
   @override
   Stream<List<Purchase>> watchAllPurchases() {
     final c = StreamController<List<Purchase>>.broadcast();
-    void emit() => c.add(_purchases.values.toList());
+    void emit() => c.add(_purchases.values.where((p) => p.isDeleted != true).toList());
     c.onListen = emit;
     final listener = () => emit();
     addListener(listener);
@@ -882,6 +874,19 @@ class InMemoryRepo extends ChangeNotifier
             updatedAt: DateTime.now());
     notifyListeners();
   }
+  @override
+    Future<void> softDeletePurchase(String purchaseId) async {
+      final p = _purchases[purchaseId];
+      if (p == null) return;
+      _purchases[purchaseId] = p.copyWith(isDeleted: true, updatedAt: DateTime.now());
+      notifyListeners();
+    }
+
+    @override
+    Future<void> hardDeletePurchase(String purchaseId) async {
+      _purchases.remove(purchaseId);
+      notifyListeners();
+    }
 
   // (하위호환) 폴더 전용 이동 → 통합 API 위임
   @Deprecated('Use moveEntityToPath instead.')
@@ -893,4 +898,64 @@ class InMemoryRepo extends ChangeNotifier
       MoveRequest(kind: EntityKind.folder, id: folderId, pathIds: pathIds),
     );
   }
+
+  //=== 시드 주입 ====//
+
+
+  // === For seed loader access ===
+  Uuid get uuid => _uuid;
+  Map<String, FolderNode> get folders => _folders;
+  Map<String?, SplayTreeSet<String>> get childrenIndex => _childrenIndex;
+  int get folderCount => _folders.length;
+
+  Future<void> importSeed({
+    List<FolderNode>? folders,
+    List<Item>? items,
+  }) async {
+    if (folders != null) {
+      for (final f in folders) {
+        _folders[f.id] = f;
+        _childrenIndex.putIfAbsent(
+          f.parentId,
+              () => SplayTreeSet((a, b) => _folders[a]!.name.compareTo(_folders[b]!.name)),
+        ).add(f.id);
+      }
+    }
+    if (items != null) {
+      for (final i in items) {
+        _items[i.id] = i;
+      }
+    }
+
+    // ✅ 여기 추가: 아이템의 legacy 필드(folder/subfolder)로 경로 백필
+    await backfillPathsFromLegacy(createFolders: false);
+
+    notifyListeners();
+  }
+// InMemoryRepo 클래스 내부(private 메서드)
+
+// 이름 정규화: 대소문자/공백/하이픈/언더스코어 차이를 흡수
+  String _norm(String s) =>
+      s.trim().toLowerCase()
+          .replaceAll('-', '_')
+          .replaceAll(RegExp(r'\s+'), '_');
+
+// 부모ID 범위 내에서만 자식 폴더를 이름으로 탐색
+  String? _findChildFolderIdByName({
+    required String? parentId, // null 이면 루트(depth=1 후보들)
+    required String name,
+  }) {
+    if (name.trim().isEmpty) return null;
+    final want = _norm(name);
+    final kids = _childrenIndex[parentId];
+    if (kids == null || kids.isEmpty) return null;
+
+    for (final id in kids) {
+      final f = _folders[id];
+      if (f == null) continue;
+      if (_norm(f.name) == want) return id;
+    }
+    return null;
+  }
+
 }

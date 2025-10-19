@@ -41,6 +41,7 @@ Future<Item?> getItem(String id) => inner.getItem(id);
 Future<void> upsertItem(Item item) => inner.upsertItem(item);
 @override
 Future<void> deleteItem(String id) => inner.deleteItem(id);
+@override
 Future<void> adjustQty({
     required String itemId,
     required int delta,
@@ -96,6 +97,12 @@ class OrderRepoView implements OrderRepo {
   @override
   Future<String?> customerNameOf(String orderId) => inner.customerNameOf(orderId); // ✅ 추가
 
+  @override
+  Future<void> softDeleteOrder(String orderId) => inner.softDeleteOrder(orderId);
+
+  @override
+  Future<void> hardDeleteOrder(String orderId) => inner.hardDeleteOrder(orderId);
+
 }
 
 class TxnRepoView implements TxnRepo {
@@ -123,6 +130,12 @@ class TxnRepoView implements TxnRepo {
     String? note})
   => inner.addInActual(itemId: itemId, qty: qty, refType: refType, refId: refId, note: note);
 
+  @override
+    Future<void> deleteTxn(String txnId) => inner.deleteTxn(txnId);
+    @override
+    Future<void> deletePlannedByRef({required String refType, required String refId})
+      => inner.deletePlannedByRef(refType: refType, refId: refId);
+
 }
 
 class BomRepoView implements BomRepo {
@@ -137,6 +150,7 @@ class BomRepoView implements BomRepo {
 
   @override
   Future<void> deleteBomRow(String id) => inner.deleteBomRow(id);
+
 }
 
 // --- WorkRepoView ---
@@ -154,6 +168,12 @@ class WorkRepoView implements WorkRepo {
     Future<void> updateWorkStatus(String id, WorkStatus status) => _m.updateWorkStatus(id, status);
     @override
     Future<void> cancelWork(String id) => _m.cancelWork(id);
+
+    // 🧹 삭제 위임
+    @override
+    Future<void> softDeleteWork(String workId) => _m.softDeleteWork(workId);
+    @override
+    Future<void> hardDeleteWork(String workId) => _m.hardDeleteWork(workId);
 
 }
 
@@ -174,5 +194,10 @@ class PurchaseRepoView implements PurchaseRepo {
 
     @override
     Future<void> cancelPurchase(String id) => _m.cancelPurchase(id);
+// 🧹 삭제 위임
+    @override
+    Future<void> softDeletePurchase(String purchaseId) => _m.softDeletePurchase(purchaseId);
+    @override
+    Future<void> hardDeletePurchase(String purchaseId) => _m.hardDeletePurchase(purchaseId);
 
 }

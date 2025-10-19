@@ -40,4 +40,15 @@ class Item {
       qty: qty ?? this.qty,
     );
   }
+  factory Item.fromJson(Map<String, dynamic> json) => Item(
+    id: json['id'],
+    name: json['name'],
+    sku: json['sku'],
+    unit: json['unit'],
+    folder: json['folder'],
+    subfolder: json['subfolder'],
+    minQty: json['minQty'] ?? 0,
+    qty: json['qty'] ?? 0,
+  );
+
 }

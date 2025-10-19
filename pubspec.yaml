@@ -32,4 +32,5 @@ flutter:
   assets:
     - assets/sql/schema.sql
     - assets/sql/seed.sql
+    - assets/seeds/initial_seed.json
 

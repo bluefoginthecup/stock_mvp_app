@@ -2,18 +2,32 @@ import '../repos/repo_interfaces.dart';
 import '../models/types.dart';
 import '../models/state_guard.dart';
 
+
+import '../repos/repo_interfaces.dart';
+
 class InventoryService {
   final WorkRepo works;
   final PurchaseRepo purchases;
   final TxnRepo txns;
   final BomRepo boms; // 선택: BOM 소비 planned/actual 쓰려면 사용
+  final OrderRepo orders;
 
   InventoryService({
     required this.works,
     required this.purchases,
     required this.txns,
     required this.boms,
+    required this.orders,
   });
+
+  /// 주문 삭제 (소프트/하드 옵션)
+  Future<void> deleteOrderCascade(String orderId, {bool hard = false}) async {
+    if (hard) {
+      await orders.hardDeleteOrder(orderId);
+    } else {
+      await orders.softDeleteOrder(orderId);
+    }
+  }
 
   // ---------- WORK ----------
   /// planned -> inProgress : 입고 예정(완제품) planned 등록 + 상태 전환
@@ -84,6 +98,16 @@ class InventoryService {
     await works.updateWorkStatus(workId, WorkStatus.canceled);
   }
 
+  // ⚙️ 작업 삭제 (소프트/하드)
+  Future<void> deleteWorkSafe(String workId, {bool hard = false}) async {
+    if (hard) {
+      await works.hardDeleteWork(workId);
+    } else {
+      await works.softDeleteWork(workId);
+    }
+  }
+
+
   // ---------- PURCHASE ----------
   /// planned -> ordered : 입고 예정 planned 등록 + 상태 전환
   Future<void> orderPurchase(String purchaseId) async {
@@ -125,4 +149,20 @@ class InventoryService {
     // TODO: planned 취소 로직 추가 시 여기서 롤백
     await purchases.updatePurchaseStatus(purchaseId, PurchaseStatus.canceled);
   }
+
+  /// 발주 삭제 (소프트/하드)
+  Future<void> deletePurchase(String purchaseId, {bool hard = false}) async {
+      if (hard) {
+        await purchases.hardDeletePurchase(purchaseId);
+      } else {
+        await purchases.softDeletePurchase(purchaseId);
+      }
+    }
+
+
+  /// 입출고 기록 단일 삭제
+  Future<void> deleteTxn(String txnId) => txns.deleteTxn(txnId);
 }
+
+
+

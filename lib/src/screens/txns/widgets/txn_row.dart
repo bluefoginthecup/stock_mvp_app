@@ -10,6 +10,9 @@ import '../../../ui/common/qty_badge.dart';
 // ✅ 브레드크럼 라벨 재사용
 import '../../../utils/item_presentation.dart'; // ItemLabel, ItemPresentationService
 
+import '../../../ui/common/delete_more_menu.dart'; // ▼ 더보기 메뉴 임포트 (경로 맞춰주세요)
+
+
 
 /// 입·출고 기록 한 줄 표시
 /// - 아이템명 (없으면 itemId tail)
@@ -17,8 +20,11 @@ import '../../../utils/item_presentation.dart'; // ItemLabel, ItemPresentationSe
 /// - 뱃지: 작업입고/주문출고
 /// - UUID는 …abcd 4글자만
 class TxnRow extends StatelessWidget {
-  final Txn t;
-  const TxnRow({super.key, required this.t});
+    final Txn t;
+    /// 선택: 외부에서 trailing 커스터마이즈 가능
+    final Widget? trailing;
+    const TxnRow({super.key, required this.t, this.trailing});
+
 
   Future<(String, String?)> _loadNames(BuildContext ctx) async {
     // ItemRepo / OrderRepo가 주입되어 있지 않아도 안전하게 동작하도록 설계
@@ -118,6 +124,7 @@ class TxnRow extends StatelessWidget {
 
             ],
           ),
+          trailing: trailing ?? DeleteMoreMenu<Txn>(entity: t),
           dense: true,
           visualDensity: VisualDensity.compact,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),

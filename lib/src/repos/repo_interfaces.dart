@@ -34,6 +34,11 @@ abstract class OrderRepo {
   Future<void> upsertOrder(Order order);
   /// orderId -> 사람 읽는 '주문자명'
   Future<String?> customerNameOf(String orderId);
+  // 🧹 삭제 API
+    /// 기본: 소프트 삭제 (isDeleted=true). 목록/검색에서 숨김.
+    Future<void> softDeleteOrder(String orderId);
+    /// 관리용: 하드 삭제. 연계 데이터 처리 여부는 상위 서비스에서 보장.
+    Future<void> hardDeleteOrder(String orderId);
 }
 
 abstract class TxnRepo {
@@ -50,6 +55,12 @@ abstract class TxnRepo {
     required String refType,
     required String refId,
     String? note});
+  // 🧹 삭제 API
+    /// 입출고 기록은 일반적으로 단일 하드삭제가 필요(실수 입력 취소 등).
+    Future<void> deleteTxn(String txnId);
+    /// (선택) 특정 참조에 묶인 planned 기록 일괄 삭제가 필요하면 제공
+    Future<void> deletePlannedByRef({required String refType, required String refId});
+
 
 }
 
@@ -70,6 +81,12 @@ abstract class WorkRepo {
     /// 선택: 편의 메서드(원하면 구현)
     Future<void> cancelWork(String id) => updateWorkStatus(id, WorkStatus.canceled);
 
+    // 🧹 삭제 API
+    /// 기본: 소프트 삭제 (planned이면 삭제, 진행/완료면 canceled 처리 권장).
+    Future<void> softDeleteWork(String workId);
+    /// 관리용: 하드 삭제(연계 planned Txn 등은 상위/내부에서 정리).
+    Future<void> hardDeleteWork(String workId);
+
 }
 
 // Purchase 전용 — 메서드 이름에 Purchase 접두사
@@ -84,4 +101,9 @@ abstract class PurchaseRepo {
     /// 선택: 편의 메서드(원하면 구현)
      Future<void> cancelPurchase(String id) => updatePurchaseStatus(id, PurchaseStatus.canceled);
 
+    // 🧹 삭제 API
+    /// 기본: 소프트 삭제 (isDeleted=true)로 숨김.
+    Future<void> softDeletePurchase(String purchaseId);
+    /// 관리용: 하드 삭제.
+    Future<void> hardDeletePurchase(String purchaseId);
 }

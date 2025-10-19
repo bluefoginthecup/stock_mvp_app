@@ -5,6 +5,7 @@ class OrderLine {
   final String itemId;
   final int qty;
 
+
   OrderLine({
     required this.id,
     required this.itemId,
@@ -45,6 +46,8 @@ class Order {
   final String? memo;
   final OrderStatus status;
   final List<OrderLine> lines;
+    final bool isDeleted;
+    final DateTime? updatedAt;
 
   Order({
     required this.id,
@@ -53,6 +56,8 @@ class Order {
     this.memo,
     required this.status,
     required this.lines,
+        this.isDeleted = false,
+      this.updatedAt,
   });
 
   // ✅ Order copyWith
@@ -61,6 +66,8 @@ class Order {
     String? memo,
     OrderStatus? status,
     List<OrderLine>? lines,
+    bool? isDeleted,
+    DateTime? updatedAt,
   }) {
     return Order(
       id: id,
@@ -69,6 +76,8 @@ class Order {
       memo: memo ?? this.memo,
       status: status ?? this.status,
       lines: lines ?? this.lines,
+      isDeleted: isDeleted ?? this.isDeleted,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 

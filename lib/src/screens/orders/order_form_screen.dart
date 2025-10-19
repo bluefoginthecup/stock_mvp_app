@@ -8,6 +8,7 @@ import '../../ui/common/qty_control.dart';
 import '../../ui/common/ui.dart';
 import '../../ui/common/search_field.dart'; // 🔍 공용 검색필드 (디바운스 내장)
 import '../../utils/item_presentation.dart';
+import '../../ui/common/delete_more_menu.dart';
 
 
 class OrderFormScreen extends StatefulWidget {
@@ -139,9 +140,32 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   @override
   Widget build(BuildContext context) {
     final itemsRepo = context.read<ItemRepo>();   // 🔍 전역검색용
+    final String? orderId = widget.orderId;
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.t.order_form_title)),
+      appBar: AppBar(title: Text(context.t.order_form_title),
+        actions: [
+          if (orderId != null && orderId.isNotEmpty)
+            FutureBuilder<Order?>(
+              future: context.read<OrderRepo>().getOrder(orderId), // ← 인자 전달 + 비동기 처리
+              builder: (ctx, snap) {
+                if (snap.connectionState == ConnectionState.waiting) {
+                  return const SizedBox.shrink(); // 로딩 중엔 임시로 숨김
+                }
+                final order = snap.data;
+                if (order == null) return const SizedBox.shrink();
+
+                return DeleteMoreMenu<Order>(
+                  entity: order,
+                  onChanged: () {
+                    // 삭제/Undo 후 편집화면 정리
+                    Navigator.maybePop(context);
+                  },
+                );
+              },
+            ),
+        ],
+    ),
 
      // 변경: 전역 검색만 사용 (검색어 없으면 결과 섹션 숨김)
      body: ListView(

@@ -10,6 +10,7 @@ class Work {
   final WorkStatus status;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final bool isDeleted;
 
   Work({
     required this.id,
@@ -17,10 +18,12 @@ class Work {
     required this.qty,
     required this.orderId,
     this.status = WorkStatus.planned,
+      this.isDeleted = false,
     DateTime? createdAt,
     this.updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
         assert(qty > 0, 'qty must be > 0');
+
 
   Work copyWith({
     String? id,
@@ -30,6 +33,7 @@ class Work {
     WorkStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
+  bool? isDeleted,
   }) {
     return Work(
       id: id ?? this.id,
@@ -39,6 +43,7 @@ class Work {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
     );
   }
 

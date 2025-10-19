@@ -8,10 +8,16 @@ import 'src/repos/repo_views.dart';
 import 'src/services/inventory_service.dart';  // ← 추가
 import 'src/utils/item_presentation.dart';
 
+import 'src/repos/inmem_seed_importer.dart';
 
-void main() {
-  final inmem = InMemoryRepo.seeded()..bootstrap();
-  print('[main] InMemoryRepo instance = ${identityHashCode(inmem)}'); // ✅ 여기에 추가
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // ✅ rootBundle 사용 시 필수
+
+  final inmem = InMemoryRepo();
+  final loader = InMemorySeedLoader(inmem);
+  await loader.loadFromAsset('assets/seeds/initial_seed.json'); // ✅ await OK
+
+  print('[main] InMemoryRepo instance = ${identityHashCode(inmem)}');
 
   runApp(
     MultiProvider(
@@ -29,22 +35,21 @@ void main() {
         Provider<WorkRepo>(create: (ctx) => WorkRepoView(ctx.read<InMemoryRepo>())),
         Provider<PurchaseRepo>(create: (ctx) => PurchaseRepoView(ctx.read<InMemoryRepo>())),
 
-        // ItemPathProvider는 "비-Listenable 파사드"로 주입 (베이스 Provider OK)
+        // ItemPathProvider는 "비-Listenable 파사드"로 주입
         Provider<ItemPathProvider>(
           create: (ctx) => RepoItemPathFacade(ctx.read<InMemoryRepo>()),
         ),
 
-
-        // ✅ InventoryService 주입 (Repos 뒤에 와야 ctx.read<...>() 가능)
-          Provider<InventoryService>(
-            create: (ctx) => InventoryService(
-              works:     ctx.read<WorkRepo>(),
-              purchases: ctx.read<PurchaseRepo>(),
-              txns:      ctx.read<TxnRepo>(),
-              boms:      ctx.read<BomRepo>(),
-              // BOM 소비를 아직 안 쓴다면, InventoryService 생성자에서 boms 파라미터를 제거해도 됩니다.
-            ),
+        // ✅ InventoryService 주입
+        Provider<InventoryService>(
+          create: (ctx) => InventoryService(
+            works: ctx.read<WorkRepo>(),
+            purchases: ctx.read<PurchaseRepo>(),
+            txns: ctx.read<TxnRepo>(),
+            boms: ctx.read<BomRepo>(),
+            orders: ctx.read<OrderRepo>(),
           ),
+        ),
       ],
       child: const StockApp(),
     ),
