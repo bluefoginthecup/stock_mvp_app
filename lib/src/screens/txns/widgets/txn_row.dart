@@ -6,6 +6,10 @@ import '../../../models/types.dart';
 import '../../../ui/ui_utils.dart';
 import '../../../repos/repo_interfaces.dart';
 
+// ✅ 브레드크럼 라벨 재사용
+import '../../../utils/item_presentation.dart'; // ItemLabel, ItemPresentationService
+
+
 /// 입·출고 기록 한 줄 표시
 /// - 아이템명 (없으면 itemId tail)
 /// - 주문자명 (order인 경우)
@@ -74,11 +78,16 @@ class TxnRow extends StatelessWidget {
         final customer = snap.data?.$2;
 
         return ListTile(
-          leading: leadIcon,
-          title: Text(
-            '$qtyStr • $itemName',
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+                      leading: leadIcon,
+                  // ✅ 상단 타이틀을 "풀 경로 브레드크럼"으로 교체
+                  title: Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: ItemLabel(
+                      itemId: t.itemId,
+                      full: true,          // 전체 경로: 예) 완제품 › 사계절용 › 에리카 화이트 › 50기본형 방석커버
+                      // compact / separator / maxLines 등이 있다면 여기서 옵션으로 조정 가능
+                    ),
+                  ),
           subtitle: Wrap(
             spacing: 8,
             runSpacing: 4,
@@ -87,8 +96,13 @@ class TxnRow extends StatelessWidget {
               Text(fmtYmdHm(t.ts)),
               reasonBadge,
               if (customer != null) Text('주문자 $customer'),
-              Text('item ${shortId(t.itemId)}'),
-              if (t.refId != null) Text('ref ${shortId(t.refId)}'),
+              if (t.refType == RefType.order)
+                Text('주문번호 ${shortId(t.refId)}')
+              else if (t.refType == RefType.work)
+                Text('작업번호 ${shortId(t.refId)}')
+              else if (t.refType == RefType.purchase)
+                  Text('발주번호 ${shortId(t.refId)}')
+
             ],
           ),
           dense: true,

@@ -22,14 +22,14 @@ class InventoryService {
     if (w == null) return;
     if (!canTransitionWork(w.status, WorkStatus.inProgress)) return; // ← Work용 가드 OK
 
-    // 완제품 planned in (예약)
-    await txns.addInPlanned(
-      itemId: w.itemId,
-      qty: w.qty,
-      refType: 'work',
-      refId: w.id,
-      note: 'work planned in',
-    );
+    // // 완제품 planned in (예약)
+    // await txns.addInPlanned(
+    //   itemId: w.itemId,
+    //   qty: w.qty,
+    //   refType: 'work',
+    //   refId: w.id,
+    //   note: 'work planned in',
+    // );
 
     // // (선택) BOM 소비 planned out — TxnRepo에 out 메서드 없으면 주석 유지
     // final rows = await boms.listBom(w.itemId);
