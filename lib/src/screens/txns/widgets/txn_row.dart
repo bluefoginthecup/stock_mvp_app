@@ -5,6 +5,7 @@ import '../../../models/txn.dart';
 import '../../../models/types.dart';
 import '../../../ui/ui_utils.dart';
 import '../../../repos/repo_interfaces.dart';
+import '../../../ui/common/qty_badge.dart';
 
 // ✅ 브레드크럼 라벨 재사용
 import '../../../utils/item_presentation.dart'; // ItemLabel, ItemPresentationService
@@ -52,19 +53,22 @@ class TxnRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isInbound = t.type == TxnType.in_;
-    final qtyStr = (isInbound ? '+' : '-') + t.qty.toString();
 
     // 뱃지
-    Widget reasonBadge;
+    Widget reasonBadge = badge(t.refType.name, Colors.blueGrey); // ← 기본값
+
     if (t.refType == RefType.work) {
-      reasonBadge = badge('작업입고', Colors.green, icon: Icons.factory);
+      reasonBadge = t.isPlanned
+          ? badge('작업등록', Colors.blueGrey)
+          : badge('작업물 입고', Colors.green, icon: Icons.factory);
+    } else if (t.refType == RefType.purchase) {
+      reasonBadge = t.isPlanned ? badge('발주등록', Colors.blueGrey)
+          : badge('발주품 입고', Colors.green);
     } else if (t.refType == RefType.order) {
-      reasonBadge = isInbound
-          ? badge('주문입고?', Colors.blueGrey)
+      reasonBadge = t.isIn ? badge('주문입고', Colors.blueGrey)
           : badge('주문출고', Colors.red, icon: Icons.shopping_cart);
-    } else {
-      reasonBadge = badge(t.refType.name, Colors.blueGrey);
     }
+
 
     final leadIcon = Icon(
       isInbound ? Icons.south_west : Icons.north_east,
@@ -79,13 +83,22 @@ class TxnRow extends StatelessWidget {
 
         return ListTile(
                       leading: leadIcon,
-                  // ✅ 상단 타이틀을 "풀 경로 브레드크럼"으로 교체
-                  title: Padding(
+                      // ✅ 타이틀: [수량 배지]  [풀 경로 브레드크럼]
+                      title: Padding(
                     padding: const EdgeInsets.only(bottom: 2),
-                    child: ItemLabel(
-                      itemId: t.itemId,
-                      full: true,          // 전체 경로: 예) 완제품 › 사계절용 › 에리카 화이트 › 50기본형 방석커버
-                      // compact / separator / maxLines 등이 있다면 여기서 옵션으로 조정 가능
+                    child: Row(
+                      children: [
+                        // 수량 배지
+                        QtyBadge(qty: t.qty, direction: t.type, status: t.status),
+                        const SizedBox(width: 8),
+                        // 브레드크럼 (한 줄 말줄임)
+                        Expanded(
+                          child: ItemLabel(
+                            itemId: t.itemId,
+                            full: true,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
           subtitle: Wrap(

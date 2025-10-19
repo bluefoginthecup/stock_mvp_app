@@ -165,9 +165,22 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
            if (_results.isEmpty) Text('검색 결과가 없습니다.'),
            ..._results.map((it) => ListTile(
              leading: const Icon(Icons.inventory_2),
-             title: ItemLabel(itemId: it.id, full: true),
-             subtitle: Text('SKU: ${it.sku}'),
-             trailing: FilledButton(onPressed: () => _addLine(it), child: const Text('+ 추가')),
+     title: ItemLabel(
+       itemId: it.id,
+       full: true,
+     ),
+     subtitle: Row(
+       children: [
+         Expanded(child: Text('SKU: ${it.sku}')),
+         const SizedBox(width: 8),
+         FilledButton(
+           onPressed: () => _addLine(it),
+           child: const Text('+ 추가'),
+         ),
+       ],
+     ),
+     trailing: const SizedBox.shrink(), // ← title 공간 확보
+     isThreeLine: true,                 // ← 2줄 title + 1줄 subtitle
            )),
            const Divider(height: 24),
          ],
@@ -194,24 +207,30 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     return ListTile(
                       key: ValueKey(ln.id),
                       leading: const Icon(Icons.shopping_cart),
-                      title: ItemLabel(itemId: ln.itemId, full: true),
-                      subtitle: Text(context.t.order_line_qty(ln.qty)),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      title: ItemLabel(
+                        itemId: ln.itemId,
+                        full: true,
+                      ),
+
+                      subtitle: Row(
                         children: [
+                          const SizedBox(width: 0), // 필요시 공간 조절
                           QtyControl(
+                            label: '수량',          // ← 라벨 켜기 (i18n이면 context.t.qty)
                             value: ln.qty,
                             min: 1,
                             step: 1,
                             onChanged: (q) => _updateQty(ln.id, q),
-                          ),
-                          IconButton(
-                            tooltip: context.t.tooltip_delete_line,
-                            icon: const Icon(Icons.delete_outline),
-                            onPressed: () => _removeLine(ln.id),
+                            // 옵션 조절
+                            dense: true,
+                            fieldWidth: 48,         // 숫자 필드 너비 살짝 줄이기
+                            labelGap: 8,
+                            gap: 4,
                           ),
                         ],
                       ),
+
+                      trailing: const SizedBox.shrink(), // ← 충돌 방지
                     );
                   },
                 );

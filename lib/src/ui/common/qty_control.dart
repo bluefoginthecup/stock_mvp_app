@@ -1,4 +1,3 @@
-// lib/src/widgets/qty_control.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +12,16 @@ class QtyControl extends StatefulWidget {
   final bool dense;
   final bool allowLongPressRepeat;
 
+  // 🔵 새 옵션들
+  /// 앞에 붙는 라벨 (예: '수량'). null이면 라벨 숨김.
+  final String? label;
+  /// 라벨과 컨트롤 사이 간격
+  final double labelGap;
+  /// 라벨 텍스트 스타일
+  final TextStyle? labelStyle;
+  /// 버튼/필드 사이 간격 (dense와 별개로 미세 조정)
+  final double gap;
+
   const QtyControl({
     super.key,
     required this.value,
@@ -23,6 +32,11 @@ class QtyControl extends StatefulWidget {
     this.fieldWidth = 56,
     this.dense = true,
     this.allowLongPressRepeat = true,
+    // 🔵 새 옵션 기본값
+    this.label,                 // 기본 null = 라벨 없음
+    this.labelGap = 8,
+    this.labelStyle,
+    this.gap = 4,
   });
 
   @override
@@ -86,7 +100,7 @@ class _QtyControlState extends State<QtyControl> {
   void _startRepeat(int delta) {
     if (!widget.allowLongPressRepeat) return;
     _repeatTimer?.cancel();
-    // 시작 지연 후 빠르게 반복
+    // 즉시 시작(지연 필요하면 Timer 한번 준 뒤 periodic로 바꿔도 됨)
     _repeatTimer = Timer.periodic(const Duration(milliseconds: 80), (_) {
       _stepBy(delta);
     });
@@ -99,7 +113,8 @@ class _QtyControlState extends State<QtyControl> {
 
   @override
   Widget build(BuildContext context) {
-    final btnPadding = widget.dense ? EdgeInsets.zero : const EdgeInsets.all(8);
+    final isDense = widget.dense;
+    final btnPadding = isDense ? EdgeInsets.zero : const EdgeInsets.all(8);
 
     final minusBtn = GestureDetector(
       onTap: () => _stepBy(-widget.step),
@@ -110,7 +125,7 @@ class _QtyControlState extends State<QtyControl> {
         constraints: const BoxConstraints(),
         icon: const Icon(Icons.remove),
         onPressed: () => _stepBy(-widget.step),
-        tooltip: 'context.t.qty_decrease',
+        tooltip: 'decrease', // i18n 필요시 외부에서 래핑
       ),
     );
 
@@ -123,34 +138,44 @@ class _QtyControlState extends State<QtyControl> {
         constraints: const BoxConstraints(),
         icon: const Icon(Icons.add),
         onPressed: () => _stepBy(widget.step),
-        tooltip: 'context.t.qty_increase',
+        tooltip: 'increase',
       ),
     );
 
+    final qtyField = SizedBox(
+      width: widget.fieldWidth,
+      child: TextField(
+        controller: _c,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: InputDecoration(
+          isDense: isDense,
+          contentPadding: isDense
+              ? const EdgeInsets.symmetric(vertical: 6)
+              : const EdgeInsets.symmetric(vertical: 10),
+          border: const OutlineInputBorder(),
+        ),
+        onSubmitted: (v) => _apply(int.tryParse(v) ?? widget.value),
+        onTapOutside: (_) => _apply(int.tryParse(_c.text) ?? widget.value),
+      ),
+    );
+
+    final children = <Widget>[
+      if (widget.label != null) ...[
+        Text(widget.label!, style: widget.labelStyle ?? const TextStyle(color: Colors.green)),
+        SizedBox(width: widget.labelGap),
+      ],
+      minusBtn,
+      SizedBox(width: widget.gap),
+      qtyField,
+      SizedBox(width: widget.gap),
+      plusBtn,
+    ];
+
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        minusBtn,
-        SizedBox(
-          width: widget.fieldWidth,
-          child: TextField(
-            controller: _c,
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: InputDecoration(
-              isDense: widget.dense,
-              contentPadding: widget.dense
-                  ? const EdgeInsets.symmetric(vertical: 6)
-                  : const EdgeInsets.symmetric(vertical: 10),
-              border: const OutlineInputBorder(),
-            ),
-            onSubmitted: (v) => _apply(int.tryParse(v) ?? widget.value),
-            onTapOutside: (_) => _apply(int.tryParse(_c.text) ?? widget.value),
-          ),
-        ),
-        plusBtn,
-      ],
+      children: children,
     );
   }
 }

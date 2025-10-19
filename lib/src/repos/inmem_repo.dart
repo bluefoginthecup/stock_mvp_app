@@ -629,10 +629,10 @@ class InMemoryRepo extends ChangeNotifier
       id: _uuid.v4(),
       ts: DateTime.now(),
       type: delta >= 0 ? TxnType.in_ : TxnType.out_, // ← enum 값 수정
+      status: TxnStatus.actual,
       itemId: itemId,
       qty: delta.abs(),
       refType: RefTypeX.fromString(refType ?? 'order'),
-
       refId: refId ?? 'unknown',                       // ✅ null 방지
       note: note,
     );
@@ -689,6 +689,7 @@ class InMemoryRepo extends ChangeNotifier
       id: _uuid.v4(),
       ts: DateTime.now(),
       type: TxnType.in_,
+      status: TxnStatus.planned,
       itemId: itemId,
       qty: qty,
       refType: RefTypeX.fromString(refType),
@@ -712,6 +713,7 @@ class InMemoryRepo extends ChangeNotifier
       id: _uuid.v4(),
       ts: DateTime.now(),
       type: TxnType.in_,
+      status: TxnStatus.actual,
       itemId: itemId,
       qty: qty,
       refType: RefTypeX.fromString(refType),
@@ -806,14 +808,14 @@ class InMemoryRepo extends ChangeNotifier
     if (w == null) return;
     if (w.status == WorkStatus.done) return;
 
-    // 실제 입고 반영
-    await addInActual(
-      itemId: w.itemId,
-      qty: w.qty,
-      refType: 'work',
-      refId: id,
-      note: '작업 완료 입고',
-    );
+    // // 실제 입고 반영
+    // await addInActual(
+    //   itemId: w.itemId,
+    //   qty: w.qty,
+    //   refType: 'work',
+    //   refId: id,
+    //   note: '작업 완료 입고',
+    // );
 
     // 상태 업데이트
     _works[id] = w.copyWith(

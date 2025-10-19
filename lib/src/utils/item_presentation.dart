@@ -101,7 +101,21 @@ class _ItemPathAdapter implements ItemPathProvider {
 class ItemLabel extends StatelessWidget {
   final String itemId;
   final bool full; // true면 breadcrumb, false면 [태그] 이름
-  const ItemLabel({super.key, required this.itemId, this.full = false});
+  final int? maxLines;                 // ← 추가: 표시 줄 수 (null=제한없음)
+    final bool softWrap;                 // ← 추가: 자동 줄바꿈
+    final TextOverflow? overflow;        // ← 추가: 말줄임/잘림
+    final TextStyle? style;              // ← 추가: 텍스트 스타일
+    final String separator;              // ← 추가: 브레드크럼 구분자 (full=true일 때)
+    const ItemLabel({
+      super.key,
+      required this.itemId,
+      this.full = false,
+      this.maxLines = 2,                 // ← 기본 "두 줄"
+      this.softWrap = true,
+      this.overflow = TextOverflow.ellipsis,
+      this.style,
+      this.separator = ' › ',
+    });
 
   @override
   Widget build(BuildContext context) {
@@ -110,10 +124,16 @@ class ItemLabel extends StatelessWidget {
       paths: context.read<ItemPathProvider>(),
     );
     return FutureBuilder<String>(
-      future: full ? svc.fullLabel(itemId) : svc.shortLabel(itemId),
+      future: full ? svc.fullLabel(itemId, sep: separator) : svc.shortLabel(itemId),
       builder: (ctx, snap) {
         if (!snap.hasData) return const SizedBox.shrink();
-        return Text(snap.data!);
+                return Text(
+                  snap.data!,
+                  style: style,
+                  maxLines: maxLines,
+                  softWrap: softWrap,
+                  overflow: overflow,
+                );
       },
     );
   }
