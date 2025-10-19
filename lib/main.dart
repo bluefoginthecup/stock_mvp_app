@@ -6,6 +6,7 @@ import 'src/repos/inmem_repo.dart';
 import 'src/repos/repo_interfaces.dart';
 import 'src/repos/repo_views.dart';
 import 'src/services/inventory_service.dart';  // ← 추가
+import 'src/utils/item_presentation.dart';
 
 
 void main() {
@@ -27,6 +28,8 @@ void main() {
         Provider<BomRepo>(create: (ctx) => BomRepoView(ctx.read<InMemoryRepo>())),
         Provider<WorkRepo>(create: (ctx) => WorkRepoView(ctx.read<InMemoryRepo>())),
         Provider<PurchaseRepo>(create: (ctx) => PurchaseRepoView(ctx.read<InMemoryRepo>())),
+        Provider<ItemPathProvider>(create: (ctx) => ctx.read<InMemoryRepo>()), // ★ 추가
+
 
   // ✅ InventoryService 주입 (Repos 뒤에 와야 ctx.read<...>() 가능)
           Provider<InventoryService>(

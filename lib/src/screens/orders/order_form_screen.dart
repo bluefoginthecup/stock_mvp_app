@@ -7,6 +7,7 @@ import '../../services/order_planning_service.dart';
 import '../../ui/common/qty_control.dart';
 import '../../ui/common/ui.dart';
 import '../../ui/common/search_field.dart'; // 🔍 공용 검색필드 (디바운스 내장)
+import '../../utils/item_presentation.dart';
 
 
 class OrderFormScreen extends StatefulWidget {
@@ -164,7 +165,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
            if (_results.isEmpty) Text('검색 결과가 없습니다.'),
            ..._results.map((it) => ListTile(
              leading: const Icon(Icons.inventory_2),
-             title: Text(it.name),
+             title: ItemLabel(itemId: it.id, full: true),
              subtitle: Text('SKU: ${it.sku}'),
              trailing: FilledButton(onPressed: () => _addLine(it), child: const Text('+ 추가')),
            )),
@@ -193,7 +194,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     return ListTile(
                       key: ValueKey(ln.id),
                       leading: const Icon(Icons.shopping_cart),
-                      title: Text(itemName),
+                      title: ItemLabel(itemId: ln.itemId, full: true),
                       subtitle: Text(context.t.order_line_qty(ln.qty)),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,

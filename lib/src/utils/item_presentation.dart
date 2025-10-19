@@ -88,6 +88,14 @@ class ItemPresentationService {
     return buildFullBreadcrumb(itemName: item.name, pathNames: names, sep: sep);
   }
 }
+// InMemoryRepo(=ChangeNotifier)이지만, 여기서는 비-Listenable로 감싸서 주입하기 위한 어댑터
+class _ItemPathAdapter implements ItemPathProvider {
+  final ItemPathProvider _inner;
+  _ItemPathAdapter(this._inner);
+
+  @override
+  Future<List<String>> itemPathNames(String itemId) => _inner.itemPathNames(itemId);
+}
 
 /// (선택) 어디서나 쓰는 라벨 위젯
 class ItemLabel extends StatelessWidget {

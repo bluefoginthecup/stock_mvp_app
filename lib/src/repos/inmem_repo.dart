@@ -13,6 +13,7 @@ import 'repo_interfaces.dart';
 import 'dart:async'; // ✅ StreamController 사용을 위해 필요
 
 import '../models/folder_node.dart';
+import '../utils/item_presentation.dart';
 
 // === Common move types (top-level) ===
 enum EntityKind { item, folder }
@@ -25,7 +26,7 @@ class MoveRequest {
 }
 
 class InMemoryRepo extends ChangeNotifier
-    implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseRepo {
+    implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseRepo, ItemPathProvider {
   final _uuid = const Uuid();
   final Map<String, Item> _items = {};
   final Map<String, Order> _orders = {};
@@ -532,24 +533,36 @@ class InMemoryRepo extends ChangeNotifier
     return (folders, items);
   }
 // === 내부 코어: 경로 + (옵션)키워드로 아이템 조회 ===
-    Future<List<Item>> _queryItemsByPath({
-      String? l1, String? l2, String? l3,
-      String? keyword,
-      bool recursive = true,
-    }) async {
-    // ⚠️ _pathMatches 는 앞서 공통헬퍼로 뺀 것을 사용한다고 가정
-    Iterable<MapEntry<String, Item>> it = _items.entries
-        .where((e) => _pathMatches(e.key, l1: l1, l2: l2, l3: l3, recursive: recursive));
+  Future<List<Item>> _queryItemsByPath({
+    String? l1,
+    String? l2,
+    String? l3,
+    String? keyword,
+    bool recursive = true,
+  }) async {
+    // 1) 경로(prefix) 매칭
+    Iterable<MapEntry<String, Item>> it = _items.entries.where(
+          (e) => _pathMatches(e.key, l1: l1, l2: l2, l3: l3, recursive: recursive),
+    );
 
-    final k = keyword?.trim().toLowerCase();
-    if (k != null && k.isNotEmpty) {
+    // 2) 키워드(이름/sku/폴더명) 매칭
+    final k = (keyword ?? '').trim();
+    if (k.isNotEmpty) {
       it = it.where((e) {
-        final v = e.value;
-        return v.name.toLowerCase().contains(k) || v.sku.toLowerCase().contains(k);
+        final item = e.value;
+        final names = _itemPaths[e.key]
+            ?.map((fid) => _folders[fid]?.name ?? '')
+            .toList() ??
+            const <String>[];
+        return matchesItemOrPath(item: item, pathNames: names, keyword: k);
       });
     }
+
+    // 3) ✅ 항상 반환 (여기가 빠지면 body_might_complete_normally 경고 발생)
     return it.map((e) => e.value).toList(growable: false);
   }
+
+
   @override
   Future<List<Item>> searchItemsGlobal(String keyword) async {
     if (keyword.trim().isEmpty) return const [];
