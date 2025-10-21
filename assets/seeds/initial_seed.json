@@ -406,6 +406,150 @@
       "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 26
+    },
+    {
+      "id": "f-raw-470a50",
+      "name": "raw",
+      "parentId": null,
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "f-raw-fabric-02f3cf",
+      "name": "fabric",
+      "parentId": "f-raw-470a50",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "f-raw-fabric-front-bf819e",
+      "name": "front",
+      "parentId": "f-raw-fabric-02f3cf",
+      "depth": 3,
+      "order": 0
+    },
+    {
+      "id": "f-raw-fabric-back-4695a1",
+      "name": "back",
+      "parentId": "f-raw-fabric-02f3cf",
+      "depth": 3,
+      "order": 1
+    },
+    {
+      "id": "f-sub-d149aa",
+      "name": "sub",
+      "parentId": null,
+      "depth": 1,
+      "order": 1
+    },
+    {
+      "id": "f-sub-piping-ab6478",
+      "name": "piping",
+      "parentId": "f-sub-d149aa",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "f-sub-zipper-85a9dc",
+      "name": "zipper",
+      "parentId": "f-sub-d149aa",
+      "depth": 2,
+      "order": 1
+    },
+    {
+      "id": "f-raw-a9967b",
+      "name": "Raw",
+      "parentId": null,
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "f-raw-fabric-a1da7f",
+      "name": "fabric",
+      "parentId": "f-raw-a9967b",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "f-raw-fabric-top-254c50",
+      "name": "Top",
+      "parentId": "f-raw-fabric-a1da7f",
+      "depth": 3,
+      "order": 0
+    },
+    {
+      "id": "f-raw-fabric-back-8304a3",
+      "name": "Back",
+      "parentId": "f-raw-fabric-a1da7f",
+      "depth": 3,
+      "order": 1
+    },
+    {
+      "id": "f-sub-33d442",
+      "name": "Sub",
+      "parentId": null,
+      "depth": 1,
+      "order": 1
+    },
+    {
+      "id": "f-sub-piping-3521f9",
+      "name": "piping",
+      "parentId": "f-sub-33d442",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "f-sub-zipper-5fd8db",
+      "name": "Zipper",
+      "parentId": "f-sub-33d442",
+      "depth": 2,
+      "order": 1
+    }
+  ],
+  "items": [
+    {
+      "id": "it-topwhite-f2cb0b",
+      "name": "topwhite",
+      "sku": "RAW-FAB-FRONT-TOPWHITE",
+      "unit": "m",
+      "folder": "Raw",
+      "subfolder": "fabric",
+      "subsubfolder": "front",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-dotgray-813cad",
+      "name": "dotgray",
+      "sku": "RAW-FAB-BACK-DOTGRAY",
+      "unit": "m",
+      "folder": "Raw",
+      "subfolder": "fabric",
+      "subsubfolder": "back",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-pipinggold-16d3d8",
+      "name": "pipinggold",
+      "sku": "SUB-PIPING-GOLD",
+      "unit": "ea",
+      "folder": "SubMaterial",
+      "subfolder": "piping",
+      "subsubfolder": null,
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-50sitzipper-a6f824",
+      "name": "50sitzipper",
+      "sku": "SUB-ZIPPER-50SIT",
+      "unit": "ea",
+      "folder": "SubMaterial",
+      "subfolder": "zipper",
+      "subsubfolder": null,
+      "minQty": 0,
+      "qty": 0
     }
   ],
   "items": [

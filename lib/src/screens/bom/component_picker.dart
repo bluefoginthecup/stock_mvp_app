@@ -4,14 +4,13 @@ import 'package:provider/provider.dart';
 
 import '../../models/item.dart';
 import '../../models/bom.dart';
-import '../../repos/repo_interfaces.dart';
+import '../../repos/inmem_repo.dart';        // ✅ InMemoryRepo 직접 사용
 import '../../utils/item_presentation.dart'; // ItemLabel
 
 /// BOM 구성품 선택 다이얼로그.
 /// 선택 시 itemId(String)를 pop으로 반환한다.
 class ComponentPicker extends StatefulWidget {
-  /// 이 피커가 호출된 BOM의 루트 (finished에서 호출되면 semi/raw/sub만 허용)
-  final BomRoot root;
+  final BomRoot root;         // finished OR semi
   final String initialQuery;
 
   const ComponentPicker({
@@ -48,10 +47,7 @@ class _ComponentPickerState extends State<ComponentPicker> {
       case BomRoot.finished:
         return 'ALL'; // 세 가지 모두
       case BomRoot.semi:
-        return 'Raw'; // 기본 Raw에서 시작(원하는 경우 탭으로 전환)
-      case BomRoot.raw:
-      case BomRoot.sub:
-        return 'ALL';
+        return 'Raw'; // 기본 Raw에서 시작
     }
   }
 
@@ -61,27 +57,31 @@ class _ComponentPickerState extends State<ComponentPicker> {
         return const ['SemiFinished', 'Raw', 'Sub'];
       case BomRoot.semi:
         return const ['Raw', 'Sub'];
-      case BomRoot.raw:
-      case BomRoot.sub:
-        return const <String>[];
     }
   }
 
   Future<void> _loadInitial() async {
     setState(() => _loading = true);
-    final repo = context.read<ItemRepo>();
 
-    // 허용 루트들에서 모두 모아서 병합
+    // ✅ InMemoryRepo 직접 사용 (listItemsByFolderPath, pathIdsByNames 활용)
+    final repo = context.read<InMemoryRepo>();
     final allowed = _allowedL1(widget.root);
+
     final List<Item> acc = [];
-    for (final l1 in allowed) {
-      final ids = await repo.pathIdsByNames(l1Name: l1, createIfMissing: true);
+    for (final l1Name in allowed) {
+      // 이름 -> id들
+      final ids = await repo.pathIdsByNames(
+        l1Name: l1Name,
+        createIfMissing: true, // 존재 안 하면 만들어줌 (시드 환경에서도 안전)
+      );
+      // L1 전체 재귀 조회
       final items = await repo.listItemsByFolderPath(
-        l1: ids[0], // l1 folderId
+        l1: ids[0],
         recursive: true,
       );
       acc.addAll(items);
     }
+
     // 중복 제거
     final map = {for (final it in acc) it.id: it};
     _items = map.values.toList();
@@ -96,9 +96,15 @@ class _ComponentPickerState extends State<ComponentPicker> {
 
     Iterable<Item> list = _items;
 
-    // L1 칩 필터 (ALL이면 생략) — _items 자체가 이미 허용 L1로 제한된 상태라 noop
+    // 활성 L1 필터 (ALL이면 패스)
     if (active != 'ALL') {
-      list = list.where((_) => true);
+      // 간단하게 이름 문자열 포함으로 1차 필터 (repo 저장 방식에 따라 향후 보강 가능)
+      list = list.where((it) {
+        // ItemLabel은 id만 필요하지만, 여기선 속성으로 걸러야 하므로
+        // 이름/sku 문자열로 대충 1차 필터
+        final name = (it.name ?? '');
+        return name.contains(active); // 예: "Raw", "Sub" 등이 이름경로에 포함되도록 시드 구성 권장
+      });
     }
 
     // 키워드(이름/sku) 필터
@@ -137,11 +143,9 @@ class _ComponentPickerState extends State<ComponentPicker> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 상단 L1 필터 칩 (허용되는 루트만 표시)
             if (allowed.isNotEmpty)
               Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: 8, runSpacing: 8,
                 children: [
                   ChoiceChip(
                     label: const Text('전체'),
@@ -164,7 +168,6 @@ class _ComponentPickerState extends State<ComponentPicker> {
               ),
             const SizedBox(height: 12),
 
-            // 검색창
             TextField(
               controller: _searchC,
               decoration: const InputDecoration(
@@ -179,7 +182,6 @@ class _ComponentPickerState extends State<ComponentPicker> {
             if (!_loading && _searching) const LinearProgressIndicator(),
             const SizedBox(height: 8),
 
-            // 결과 리스트
             Flexible(
               child: _results.isEmpty
                   ? const Center(child: Text('선택 가능한 항목이 없습니다.'))

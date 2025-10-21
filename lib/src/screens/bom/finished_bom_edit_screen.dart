@@ -62,9 +62,16 @@ class _FinishedBomEditScreenState extends State<FinishedBomEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Finished BOM 편집'), actions: [
-        TextButton(onPressed: _save, child: const Text('저장', style: TextStyle(color: Colors.white)))
-      ]),
+        appBar: AppBar(
+          title: const Text('Finished BOM 편집'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.save),
+              tooltip: '저장',
+              onPressed: _save,
+            ),
+          ],
+        ),
       floatingActionButton: FloatingActionButton(onPressed: _addRow, child: const Icon(Icons.add)),
       body: _rows.isEmpty
           ? const Center(child: Text('레시피가 없습니다. + 버튼으로 행을 추가하세요.'))

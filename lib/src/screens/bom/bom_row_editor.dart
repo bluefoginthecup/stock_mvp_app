@@ -57,7 +57,10 @@ class _BomRowEditorState extends State<BomRowEditor> {
               onTap: () async {
                 final picked = await showDialog<String>(
                   context: context,
-                  builder: (_) => const ComponentPicker(),
+                  builder: (_) => ComponentPicker(
+                    root: widget.root,     // ✅ 빠졌던 root 전달
+                    initialQuery: '',      // 선택사항
+                  ),
                 );
                 if (picked != null) setState(() => _componentId = picked);
               },
