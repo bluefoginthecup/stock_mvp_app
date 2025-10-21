@@ -2,212 +2,3088 @@
   "version": 1,
   "folders": [
     {
-      "id": "f-finished-8d99a8",
-      "name": "Finished",
+      "id": "f-semifinished-5e4eac",
+      "name": "SemiFinished",
       "parentId": null,
       "depth": 1,
       "order": 0
     },
     {
-      "id": "f-4seasons-869a3d",
+      "id": "f-semifinished-emb-3c60b5",
+      "name": "emb",
+      "parentId": "f-semifinished-5e4eac",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "f-semifinished-emb-rouen-gray-a1140c",
+      "name": "rouen_gray",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 0
+    },
+    {
+      "id": "f-semifinished-emb-rouen-pink-9ad790",
+      "name": "rouen_pink",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 1
+    },
+    {
+      "id": "f-semifinished-emb-rouen-gold-002fd5",
+      "name": "rouen_gold",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 2
+    },
+    {
+      "id": "f-semifinished-emb-rouen-beige-3d9095",
+      "name": "rouen_beige",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 3
+    },
+    {
+      "id": "f-semifinished-emb-erica-white-dc2dab",
+      "name": "erica_white",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 4
+    },
+    {
+      "id": "f-semifinished-emb-erica-navy-af434e",
+      "name": "erica_navy",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 5
+    },
+    {
+      "id": "f-semifinished-emb-erica-beige-2dc52a",
+      "name": "erica_beige",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 6
+    },
+    {
+      "id": "f-semifinished-emb-dotori-white-c80d80",
+      "name": "dotori_white",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 7
+    },
+    {
+      "id": "f-semifinished-emb-dotori-coffee-793f23",
+      "name": "dotori_coffee",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 8
+    },
+    {
+      "id": "f-semifinished-emb-encia-white-d1654d",
+      "name": "encia_white",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 9
+    },
+    {
+      "id": "f-semifinished-emb-encia-orange-0539d4",
+      "name": "encia_orange",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 10
+    },
+    {
+      "id": "f-semifinished-emb-sobok-white-038f4d",
+      "name": "sobok_white",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 11
+    },
+    {
+      "id": "f-semifinished-emb-sobok-gray-c24c4a",
+      "name": "sobok_gray",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 12
+    },
+    {
+      "id": "f-semifinished-emb-sobok-pink-e649be",
+      "name": "sobok_pink",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 13
+    },
+    {
+      "id": "f-semifinished-emb-lavender-gold-db15c3",
+      "name": "lavender_gold",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 14
+    },
+    {
+      "id": "f-semifinished-emb-iris-blue-7f2a35",
+      "name": "iris_blue",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 15
+    },
+    {
+      "id": "f-semifinished-emb-tatiana-rose-a098c1",
+      "name": "tatiana_rose",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 16
+    },
+    {
+      "id": "f-semifinished-emb-ronze-gray-5dcc30",
+      "name": "ronze_gray",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 17
+    },
+    {
+      "id": "f-semifinished-emb-magritte-gray-34a00a",
+      "name": "magritte_gray",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 18
+    },
+    {
+      "id": "f-semifinished-emb-magritte-denim-137092",
+      "name": "magritte_denim",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 19
+    },
+    {
+      "id": "f-semifinished-emb-magritte-beige-a805c7",
+      "name": "magritte_beige",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 20
+    },
+    {
+      "id": "f-semifinished-emb-thistles-gray-b609bc",
+      "name": "thistles_gray",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 21
+    },
+    {
+      "id": "f-semifinished-emb-thistles-denim-d2e620",
+      "name": "thistles_denim",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 22
+    },
+    {
+      "id": "f-semifinished-emb-thistles-khaki-2e5c44",
+      "name": "thistles_khaki",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 23
+    },
+    {
+      "id": "f-semifinished-emb-pedro-ivory-e8d77c",
+      "name": "pedro_ivory",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 24
+    },
+    {
+      "id": "f-semifinished-emb-pedro-gray-5ae95e",
+      "name": "pedro_gray",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 25
+    },
+    {
+      "id": "f-semifinished-emb-pedro-blue-518244",
+      "name": "pedro_blue",
+      "parentId": "f-semifinished-emb-3c60b5",
+      "depth": 3,
+      "order": 26
+    },
+    {
+      "id": "f-finished-8d99a8",
+      "name": "Finished",
+      "parentId": null,
+      "depth": 1,
+      "order": 1
+    },
+    {
+      "id": "f-finished-4seasons-2468cc",
       "name": "4seasons",
       "parentId": "f-finished-8d99a8",
       "depth": 2,
       "order": 0
     },
     {
-      "id": "f-rouen-gray-413f72",
+      "id": "f-finished-4seasons-rouen-gray-661721",
       "name": "rouen_gray",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 0
     },
     {
-      "id": "f-rouen-pink-1a1f04",
+      "id": "f-finished-4seasons-rouen-pink-a777c0",
       "name": "rouen_pink",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 1
     },
     {
-      "id": "f-rouen-gold-96d612",
+      "id": "f-finished-4seasons-rouen-gold-c7b88a",
       "name": "rouen_gold",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 2
     },
     {
-      "id": "f-rouen-beige-d4ca75",
+      "id": "f-finished-4seasons-rouen-beige-4bdc89",
       "name": "rouen_beige",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 3
     },
     {
-      "id": "f-erica-white-a517fa",
+      "id": "f-finished-4seasons-erica-white-bedd01",
       "name": "erica_white",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 4
     },
     {
-      "id": "f-erica-navy-a6b573",
+      "id": "f-finished-4seasons-erica-navy-ab2114",
       "name": "erica_navy",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 5
     },
     {
-      "id": "f-erica-beige-f80ced",
+      "id": "f-finished-4seasons-erica-beige-8c3c03",
       "name": "erica_beige",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 6
     },
     {
-      "id": "f-dotori-white-f6327e",
+      "id": "f-finished-4seasons-dotori-white-858009",
       "name": "dotori_white",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 7
     },
     {
-      "id": "f-dotori-coffee-298828",
+      "id": "f-finished-4seasons-dotori-coffee-254f2c",
       "name": "dotori_coffee",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 8
     },
     {
-      "id": "f-encia-white-7b226f",
+      "id": "f-finished-4seasons-encia-white-be680c",
       "name": "encia_white",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 9
     },
     {
-      "id": "f-encia-orange-c9c3fc",
+      "id": "f-finished-4seasons-encia-orange-c60066",
       "name": "encia_orange",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 10
     },
     {
-      "id": "f-sobok-white-f66947",
+      "id": "f-finished-4seasons-sobok-white-28a856",
       "name": "sobok_white",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 11
     },
     {
-      "id": "f-sobok-gray-6450bd",
+      "id": "f-finished-4seasons-sobok-gray-5ad8bd",
       "name": "sobok_gray",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 12
     },
     {
-      "id": "f-sobok-pink-d5916a",
+      "id": "f-finished-4seasons-sobok-pink-9acbcf",
       "name": "sobok_pink",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 13
     },
     {
-      "id": "f-lavender-gold-49a9f8",
+      "id": "f-finished-4seasons-lavender-gold-c575af",
       "name": "lavender_gold",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 14
     },
     {
-      "id": "f-iris-blue-aef693",
+      "id": "f-finished-4seasons-iris-blue-e17ce1",
       "name": "iris_blue",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 15
     },
     {
-      "id": "f-tatiana-rose-828702",
+      "id": "f-finished-4seasons-tatiana-rose-140430",
       "name": "tatiana_rose",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 16
     },
     {
-      "id": "f-ronze-gray-209c75",
+      "id": "f-finished-4seasons-ronze-gray-f25e10",
       "name": "ronze_gray",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 17
     },
     {
-      "id": "f-magritte-gray-ffa812",
+      "id": "f-finished-4seasons-magritte-gray-633aee",
       "name": "magritte_gray",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 18
     },
     {
-      "id": "f-magritte-denim-f213bf",
+      "id": "f-finished-4seasons-magritte-denim-d3c8c1",
       "name": "magritte_denim",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 19
     },
     {
-      "id": "f-magritte-beige-0c411d",
+      "id": "f-finished-4seasons-magritte-beige-a5fd06",
       "name": "magritte_beige",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 20
     },
     {
-      "id": "f-thistles-gray-d56998",
+      "id": "f-finished-4seasons-thistles-gray-8be5b3",
       "name": "thistles_gray",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 21
     },
     {
-      "id": "f-thistles-denim-d25581",
+      "id": "f-finished-4seasons-thistles-denim-8bfc42",
       "name": "thistles_denim",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 22
     },
     {
-      "id": "f-thistles-khaki-0cb86c",
+      "id": "f-finished-4seasons-thistles-khaki-13be52",
       "name": "thistles_khaki",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 23
     },
     {
-      "id": "f-pedro-ivory-34a787",
+      "id": "f-finished-4seasons-pedro-ivory-59718b",
       "name": "pedro_ivory",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 24
     },
     {
-      "id": "f-pedro-gray-36ff23",
+      "id": "f-finished-4seasons-pedro-gray-30d5e9",
       "name": "pedro_gray",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 25
     },
     {
-      "id": "f-pedro-blue-b3d9bc",
+      "id": "f-finished-4seasons-pedro-blue-744f52",
       "name": "pedro_blue",
-      "parentId": "f-4seasons-869a3d",
+      "parentId": "f-finished-4seasons-2468cc",
       "depth": 3,
       "order": 26
     }
   ],
   "items": [
     {
-      "id": "it-30x50쿠션커버-rg-ba0ced",
+      "id": "it-semifinished-emb-rouen-gray-30x50쿠션커버-rg-edf5c1",
+      "name": "30x50쿠션커버",
+      "sku": "RG-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gray-40쿠션커버-rg-71a1cb",
+      "name": "40쿠션커버",
+      "sku": "RG-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gray-50쿠션커버-rg-7da5e7",
+      "name": "50쿠션커버",
+      "sku": "RG-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gray-50기본형-방석커버-rg-45ec39",
+      "name": "50기본형 방석커버",
+      "sku": "RG-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gray-45날개형-방석커버-rg-e19dd3",
+      "name": "45날개형 방석커버",
+      "sku": "RG-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gray-50날개형-방석커버-rg-b21e5e",
+      "name": "50날개형 방석커버",
+      "sku": "RG-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gray-육각형-등걸이-rg-019e80",
+      "name": "육각형 등걸이",
+      "sku": "RG-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gray-직사각-등걸이-rg-5995fe",
+      "name": "직사각 등걸이",
+      "sku": "RG-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gray-티슈커버-rg-afa7f9",
+      "name": "티슈커버",
+      "sku": "RG-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-30x50쿠션커버-rp-ea5ea9",
+      "name": "30x50쿠션커버",
+      "sku": "RP-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-40쿠션커버-rp-66875a",
+      "name": "40쿠션커버",
+      "sku": "RP-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-50쿠션커버-rp-cc0e78",
+      "name": "50쿠션커버",
+      "sku": "RP-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-50기본형-방석커버-rp-b8bed9",
+      "name": "50기본형 방석커버",
+      "sku": "RP-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-45날개형-방석커버-rp-124e53",
+      "name": "45날개형 방석커버",
+      "sku": "RP-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-50날개형-방석커버-rp-cdbedb",
+      "name": "50날개형 방석커버",
+      "sku": "RP-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-육각형-등걸이-rp-636b11",
+      "name": "육각형 등걸이",
+      "sku": "RP-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-직사각-등걸이-rp-53ea92",
+      "name": "직사각 등걸이",
+      "sku": "RP-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-pink-티슈커버-rp-7813e5",
+      "name": "티슈커버",
+      "sku": "RP-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-30x50쿠션커버-rgd-fde7af",
+      "name": "30x50쿠션커버",
+      "sku": "RGD-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-40쿠션커버-rgd-1d0f5d",
+      "name": "40쿠션커버",
+      "sku": "RGD-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-50쿠션커버-rgd-6cda97",
+      "name": "50쿠션커버",
+      "sku": "RGD-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-50기본형-방석커버-rgd-a15b81",
+      "name": "50기본형 방석커버",
+      "sku": "RGD-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-45날개형-방석커버-rgd-c25971",
+      "name": "45날개형 방석커버",
+      "sku": "RGD-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-50날개형-방석커버-rgd-07fe19",
+      "name": "50날개형 방석커버",
+      "sku": "RGD-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-육각형-등걸이-rgd-36fb06",
+      "name": "육각형 등걸이",
+      "sku": "RGD-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-직사각-등걸이-rgd-15a089",
+      "name": "직사각 등걸이",
+      "sku": "RGD-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-gold-티슈커버-rgd-802a80",
+      "name": "티슈커버",
+      "sku": "RGD-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-30x50쿠션커버-rb-38b056",
+      "name": "30x50쿠션커버",
+      "sku": "RB-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-40쿠션커버-rb-128bdd",
+      "name": "40쿠션커버",
+      "sku": "RB-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-50쿠션커버-rb-db04f5",
+      "name": "50쿠션커버",
+      "sku": "RB-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-50기본형-방석커버-rb-432d8f",
+      "name": "50기본형 방석커버",
+      "sku": "RB-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-45날개형-방석커버-rb-03caf1",
+      "name": "45날개형 방석커버",
+      "sku": "RB-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-50날개형-방석커버-rb-4400b7",
+      "name": "50날개형 방석커버",
+      "sku": "RB-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-육각형-등걸이-rb-42ef81",
+      "name": "육각형 등걸이",
+      "sku": "RB-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-직사각-등걸이-rb-1e6ecb",
+      "name": "직사각 등걸이",
+      "sku": "RB-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-rouen-beige-티슈커버-rb-04bab6",
+      "name": "티슈커버",
+      "sku": "RB-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "rouen_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-30x50쿠션커버-erw-b0f546",
+      "name": "30x50쿠션커버",
+      "sku": "ERW-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-40쿠션커버-erw-4e712d",
+      "name": "40쿠션커버",
+      "sku": "ERW-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-50쿠션커버-erw-9e9be5",
+      "name": "50쿠션커버",
+      "sku": "ERW-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-50기본형-방석커버-erw-dec968",
+      "name": "50기본형 방석커버",
+      "sku": "ERW-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-45날개형-방석커버-erw-817bf9",
+      "name": "45날개형 방석커버",
+      "sku": "ERW-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-50날개형-방석커버-erw-262ce3",
+      "name": "50날개형 방석커버",
+      "sku": "ERW-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-육각형-등걸이-erw-e73935",
+      "name": "육각형 등걸이",
+      "sku": "ERW-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-직사각-등걸이-erw-e1721b",
+      "name": "직사각 등걸이",
+      "sku": "ERW-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-white-티슈커버-erw-5a47d5",
+      "name": "티슈커버",
+      "sku": "ERW-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-30x50쿠션커버-ern-9465a9",
+      "name": "30x50쿠션커버",
+      "sku": "ERN-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-40쿠션커버-ern-645bad",
+      "name": "40쿠션커버",
+      "sku": "ERN-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-50쿠션커버-ern-07a099",
+      "name": "50쿠션커버",
+      "sku": "ERN-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-50기본형-방석커버-ern-f8d65e",
+      "name": "50기본형 방석커버",
+      "sku": "ERN-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-45날개형-방석커버-ern-aa7280",
+      "name": "45날개형 방석커버",
+      "sku": "ERN-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-50날개형-방석커버-ern-6c340e",
+      "name": "50날개형 방석커버",
+      "sku": "ERN-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-육각형-등걸이-ern-a9603a",
+      "name": "육각형 등걸이",
+      "sku": "ERN-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-직사각-등걸이-ern-56bdad",
+      "name": "직사각 등걸이",
+      "sku": "ERN-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-navy-티슈커버-ern-815b7d",
+      "name": "티슈커버",
+      "sku": "ERN-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_navy",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-30x50쿠션커버-erb-23a990",
+      "name": "30x50쿠션커버",
+      "sku": "ERB-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-40쿠션커버-erb-a6e5d7",
+      "name": "40쿠션커버",
+      "sku": "ERB-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-50쿠션커버-erb-0d854f",
+      "name": "50쿠션커버",
+      "sku": "ERB-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-50기본형-방석커버-erb-b65c06",
+      "name": "50기본형 방석커버",
+      "sku": "ERB-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-45날개형-방석커버-erb-e45d7f",
+      "name": "45날개형 방석커버",
+      "sku": "ERB-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-50날개형-방석커버-erb-e610cf",
+      "name": "50날개형 방석커버",
+      "sku": "ERB-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-육각형-등걸이-erb-0111fa",
+      "name": "육각형 등걸이",
+      "sku": "ERB-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-직사각-등걸이-erb-91cca6",
+      "name": "직사각 등걸이",
+      "sku": "ERB-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-erica-beige-티슈커버-erb-98cf36",
+      "name": "티슈커버",
+      "sku": "ERB-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "erica_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-30x50쿠션커버-dow-d12179",
+      "name": "30x50쿠션커버",
+      "sku": "DOW-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-40쿠션커버-dow-f05dc5",
+      "name": "40쿠션커버",
+      "sku": "DOW-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-50쿠션커버-dow-33ff64",
+      "name": "50쿠션커버",
+      "sku": "DOW-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-50기본형-방석커버-dow-c11b2e",
+      "name": "50기본형 방석커버",
+      "sku": "DOW-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-45날개형-방석커버-dow-f7ff31",
+      "name": "45날개형 방석커버",
+      "sku": "DOW-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-50날개형-방석커버-dow-c73f0c",
+      "name": "50날개형 방석커버",
+      "sku": "DOW-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-육각형-등걸이-dow-48da29",
+      "name": "육각형 등걸이",
+      "sku": "DOW-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-직사각-등걸이-dow-de32f2",
+      "name": "직사각 등걸이",
+      "sku": "DOW-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-white-티슈커버-dow-f8be64",
+      "name": "티슈커버",
+      "sku": "DOW-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-30x50쿠션커버-doc-cbfb39",
+      "name": "30x50쿠션커버",
+      "sku": "DOC-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-40쿠션커버-doc-ab8925",
+      "name": "40쿠션커버",
+      "sku": "DOC-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-50쿠션커버-doc-f22396",
+      "name": "50쿠션커버",
+      "sku": "DOC-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-50기본형-방석커버-doc-d9736a",
+      "name": "50기본형 방석커버",
+      "sku": "DOC-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-45날개형-방석커버-doc-31ecb2",
+      "name": "45날개형 방석커버",
+      "sku": "DOC-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-50날개형-방석커버-doc-660332",
+      "name": "50날개형 방석커버",
+      "sku": "DOC-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-육각형-등걸이-doc-f4452b",
+      "name": "육각형 등걸이",
+      "sku": "DOC-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-직사각-등걸이-doc-df03f7",
+      "name": "직사각 등걸이",
+      "sku": "DOC-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-dotori-coffee-티슈커버-doc-37bf1b",
+      "name": "티슈커버",
+      "sku": "DOC-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "dotori_coffee",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-30x50쿠션커버-enw-cf83b8",
+      "name": "30x50쿠션커버",
+      "sku": "ENW-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-40쿠션커버-enw-5664e3",
+      "name": "40쿠션커버",
+      "sku": "ENW-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-50쿠션커버-enw-0d02f5",
+      "name": "50쿠션커버",
+      "sku": "ENW-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-50기본형-방석커버-enw-6c3699",
+      "name": "50기본형 방석커버",
+      "sku": "ENW-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-45날개형-방석커버-enw-bf255f",
+      "name": "45날개형 방석커버",
+      "sku": "ENW-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-50날개형-방석커버-enw-55abcd",
+      "name": "50날개형 방석커버",
+      "sku": "ENW-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-육각형-등걸이-enw-e0c05f",
+      "name": "육각형 등걸이",
+      "sku": "ENW-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-직사각-등걸이-enw-2f420e",
+      "name": "직사각 등걸이",
+      "sku": "ENW-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-white-티슈커버-enw-db8903",
+      "name": "티슈커버",
+      "sku": "ENW-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-30x50쿠션커버-eno-b14064",
+      "name": "30x50쿠션커버",
+      "sku": "ENO-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-40쿠션커버-eno-ede6d8",
+      "name": "40쿠션커버",
+      "sku": "ENO-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-50쿠션커버-eno-9ffbed",
+      "name": "50쿠션커버",
+      "sku": "ENO-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-50기본형-방석커버-eno-0c8715",
+      "name": "50기본형 방석커버",
+      "sku": "ENO-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-45날개형-방석커버-eno-155f4c",
+      "name": "45날개형 방석커버",
+      "sku": "ENO-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-50날개형-방석커버-eno-75e16a",
+      "name": "50날개형 방석커버",
+      "sku": "ENO-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-육각형-등걸이-eno-286c82",
+      "name": "육각형 등걸이",
+      "sku": "ENO-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-직사각-등걸이-eno-70a030",
+      "name": "직사각 등걸이",
+      "sku": "ENO-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-encia-orange-티슈커버-eno-472146",
+      "name": "티슈커버",
+      "sku": "ENO-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "encia_orange",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-30x50쿠션커버-sow-199ffa",
+      "name": "30x50쿠션커버",
+      "sku": "SOW-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-40쿠션커버-sow-d4e6a2",
+      "name": "40쿠션커버",
+      "sku": "SOW-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-50쿠션커버-sow-87f83c",
+      "name": "50쿠션커버",
+      "sku": "SOW-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-50기본형-방석커버-sow-15c6b4",
+      "name": "50기본형 방석커버",
+      "sku": "SOW-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-45날개형-방석커버-sow-0f4797",
+      "name": "45날개형 방석커버",
+      "sku": "SOW-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-50날개형-방석커버-sow-7e51fe",
+      "name": "50날개형 방석커버",
+      "sku": "SOW-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-육각형-등걸이-sow-19d483",
+      "name": "육각형 등걸이",
+      "sku": "SOW-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-직사각-등걸이-sow-19d445",
+      "name": "직사각 등걸이",
+      "sku": "SOW-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-white-티슈커버-sow-e62bb0",
+      "name": "티슈커버",
+      "sku": "SOW-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_white",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-30x50쿠션커버-sog-01085d",
+      "name": "30x50쿠션커버",
+      "sku": "SOG-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-40쿠션커버-sog-a620b7",
+      "name": "40쿠션커버",
+      "sku": "SOG-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-50쿠션커버-sog-bf19e9",
+      "name": "50쿠션커버",
+      "sku": "SOG-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-50기본형-방석커버-sog-1a1c17",
+      "name": "50기본형 방석커버",
+      "sku": "SOG-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-45날개형-방석커버-sog-80a2d8",
+      "name": "45날개형 방석커버",
+      "sku": "SOG-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-50날개형-방석커버-sog-a3c838",
+      "name": "50날개형 방석커버",
+      "sku": "SOG-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-육각형-등걸이-sog-3ecefd",
+      "name": "육각형 등걸이",
+      "sku": "SOG-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-직사각-등걸이-sog-d4324e",
+      "name": "직사각 등걸이",
+      "sku": "SOG-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-gray-티슈커버-sog-e4ca30",
+      "name": "티슈커버",
+      "sku": "SOG-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-30x50쿠션커버-sop-085b98",
+      "name": "30x50쿠션커버",
+      "sku": "SOP-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-40쿠션커버-sop-81bfed",
+      "name": "40쿠션커버",
+      "sku": "SOP-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-50쿠션커버-sop-1dd216",
+      "name": "50쿠션커버",
+      "sku": "SOP-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-50기본형-방석커버-sop-082816",
+      "name": "50기본형 방석커버",
+      "sku": "SOP-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-45날개형-방석커버-sop-af6171",
+      "name": "45날개형 방석커버",
+      "sku": "SOP-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-50날개형-방석커버-sop-392f9d",
+      "name": "50날개형 방석커버",
+      "sku": "SOP-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-육각형-등걸이-sop-c95edb",
+      "name": "육각형 등걸이",
+      "sku": "SOP-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-직사각-등걸이-sop-1e3011",
+      "name": "직사각 등걸이",
+      "sku": "SOP-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-sobok-pink-티슈커버-sop-36de08",
+      "name": "티슈커버",
+      "sku": "SOP-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "sobok_pink",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-30x50쿠션커버-lvg-026e25",
+      "name": "30x50쿠션커버",
+      "sku": "LVG-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-40쿠션커버-lvg-817c2b",
+      "name": "40쿠션커버",
+      "sku": "LVG-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-50쿠션커버-lvg-12d761",
+      "name": "50쿠션커버",
+      "sku": "LVG-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-50기본형-방석커버-lvg-698b95",
+      "name": "50기본형 방석커버",
+      "sku": "LVG-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-45날개형-방석커버-lvg-14e6cc",
+      "name": "45날개형 방석커버",
+      "sku": "LVG-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-50날개형-방석커버-lvg-9f7654",
+      "name": "50날개형 방석커버",
+      "sku": "LVG-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-육각형-등걸이-lvg-ec23cb",
+      "name": "육각형 등걸이",
+      "sku": "LVG-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-직사각-등걸이-lvg-55b99e",
+      "name": "직사각 등걸이",
+      "sku": "LVG-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-lavender-gold-티슈커버-lvg-48b59f",
+      "name": "티슈커버",
+      "sku": "LVG-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "lavender_gold",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-30x50쿠션커버-irb-b5c353",
+      "name": "30x50쿠션커버",
+      "sku": "IRB-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-40쿠션커버-irb-c56e5c",
+      "name": "40쿠션커버",
+      "sku": "IRB-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-50쿠션커버-irb-f1f5c5",
+      "name": "50쿠션커버",
+      "sku": "IRB-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-50기본형-방석커버-irb-3241f9",
+      "name": "50기본형 방석커버",
+      "sku": "IRB-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-45날개형-방석커버-irb-765475",
+      "name": "45날개형 방석커버",
+      "sku": "IRB-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-50날개형-방석커버-irb-33798d",
+      "name": "50날개형 방석커버",
+      "sku": "IRB-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-육각형-등걸이-irb-21d2d9",
+      "name": "육각형 등걸이",
+      "sku": "IRB-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-직사각-등걸이-irb-153a8a",
+      "name": "직사각 등걸이",
+      "sku": "IRB-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-iris-blue-티슈커버-irb-b61ec1",
+      "name": "티슈커버",
+      "sku": "IRB-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "iris_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-30x50쿠션커버-tar-9466e0",
+      "name": "30x50쿠션커버",
+      "sku": "TAR-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-40쿠션커버-tar-35c346",
+      "name": "40쿠션커버",
+      "sku": "TAR-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-50쿠션커버-tar-9b19e6",
+      "name": "50쿠션커버",
+      "sku": "TAR-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-50기본형-방석커버-tar-9ccd25",
+      "name": "50기본형 방석커버",
+      "sku": "TAR-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-45날개형-방석커버-tar-a8826f",
+      "name": "45날개형 방석커버",
+      "sku": "TAR-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-50날개형-방석커버-tar-8e9f1f",
+      "name": "50날개형 방석커버",
+      "sku": "TAR-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-육각형-등걸이-tar-6ef1bc",
+      "name": "육각형 등걸이",
+      "sku": "TAR-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-직사각-등걸이-tar-7687a0",
+      "name": "직사각 등걸이",
+      "sku": "TAR-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-tatiana-rose-티슈커버-tar-34b857",
+      "name": "티슈커버",
+      "sku": "TAR-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "tatiana_rose",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-30x50쿠션커버-rzg-146d05",
+      "name": "30x50쿠션커버",
+      "sku": "RZG-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-40쿠션커버-rzg-31414a",
+      "name": "40쿠션커버",
+      "sku": "RZG-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-50쿠션커버-rzg-7d09f2",
+      "name": "50쿠션커버",
+      "sku": "RZG-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-50기본형-방석커버-rzg-0827fe",
+      "name": "50기본형 방석커버",
+      "sku": "RZG-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-45날개형-방석커버-rzg-9aabd9",
+      "name": "45날개형 방석커버",
+      "sku": "RZG-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-50날개형-방석커버-rzg-63883f",
+      "name": "50날개형 방석커버",
+      "sku": "RZG-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-육각형-등걸이-rzg-458654",
+      "name": "육각형 등걸이",
+      "sku": "RZG-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-직사각-등걸이-rzg-983995",
+      "name": "직사각 등걸이",
+      "sku": "RZG-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-ronze-gray-티슈커버-rzg-d2e45e",
+      "name": "티슈커버",
+      "sku": "RZG-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "ronze_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-30x50쿠션커버-mgg-e68593",
+      "name": "30x50쿠션커버",
+      "sku": "MGG-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-40쿠션커버-mgg-58a4e3",
+      "name": "40쿠션커버",
+      "sku": "MGG-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-50쿠션커버-mgg-3d937c",
+      "name": "50쿠션커버",
+      "sku": "MGG-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-50기본형-방석커버-mgg-ed1262",
+      "name": "50기본형 방석커버",
+      "sku": "MGG-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-45날개형-방석커버-mgg-b50ccf",
+      "name": "45날개형 방석커버",
+      "sku": "MGG-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-50날개형-방석커버-mgg-c6edbe",
+      "name": "50날개형 방석커버",
+      "sku": "MGG-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-육각형-등걸이-mgg-6ad981",
+      "name": "육각형 등걸이",
+      "sku": "MGG-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-직사각-등걸이-mgg-2442ae",
+      "name": "직사각 등걸이",
+      "sku": "MGG-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-gray-티슈커버-mgg-a3bbdd",
+      "name": "티슈커버",
+      "sku": "MGG-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-30x50쿠션커버-mgd-701bfa",
+      "name": "30x50쿠션커버",
+      "sku": "MGD-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-40쿠션커버-mgd-fbea81",
+      "name": "40쿠션커버",
+      "sku": "MGD-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-50쿠션커버-mgd-981d8f",
+      "name": "50쿠션커버",
+      "sku": "MGD-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-50기본형-방석커버-mgd-7af6ea",
+      "name": "50기본형 방석커버",
+      "sku": "MGD-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-45날개형-방석커버-mgd-2fce8e",
+      "name": "45날개형 방석커버",
+      "sku": "MGD-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-50날개형-방석커버-mgd-73a86f",
+      "name": "50날개형 방석커버",
+      "sku": "MGD-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-육각형-등걸이-mgd-341fdd",
+      "name": "육각형 등걸이",
+      "sku": "MGD-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-직사각-등걸이-mgd-5f04ba",
+      "name": "직사각 등걸이",
+      "sku": "MGD-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-denim-티슈커버-mgd-db0a71",
+      "name": "티슈커버",
+      "sku": "MGD-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-30x50쿠션커버-mgb-893585",
+      "name": "30x50쿠션커버",
+      "sku": "MGB-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-40쿠션커버-mgb-ac13c3",
+      "name": "40쿠션커버",
+      "sku": "MGB-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-50쿠션커버-mgb-a0f51d",
+      "name": "50쿠션커버",
+      "sku": "MGB-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-50기본형-방석커버-mgb-bc72a5",
+      "name": "50기본형 방석커버",
+      "sku": "MGB-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-45날개형-방석커버-mgb-e9a401",
+      "name": "45날개형 방석커버",
+      "sku": "MGB-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-50날개형-방석커버-mgb-5879e3",
+      "name": "50날개형 방석커버",
+      "sku": "MGB-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-육각형-등걸이-mgb-46a418",
+      "name": "육각형 등걸이",
+      "sku": "MGB-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-직사각-등걸이-mgb-bfec21",
+      "name": "직사각 등걸이",
+      "sku": "MGB-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-magritte-beige-티슈커버-mgb-e2eab1",
+      "name": "티슈커버",
+      "sku": "MGB-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "magritte_beige",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-30x50쿠션커버-thg-8c3e6f",
+      "name": "30x50쿠션커버",
+      "sku": "THG-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-40쿠션커버-thg-dc9649",
+      "name": "40쿠션커버",
+      "sku": "THG-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-50쿠션커버-thg-af5179",
+      "name": "50쿠션커버",
+      "sku": "THG-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-50기본형-방석커버-thg-e01a4d",
+      "name": "50기본형 방석커버",
+      "sku": "THG-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-45날개형-방석커버-thg-2305b3",
+      "name": "45날개형 방석커버",
+      "sku": "THG-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-50날개형-방석커버-thg-748d1f",
+      "name": "50날개형 방석커버",
+      "sku": "THG-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-육각형-등걸이-thg-7463d9",
+      "name": "육각형 등걸이",
+      "sku": "THG-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-직사각-등걸이-thg-299c5e",
+      "name": "직사각 등걸이",
+      "sku": "THG-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-gray-티슈커버-thg-fadf22",
+      "name": "티슈커버",
+      "sku": "THG-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-30x50쿠션커버-thd-84dbc8",
+      "name": "30x50쿠션커버",
+      "sku": "THD-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-40쿠션커버-thd-8d1a1a",
+      "name": "40쿠션커버",
+      "sku": "THD-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-50쿠션커버-thd-566f31",
+      "name": "50쿠션커버",
+      "sku": "THD-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-50기본형-방석커버-thd-3111bd",
+      "name": "50기본형 방석커버",
+      "sku": "THD-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-45날개형-방석커버-thd-9beeea",
+      "name": "45날개형 방석커버",
+      "sku": "THD-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-50날개형-방석커버-thd-865697",
+      "name": "50날개형 방석커버",
+      "sku": "THD-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-육각형-등걸이-thd-3bb50a",
+      "name": "육각형 등걸이",
+      "sku": "THD-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-직사각-등걸이-thd-9e4720",
+      "name": "직사각 등걸이",
+      "sku": "THD-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-denim-티슈커버-thd-8ef0f9",
+      "name": "티슈커버",
+      "sku": "THD-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_denim",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-30x50쿠션커버-thk-89e1ca",
+      "name": "30x50쿠션커버",
+      "sku": "THK-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-40쿠션커버-thk-84cff2",
+      "name": "40쿠션커버",
+      "sku": "THK-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-50쿠션커버-thk-567311",
+      "name": "50쿠션커버",
+      "sku": "THK-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-50기본형-방석커버-thk-c5d5f8",
+      "name": "50기본형 방석커버",
+      "sku": "THK-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-45날개형-방석커버-thk-63bb62",
+      "name": "45날개형 방석커버",
+      "sku": "THK-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-50날개형-방석커버-thk-fe523c",
+      "name": "50날개형 방석커버",
+      "sku": "THK-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-육각형-등걸이-thk-877a39",
+      "name": "육각형 등걸이",
+      "sku": "THK-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-직사각-등걸이-thk-5ef7d8",
+      "name": "직사각 등걸이",
+      "sku": "THK-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-thistles-khaki-티슈커버-thk-78ea5b",
+      "name": "티슈커버",
+      "sku": "THK-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "thistles_khaki",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-30x50쿠션커버-pdi-e08f81",
+      "name": "30x50쿠션커버",
+      "sku": "PDI-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-40쿠션커버-pdi-189472",
+      "name": "40쿠션커버",
+      "sku": "PDI-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-50쿠션커버-pdi-337e6c",
+      "name": "50쿠션커버",
+      "sku": "PDI-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-50기본형-방석커버-pdi-95b5dc",
+      "name": "50기본형 방석커버",
+      "sku": "PDI-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-45날개형-방석커버-pdi-d3a2c3",
+      "name": "45날개형 방석커버",
+      "sku": "PDI-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-50날개형-방석커버-pdi-ab44b7",
+      "name": "50날개형 방석커버",
+      "sku": "PDI-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-육각형-등걸이-pdi-bdcca0",
+      "name": "육각형 등걸이",
+      "sku": "PDI-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-직사각-등걸이-pdi-6a8a02",
+      "name": "직사각 등걸이",
+      "sku": "PDI-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-ivory-티슈커버-pdi-916c89",
+      "name": "티슈커버",
+      "sku": "PDI-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_ivory",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-30x50쿠션커버-pdg-20faef",
+      "name": "30x50쿠션커버",
+      "sku": "PDG-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-40쿠션커버-pdg-9ca135",
+      "name": "40쿠션커버",
+      "sku": "PDG-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-50쿠션커버-pdg-6f8978",
+      "name": "50쿠션커버",
+      "sku": "PDG-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-50기본형-방석커버-pdg-d0b996",
+      "name": "50기본형 방석커버",
+      "sku": "PDG-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-45날개형-방석커버-pdg-37d08a",
+      "name": "45날개형 방석커버",
+      "sku": "PDG-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-50날개형-방석커버-pdg-ebbdfd",
+      "name": "50날개형 방석커버",
+      "sku": "PDG-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-육각형-등걸이-pdg-d2380f",
+      "name": "육각형 등걸이",
+      "sku": "PDG-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-직사각-등걸이-pdg-63f7ee",
+      "name": "직사각 등걸이",
+      "sku": "PDG-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-gray-티슈커버-pdg-2b3263",
+      "name": "티슈커버",
+      "sku": "PDG-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_gray",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-30x50쿠션커버-pdb-0a821f",
+      "name": "30x50쿠션커버",
+      "sku": "PDB-35-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-40쿠션커버-pdb-0917fc",
+      "name": "40쿠션커버",
+      "sku": "PDB-40-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-50쿠션커버-pdb-dbe7ef",
+      "name": "50쿠션커버",
+      "sku": "PDB-50-CUSHION",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-50기본형-방석커버-pdb-8c495a",
+      "name": "50기본형 방석커버",
+      "sku": "PDB-50-BASIC-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-45날개형-방석커버-pdb-f34176",
+      "name": "45날개형 방석커버",
+      "sku": "PDB-45-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-50날개형-방석커버-pdb-3d7c08",
+      "name": "50날개형 방석커버",
+      "sku": "PDB-50-WING-SIT",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-육각형-등걸이-pdb-20bea0",
+      "name": "육각형 등걸이",
+      "sku": "PDB-HEX-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-직사각-등걸이-pdb-9c335f",
+      "name": "직사각 등걸이",
+      "sku": "PDB-REC-BACK",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-semifinished-emb-pedro-blue-티슈커버-pdb-e22ae4",
+      "name": "티슈커버",
+      "sku": "PDB-TISSUE",
+      "unit": "ea",
+      "folder": "SemiFinished",
+      "subfolder": "emb",
+      "subsubfolder": "pedro_blue",
+      "minQty": 0,
+      "qty": 0
+    },
+    {
+      "id": "it-finished-4seasons-rouen-gray-30x50쿠션커버-rg-b2f6ba",
       "name": "30x50쿠션커버",
       "sku": "RG-35-CUSHION",
       "unit": "ea",
@@ -218,7 +3094,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-rg-f209c0",
+      "id": "it-finished-4seasons-rouen-gray-40쿠션커버-rg-578e24",
       "name": "40쿠션커버",
       "sku": "RG-40-CUSHION",
       "unit": "ea",
@@ -229,7 +3105,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-rg-616705",
+      "id": "it-finished-4seasons-rouen-gray-50쿠션커버-rg-11a4b9",
       "name": "50쿠션커버",
       "sku": "RG-50-CUSHION",
       "unit": "ea",
@@ -240,7 +3116,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-rg-4dff30",
+      "id": "it-finished-4seasons-rouen-gray-50기본형-방석커버-rg-dcc5b1",
       "name": "50기본형 방석커버",
       "sku": "RG-50-BASIC-SIT",
       "unit": "ea",
@@ -251,7 +3127,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-rg-cade2c",
+      "id": "it-finished-4seasons-rouen-gray-45날개형-방석커버-rg-a8c358",
       "name": "45날개형 방석커버",
       "sku": "RG-45-WING-SIT",
       "unit": "ea",
@@ -262,7 +3138,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-rg-a73cd3",
+      "id": "it-finished-4seasons-rouen-gray-50날개형-방석커버-rg-bd8b9f",
       "name": "50날개형 방석커버",
       "sku": "RG-50-WING-SIT",
       "unit": "ea",
@@ -273,7 +3149,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-rg-5b6e79",
+      "id": "it-finished-4seasons-rouen-gray-육각형-등걸이-rg-36f6f2",
       "name": "육각형 등걸이",
       "sku": "RG-HEX-BACK",
       "unit": "ea",
@@ -284,7 +3160,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-rg-4a90d3",
+      "id": "it-finished-4seasons-rouen-gray-직사각-등걸이-rg-566ce8",
       "name": "직사각 등걸이",
       "sku": "RG-REC-BACK",
       "unit": "ea",
@@ -295,7 +3171,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-rg-b8998f",
+      "id": "it-finished-4seasons-rouen-gray-티슈커버-rg-1e9f75",
       "name": "티슈커버",
       "sku": "RG-TISSUE",
       "unit": "ea",
@@ -306,7 +3182,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-rp-c30cfb",
+      "id": "it-finished-4seasons-rouen-pink-30x50쿠션커버-rp-00a1ed",
       "name": "30x50쿠션커버",
       "sku": "RP-35-CUSHION",
       "unit": "ea",
@@ -317,7 +3193,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-rp-e709ae",
+      "id": "it-finished-4seasons-rouen-pink-40쿠션커버-rp-93cf70",
       "name": "40쿠션커버",
       "sku": "RP-40-CUSHION",
       "unit": "ea",
@@ -328,7 +3204,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-rp-6a6713",
+      "id": "it-finished-4seasons-rouen-pink-50쿠션커버-rp-5b9965",
       "name": "50쿠션커버",
       "sku": "RP-50-CUSHION",
       "unit": "ea",
@@ -339,7 +3215,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-rp-36ff0c",
+      "id": "it-finished-4seasons-rouen-pink-50기본형-방석커버-rp-387c51",
       "name": "50기본형 방석커버",
       "sku": "RP-50-BASIC-SIT",
       "unit": "ea",
@@ -350,7 +3226,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-rp-b3de08",
+      "id": "it-finished-4seasons-rouen-pink-45날개형-방석커버-rp-c36b48",
       "name": "45날개형 방석커버",
       "sku": "RP-45-WING-SIT",
       "unit": "ea",
@@ -361,7 +3237,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-rp-903caf",
+      "id": "it-finished-4seasons-rouen-pink-50날개형-방석커버-rp-58fc84",
       "name": "50날개형 방석커버",
       "sku": "RP-50-WING-SIT",
       "unit": "ea",
@@ -372,7 +3248,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-rp-646e87",
+      "id": "it-finished-4seasons-rouen-pink-육각형-등걸이-rp-bfa284",
       "name": "육각형 등걸이",
       "sku": "RP-HEX-BACK",
       "unit": "ea",
@@ -383,7 +3259,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-rp-3390af",
+      "id": "it-finished-4seasons-rouen-pink-직사각-등걸이-rp-80d168",
       "name": "직사각 등걸이",
       "sku": "RP-REC-BACK",
       "unit": "ea",
@@ -394,7 +3270,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-rp-c1999d",
+      "id": "it-finished-4seasons-rouen-pink-티슈커버-rp-200864",
       "name": "티슈커버",
       "sku": "RP-TISSUE",
       "unit": "ea",
@@ -405,7 +3281,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-rgd-06594f",
+      "id": "it-finished-4seasons-rouen-gold-30x50쿠션커버-rgd-76f50f",
       "name": "30x50쿠션커버",
       "sku": "RGD-35-CUSHION",
       "unit": "ea",
@@ -416,7 +3292,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-rgd-7d59fc",
+      "id": "it-finished-4seasons-rouen-gold-40쿠션커버-rgd-c96a2c",
       "name": "40쿠션커버",
       "sku": "RGD-40-CUSHION",
       "unit": "ea",
@@ -427,7 +3303,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-rgd-412e52",
+      "id": "it-finished-4seasons-rouen-gold-50쿠션커버-rgd-39693a",
       "name": "50쿠션커버",
       "sku": "RGD-50-CUSHION",
       "unit": "ea",
@@ -438,7 +3314,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-rgd-38b940",
+      "id": "it-finished-4seasons-rouen-gold-50기본형-방석커버-rgd-ed54a8",
       "name": "50기본형 방석커버",
       "sku": "RGD-50-BASIC-SIT",
       "unit": "ea",
@@ -449,7 +3325,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-rgd-efc02d",
+      "id": "it-finished-4seasons-rouen-gold-45날개형-방석커버-rgd-84ae04",
       "name": "45날개형 방석커버",
       "sku": "RGD-45-WING-SIT",
       "unit": "ea",
@@ -460,7 +3336,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-rgd-74c074",
+      "id": "it-finished-4seasons-rouen-gold-50날개형-방석커버-rgd-bc0b7c",
       "name": "50날개형 방석커버",
       "sku": "RGD-50-WING-SIT",
       "unit": "ea",
@@ -471,7 +3347,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-rgd-1ae8c0",
+      "id": "it-finished-4seasons-rouen-gold-육각형-등걸이-rgd-098506",
       "name": "육각형 등걸이",
       "sku": "RGD-HEX-BACK",
       "unit": "ea",
@@ -482,7 +3358,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-rgd-31fd70",
+      "id": "it-finished-4seasons-rouen-gold-직사각-등걸이-rgd-2b4bee",
       "name": "직사각 등걸이",
       "sku": "RGD-REC-BACK",
       "unit": "ea",
@@ -493,7 +3369,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-rgd-79bd7d",
+      "id": "it-finished-4seasons-rouen-gold-티슈커버-rgd-4d382f",
       "name": "티슈커버",
       "sku": "RGD-TISSUE",
       "unit": "ea",
@@ -504,7 +3380,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-rb-b50ce5",
+      "id": "it-finished-4seasons-rouen-beige-30x50쿠션커버-rb-b288ee",
       "name": "30x50쿠션커버",
       "sku": "RB-35-CUSHION",
       "unit": "ea",
@@ -515,7 +3391,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-rb-f509c4",
+      "id": "it-finished-4seasons-rouen-beige-40쿠션커버-rb-591e8c",
       "name": "40쿠션커버",
       "sku": "RB-40-CUSHION",
       "unit": "ea",
@@ -526,7 +3402,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-rb-5c66fd",
+      "id": "it-finished-4seasons-rouen-beige-50쿠션커버-rb-16782d",
       "name": "50쿠션커버",
       "sku": "RB-50-CUSHION",
       "unit": "ea",
@@ -537,7 +3413,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-rb-48ff28",
+      "id": "it-finished-4seasons-rouen-beige-50기본형-방석커버-rb-67a40b",
       "name": "50기본형 방석커버",
       "sku": "RB-50-BASIC-SIT",
       "unit": "ea",
@@ -548,7 +3424,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-rb-c5de24",
+      "id": "it-finished-4seasons-rouen-beige-45날개형-방석커버-rb-366db9",
       "name": "45날개형 방석커버",
       "sku": "RB-45-WING-SIT",
       "unit": "ea",
@@ -559,7 +3435,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-rb-a23ccb",
+      "id": "it-finished-4seasons-rouen-beige-50날개형-방석커버-rb-a317a6",
       "name": "50날개형 방석커버",
       "sku": "RB-50-WING-SIT",
       "unit": "ea",
@@ -570,7 +3446,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-rb-566e71",
+      "id": "it-finished-4seasons-rouen-beige-육각형-등걸이-rb-5f0dc6",
       "name": "육각형 등걸이",
       "sku": "RB-HEX-BACK",
       "unit": "ea",
@@ -581,7 +3457,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-rb-4590cb",
+      "id": "it-finished-4seasons-rouen-beige-직사각-등걸이-rb-30f7a1",
       "name": "직사각 등걸이",
       "sku": "RB-REC-BACK",
       "unit": "ea",
@@ -592,7 +3468,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-rb-b39987",
+      "id": "it-finished-4seasons-rouen-beige-티슈커버-rb-b6e9a2",
       "name": "티슈커버",
       "sku": "RB-TISSUE",
       "unit": "ea",
@@ -603,7 +3479,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-erw-1557a8",
+      "id": "it-finished-4seasons-erica-white-30x50쿠션커버-erw-ebb7e3",
       "name": "30x50쿠션커버",
       "sku": "ERW-35-CUSHION",
       "unit": "ea",
@@ -614,7 +3490,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-erw-75a78f",
+      "id": "it-finished-4seasons-erica-white-40쿠션커버-erw-450ad8",
       "name": "40쿠션커버",
       "sku": "ERW-40-CUSHION",
       "unit": "ea",
@@ -625,7 +3501,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-erw-8cb3f9",
+      "id": "it-finished-4seasons-erica-white-50쿠션커버-erw-e449a0",
       "name": "50쿠션커버",
       "sku": "ERW-50-CUSHION",
       "unit": "ea",
@@ -636,7 +3512,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-erw-60cb06",
+      "id": "it-finished-4seasons-erica-white-50기본형-방석커버-erw-20f469",
       "name": "50기본형 방석커버",
       "sku": "ERW-50-BASIC-SIT",
       "unit": "ea",
@@ -647,7 +3523,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-erw-ac228d",
+      "id": "it-finished-4seasons-erica-white-45날개형-방석커버-erw-e0dbd7",
       "name": "45날개형 방석커버",
       "sku": "ERW-45-WING-SIT",
       "unit": "ea",
@@ -658,7 +3534,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-erw-9cd3cd",
+      "id": "it-finished-4seasons-erica-white-50날개형-방석커버-erw-73a6b9",
       "name": "50날개형 방석커버",
       "sku": "ERW-50-WING-SIT",
       "unit": "ea",
@@ -669,7 +3545,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-erw-3420c0",
+      "id": "it-finished-4seasons-erica-white-육각형-등걸이-erw-742021",
       "name": "육각형 등걸이",
       "sku": "ERW-HEX-BACK",
       "unit": "ea",
@@ -680,7 +3556,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-erw-da0fff",
+      "id": "it-finished-4seasons-erica-white-직사각-등걸이-erw-68cdeb",
       "name": "직사각 등걸이",
       "sku": "ERW-REC-BACK",
       "unit": "ea",
@@ -691,7 +3567,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-erw-9ef591",
+      "id": "it-finished-4seasons-erica-white-티슈커버-erw-d1151e",
       "name": "티슈커버",
       "sku": "ERW-TISSUE",
       "unit": "ea",
@@ -702,7 +3578,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-ern-1c57b3",
+      "id": "it-finished-4seasons-erica-navy-30x50쿠션커버-ern-17df56",
       "name": "30x50쿠션커버",
       "sku": "ERN-35-CUSHION",
       "unit": "ea",
@@ -713,7 +3589,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-ern-8ca7b4",
+      "id": "it-finished-4seasons-erica-navy-40쿠션커버-ern-ba5c35",
       "name": "40쿠션커버",
       "sku": "ERN-40-CUSHION",
       "unit": "ea",
@@ -724,7 +3600,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-ern-83b3eb",
+      "id": "it-finished-4seasons-erica-navy-50쿠션커버-ern-8fbc4e",
       "name": "50쿠션커버",
       "sku": "ERN-50-CUSHION",
       "unit": "ea",
@@ -735,7 +3611,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-ern-57caf8",
+      "id": "it-finished-4seasons-erica-navy-50기본형-방석커버-ern-2dcd2c",
       "name": "50기본형 방석커버",
       "sku": "ERN-50-BASIC-SIT",
       "unit": "ea",
@@ -746,7 +3622,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-ern-b32298",
+      "id": "it-finished-4seasons-erica-navy-45날개형-방석커버-ern-e873c8",
       "name": "45날개형 방석커버",
       "sku": "ERN-45-WING-SIT",
       "unit": "ea",
@@ -757,7 +3633,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-ern-93d3bf",
+      "id": "it-finished-4seasons-erica-navy-50날개형-방석커버-ern-490176",
       "name": "50날개형 방석커버",
       "sku": "ERN-50-WING-SIT",
       "unit": "ea",
@@ -768,7 +3644,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-ern-4b20e5",
+      "id": "it-finished-4seasons-erica-navy-육각형-등걸이-ern-e9975f",
       "name": "육각형 등걸이",
       "sku": "ERN-HEX-BACK",
       "unit": "ea",
@@ -779,7 +3655,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-ern-d10ff1",
+      "id": "it-finished-4seasons-erica-navy-직사각-등걸이-ern-ab290f",
       "name": "직사각 등걸이",
       "sku": "ERN-REC-BACK",
       "unit": "ea",
@@ -790,7 +3666,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-ern-b5f5b5",
+      "id": "it-finished-4seasons-erica-navy-티슈커버-ern-d7242a",
       "name": "티슈커버",
       "sku": "ERN-TISSUE",
       "unit": "ea",
@@ -801,7 +3677,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-erb-2057b9",
+      "id": "it-finished-4seasons-erica-beige-30x50쿠션커버-erb-ecf30e",
       "name": "30x50쿠션커버",
       "sku": "ERB-35-CUSHION",
       "unit": "ea",
@@ -812,7 +3688,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-erb-80a7a1",
+      "id": "it-finished-4seasons-erica-beige-40쿠션커버-erb-7490f9",
       "name": "40쿠션커버",
       "sku": "ERB-40-CUSHION",
       "unit": "ea",
@@ -823,7 +3699,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-erb-77b3d8",
+      "id": "it-finished-4seasons-erica-beige-50쿠션커버-erb-597c84",
       "name": "50쿠션커버",
       "sku": "ERB-50-CUSHION",
       "unit": "ea",
@@ -834,7 +3710,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-erb-4bcae5",
+      "id": "it-finished-4seasons-erica-beige-50기본형-방석커버-erb-a959bb",
       "name": "50기본형 방석커버",
       "sku": "ERB-50-BASIC-SIT",
       "unit": "ea",
@@ -845,7 +3721,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-erb-b7229f",
+      "id": "it-finished-4seasons-erica-beige-45날개형-방석커버-erb-d6bfd6",
       "name": "45날개형 방석커버",
       "sku": "ERB-45-WING-SIT",
       "unit": "ea",
@@ -856,7 +3732,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-erb-87d3ac",
+      "id": "it-finished-4seasons-erica-beige-50날개형-방석커버-erb-9d61ce",
       "name": "50날개형 방석커버",
       "sku": "ERB-50-WING-SIT",
       "unit": "ea",
@@ -867,7 +3743,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-erb-3f20d2",
+      "id": "it-finished-4seasons-erica-beige-육각형-등걸이-erb-382383",
       "name": "육각형 등걸이",
       "sku": "ERB-HEX-BACK",
       "unit": "ea",
@@ -878,7 +3754,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-erb-c50fde",
+      "id": "it-finished-4seasons-erica-beige-직사각-등걸이-erb-9aad2b",
       "name": "직사각 등걸이",
       "sku": "ERB-REC-BACK",
       "unit": "ea",
@@ -889,7 +3765,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-erb-a9f5a2",
+      "id": "it-finished-4seasons-erica-beige-티슈커버-erb-cd95bf",
       "name": "티슈커버",
       "sku": "ERB-TISSUE",
       "unit": "ea",
@@ -900,7 +3776,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-dow-712f7e",
+      "id": "it-finished-4seasons-dotori-white-30x50쿠션커버-dow-cb5c69",
       "name": "30x50쿠션커버",
       "sku": "DOW-35-CUSHION",
       "unit": "ea",
@@ -911,7 +3787,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-dow-cab07c",
+      "id": "it-finished-4seasons-dotori-white-40쿠션커버-dow-7b3293",
       "name": "40쿠션커버",
       "sku": "DOW-40-CUSHION",
       "unit": "ea",
@@ -922,7 +3798,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-dow-48b376",
+      "id": "it-finished-4seasons-dotori-white-50쿠션커버-dow-9c4193",
       "name": "50쿠션커버",
       "sku": "DOW-50-CUSHION",
       "unit": "ea",
@@ -933,7 +3809,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-dow-072052",
+      "id": "it-finished-4seasons-dotori-white-50기본형-방석커버-dow-b448a7",
       "name": "50기본형 방석커버",
       "sku": "DOW-50-BASIC-SIT",
       "unit": "ea",
@@ -944,7 +3820,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-dow-41f672",
+      "id": "it-finished-4seasons-dotori-white-45날개형-방석커버-dow-f21d07",
       "name": "45날개형 방석커버",
       "sku": "DOW-45-WING-SIT",
       "unit": "ea",
@@ -955,7 +3831,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-dow-432786",
+      "id": "it-finished-4seasons-dotori-white-50날개형-방석커버-dow-f11dfd",
       "name": "50날개형 방석커버",
       "sku": "DOW-50-WING-SIT",
       "unit": "ea",
@@ -966,7 +3842,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-dow-cb5a7c",
+      "id": "it-finished-4seasons-dotori-white-육각형-등걸이-dow-a16e31",
       "name": "육각형 등걸이",
       "sku": "DOW-HEX-BACK",
       "unit": "ea",
@@ -977,7 +3853,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-dow-8063b9",
+      "id": "it-finished-4seasons-dotori-white-직사각-등걸이-dow-e72f3b",
       "name": "직사각 등걸이",
       "sku": "DOW-REC-BACK",
       "unit": "ea",
@@ -988,7 +3864,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-dow-43bdf7",
+      "id": "it-finished-4seasons-dotori-white-티슈커버-dow-45e7ca",
       "name": "티슈커버",
       "sku": "DOW-TISSUE",
       "unit": "ea",
@@ -999,7 +3875,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-doc-7d2f91",
+      "id": "it-finished-4seasons-dotori-coffee-30x50쿠션커버-doc-520c9f",
       "name": "30x50쿠션커버",
       "sku": "DOC-35-CUSHION",
       "unit": "ea",
@@ -1010,7 +3886,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-doc-b6b05c",
+      "id": "it-finished-4seasons-dotori-coffee-40쿠션커버-doc-0aab89",
       "name": "40쿠션커버",
       "sku": "DOC-40-CUSHION",
       "unit": "ea",
@@ -1021,7 +3897,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-doc-34b356",
+      "id": "it-finished-4seasons-dotori-coffee-50쿠션커버-doc-9b4e81",
       "name": "50쿠션커버",
       "sku": "DOC-50-CUSHION",
       "unit": "ea",
@@ -1032,7 +3908,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-doc-1b2072",
+      "id": "it-finished-4seasons-dotori-coffee-50기본형-방석커버-doc-43904d",
       "name": "50기본형 방석커버",
       "sku": "DOC-50-BASIC-SIT",
       "unit": "ea",
@@ -1043,7 +3919,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-doc-4df685",
+      "id": "it-finished-4seasons-dotori-coffee-45날개형-방석커버-doc-c58f9b",
       "name": "45날개형 방석커버",
       "sku": "DOC-45-WING-SIT",
       "unit": "ea",
@@ -1054,7 +3930,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-doc-5727a6",
+      "id": "it-finished-4seasons-dotori-coffee-50날개형-방석커버-doc-d8a19e",
       "name": "50날개형 방석커버",
       "sku": "DOC-50-WING-SIT",
       "unit": "ea",
@@ -1065,7 +3941,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-doc-b75a5c",
+      "id": "it-finished-4seasons-dotori-coffee-육각형-등걸이-doc-6c4d59",
       "name": "육각형 등걸이",
       "sku": "DOC-HEX-BACK",
       "unit": "ea",
@@ -1076,7 +3952,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-doc-9463d8",
+      "id": "it-finished-4seasons-dotori-coffee-직사각-등걸이-doc-14eb14",
       "name": "직사각 등걸이",
       "sku": "DOC-REC-BACK",
       "unit": "ea",
@@ -1087,7 +3963,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-doc-37bde4",
+      "id": "it-finished-4seasons-dotori-coffee-티슈커버-doc-b6511b",
       "name": "티슈커버",
       "sku": "DOC-TISSUE",
       "unit": "ea",
@@ -1098,7 +3974,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-enw-194eb3",
+      "id": "it-finished-4seasons-encia-white-30x50쿠션커버-enw-91182c",
       "name": "30x50쿠션커버",
       "sku": "ENW-35-CUSHION",
       "unit": "ea",
@@ -1109,7 +3985,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-enw-498ac8",
+      "id": "it-finished-4seasons-encia-white-40쿠션커버-enw-8e9394",
       "name": "40쿠션커버",
       "sku": "ENW-40-CUSHION",
       "unit": "ea",
@@ -1120,7 +3996,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-enw-d0d0e6",
+      "id": "it-finished-4seasons-encia-white-50쿠션커버-enw-df02bb",
       "name": "50쿠션커버",
       "sku": "ENW-50-CUSHION",
       "unit": "ea",
@@ -1131,7 +4007,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-enw-a4e986",
+      "id": "it-finished-4seasons-encia-white-50기본형-방석커버-enw-4a812a",
       "name": "50기본형 방석커버",
       "sku": "ENW-50-BASIC-SIT",
       "unit": "ea",
@@ -1142,7 +4018,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-enw-b01806",
+      "id": "it-finished-4seasons-encia-white-45날개형-방석커버-enw-c12182",
       "name": "45날개형 방석커버",
       "sku": "ENW-45-WING-SIT",
       "unit": "ea",
@@ -1153,7 +4029,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-enw-e0f0ba",
+      "id": "it-finished-4seasons-encia-white-50날개형-방석커버-enw-cc83b9",
       "name": "50날개형 방석커버",
       "sku": "ENW-50-WING-SIT",
       "unit": "ea",
@@ -1164,7 +4040,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-enw-37ef2a",
+      "id": "it-finished-4seasons-encia-white-육각형-등걸이-enw-2c2f0c",
       "name": "육각형 등걸이",
       "sku": "ENW-HEX-BACK",
       "unit": "ea",
@@ -1175,7 +4051,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-enw-9e2db6",
+      "id": "it-finished-4seasons-encia-white-직사각-등걸이-enw-89d9ca",
       "name": "직사각 등걸이",
       "sku": "ENW-REC-BACK",
       "unit": "ea",
@@ -1186,7 +4062,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-enw-a2c3fa",
+      "id": "it-finished-4seasons-encia-white-티슈커버-enw-59873c",
       "name": "티슈커버",
       "sku": "ENW-TISSUE",
       "unit": "ea",
@@ -1197,7 +4073,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-eno-014e8e",
+      "id": "it-finished-4seasons-encia-orange-30x50쿠션커버-eno-313075",
       "name": "30x50쿠션커버",
       "sku": "ENO-35-CUSHION",
       "unit": "ea",
@@ -1208,7 +4084,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-eno-318aa2",
+      "id": "it-finished-4seasons-encia-orange-40쿠션커버-eno-14b79a",
       "name": "40쿠션커버",
       "sku": "ENO-40-CUSHION",
       "unit": "ea",
@@ -1219,7 +4095,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-eno-c8d0d9",
+      "id": "it-finished-4seasons-encia-orange-50쿠션커버-eno-6c524f",
       "name": "50쿠션커버",
       "sku": "ENO-50-CUSHION",
       "unit": "ea",
@@ -1230,7 +4106,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-eno-9ce979",
+      "id": "it-finished-4seasons-encia-orange-50기본형-방석커버-eno-00cef9",
       "name": "50기본형 방석커버",
       "sku": "ENO-50-BASIC-SIT",
       "unit": "ea",
@@ -1241,7 +4117,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-eno-9817e0",
+      "id": "it-finished-4seasons-encia-orange-45날개형-방석커버-eno-ab38be",
       "name": "45날개형 방석커버",
       "sku": "ENO-45-WING-SIT",
       "unit": "ea",
@@ -1252,7 +4128,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-eno-d8f0ae",
+      "id": "it-finished-4seasons-encia-orange-50날개형-방석커버-eno-d49358",
       "name": "50날개형 방석커버",
       "sku": "ENO-50-WING-SIT",
       "unit": "ea",
@@ -1263,7 +4139,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-eno-4fef50",
+      "id": "it-finished-4seasons-encia-orange-육각형-등걸이-eno-dde426",
       "name": "육각형 등걸이",
       "sku": "ENO-HEX-BACK",
       "unit": "ea",
@@ -1274,7 +4150,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-eno-962da9",
+      "id": "it-finished-4seasons-encia-orange-직사각-등걸이-eno-382bd6",
       "name": "직사각 등걸이",
       "sku": "ENO-REC-BACK",
       "unit": "ea",
@@ -1285,7 +4161,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-eno-bac420",
+      "id": "it-finished-4seasons-encia-orange-티슈커버-eno-6ffd4a",
       "name": "티슈커버",
       "sku": "ENO-TISSUE",
       "unit": "ea",
@@ -1296,7 +4172,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-sow-ab3d8c",
+      "id": "it-finished-4seasons-sobok-white-30x50쿠션커버-sow-6c51f0",
       "name": "30x50쿠션커버",
       "sku": "SOW-35-CUSHION",
       "unit": "ea",
@@ -1307,7 +4183,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-sow-e1a9aa",
+      "id": "it-finished-4seasons-sobok-white-40쿠션커버-sow-72933b",
       "name": "40쿠션커버",
       "sku": "SOW-40-CUSHION",
       "unit": "ea",
@@ -1318,7 +4194,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-sow-eb1c99",
+      "id": "it-finished-4seasons-sobok-white-50쿠션커버-sow-3d6144",
       "name": "50쿠션커버",
       "sku": "SOW-50-CUSHION",
       "unit": "ea",
@@ -1329,7 +4205,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-sow-a8ab79",
+      "id": "it-finished-4seasons-sobok-white-50기본형-방석커버-sow-74a81d",
       "name": "50기본형 방석커버",
       "sku": "SOW-50-BASIC-SIT",
       "unit": "ea",
@@ -1340,7 +4216,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-sow-9f8bbb",
+      "id": "it-finished-4seasons-sobok-white-45날개형-방석커버-sow-4cda2c",
       "name": "45날개형 방석커버",
       "sku": "SOW-45-WING-SIT",
       "unit": "ea",
@@ -1351,7 +4227,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-sow-e4b440",
+      "id": "it-finished-4seasons-sobok-white-50날개형-방석커버-sow-6b1d56",
       "name": "50날개형 방석커버",
       "sku": "SOW-50-WING-SIT",
       "unit": "ea",
@@ -1362,7 +4238,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-sow-8adc8c",
+      "id": "it-finished-4seasons-sobok-white-육각형-등걸이-sow-b5603b",
       "name": "육각형 등걸이",
       "sku": "SOW-HEX-BACK",
       "unit": "ea",
@@ -1373,7 +4249,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-sow-a32cde",
+      "id": "it-finished-4seasons-sobok-white-직사각-등걸이-sow-4fb574",
       "name": "직사각 등걸이",
       "sku": "SOW-REC-BACK",
       "unit": "ea",
@@ -1384,7 +4260,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-sow-09afe9",
+      "id": "it-finished-4seasons-sobok-white-티슈커버-sow-740d22",
       "name": "티슈커버",
       "sku": "SOW-TISSUE",
       "unit": "ea",
@@ -1395,7 +4271,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-sog-bb3da5",
+      "id": "it-finished-4seasons-sobok-gray-30x50쿠션커버-sog-0dee0d",
       "name": "30x50쿠션커버",
       "sku": "SOG-35-CUSHION",
       "unit": "ea",
@@ -1406,7 +4282,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-sog-f1a9c3",
+      "id": "it-finished-4seasons-sobok-gray-40쿠션커버-sog-c70054",
       "name": "40쿠션커버",
       "sku": "SOG-40-CUSHION",
       "unit": "ea",
@@ -1417,7 +4293,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-sog-fb1cb3",
+      "id": "it-finished-4seasons-sobok-gray-50쿠션커버-sog-8573de",
       "name": "50쿠션커버",
       "sku": "SOG-50-CUSHION",
       "unit": "ea",
@@ -1428,7 +4304,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-sog-b8ab92",
+      "id": "it-finished-4seasons-sobok-gray-50기본형-방석커버-sog-e90dfd",
       "name": "50기본형 방석커버",
       "sku": "SOG-50-BASIC-SIT",
       "unit": "ea",
@@ -1439,7 +4315,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-sog-8f8ba2",
+      "id": "it-finished-4seasons-sobok-gray-45날개형-방석커버-sog-6f9282",
       "name": "45날개형 방석커버",
       "sku": "SOG-45-WING-SIT",
       "unit": "ea",
@@ -1450,7 +4326,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-sog-f4b45a",
+      "id": "it-finished-4seasons-sobok-gray-50날개형-방석커버-sog-b1e091",
       "name": "50날개형 방석커버",
       "sku": "SOG-50-WING-SIT",
       "unit": "ea",
@@ -1461,7 +4337,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-sog-9adca5",
+      "id": "it-finished-4seasons-sobok-gray-육각형-등걸이-sog-2a230b",
       "name": "육각형 등걸이",
       "sku": "SOG-HEX-BACK",
       "unit": "ea",
@@ -1472,7 +4348,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-sog-b32cf7",
+      "id": "it-finished-4seasons-sobok-gray-직사각-등걸이-sog-cd97e9",
       "name": "직사각 등걸이",
       "sku": "SOG-REC-BACK",
       "unit": "ea",
@@ -1483,7 +4359,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-sog-f9afd0",
+      "id": "it-finished-4seasons-sobok-gray-티슈커버-sog-3b64c5",
       "name": "티슈커버",
       "sku": "SOG-TISSUE",
       "unit": "ea",
@@ -1494,7 +4370,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-sop-a43d81",
+      "id": "it-finished-4seasons-sobok-pink-30x50쿠션커버-sop-7eac33",
       "name": "30x50쿠션커버",
       "sku": "SOP-35-CUSHION",
       "unit": "ea",
@@ -1505,7 +4381,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-sop-daa99e",
+      "id": "it-finished-4seasons-sobok-pink-40쿠션커버-sop-60f034",
       "name": "40쿠션커버",
       "sku": "SOP-40-CUSHION",
       "unit": "ea",
@@ -1516,7 +4392,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-sop-e41c8e",
+      "id": "it-finished-4seasons-sobok-pink-50쿠션커버-sop-9834af",
       "name": "50쿠션커버",
       "sku": "SOP-50-CUSHION",
       "unit": "ea",
@@ -1527,7 +4403,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-sop-a9ab7b",
+      "id": "it-finished-4seasons-sobok-pink-50기본형-방석커버-sop-d99708",
       "name": "50기본형 방석커버",
       "sku": "SOP-50-BASIC-SIT",
       "unit": "ea",
@@ -1538,7 +4414,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-sop-988bb0",
+      "id": "it-finished-4seasons-sobok-pink-45날개형-방석커버-sop-32580f",
       "name": "45날개형 방석커버",
       "sku": "SOP-45-WING-SIT",
       "unit": "ea",
@@ -1549,7 +4425,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-sop-e5b442",
+      "id": "it-finished-4seasons-sobok-pink-50날개형-방석커버-sop-efd39a",
       "name": "50날개형 방석커버",
       "sku": "SOP-50-WING-SIT",
       "unit": "ea",
@@ -1560,7 +4436,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-sop-83dc81",
+      "id": "it-finished-4seasons-sobok-pink-육각형-등걸이-sop-85979e",
       "name": "육각형 등걸이",
       "sku": "SOP-HEX-BACK",
       "unit": "ea",
@@ -1571,7 +4447,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-sop-a42cdf",
+      "id": "it-finished-4seasons-sobok-pink-직사각-등걸이-sop-cbb8cb",
       "name": "직사각 등걸이",
       "sku": "SOP-REC-BACK",
       "unit": "ea",
@@ -1582,7 +4458,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-sop-0aafea",
+      "id": "it-finished-4seasons-sobok-pink-티슈커버-sop-ef1e13",
       "name": "티슈커버",
       "sku": "SOP-TISSUE",
       "unit": "ea",
@@ -1593,7 +4469,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-lvg-cebc01",
+      "id": "it-finished-4seasons-lavender-gold-30x50쿠션커버-lvg-8d5742",
       "name": "30x50쿠션커버",
       "sku": "LVG-35-CUSHION",
       "unit": "ea",
@@ -1604,7 +4480,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-lvg-917944",
+      "id": "it-finished-4seasons-lavender-gold-40쿠션커버-lvg-2f6a04",
       "name": "40쿠션커버",
       "sku": "LVG-40-CUSHION",
       "unit": "ea",
@@ -1615,7 +4491,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-lvg-91e4b7",
+      "id": "it-finished-4seasons-lavender-gold-50쿠션커버-lvg-12d97e",
       "name": "50쿠션커버",
       "sku": "LVG-50-CUSHION",
       "unit": "ea",
@@ -1626,7 +4502,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-lvg-a1fdef",
+      "id": "it-finished-4seasons-lavender-gold-50기본형-방석커버-lvg-7993c3",
       "name": "50기본형 방석커버",
       "sku": "LVG-50-BASIC-SIT",
       "unit": "ea",
@@ -1637,7 +4513,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-lvg-b66529",
+      "id": "it-finished-4seasons-lavender-gold-45날개형-방석커버-lvg-3d8091",
       "name": "45날개형 방석커버",
       "sku": "LVG-45-WING-SIT",
       "unit": "ea",
@@ -1648,7 +4524,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-lvg-db8abb",
+      "id": "it-finished-4seasons-lavender-gold-50날개형-방석커버-lvg-e98e4a",
       "name": "50날개형 방석커버",
       "sku": "LVG-50-WING-SIT",
       "unit": "ea",
@@ -1659,7 +4535,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-lvg-10e6d9",
+      "id": "it-finished-4seasons-lavender-gold-육각형-등걸이-lvg-6fa4a1",
       "name": "육각형 등걸이",
       "sku": "LVG-HEX-BACK",
       "unit": "ea",
@@ -1670,7 +4546,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-lvg-1a0422",
+      "id": "it-finished-4seasons-lavender-gold-직사각-등걸이-lvg-85cc7a",
       "name": "직사각 등걸이",
       "sku": "LVG-REC-BACK",
       "unit": "ea",
@@ -1681,7 +4557,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-lvg-7dad7a",
+      "id": "it-finished-4seasons-lavender-gold-티슈커버-lvg-7ccc53",
       "name": "티슈커버",
       "sku": "LVG-TISSUE",
       "unit": "ea",
@@ -1692,7 +4568,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-irb-4b274a",
+      "id": "it-finished-4seasons-iris-blue-30x50쿠션커버-irb-d6b7d2",
       "name": "30x50쿠션커버",
       "sku": "IRB-35-CUSHION",
       "unit": "ea",
@@ -1703,7 +4579,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-irb-0b1531",
+      "id": "it-finished-4seasons-iris-blue-40쿠션커버-irb-82555c",
       "name": "40쿠션커버",
       "sku": "IRB-40-CUSHION",
       "unit": "ea",
@@ -1714,7 +4590,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-irb-cb3d18",
+      "id": "it-finished-4seasons-iris-blue-50쿠션커버-irb-146306",
       "name": "50쿠션커버",
       "sku": "IRB-50-CUSHION",
       "unit": "ea",
@@ -1725,7 +4601,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-irb-40f15d",
+      "id": "it-finished-4seasons-iris-blue-50기본형-방석커버-irb-885873",
       "name": "50기본형 방석커버",
       "sku": "IRB-50-BASIC-SIT",
       "unit": "ea",
@@ -1736,7 +4612,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-irb-2ff9d0",
+      "id": "it-finished-4seasons-iris-blue-45날개형-방석커버-irb-39ec26",
       "name": "45날개형 방석커버",
       "sku": "IRB-45-WING-SIT",
       "unit": "ea",
@@ -1747,7 +4623,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-irb-7cf891",
+      "id": "it-finished-4seasons-iris-blue-50날개형-방석커버-irb-8d0898",
       "name": "50날개형 방석커버",
       "sku": "IRB-50-WING-SIT",
       "unit": "ea",
@@ -1758,7 +4634,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-irb-c8512d",
+      "id": "it-finished-4seasons-iris-blue-육각형-등걸이-irb-3e13c7",
       "name": "육각형 등걸이",
       "sku": "IRB-HEX-BACK",
       "unit": "ea",
@@ -1769,7 +4645,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-irb-bb71f8",
+      "id": "it-finished-4seasons-iris-blue-직사각-등걸이-irb-2626e0",
       "name": "직사각 등걸이",
       "sku": "IRB-REC-BACK",
       "unit": "ea",
@@ -1780,7 +4656,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-irb-9f1a87",
+      "id": "it-finished-4seasons-iris-blue-티슈커버-irb-14a7c8",
       "name": "티슈커버",
       "sku": "IRB-TISSUE",
       "unit": "ea",
@@ -1791,7 +4667,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-tar-3f3abb",
+      "id": "it-finished-4seasons-tatiana-rose-30x50쿠션커버-tar-134c2b",
       "name": "30x50쿠션커버",
       "sku": "TAR-35-CUSHION",
       "unit": "ea",
@@ -1802,7 +4678,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-tar-f67399",
+      "id": "it-finished-4seasons-tatiana-rose-40쿠션커버-tar-0364ef",
       "name": "40쿠션커버",
       "sku": "TAR-40-CUSHION",
       "unit": "ea",
@@ -1813,7 +4689,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-tar-7a0fbe",
+      "id": "it-finished-4seasons-tatiana-rose-50쿠션커버-tar-020824",
       "name": "50쿠션커버",
       "sku": "TAR-50-CUSHION",
       "unit": "ea",
@@ -1824,7 +4700,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-tar-06690f",
+      "id": "it-finished-4seasons-tatiana-rose-50기본형-방석커버-tar-1995e5",
       "name": "50기본형 방석커버",
       "sku": "TAR-50-BASIC-SIT",
       "unit": "ea",
@@ -1835,7 +4711,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-tar-c97a9c",
+      "id": "it-finished-4seasons-tatiana-rose-45날개형-방석커버-tar-94c644",
       "name": "45날개형 방석커버",
       "sku": "TAR-45-WING-SIT",
       "unit": "ea",
@@ -1846,7 +4722,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-tar-3e703d",
+      "id": "it-finished-4seasons-tatiana-rose-50날개형-방석커버-tar-dbd06e",
       "name": "50날개형 방석커버",
       "sku": "TAR-50-WING-SIT",
       "unit": "ea",
@@ -1857,7 +4733,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-tar-f5e064",
+      "id": "it-finished-4seasons-tatiana-rose-육각형-등걸이-tar-f4e7e7",
       "name": "육각형 등걸이",
       "sku": "TAR-HEX-BACK",
       "unit": "ea",
@@ -1868,7 +4744,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-tar-00ea74",
+      "id": "it-finished-4seasons-tatiana-rose-직사각-등걸이-tar-0724ba",
       "name": "직사각 등걸이",
       "sku": "TAR-REC-BACK",
       "unit": "ea",
@@ -1879,7 +4755,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-tar-262fe6",
+      "id": "it-finished-4seasons-tatiana-rose-티슈커버-tar-128575",
       "name": "티슈커버",
       "sku": "TAR-TISSUE",
       "unit": "ea",
@@ -1890,7 +4766,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-rzg-fa618b",
+      "id": "it-finished-4seasons-ronze-gray-30x50쿠션커버-rzg-e7d29f",
       "name": "30x50쿠션커버",
       "sku": "RZG-35-CUSHION",
       "unit": "ea",
@@ -1901,7 +4777,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-rzg-6125f5",
+      "id": "it-finished-4seasons-ronze-gray-40쿠션커버-rzg-9ad1d5",
       "name": "40쿠션커버",
       "sku": "RZG-40-CUSHION",
       "unit": "ea",
@@ -1912,7 +4788,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-rzg-155d6b",
+      "id": "it-finished-4seasons-ronze-gray-50쿠션커버-rzg-5cfbfd",
       "name": "50쿠션커버",
       "sku": "RZG-50-CUSHION",
       "unit": "ea",
@@ -1923,7 +4799,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-rzg-d89855",
+      "id": "it-finished-4seasons-ronze-gray-50기본형-방석커버-rzg-687484",
       "name": "50기본형 방석커버",
       "sku": "RZG-50-BASIC-SIT",
       "unit": "ea",
@@ -1934,7 +4810,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-rzg-23791b",
+      "id": "it-finished-4seasons-ronze-gray-45날개형-방석커버-rzg-1fff44",
       "name": "45날개형 방석커버",
       "sku": "RZG-45-WING-SIT",
       "unit": "ea",
@@ -1945,7 +4821,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-rzg-14a11c",
+      "id": "it-finished-4seasons-ronze-gray-50날개형-방석커버-rzg-aa86f6",
       "name": "50날개형 방석커버",
       "sku": "RZG-50-WING-SIT",
       "unit": "ea",
@@ -1956,7 +4832,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-rzg-ef17d9",
+      "id": "it-finished-4seasons-ronze-gray-육각형-등걸이-rzg-361532",
       "name": "육각형 등걸이",
       "sku": "RZG-HEX-BACK",
       "unit": "ea",
@@ -1967,7 +4843,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-rzg-51dd4f",
+      "id": "it-finished-4seasons-ronze-gray-직사각-등걸이-rzg-819701",
       "name": "직사각 등걸이",
       "sku": "RZG-REC-BACK",
       "unit": "ea",
@@ -1978,7 +4854,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-rzg-59eca9",
+      "id": "it-finished-4seasons-ronze-gray-티슈커버-rzg-eb7e98",
       "name": "티슈커버",
       "sku": "RZG-TISSUE",
       "unit": "ea",
@@ -1989,7 +4865,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-mgg-8d06e5",
+      "id": "it-finished-4seasons-magritte-gray-30x50쿠션커버-mgg-02e4fb",
       "name": "30x50쿠션커버",
       "sku": "MGG-35-CUSHION",
       "unit": "ea",
@@ -2000,7 +4876,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-mgg-ef3ecc",
+      "id": "it-finished-4seasons-magritte-gray-40쿠션커버-mgg-73a07b",
       "name": "40쿠션커버",
       "sku": "MGG-40-CUSHION",
       "unit": "ea",
@@ -2011,7 +4887,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-mgg-061ca8",
+      "id": "it-finished-4seasons-magritte-gray-50쿠션커버-mgg-fa5c36",
       "name": "50쿠션커버",
       "sku": "MGG-50-CUSHION",
       "unit": "ea",
@@ -2022,7 +4898,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-mgg-ecca15",
+      "id": "it-finished-4seasons-magritte-gray-50기본형-방석커버-mgg-9fa4a1",
       "name": "50기본형 방석커버",
       "sku": "MGG-50-BASIC-SIT",
       "unit": "ea",
@@ -2033,7 +4909,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-mgg-123d00",
+      "id": "it-finished-4seasons-magritte-gray-45날개형-방석커버-mgg-312c7c",
       "name": "45날개형 방석커버",
       "sku": "MGG-45-WING-SIT",
       "unit": "ea",
@@ -2044,7 +4920,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-mgg-28d149",
+      "id": "it-finished-4seasons-magritte-gray-50날개형-방석커버-mgg-e06b49",
       "name": "50날개형 방석커버",
       "sku": "MGG-50-WING-SIT",
       "unit": "ea",
@@ -2055,7 +4931,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-mgg-ad0d33",
+      "id": "it-finished-4seasons-magritte-gray-육각형-등걸이-mgg-542337",
       "name": "육각형 등걸이",
       "sku": "MGG-HEX-BACK",
       "unit": "ea",
@@ -2066,7 +4942,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-mgg-660d7c",
+      "id": "it-finished-4seasons-magritte-gray-직사각-등걸이-mgg-6d0c3d",
       "name": "직사각 등걸이",
       "sku": "MGG-REC-BACK",
       "unit": "ea",
@@ -2077,7 +4953,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-mgg-096787",
+      "id": "it-finished-4seasons-magritte-gray-티슈커버-mgg-8f4fa0",
       "name": "티슈커버",
       "sku": "MGG-TISSUE",
       "unit": "ea",
@@ -2088,7 +4964,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-mgd-8a06e1",
+      "id": "it-finished-4seasons-magritte-denim-30x50쿠션커버-mgd-bfb984",
       "name": "30x50쿠션커버",
       "sku": "MGD-35-CUSHION",
       "unit": "ea",
@@ -2099,7 +4975,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-mgd-ec3ec7",
+      "id": "it-finished-4seasons-magritte-denim-40쿠션커버-mgd-b7efaf",
       "name": "40쿠션커버",
       "sku": "MGD-40-CUSHION",
       "unit": "ea",
@@ -2110,7 +4986,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-mgd-051ca7",
+      "id": "it-finished-4seasons-magritte-denim-50쿠션커버-mgd-74ad6c",
       "name": "50쿠션커버",
       "sku": "MGD-50-CUSHION",
       "unit": "ea",
@@ -2121,7 +4997,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-mgd-e9ca10",
+      "id": "it-finished-4seasons-magritte-denim-50기본형-방석커버-mgd-3ee777",
       "name": "50기본형 방석커버",
       "sku": "MGD-50-BASIC-SIT",
       "unit": "ea",
@@ -2132,7 +5008,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-mgd-0f3cfb",
+      "id": "it-finished-4seasons-magritte-denim-45날개형-방석커버-mgd-846605",
       "name": "45날개형 방석커버",
       "sku": "MGD-45-WING-SIT",
       "unit": "ea",
@@ -2143,7 +5019,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-mgd-25d145",
+      "id": "it-finished-4seasons-magritte-denim-50날개형-방석커버-mgd-e38bf1",
       "name": "50날개형 방석커버",
       "sku": "MGD-50-WING-SIT",
       "unit": "ea",
@@ -2154,7 +5030,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-mgd-aa0d2e",
+      "id": "it-finished-4seasons-magritte-denim-육각형-등걸이-mgd-1dc960",
       "name": "육각형 등걸이",
       "sku": "MGD-HEX-BACK",
       "unit": "ea",
@@ -2165,7 +5041,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-mgd-630d77",
+      "id": "it-finished-4seasons-magritte-denim-직사각-등걸이-mgd-739683",
       "name": "직사각 등걸이",
       "sku": "MGD-REC-BACK",
       "unit": "ea",
@@ -2176,7 +5052,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-mgd-066782",
+      "id": "it-finished-4seasons-magritte-denim-티슈커버-mgd-4a3549",
       "name": "티슈커버",
       "sku": "MGD-TISSUE",
       "unit": "ea",
@@ -2187,7 +5063,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-mgb-8806de",
+      "id": "it-finished-4seasons-magritte-beige-30x50쿠션커버-mgb-ab1295",
       "name": "30x50쿠션커버",
       "sku": "MGB-35-CUSHION",
       "unit": "ea",
@@ -2198,7 +5074,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-mgb-ea3ec4",
+      "id": "it-finished-4seasons-magritte-beige-40쿠션커버-mgb-749e01",
       "name": "40쿠션커버",
       "sku": "MGB-40-CUSHION",
       "unit": "ea",
@@ -2209,7 +5085,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-mgb-0b1cb0",
+      "id": "it-finished-4seasons-magritte-beige-50쿠션커버-mgb-983756",
       "name": "50쿠션커버",
       "sku": "MGB-50-CUSHION",
       "unit": "ea",
@@ -2220,7 +5096,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-mgb-efca1a",
+      "id": "it-finished-4seasons-magritte-beige-50기본형-방석커버-mgb-2be0d3",
       "name": "50기본형 방석커버",
       "sku": "MGB-50-BASIC-SIT",
       "unit": "ea",
@@ -2231,7 +5107,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-mgb-0d3cf8",
+      "id": "it-finished-4seasons-magritte-beige-45날개형-방석커버-mgb-69fd3b",
       "name": "45날개형 방석커버",
       "sku": "MGB-45-WING-SIT",
       "unit": "ea",
@@ -2242,7 +5118,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-mgb-2bd14e",
+      "id": "it-finished-4seasons-magritte-beige-50날개형-방석커버-mgb-4e4fef",
       "name": "50날개형 방석커버",
       "sku": "MGB-50-WING-SIT",
       "unit": "ea",
@@ -2253,7 +5129,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-mgb-a80d2b",
+      "id": "it-finished-4seasons-magritte-beige-육각형-등걸이-mgb-31932d",
       "name": "육각형 등걸이",
       "sku": "MGB-HEX-BACK",
       "unit": "ea",
@@ -2264,7 +5140,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-mgb-690d80",
+      "id": "it-finished-4seasons-magritte-beige-직사각-등걸이-mgb-8b8f0a",
       "name": "직사각 등걸이",
       "sku": "MGB-REC-BACK",
       "unit": "ea",
@@ -2275,7 +5151,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-mgb-0c678c",
+      "id": "it-finished-4seasons-magritte-beige-티슈커버-mgb-2a6e71",
       "name": "티슈커버",
       "sku": "MGB-TISSUE",
       "unit": "ea",
@@ -2286,7 +5162,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-thg-614c3a",
+      "id": "it-finished-4seasons-thistles-gray-30x50쿠션커버-thg-c1ae82",
       "name": "30x50쿠션커버",
       "sku": "THG-35-CUSHION",
       "unit": "ea",
@@ -2297,7 +5173,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-thg-ec84d2",
+      "id": "it-finished-4seasons-thistles-gray-40쿠션커버-thg-6ef667",
       "name": "40쿠션커버",
       "sku": "THG-40-CUSHION",
       "unit": "ea",
@@ -2308,7 +5184,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-thg-3bf996",
+      "id": "it-finished-4seasons-thistles-gray-50쿠션커버-thg-8c3719",
       "name": "50쿠션커버",
       "sku": "THG-50-CUSHION",
       "unit": "ea",
@@ -2319,7 +5195,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-thg-047a55",
+      "id": "it-finished-4seasons-thistles-gray-50기본형-방석커버-thg-9c4541",
       "name": "50기본형 방석커버",
       "sku": "THG-50-BASIC-SIT",
       "unit": "ea",
@@ -2330,7 +5206,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-thg-eb6378",
+      "id": "it-finished-4seasons-thistles-gray-45날개형-방석커버-thg-c12648",
       "name": "45날개형 방석커버",
       "sku": "THG-45-WING-SIT",
       "unit": "ea",
@@ -2341,7 +5217,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-thg-40818a",
+      "id": "it-finished-4seasons-thistles-gray-50날개형-방석커버-thg-5b5694",
       "name": "50날개형 방석커버",
       "sku": "THG-50-WING-SIT",
       "unit": "ea",
@@ -2352,7 +5228,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-thg-eff1a4",
+      "id": "it-finished-4seasons-thistles-gray-육각형-등걸이-thg-82504f",
       "name": "육각형 등걸이",
       "sku": "THG-HEX-BACK",
       "unit": "ea",
@@ -2363,7 +5239,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-thg-fefbba",
+      "id": "it-finished-4seasons-thistles-gray-직사각-등걸이-thg-fb8dc5",
       "name": "직사각 등걸이",
       "sku": "THG-REC-BACK",
       "unit": "ea",
@@ -2374,7 +5250,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-thg-44415e",
+      "id": "it-finished-4seasons-thistles-gray-티슈커버-thg-3eae19",
       "name": "티슈커버",
       "sku": "THG-TISSUE",
       "unit": "ea",
@@ -2385,7 +5261,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-thd-5e4c35",
+      "id": "it-finished-4seasons-thistles-denim-30x50쿠션커버-thd-ef8e5b",
       "name": "30x50쿠션커버",
       "sku": "THD-35-CUSHION",
       "unit": "ea",
@@ -2396,7 +5272,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-thd-e984cd",
+      "id": "it-finished-4seasons-thistles-denim-40쿠션커버-thd-82ee4c",
       "name": "40쿠션커버",
       "sku": "THD-40-CUSHION",
       "unit": "ea",
@@ -2407,7 +5283,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-thd-38f991",
+      "id": "it-finished-4seasons-thistles-denim-50쿠션커버-thd-a202c6",
       "name": "50쿠션커버",
       "sku": "THD-50-CUSHION",
       "unit": "ea",
@@ -2418,7 +5294,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-thd-017a51",
+      "id": "it-finished-4seasons-thistles-denim-50기본형-방석커버-thd-b805b8",
       "name": "50기본형 방석커버",
       "sku": "THD-50-BASIC-SIT",
       "unit": "ea",
@@ -2429,7 +5305,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-thd-e86374",
+      "id": "it-finished-4seasons-thistles-denim-45날개형-방석커버-thd-85034b",
       "name": "45날개형 방석커버",
       "sku": "THD-45-WING-SIT",
       "unit": "ea",
@@ -2440,7 +5316,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-thd-3d8185",
+      "id": "it-finished-4seasons-thistles-denim-50날개형-방석커버-thd-7c70d7",
       "name": "50날개형 방석커버",
       "sku": "THD-50-WING-SIT",
       "unit": "ea",
@@ -2451,7 +5327,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-thd-ecf19f",
+      "id": "it-finished-4seasons-thistles-denim-육각형-등걸이-thd-307fb4",
       "name": "육각형 등걸이",
       "sku": "THD-HEX-BACK",
       "unit": "ea",
@@ -2462,7 +5338,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-thd-fbfbb5",
+      "id": "it-finished-4seasons-thistles-denim-직사각-등걸이-thd-85b045",
       "name": "직사각 등걸이",
       "sku": "THD-REC-BACK",
       "unit": "ea",
@@ -2473,7 +5349,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-thd-414159",
+      "id": "it-finished-4seasons-thistles-denim-티슈커버-thd-2285ee",
       "name": "티슈커버",
       "sku": "THD-TISSUE",
       "unit": "ea",
@@ -2484,7 +5360,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-thk-554c27",
+      "id": "it-finished-4seasons-thistles-khaki-30x50쿠션커버-thk-00b6b9",
       "name": "30x50쿠션커버",
       "sku": "THK-35-CUSHION",
       "unit": "ea",
@@ -2495,7 +5371,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-thk-f884e5",
+      "id": "it-finished-4seasons-thistles-khaki-40쿠션커버-thk-70718a",
       "name": "40쿠션커버",
       "sku": "THK-40-CUSHION",
       "unit": "ea",
@@ -2506,7 +5382,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-thk-3ff99c",
+      "id": "it-finished-4seasons-thistles-khaki-50쿠션커버-thk-cd342f",
       "name": "50쿠션커버",
       "sku": "THK-50-CUSHION",
       "unit": "ea",
@@ -2517,7 +5393,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-thk-f87a42",
+      "id": "it-finished-4seasons-thistles-khaki-50기본형-방석커버-thk-37a217",
       "name": "50기본형 방석커버",
       "sku": "THK-50-BASIC-SIT",
       "unit": "ea",
@@ -2528,7 +5404,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-thk-ef637f",
+      "id": "it-finished-4seasons-thistles-khaki-45날개형-방석커버-thk-30c32d",
       "name": "45날개형 방석커버",
       "sku": "THK-45-WING-SIT",
       "unit": "ea",
@@ -2539,7 +5415,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-thk-348177",
+      "id": "it-finished-4seasons-thistles-khaki-50날개형-방석커버-thk-0bd00d",
       "name": "50날개형 방석커버",
       "sku": "THK-50-WING-SIT",
       "unit": "ea",
@@ -2550,7 +5426,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-thk-f3f1aa",
+      "id": "it-finished-4seasons-thistles-khaki-육각형-등걸이-thk-2fc2bb",
       "name": "육각형 등걸이",
       "sku": "THK-HEX-BACK",
       "unit": "ea",
@@ -2561,7 +5437,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-thk-f2fba7",
+      "id": "it-finished-4seasons-thistles-khaki-직사각-등걸이-thk-71bbc5",
       "name": "직사각 등걸이",
       "sku": "THK-REC-BACK",
       "unit": "ea",
@@ -2572,7 +5448,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-thk-38414b",
+      "id": "it-finished-4seasons-thistles-khaki-티슈커버-thk-1956a7",
       "name": "티슈커버",
       "sku": "THK-TISSUE",
       "unit": "ea",
@@ -2583,7 +5459,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-pdi-e4250e",
+      "id": "it-finished-4seasons-pedro-ivory-30x50쿠션커버-pdi-11a8a9",
       "name": "30x50쿠션커버",
       "sku": "PDI-35-CUSHION",
       "unit": "ea",
@@ -2594,7 +5470,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-pdi-61a2f6",
+      "id": "it-finished-4seasons-pedro-ivory-40쿠션커버-pdi-93ffbd",
       "name": "40쿠션커버",
       "sku": "PDI-40-CUSHION",
       "unit": "ea",
@@ -2605,7 +5481,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-pdi-d19e50",
+      "id": "it-finished-4seasons-pedro-ivory-50쿠션커버-pdi-0ee5c8",
       "name": "50쿠션커버",
       "sku": "PDI-50-CUSHION",
       "unit": "ea",
@@ -2616,7 +5492,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-pdi-0c1cc0",
+      "id": "it-finished-4seasons-pedro-ivory-50기본형-방석커버-pdi-6997a4",
       "name": "50기본형 방석커버",
       "sku": "PDI-50-BASIC-SIT",
       "unit": "ea",
@@ -2627,7 +5503,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-pdi-3b2469",
+      "id": "it-finished-4seasons-pedro-ivory-45날개형-방석커버-pdi-a293c6",
       "name": "45날개형 방석커버",
       "sku": "PDI-45-WING-SIT",
       "unit": "ea",
@@ -2638,7 +5514,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-pdi-45a98b",
+      "id": "it-finished-4seasons-pedro-ivory-50날개형-방석커버-pdi-d7ab6b",
       "name": "50날개형 방석커버",
       "sku": "PDI-50-WING-SIT",
       "unit": "ea",
@@ -2649,7 +5525,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-pdi-5e4cf0",
+      "id": "it-finished-4seasons-pedro-ivory-육각형-등걸이-pdi-79f32a",
       "name": "육각형 등걸이",
       "sku": "PDI-HEX-BACK",
       "unit": "ea",
@@ -2660,7 +5536,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-pdi-8422f2",
+      "id": "it-finished-4seasons-pedro-ivory-직사각-등걸이-pdi-7ff71b",
       "name": "직사각 등걸이",
       "sku": "PDI-REC-BACK",
       "unit": "ea",
@@ -2671,7 +5547,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-pdi-caa5cb",
+      "id": "it-finished-4seasons-pedro-ivory-티슈커버-pdi-a0a76a",
       "name": "티슈커버",
       "sku": "PDI-TISSUE",
       "unit": "ea",
@@ -2682,7 +5558,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-pdg-e2250b",
+      "id": "it-finished-4seasons-pedro-gray-30x50쿠션커버-pdg-cc3e26",
       "name": "30x50쿠션커버",
       "sku": "PDG-35-CUSHION",
       "unit": "ea",
@@ -2693,7 +5569,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-pdg-57a2e7",
+      "id": "it-finished-4seasons-pedro-gray-40쿠션커버-pdg-d2335f",
       "name": "40쿠션커버",
       "sku": "PDG-40-CUSHION",
       "unit": "ea",
@@ -2704,7 +5580,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-pdg-cf9e4d",
+      "id": "it-finished-4seasons-pedro-gray-50쿠션커버-pdg-72b426",
       "name": "50쿠션커버",
       "sku": "PDG-50-CUSHION",
       "unit": "ea",
@@ -2715,7 +5591,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-pdg-021cb0",
+      "id": "it-finished-4seasons-pedro-gray-50기본형-방석커버-pdg-1e5a13",
       "name": "50기본형 방석커버",
       "sku": "PDG-50-BASIC-SIT",
       "unit": "ea",
@@ -2726,7 +5602,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-pdg-392466",
+      "id": "it-finished-4seasons-pedro-gray-45날개형-방석커버-pdg-ed04c5",
       "name": "45날개형 방석커버",
       "sku": "PDG-45-WING-SIT",
       "unit": "ea",
@@ -2737,7 +5613,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-pdg-3ba97b",
+      "id": "it-finished-4seasons-pedro-gray-50날개형-방석커버-pdg-4c1113",
       "name": "50날개형 방석커버",
       "sku": "PDG-50-WING-SIT",
       "unit": "ea",
@@ -2748,7 +5624,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-pdg-5c4ced",
+      "id": "it-finished-4seasons-pedro-gray-육각형-등걸이-pdg-829c1e",
       "name": "육각형 등걸이",
       "sku": "PDG-HEX-BACK",
       "unit": "ea",
@@ -2759,7 +5635,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-pdg-7a22e2",
+      "id": "it-finished-4seasons-pedro-gray-직사각-등걸이-pdg-c071c6",
       "name": "직사각 등걸이",
       "sku": "PDG-REC-BACK",
       "unit": "ea",
@@ -2770,7 +5646,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-pdg-c0a5bb",
+      "id": "it-finished-4seasons-pedro-gray-티슈커버-pdg-65f93c",
       "name": "티슈커버",
       "sku": "PDG-TISSUE",
       "unit": "ea",
@@ -2781,7 +5657,7 @@
       "qty": 0
     },
     {
-      "id": "it-30x50쿠션커버-pdb-dd2503",
+      "id": "it-finished-4seasons-pedro-blue-30x50쿠션커버-pdb-a28294",
       "name": "30x50쿠션커버",
       "sku": "PDB-35-CUSHION",
       "unit": "ea",
@@ -2792,7 +5668,7 @@
       "qty": 0
     },
     {
-      "id": "it-40쿠션커버-pdb-5aa2eb",
+      "id": "it-finished-4seasons-pedro-blue-40쿠션커버-pdb-7af701",
       "name": "40쿠션커버",
       "sku": "PDB-40-CUSHION",
       "unit": "ea",
@@ -2803,7 +5679,7 @@
       "qty": 0
     },
     {
-      "id": "it-50쿠션커버-pdb-ca9e45",
+      "id": "it-finished-4seasons-pedro-blue-50쿠션커버-pdb-d27a7b",
       "name": "50쿠션커버",
       "sku": "PDB-50-CUSHION",
       "unit": "ea",
@@ -2814,7 +5690,7 @@
       "qty": 0
     },
     {
-      "id": "it-50기본형-방석커버-pdb-051cb5",
+      "id": "it-finished-4seasons-pedro-blue-50기본형-방석커버-pdb-0c5b63",
       "name": "50기본형 방석커버",
       "sku": "PDB-50-BASIC-SIT",
       "unit": "ea",
@@ -2825,7 +5701,7 @@
       "qty": 0
     },
     {
-      "id": "it-45날개형-방석커버-pdb-34245e",
+      "id": "it-finished-4seasons-pedro-blue-45날개형-방석커버-pdb-184d19",
       "name": "45날개형 방석커버",
       "sku": "PDB-45-WING-SIT",
       "unit": "ea",
@@ -2836,7 +5712,7 @@
       "qty": 0
     },
     {
-      "id": "it-50날개형-방석커버-pdb-3ea980",
+      "id": "it-finished-4seasons-pedro-blue-50날개형-방석커버-pdb-c813e1",
       "name": "50날개형 방석커버",
       "sku": "PDB-50-WING-SIT",
       "unit": "ea",
@@ -2847,7 +5723,7 @@
       "qty": 0
     },
     {
-      "id": "it-육각형-등걸이-pdb-574ce5",
+      "id": "it-finished-4seasons-pedro-blue-육각형-등걸이-pdb-bc6add",
       "name": "육각형 등걸이",
       "sku": "PDB-HEX-BACK",
       "unit": "ea",
@@ -2858,7 +5734,7 @@
       "qty": 0
     },
     {
-      "id": "it-직사각-등걸이-pdb-7d22e7",
+      "id": "it-finished-4seasons-pedro-blue-직사각-등걸이-pdb-9004c0",
       "name": "직사각 등걸이",
       "sku": "PDB-REC-BACK",
       "unit": "ea",
@@ -2869,7 +5745,7 @@
       "qty": 0
     },
     {
-      "id": "it-티슈커버-pdb-c3a5c0",
+      "id": "it-finished-4seasons-pedro-blue-티슈커버-pdb-fc5229",
       "name": "티슈커버",
       "sku": "PDB-TISSUE",
       "unit": "ea",
@@ -2879,214 +5755,5 @@
       "minQty": 0,
       "qty": 0
     }
-  
-        {
-          "id": "f-semi-finished-d59e59",
-          "name": "Semi-finished",
-          "parentId": null,
-          "depth": 1,
-          "order": 0
-        },
-        {
-          "id": "f-emb-838acb",
-          "name": "emb",
-          "parentId": "f-semi-finished-d59e59",
-          "depth": 2,
-          "order": 0
-        },
-        {
-          "id": "f-rouen-gray-413f72",
-          "name": "rouen_gray",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 0
-        },
-        {
-          "id": "f-rouen-pink-1a1f04",
-          "name": "rouen_pink",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 1
-        },
-        {
-          "id": "f-rouen-gold-96d612",
-          "name": "rouen_gold",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 2
-        },
-        {
-          "id": "f-rouen-beige-d4ca75",
-          "name": "rouen_beige",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 3
-        },
-        {
-          "id": "f-erica-white-a517fa",
-          "name": "erica_white",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 4
-        },
-        {
-          "id": "f-erica-navy-a6b573",
-          "name": "erica_navy",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 5
-        },
-        {
-          "id": "f-erica-beige-f80ced",
-          "name": "erica_beige",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 6
-        },
-        {
-          "id": "f-dotori-white-f6327e",
-          "name": "dotori_white",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 7
-        },
-        {
-          "id": "f-dotori-coffee-298828",
-          "name": "dotori_coffee",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 8
-        },
-        {
-          "id": "f-encia-white-7b226f",
-          "name": "encia_white",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 9
-        },
-        {
-          "id": "f-encia-orange-c9c3fc",
-          "name": "encia_orange",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 10
-        },
-        {
-          "id": "f-sobok-white-f66947",
-          "name": "sobok_white",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 11
-        },
-        {
-          "id": "f-sobok-gray-6450bd",
-          "name": "sobok_gray",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 12
-        },
-        {
-          "id": "f-sobok-pink-d5916a",
-          "name": "sobok_pink",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 13
-        },
-        {
-          "id": "f-lavender-gold-49a9f8",
-          "name": "lavender_gold",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 14
-        },
-        {
-          "id": "f-iris-blue-aef693",
-          "name": "iris_blue",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 15
-        },
-        {
-          "id": "f-tatiana-rose-828702",
-          "name": "tatiana_rose",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 16
-        },
-        {
-          "id": "f-ronze-gray-209c75",
-          "name": "ronze_gray",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 17
-        },
-        {
-          "id": "f-magritte-gray-ffa812",
-          "name": "magritte_gray",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 18
-        },
-        {
-          "id": "f-magritte-denim-f213bf",
-          "name": "magritte_denim",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 19
-        },
-        {
-          "id": "f-magritte-beige-0c411d",
-          "name": "magritte_beige",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 20
-        },
-        {
-          "id": "f-thistles-gray-d56998",
-          "name": "thistles_gray",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 21
-        },
-        {
-          "id": "f-thistles-denim-d25581",
-          "name": "thistles_denim",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 22
-        },
-        {
-          "id": "f-thistles-khaki-0cb86c",
-          "name": "thistles_khaki",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 23
-        },
-        {
-          "id": "f-pedro-ivory-34a787",
-          "name": "pedro_ivory",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 24
-        },
-        {
-          "id": "f-pedro-gray-36ff23",
-          "name": "pedro_gray",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 25
-        },
-        {
-          "id": "f-pedro-blue-b3d9bc",
-          "name": "pedro_blue",
-          "parentId": "f-emb-838acb",
-          "depth": 3,
-          "order": 26
-        }
-      ],
-      "items": []
-    }
-
   ]
 }
-

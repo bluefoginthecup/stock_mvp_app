@@ -404,7 +404,7 @@ class L10nEs extends L10n {
   String get bom_edit_finished => 'Editar BOM de producto terminado';
 
   @override
-  String get bom_edit_semi => 'Editar BOM de semielaborado';
+  String get bom_edit_semi => 'Editar BOM de semielaborado!';
 
   @override
   String get bom_edit_unknown_type_hint => 'El tipo de artículo no está claro, por lo que se muestran ambos botones.';
