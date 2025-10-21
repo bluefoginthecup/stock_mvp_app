@@ -78,6 +78,23 @@ Future<String?> nameOf(String itemId) => inner.nameOf(itemId);
       l1: l1, l2: l2, l3: l3, keyword: keyword, recursive: recursive,
     );
   }
+
+  // ===== BOM (pass-through) =====
+  @override
+  List<BomRow> finishedBomOf(String finishedItemId) => inner.finishedBomOf(finishedItemId);
+  @override
+  Future<void> upsertFinishedBom(String finishedItemId, List<BomRow> rows)
+    => inner.upsertFinishedBom(finishedItemId, rows);
+
+  @override
+  List<BomRow> semiBomOf(String semiItemId) => inner.semiBomOf(semiItemId);
+  @override
+  Future<void> upsertSemiBom(String semiItemId, List<BomRow> rows)
+    => inner.upsertSemiBom(semiItemId, rows);
+
+@override
+int stockOf(String itemId) => inner.stockOf(itemId);
+
 }
 
 
@@ -109,8 +126,11 @@ class TxnRepoView implements TxnRepo {
   final InMemoryRepo inner;
   TxnRepoView(this.inner);
 
-  @override
-  Future<List<Txn>> listTxns({String? itemId}) => inner.listTxns(itemId: itemId);
+   @override
+   Future<List<Txn>> listTxns() => inner.listTxns();
+   // 선택: 아이템별 트랜잭션 보기
+   Future<List<Txn>> listTxnsByItem(String itemId) => inner.listTxnsByItem(itemId);
+
 
   @override
   Future<void> addInPlanned({
@@ -132,38 +152,26 @@ class TxnRepoView implements TxnRepo {
 
   @override
     Future<void> deleteTxn(String txnId) => inner.deleteTxn(txnId);
-
-  @override
+    @override
     Future<void> deletePlannedByRef({required String refType, required String refId})
-      => inner.deletePlannedByRef(refType:   refType, refId: refId);
-
-  @override
-  Future<double> sumOnHand(String itemId) => inner.sumOnHand(itemId);
+      => inner.deletePlannedByRef(refType: refType, refId: refId);
 
 }
+
 class BomRepoView implements BomRepo {
-  final InMemoryRepo _inmem;
-  BomRepoView(this._inmem);
+  final InMemoryRepo inner;
+  BomRepoView(this.inner);
 
   @override
-  Future<Bom> createBom(Bom bom) => _inmem.createBom(bom);
+  Future<List<BomRow>> listBom(String parentItemId) => inner.listBom(parentItemId);
 
   @override
-  Future<void> deleteBom(String bomId) => _inmem.deleteBom(bomId);
+  Future<void> upsertBomRow(BomRow row) => inner.upsertBomRow(row);
 
   @override
-  Future<Bom?> loadBom(String bomId) => _inmem.loadBom(bomId);
+  Future<void> deleteBomRow(String id) => inner.deleteBomRow(id);
 
-  @override
-  Future<List<Bom>> listAllBoms() => _inmem.listAllBoms();
-
-  @override
-  Future<Bom> updateBom(Bom bom) => _inmem.updateBom(bom);
-
-  @override
-  Future<Bom?> bomForItem(String itemId) => _inmem.bomForItem(itemId);
 }
-
 
 // --- WorkRepoView ---
 class WorkRepoView implements WorkRepo {

@@ -272,8 +272,17 @@
   "work_btn_start": "Start Work",
   "work_btn_complete": "Complete",
   "work_btn_already_done": "Already done",
-  "work_btn_canceled": "Canceled"
+  "work_btn_canceled": "Canceled",
 
+  "stock_item_detail_title": "Item detail",
+  "txn_list_empty_hint": "No transactions yet.",
+  "txn_recent_button": "Recent transactions",
+  "common_stock": "Stock",
+  "item_unit": "Unit",
+  "bom_edit_section_title": "BOM editor",
+  "bom_edit_finished": "Edit Finished BOM",
+  "bom_edit_semi": "Edit Semi BOM",
+  "bom_edit_unknown_type_hint": "Item type is unclear, so both buttons are shown."
 
 
 

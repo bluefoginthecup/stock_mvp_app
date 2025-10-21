@@ -381,4 +381,31 @@ class L10nEs extends L10n {
 
   @override
   String get work_btn_canceled => 'Cancelado';
+
+  @override
+  String get stock_item_detail_title => 'Detalle del artículo';
+
+  @override
+  String get txn_list_empty_hint => 'No hay registros de entrada o salida.';
+
+  @override
+  String get txn_recent_button => 'Movimientos recientes';
+
+  @override
+  String get common_stock => 'Existencias';
+
+  @override
+  String get item_unit => 'Unidad';
+
+  @override
+  String get bom_edit_section_title => 'Edición de BOM';
+
+  @override
+  String get bom_edit_finished => 'Editar BOM de producto terminado';
+
+  @override
+  String get bom_edit_semi => 'Editar BOM de semielaborado';
+
+  @override
+  String get bom_edit_unknown_type_hint => 'El tipo de artículo no está claro, por lo que se muestran ambos botones.';
 }

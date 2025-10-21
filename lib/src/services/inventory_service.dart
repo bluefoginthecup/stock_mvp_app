@@ -2,6 +2,7 @@ import '../repos/repo_interfaces.dart';
 import '../models/types.dart';
 import '../models/state_guard.dart';
 
+
 class InventoryService {
   final WorkRepo works;
   final PurchaseRepo purchases;
@@ -159,11 +160,6 @@ class InventoryService {
 
   /// 입출고 기록 단일 삭제
   Future<void> deleteTxn(String txnId) => txns.deleteTxn(txnId);
-
-
-  //bom //
-  Future<double> getQtyOnHand(String itemId) => txns.sumOnHand(itemId); // 또는 내부 로직으로 계산
-
 }
 
 

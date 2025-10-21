@@ -381,4 +381,31 @@ class L10nKo extends L10n {
 
   @override
   String get work_btn_canceled => '취소됨';
+
+  @override
+  String get stock_item_detail_title => '아이템 상세';
+
+  @override
+  String get txn_list_empty_hint => '입출고 내역이 없습니다.';
+
+  @override
+  String get txn_recent_button => '최근 입출고 내역';
+
+  @override
+  String get common_stock => '재고';
+
+  @override
+  String get item_unit => '단위';
+
+  @override
+  String get bom_edit_section_title => 'BOM 편집';
+
+  @override
+  String get bom_edit_finished => 'Finished BOM 편집';
+
+  @override
+  String get bom_edit_semi => 'Semi BOM 편집';
+
+  @override
+  String get bom_edit_unknown_type_hint => '유형을 확정할 수 없어 두 버튼을 모두 표시합니다.';
 }

@@ -15,8 +15,6 @@ import 'dart:async'; // ✅ StreamController 사용을 위해 필요
 import '../models/folder_node.dart';
 import '../utils/item_presentation.dart';
 
-
-
 // === Common move types (top-level) ===
 enum EntityKind { item, folder }
 
@@ -33,7 +31,30 @@ class InMemoryRepo extends ChangeNotifier
   final Map<String, Item> _items = {};
   final Map<String, Order> _orders = {};
   final Map<String, Txn> _txns = {};
-  final Map<String, Bom> _boms = {}; // bomId -> Bom
+
+
+  /// Finished 레시피 저장소: finishedId → rows
+  final Map<String, List<BomRow>> _bomByFinished = {};
+
+  /// Semi 레시피 저장소: semiId → rows
+  final Map<String, List<BomRow>> _bomBySemi = {};
+  // ── BOM rowId 규칙 유틸(고유 id 필드가 없다면 root|parent|component 조합 사용) ──
+    String _bomRowId(BomRow r) => '${r.root.index}|${r.parentItemId}|${r.componentItemId}';
+    bool _matchesRowId(BomRow r, String rowId) => _bomRowId(r) == rowId;
+    bool _removeBomRowById(String rowId) {
+        bool changed = false;
+        for (final e in _bomByFinished.entries) {
+          final before = e.value.length;
+          e.value.removeWhere((r) => _matchesRowId(r, rowId));
+          if (e.value.length != before) changed = true;
+        }
+        for (final e in _bomBySemi.entries) {
+          final before = e.value.length;
+          e.value.removeWhere((r) => _matchesRowId(r, rowId));
+          if (e.value.length != before) changed = true;
+        }
+        return changed;
+      }
 
   // ===== Folder tree storage (Stage 6) =====
   final Map<String, FolderNode> _folders = <String, FolderNode>{};
@@ -598,12 +619,17 @@ class InMemoryRepo extends ChangeNotifier
 
   // =============================== TxnRepo ================================
   @override
-  Future<List<Txn>> listTxns({String? itemId}) async {
-    final list = _txns.values.where((t) => itemId == null || t.itemId == itemId).toList()
-      ..sort((a, b) => b.ts.compareTo(a.ts));
+  Future<List<Txn>> listTxns() async {
+      final list = _txns.values.toList()
+  ..sort((a, b) => b.ts.compareTo(a.ts));
     return list;
   }
-
+  // 내부 편의: 특정 아이템만 보고 싶을 때
+    Future<List<Txn>> listTxnsByItem(String itemId) async {
+      final list = _txns.values.where((t) => t.itemId == itemId).toList()
+        ..sort((a, b) => b.ts.compareTo(a.ts));
+      return list;
+    }
   // ===== TxnRepo helpers =====
   @override
   Future<void> addInPlanned({
@@ -686,37 +712,134 @@ class InMemoryRepo extends ChangeNotifier
   }
 
   // =============================== BomRepo ================================
+  // ─────────────────────────────────────────────
+  // ItemRepo: BOM APIs (2단계 구조) 구현
+  // ─────────────────────────────────────────────
+// InMemoryRepo 클래스 안쪽에 추가
 
-// BOM CRUD
-  Future<Bom> createBom(Bom bom) async {
-    _boms[bom.id] = bom;
-    notifyListeners();
-    return bom;
+// ─────────────────────────────────────────────
+// BomRepo 기본 구현 (최소한의 더미 or 새 구조와 연결)
+// ─────────────────────────────────────────────
+  // ─────────────────────────────────────────────
+  // BomRepo (표준 시그니처) 구현
+  // ─────────────────────────────────────────────
+    @override
+    Future<List<BomRow>> listBom(String parentItemId) async {
+      // root 파라미터가 없으므로 finished/semi 양쪽을 합쳐 반환
+      final finished = finishedBomOf(parentItemId);
+      final semi = semiBomOf(parentItemId);
+      return List<BomRow>.unmodifiable([...finished, ...semi]);
+    }
+
+    @override
+    Future<void> upsertBomRow(BomRow row) async {
+      if (row.root == BomRoot.finished) {
+        final cur = finishedBomOf(row.parentItemId);
+        final next = [
+          ...cur.where((r) => r.componentItemId != row.componentItemId),
+          row,
+        ];
+        upsertFinishedBom(row.parentItemId, next);
+      } else {
+        final cur = semiBomOf(row.parentItemId);
+        final next = [
+          ...cur.where((r) => r.componentItemId != row.componentItemId),
+          row,
+        ];
+        upsertSemiBom(row.parentItemId, next);
+      }
+    }
+
+    @override
+    Future<void> deleteBomRow(String id) async {
+      final changed = _removeBomRowById(id);
+      if (changed) notifyListeners();
+    }
+  // ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
+    // (내부/리치 API) finished/semi 전용 메서드들 — @override 제거
+    // ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑
+    // 루트별 조회/업서트/삭제를 계속 쓰고 싶으면 화면/서비스에서 이 메서드들을 직접 호출
+    List<BomRow> listBomByRoot({
+      required BomRoot root,
+      required String parentItemId,
+    }) {
+    return root == BomRoot.finished
+        ? finishedBomOf(parentItemId)
+        : semiBomOf(parentItemId);
   }
 
-  Future<Bom> updateBom(Bom bom) async {
-    _boms[bom.id] = bom.copyWith(updatedAt: DateTime.now());
-    notifyListeners();
-    return _boms[bom.id]!;
-  }
-
-  Future<void> deleteBom(String bomId) async {
-    _boms.remove(bomId);
-    notifyListeners();
-  }
-
-  Future<Bom?> loadBom(String bomId) async => _boms[bomId];
-
-  Future<List<Bom>> listAllBoms() async => _boms.values.toList();
-
-  Future<Bom?> bomForItem(String itemId) async {
-    // 동일 itemId에 여러 BOM 지원한다면 정책 필요. 지금은 첫 매칭 반환.
-    try {
-      return _boms.values.firstWhere((b) => b.itemId == itemId && b.enabled);
-    } catch (_) {
-      return null;
+  void deleteBomRowDetailed({
+    required BomRoot root,
+    required String parentItemId,
+    required String componentItemId,
+  }) {
+    final list = listBomByRoot(root: root, parentItemId: parentItemId);
+    final next = list.where((r) => r.componentItemId != componentItemId).toList();
+    if (root == BomRoot.finished) {
+      upsertFinishedBom(parentItemId, next);
+    } else {
+      upsertSemiBom(parentItemId, next);
     }
   }
+
+  List<BomRow> finishedBomOf(String finishedItemId) {
+    final rows = _bomByFinished[finishedItemId];
+    if (rows == null) return const [];
+    return List.unmodifiable(rows);
+  }
+
+  @override
+   Future<void>upsertFinishedBom(String finishedItemId, List<BomRow> rows) async{
+    // 방어: root/parent/kind 정합성
+    final normalized = <BomRow>[];
+    for (final r in rows) {
+      if (r.root != BomRoot.finished) {
+        throw StateError('Finished BOM에는 root=finished만 허용됩니다. (got: ${r.root})');
+      }
+      final fixed = (r.parentItemId == finishedItemId)
+          ? r
+          : r.copyWith(parentItemId: finishedItemId);
+      // finished 레시피는 semi/raw/sub 모두 허용
+      normalized.add(fixed);
+    }
+    _bomByFinished[finishedItemId] = normalized;
+    notifyListeners();
+    return;
+  }
+
+  List<BomRow> semiBomOf(String semiItemId) {
+    final rows = _bomBySemi[semiItemId];
+    if (rows == null) return const [];
+    return List.unmodifiable(rows);
+  }
+  @override
+  Future<void> upsertSemiBom(String semiItemId, List<BomRow> rows) async{
+    // 방어: root=semi, kind!=semi
+    final normalized = <BomRow>[];
+    for (final r in rows) {
+      if (r.root != BomRoot.semi) {
+        throw StateError('Semi BOM에는 root=semi만 허용됩니다. (got: ${r.root})');
+      }
+      if (r.kind == BomKind.semi) {
+        throw StateError('Semi BOM에는 kind=semi 금지입니다.');
+      }
+      final fixed = (r.parentItemId == semiItemId)
+          ? r
+          : r.copyWith(parentItemId: semiItemId);
+      normalized.add(fixed);
+    }
+    _bomBySemi[semiItemId] = normalized;
+    notifyListeners();
+    return;
+  }
+
+  @override
+  int stockOf(String itemId) {
+    final item = _items[itemId];
+    if (item == null) return 0;
+    return item.qty; // ← Item 모델에 qty 필드가 있을 것
+  }
+
 
   // ----------------- WorkRepo -----------------
   final _works = <String, Work>{};
@@ -983,12 +1106,7 @@ class InMemoryRepo extends ChangeNotifier
         return 'Sub';
       default: // 모르는 값은 TitleCase 정도로
         if (v.isEmpty) return 'Finished';
-        return v[0].toUpperCase() + v.substring(1);
+        return v[0].toUpperCase() +  v.substring(1);
     }
   }
-    /// TODO: Txn 스키마 확정 후 실제 입/출고 누계로 대체
-    Future<double> sumOnHand(String itemId) async {
-        // 임시: 0.0 반환하여 컴파일만 통과
-        return 0.0;
-      }
 }

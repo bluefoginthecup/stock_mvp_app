@@ -6,6 +6,7 @@ import '../../repos/repo_interfaces.dart';
 import 'order_form_screen.dart';
 import 'package:stockapp_mvp/src/repos/inmem_repo.dart';
 import '../../ui/common/ui.dart';
+import 'order_detail_screen.dart';
 
 class OrderListScreen extends StatelessWidget {
   const OrderListScreen({super.key});
@@ -35,7 +36,8 @@ class OrderListScreen extends StatelessWidget {
                 subtitle: Text('${o.date.toIso8601String().substring(0, 10)} • ${o.status.name}'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
-                  await Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(orderId: o.id)));
+                 // await Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(orderId: o.id)));
+                  await Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(order:o)));
                 },
               );
             },

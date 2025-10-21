@@ -11,6 +11,7 @@ import 'stock_new_item_sheet.dart';
 import '../../ui/common/search_field.dart'; // 공용 검색 위젯
 import '../../ui/common/path_picker.dart'; // 파일 최상단 import 필요
 import '../../ui/common/entity_actions.dart';
+import 'stock_item_detail_screen.dart';
 
 
 class StockBrowserScreen extends StatefulWidget {
@@ -437,8 +438,14 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
            },
          ),
           trailing: Text('${it.qty}'),
-          onTap: () {/* TODO: item detail */},
-          // ✅ 여기! it가 보이는 스코프
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StockItemDetailScreen(itemId: it.id),
+              ),
+            );
+          },
           onLongPress: () async {
             final action = await showEntityActionsSheet(context);
             if (action == null) return;

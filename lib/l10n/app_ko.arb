@@ -273,8 +273,17 @@
   "work_btn_start": "작업 시작",
   "work_btn_complete": "완료 처리",
   "work_btn_already_done": "이미 완료됨",
-  "work_btn_canceled": "취소됨"
+  "work_btn_canceled": "취소됨",
 
+  "stock_item_detail_title": "아이템 상세",
+  "txn_list_empty_hint": "입출고 내역이 없습니다.",
+  "txn_recent_button": "최근 입출고 내역",
+  "common_stock": "재고",
+  "item_unit": "단위",
+  "bom_edit_section_title": "BOM 편집",
+  "bom_edit_finished": "Finished BOM 편집",
+  "bom_edit_semi": "Semi BOM 편집",
+  "bom_edit_unknown_type_hint": "유형을 확정할 수 없어 두 버튼을 모두 표시합니다."
 
 
 

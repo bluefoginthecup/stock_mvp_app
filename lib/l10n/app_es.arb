@@ -272,7 +272,16 @@
   "work_btn_start": "Iniciar",
   "work_btn_complete": "Finalizar",
   "work_btn_already_done": "Ya completado",
-  "work_btn_canceled": "Cancelado"
+  "work_btn_canceled": "Cancelado",
+  "stock_item_detail_title": "Detalle del artículo",
+  "txn_list_empty_hint": "No hay registros de entrada o salida.",
+  "txn_recent_button": "Movimientos recientes",
+  "common_stock": "Existencias",
+  "item_unit": "Unidad",
+  "bom_edit_section_title": "Edición de BOM",
+  "bom_edit_finished": "Editar BOM de producto terminado",
+  "bom_edit_semi": "Editar BOM de semielaborado",
+  "bom_edit_unknown_type_hint": "El tipo de artículo no está claro, por lo que se muestran ambos botones."
 
 
 }

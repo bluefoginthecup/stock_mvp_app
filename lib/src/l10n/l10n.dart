@@ -756,6 +756,60 @@ abstract class L10n {
   /// In ko, this message translates to:
   /// **'취소됨'**
   String get work_btn_canceled;
+
+  /// No description provided for @stock_item_detail_title.
+  ///
+  /// In ko, this message translates to:
+  /// **'아이템 상세'**
+  String get stock_item_detail_title;
+
+  /// No description provided for @txn_list_empty_hint.
+  ///
+  /// In ko, this message translates to:
+  /// **'입출고 내역이 없습니다.'**
+  String get txn_list_empty_hint;
+
+  /// No description provided for @txn_recent_button.
+  ///
+  /// In ko, this message translates to:
+  /// **'최근 입출고 내역'**
+  String get txn_recent_button;
+
+  /// No description provided for @common_stock.
+  ///
+  /// In ko, this message translates to:
+  /// **'재고'**
+  String get common_stock;
+
+  /// No description provided for @item_unit.
+  ///
+  /// In ko, this message translates to:
+  /// **'단위'**
+  String get item_unit;
+
+  /// No description provided for @bom_edit_section_title.
+  ///
+  /// In ko, this message translates to:
+  /// **'BOM 편집'**
+  String get bom_edit_section_title;
+
+  /// No description provided for @bom_edit_finished.
+  ///
+  /// In ko, this message translates to:
+  /// **'Finished BOM 편집'**
+  String get bom_edit_finished;
+
+  /// No description provided for @bom_edit_semi.
+  ///
+  /// In ko, this message translates to:
+  /// **'Semi BOM 편집'**
+  String get bom_edit_semi;
+
+  /// No description provided for @bom_edit_unknown_type_hint.
+  ///
+  /// In ko, this message translates to:
+  /// **'유형을 확정할 수 없어 두 버튼을 모두 표시합니다.'**
+  String get bom_edit_unknown_type_hint;
 }
 
 class _L10nDelegate extends LocalizationsDelegate<L10n> {
