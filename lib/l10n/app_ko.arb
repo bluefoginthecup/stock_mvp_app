@@ -1,5 +1,7 @@
 {
   "@@locale": "ko",
+  "adjust_set_quantity_title": "수량변경",
+  "hint_longpress_to_edit_qty": "꾹 눌러 수량변경",
   "adjust_current_qty": "현재 수량: {qty} (min {minQty})",
   "@adjust_current_qty": {
     "placeholders": {
@@ -19,6 +21,7 @@
   "common_cancel": "Cancel",
   "common_delete": "삭제",
   "common_ok": "확인",
+  "common_error": "에러",
   "dashboard_below_threshold": "임계치 이하",
   "dashboard_goto_details": "상세 보기 / 필터로 이동",
   "dashboard_orders": "주문 관리",

@@ -95,7 +95,7 @@ class TxnRow extends StatelessWidget {
                     child: Row(
                       children: [
                         // 수량 배지
-                        QtyBadge(qty: t.qty, direction: t.type, status: t.status),
+                        QtyBadge(qty:t.qty.abs(), direction: t.type, status: t.status),
                         const SizedBox(width: 8),
                         // 브레드크럼 (한 줄 말줄임)
                         Expanded(

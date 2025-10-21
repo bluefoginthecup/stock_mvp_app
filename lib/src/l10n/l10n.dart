@@ -97,6 +97,18 @@ abstract class L10n {
     Locale('ko')
   ];
 
+  /// No description provided for @adjust_set_quantity_title.
+  ///
+  /// In ko, this message translates to:
+  /// **'수량변경'**
+  String get adjust_set_quantity_title;
+
+  /// No description provided for @hint_longpress_to_edit_qty.
+  ///
+  /// In ko, this message translates to:
+  /// **'꾹 눌러 수량변경'**
+  String get hint_longpress_to_edit_qty;
+
   /// No description provided for @adjust_current_qty.
   ///
   /// In ko, this message translates to:
@@ -150,6 +162,12 @@ abstract class L10n {
   /// In ko, this message translates to:
   /// **'확인'**
   String get common_ok;
+
+  /// No description provided for @common_error.
+  ///
+  /// In ko, this message translates to:
+  /// **'에러'**
+  String get common_error;
 
   /// No description provided for @dashboard_below_threshold.
   ///

@@ -9,6 +9,12 @@ class L10nEn extends L10n {
   L10nEn([String locale = 'en']) : super(locale);
 
   @override
+  String get adjust_set_quantity_title => 'set QTY';
+
+  @override
+  String get hint_longpress_to_edit_qty => 'long press to edit QTY';
+
+  @override
   String adjust_current_qty(int qty, int minQty) {
     return 'Current qty: $qty (min $minQty)';
   }
@@ -36,6 +42,9 @@ class L10nEn extends L10n {
 
   @override
   String get common_ok => 'OK';
+
+  @override
+  String get common_error => 'error';
 
   @override
   String get dashboard_below_threshold => 'Below threshold';

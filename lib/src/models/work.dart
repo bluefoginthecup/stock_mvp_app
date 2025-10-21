@@ -11,6 +11,7 @@ class Work {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final bool isDeleted;
+  final String? sourceKey;
 
   Work({
     required this.id,
@@ -20,6 +21,7 @@ class Work {
     this.status = WorkStatus.planned,
       this.isDeleted = false,
     DateTime? createdAt,
+    this.sourceKey,
     this.updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
         assert(qty > 0, 'qty must be > 0');
@@ -33,6 +35,7 @@ class Work {
     WorkStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? sourceKey,
   bool? isDeleted,
   }) {
     return Work(
@@ -44,6 +47,7 @@ class Work {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
+      sourceKey: sourceKey ?? this.sourceKey,
     );
   }
 

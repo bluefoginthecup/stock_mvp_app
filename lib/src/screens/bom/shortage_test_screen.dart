@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../repos/repo_interfaces.dart';
-import '../../models/bom.dart';
 import '../../services/bom_service.dart';
 import '../../services/shortage_service.dart';
 

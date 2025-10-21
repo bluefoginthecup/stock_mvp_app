@@ -1,5 +1,8 @@
 {
   "@@locale": "en",
+  "adjust_title": "QTY",
+  "adjust_set_quantity_title": "set QTY",
+  "hint_longpress_to_edit_qty": "long press to edit QTY",
   "adjust_current_qty": "Current qty: {qty} (min {minQty})",
   "@adjust_current_qty": {
     "placeholders": {
@@ -19,6 +22,7 @@
   "common_cancel": "Cancel",
   "common_delete": "Delete",
   "common_ok": "OK",
+  "common_error": "error",
   "dashboard_below_threshold": "Below threshold",
   "dashboard_goto_details": "Go to details / filters",
   "dashboard_orders": "Order Management",

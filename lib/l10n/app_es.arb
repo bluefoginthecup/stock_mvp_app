@@ -1,5 +1,9 @@
 {
   "@@locale": "es",
+
+  "adjust_title": "Qty",
+  "adjust_set_quantity_title": "set QTy",
+  "hint_longpress_to_edit_qty": "long press to edit QTY",
   "adjust_current_qty": "Cantidad actual: {qty} (mín {minQty})",
   "@adjust_current_qty": {
     "placeholders": {

@@ -9,6 +9,12 @@ class L10nKo extends L10n {
   L10nKo([String locale = 'ko']) : super(locale);
 
   @override
+  String get adjust_set_quantity_title => '수량변경';
+
+  @override
+  String get hint_longpress_to_edit_qty => '꾹 눌러 수량변경';
+
+  @override
   String adjust_current_qty(int qty, int minQty) {
     return '현재 수량: $qty (min $minQty)';
   }
@@ -36,6 +42,9 @@ class L10nKo extends L10n {
 
   @override
   String get common_ok => '확인';
+
+  @override
+  String get common_error => '에러';
 
   @override
   String get dashboard_below_threshold => '임계치 이하';

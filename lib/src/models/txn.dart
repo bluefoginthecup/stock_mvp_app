@@ -11,7 +11,8 @@ class Txn {
   final int qty;          // positive quantity
   final RefType refType;  // origin kind: order/work/purchase
   final String refId;     // origin id
-  final String? note;     // optional memo
+  final String? note;
+  final String? sourceKey; // optional memo
 
   const Txn({
     required this.id,
@@ -22,6 +23,7 @@ class Txn {
     required this.qty,
     required this.refType,
     required this.refId,
+    this.sourceKey,
     this.note,
   }) : assert(qty > 0, 'qty must be > 0');
 
@@ -35,6 +37,7 @@ class Txn {
     RefType? refType,
     String? refId,
     String? note,
+    String? sourceKey,
   }) {
     return Txn(
       id: id ?? this.id,
@@ -46,6 +49,7 @@ class Txn {
       refType: refType ?? this.refType,
       refId: refId ?? this.refId,
       note: note ?? this.note,
+      sourceKey: sourceKey ?? this.sourceKey,
     );
   }
 
