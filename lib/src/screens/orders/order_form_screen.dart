@@ -27,9 +27,9 @@ class OrderFormScreen extends StatefulWidget {
 class _OrderFormScreenState extends State<OrderFormScreen> {
   final _customerC = TextEditingController();
   final _memoC = TextEditingController();
-    final _searchC = TextEditingController();           // 🔍 검색 입력
-    bool _searching = false;                            // 🔍 로딩 표시
-    List<Item> _results = <Item>[];                     // 🔍 결과 버퍼
+  final _searchC = TextEditingController(); // 🔍 검색 입력
+  bool _searching = false; // 🔍 로딩 표시
+  List<Item> _results = <Item>[]; // 🔍 결과 버퍼
   late Order _order;
 
   @override
@@ -46,12 +46,12 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   @override
-    void dispose() {
-        _customerC.dispose();
-        _memoC.dispose();
-        _searchC.dispose(); // 🔍
-        super.dispose();
-      }
+  void dispose() {
+    _customerC.dispose();
+    _memoC.dispose();
+    _searchC.dispose(); // 🔍
+    super.dispose();
+  }
 
   Future<void> _ensureLoaded() async {
     final repo = context.read<OrderRepo>();
@@ -75,21 +75,20 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   void _addLine(Item item) {
-
-        // ✅ 이미 있으면 수량 +1, 없으면 추가
-        final idx = _order.lines.indexWhere((l) => l.itemId == item.id);
-        setState(() {
-          if (idx >= 0) {
-            final cur = _order.lines[idx];
-            final next = cur.copyWith(qty: cur.qty + 1);
-            final newLines = [..._order.lines]..[idx] = next;
-            _order = _order.copyWith(lines: newLines);
-          } else {
-            final id = const Uuid().v4();
-            final line = OrderLine(id: id, itemId: item.id, qty: 1);
-            _order = _order.copyWith(lines: [..._order.lines, line]);
-          }
-        });
+    // ✅ 이미 있으면 수량 +1, 없으면 추가
+    final idx = _order.lines.indexWhere((l) => l.itemId == item.id);
+    setState(() {
+      if (idx >= 0) {
+        final cur = _order.lines[idx];
+        final next = cur.copyWith(qty: cur.qty + 1);
+        final newLines = [..._order.lines]..[idx] = next;
+        _order = _order.copyWith(lines: newLines);
+      } else {
+        final id = const Uuid().v4();
+        final line = OrderLine(id: id, itemId: item.id, qty: 1);
+        _order = _order.copyWith(lines: [..._order.lines, line]);
+      }
+    });
   }
 
   void _updateQty(String lineId, int newQty) {
@@ -134,8 +133,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('저장 + 부족분 자동 계획 생성 완료')),
     );
-    Navigator.pop(context);
+    Navigator.pop(context, _order.id);
   }
+
 
   @override
   Widget build(BuildContext context) {
