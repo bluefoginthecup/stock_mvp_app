@@ -90,7 +90,7 @@
     {
       "id": "it-sfrg35cushion-e2111a",
       "name": "30x50쿠션커버",
-      "displayname": "자수물 루앙 그레이 30x50쿠션커버",
+      "displayName": "자수물 루앙 그레이 30x50쿠션커버",
       "sku": "SFRG35CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -102,7 +102,7 @@
     {
       "id": "it-sfrg40cushion-9acc06",
       "name": "40쿠션커버",
-      "displayname": "자수물 루앙 그레이 40쿠션커버",
+      "displayName": "자수물 루앙 그레이 40쿠션커버",
       "sku": "SFRG40CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -114,7 +114,7 @@
     {
       "id": "it-sfrg50cushion-35f8ff",
       "name": "50쿠션커버",
-      "displayname": "자수물 루앙 그레이 50쿠션커버",
+      "displayName": "자수물 루앙 그레이 50쿠션커버",
       "sku": "SFRG50CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -126,7 +126,7 @@
     {
       "id": "it-sfrg50basicsit-05b8fe",
       "name": "50기본형 방석커버",
-      "displayname": "자수물 루앙 그레이 50기본형 방석커버",
+      "displayName": "자수물 루앙 그레이 50기본형 방석커버",
       "sku": "SFRG50BASICSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -138,7 +138,7 @@
     {
       "id": "it-sfrg45wingsit-0549b3",
       "name": "45날개형 방석커버",
-      "displayname": "자수물 루앙 그레이 45날개형 방석커버",
+      "displayName": "자수물 루앙 그레이 45날개형 방석커버",
       "sku": "SFRG45WINGSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -150,7 +150,7 @@
     {
       "id": "it-sfrg50wingsit-eb7bd1",
       "name": "50날개형 방석커버",
-      "displayname": "자수물 루앙 그레이 50날개형 방석커버",
+      "displayName": "자수물 루앙 그레이 50날개형 방석커버",
       "sku": "SFRG50WINGSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -162,7 +162,7 @@
     {
       "id": "it-sfrghexback-b8ad3b",
       "name": "육각형 등걸이",
-      "displayname": "자수물 루앙 그레이 육각형 등걸이",
+      "displayName": "자수물 루앙 그레이 육각형 등걸이",
       "sku": "SFRGHEXBACK",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -174,7 +174,7 @@
     {
       "id": "it-sfrgrecback-543363",
       "name": "직사각 등걸이",
-      "displayname": "자수물 루앙 그레이 직사각 등걸이",
+      "displayName": "자수물 루앙 그레이 직사각 등걸이",
       "sku": "SFRGRECBACK",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -186,7 +186,7 @@
     {
       "id": "it-sfrgtissue-d348dc",
       "name": "티슈커버",
-      "displayname": "자수물 루앙 그레이 티슈커버",
+      "displayName": "자수물 루앙 그레이 티슈커버",
       "sku": "SFRGTISSUE",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -198,7 +198,7 @@
     {
       "id": "it-sfrp35cushion-f0b11e",
       "name": "30x50쿠션커버",
-      "displayname": "자수물 루앙 핑크 30x50쿠션커버",
+      "displayName": "자수물 루앙 핑크 30x50쿠션커버",
       "sku": "SFRP35CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -210,7 +210,7 @@
     {
       "id": "it-sfrp40cushion-88a598",
       "name": "40쿠션커버",
-      "displayname": "자수물 루앙 핑크 40쿠션커버",
+      "displayName": "자수물 루앙 핑크 40쿠션커버",
       "sku": "SFRP40CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -222,7 +222,7 @@
     {
       "id": "it-sfrp50cushion-796488",
       "name": "50쿠션커버",
-      "displayname": "자수물 루앙 핑크 50쿠션커버",
+      "displayName": "자수물 루앙 핑크 50쿠션커버",
       "sku": "SFRP50CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -234,7 +234,7 @@
     {
       "id": "it-sfrp50basicsit-90e2af",
       "name": "50기본형 방석커버",
-      "displayname": "자수물 루앙 핑크 50기본형 방석커버",
+      "displayName": "자수물 루앙 핑크 50기본형 방석커버",
       "sku": "SFRP50BASICSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -246,7 +246,7 @@
     {
       "id": "it-sfrp45wingsit-eee2f9",
       "name": "45날개형 방석커버",
-      "displayname": "자수물 루앙 핑크 45날개형 방석커버",
+      "displayName": "자수물 루앙 핑크 45날개형 방석커버",
       "sku": "SFRP45WINGSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -258,7 +258,7 @@
     {
       "id": "it-sfrp50wingsit-350a5d",
       "name": "50날개형 방석커버",
-      "displayname": "자수물 루앙 핑크 50날개형 방석커버",
+      "displayName": "자수물 루앙 핑크 50날개형 방석커버",
       "sku": "SFRP50WINGSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -270,7 +270,7 @@
     {
       "id": "it-sfrphexback-a4f571",
       "name": "육각형 등걸이",
-      "displayname": "자수물 루앙 핑크 육각형 등걸이",
+      "displayName": "자수물 루앙 핑크 육각형 등걸이",
       "sku": "SFRPHEXBACK",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -282,7 +282,7 @@
     {
       "id": "it-sfrprecback-8b1925",
       "name": "직사각 등걸이",
-      "displayname": "자수물 루앙 핑크 직사각 등걸이",
+      "displayName": "자수물 루앙 핑크 직사각 등걸이",
       "sku": "SFRPRECBACK",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -294,7 +294,7 @@
     {
       "id": "it-sfrptissue-75a134",
       "name": "티슈커버",
-      "displayname": "자수물 루앙 핑크 티슈커버",
+      "displayName": "자수물 루앙 핑크 티슈커버",
       "sku": "SFRPTISSUE",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -306,7 +306,7 @@
     {
       "id": "it-sfrgd35cushion-e11afa",
       "name": "30x50쿠션커버",
-      "displayname": "자수물 루앙 골드 30x50쿠션커버",
+      "displayName": "자수물 루앙 골드 30x50쿠션커버",
       "sku": "SFRGD35CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -318,7 +318,7 @@
     {
       "id": "it-sfrgd40cushion-0d92f9",
       "name": "40쿠션커버",
-      "displayname": "자수물 루앙 골드 40쿠션커버",
+      "displayName": "자수물 루앙 골드 40쿠션커버",
       "sku": "SFRGD40CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -330,7 +330,7 @@
     {
       "id": "it-sfrgd50cushion-7b3c21",
       "name": "50쿠션커버",
-      "displayname": "자수물 루앙 골드 50쿠션커버",
+      "displayName": "자수물 루앙 골드 50쿠션커버",
       "sku": "SFRGD50CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -342,7 +342,7 @@
     {
       "id": "it-sfrgd50basicsit-41003c",
       "name": "50기본형 방석커버",
-      "displayname": "자수물 루앙 골드 50기본형 방석커버",
+      "displayName": "자수물 루앙 골드 50기본형 방석커버",
       "sku": "SFRGD50BASICSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -354,7 +354,7 @@
     {
       "id": "it-sfrgd45wingsit-b83538",
       "name": "45날개형 방석커버",
-      "displayname": "자수물 루앙 골드 45날개형 방석커버",
+      "displayName": "자수물 루앙 골드 45날개형 방석커버",
       "sku": "SFRGD45WINGSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -366,7 +366,7 @@
     {
       "id": "it-sfrgd50wingsit-104801",
       "name": "50날개형 방석커버",
-      "displayname": "자수물 루앙 골드 50날개형 방석커버",
+      "displayName": "자수물 루앙 골드 50날개형 방석커버",
       "sku": "SFRGD50WINGSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -378,7 +378,7 @@
     {
       "id": "it-sfrgdhexback-7e407f",
       "name": "육각형 등걸이",
-      "displayname": "자수물 루앙 골드 육각형 등걸이",
+      "displayName": "자수물 루앙 골드 육각형 등걸이",
       "sku": "SFRGDHEXBACK",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -390,7 +390,7 @@
     {
       "id": "it-sfrgdrecback-3837f0",
       "name": "직사각 등걸이",
-      "displayname": "자수물 루앙 골드 직사각 등걸이",
+      "displayName": "자수물 루앙 골드 직사각 등걸이",
       "sku": "SFRGDRECBACK",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -402,7 +402,7 @@
     {
       "id": "it-sfrgdtissue-091d64",
       "name": "티슈커버",
-      "displayname": "자수물 루앙 골드 티슈커버",
+      "displayName": "자수물 루앙 골드 티슈커버",
       "sku": "SFRGDTISSUE",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -414,7 +414,7 @@
     {
       "id": "it-sfrb35cushion-0d329a",
       "name": "30x50쿠션커버",
-      "displayname": "자수물 루앙 베이지 30x50쿠션커버",
+      "displayName": "자수물 루앙 베이지 30x50쿠션커버",
       "sku": "SFRB35CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -426,7 +426,7 @@
     {
       "id": "it-sfrb40cushion-71a145",
       "name": "40쿠션커버",
-      "displayname": "자수물 루앙 베이지 40쿠션커버",
+      "displayName": "자수물 루앙 베이지 40쿠션커버",
       "sku": "SFRB40CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -438,7 +438,7 @@
     {
       "id": "it-sfrb50cushion-420458",
       "name": "50쿠션커버",
-      "displayname": "자수물 루앙 베이지 50쿠션커버",
+      "displayName": "자수물 루앙 베이지 50쿠션커버",
       "sku": "SFRB50CUSHION",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -450,7 +450,7 @@
     {
       "id": "it-sfrb50basicsit-ece2ff",
       "name": "50기본형 방석커버",
-      "displayname": "자수물 루앙 베이지 50기본형 방석커버",
+      "displayName": "자수물 루앙 베이지 50기본형 방석커버",
       "sku": "SFRB50BASICSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -462,7 +462,7 @@
     {
       "id": "it-sfrb45wingsit-1d598f",
       "name": "45날개형 방석커버",
-      "displayname": "자수물 루앙 베이지 45날개형 방석커버",
+      "displayName": "자수물 루앙 베이지 45날개형 방석커버",
       "sku": "SFRB45WINGSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -474,7 +474,7 @@
     {
       "id": "it-sfrb50wingsit-0cabf3",
       "name": "50날개형 방석커버",
-      "displayname": "자수물 루앙 베이지 50날개형 방석커버",
+      "displayName": "자수물 루앙 베이지 50날개형 방석커버",
       "sku": "SFRB50WINGSIT",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -486,7 +486,7 @@
     {
       "id": "it-sfrbhexback-6af979",
       "name": "육각형 등걸이",
-      "displayname": "자수물 루앙 베이지 육각형 등걸이",
+      "displayName": "자수물 루앙 베이지 육각형 등걸이",
       "sku": "SFRBHEXBACK",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -498,7 +498,7 @@
     {
       "id": "it-sfrbrecback-0b4488",
       "name": "직사각 등걸이",
-      "displayname": "자수물 루앙 베이지 직사각 등걸이",
+      "displayName": "자수물 루앙 베이지 직사각 등걸이",
       "sku": "SFRBRECBACK",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -510,7 +510,7 @@
     {
       "id": "it-sfrbtissue-cd0ffb",
       "name": "티슈커버",
-      "displayname": "자수물 루앙 베이지 티슈커버",
+      "displayName": "자수물 루앙 베이지 티슈커버",
       "sku": "SFRBTISSUE",
       "unit": "ea",
       "folder": "SemiFinished",
@@ -522,7 +522,7 @@
     {
       "id": "it-rg35cushion-ae94dc",
       "name": "30x50쿠션커버",
-      "displayname": "완제품 루앙 그레이 30x50쿠션커버",
+      "displayName": "완제품 루앙 그레이 30x50쿠션커버",
       "sku": "RG35CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -534,7 +534,7 @@
     {
       "id": "it-rg40cushion-efb38c",
       "name": "40쿠션커버",
-      "displayname": "완제품 루앙 그레이 40쿠션커버",
+      "displayName": "완제품 루앙 그레이 40쿠션커버",
       "sku": "RG40CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -546,7 +546,7 @@
     {
       "id": "it-rg50cushion-2504bc",
       "name": "50쿠션커버",
-      "displayname": "완제품 루앙 그레이 50쿠션커버",
+      "displayName": "완제품 루앙 그레이 50쿠션커버",
       "sku": "RG50CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -558,7 +558,7 @@
     {
       "id": "it-rg50basicsit-41acc8",
       "name": "50기본형 방석커버",
-      "displayname": "완제품 루앙 그레이 50기본형 방석커버",
+      "displayName": "완제품 루앙 그레이 50기본형 방석커버",
       "sku": "RG50BASICSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -570,7 +570,7 @@
     {
       "id": "it-rg45wingsit-58e757",
       "name": "45날개형 방석커버",
-      "displayname": "완제품 루앙 그레이 45날개형 방석커버",
+      "displayName": "완제품 루앙 그레이 45날개형 방석커버",
       "sku": "RG45WINGSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -582,7 +582,7 @@
     {
       "id": "it-rg50wingsit-295861",
       "name": "50날개형 방석커버",
-      "displayname": "완제품 루앙 그레이 50날개형 방석커버",
+      "displayName": "완제품 루앙 그레이 50날개형 방석커버",
       "sku": "RG50WINGSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -594,7 +594,7 @@
     {
       "id": "it-rghexback-9f4d21",
       "name": "육각형 등걸이",
-      "displayname": "완제품 루앙 그레이 육각형 등걸이",
+      "displayName": "완제품 루앙 그레이 육각형 등걸이",
       "sku": "RGHEXBACK",
       "unit": "ea",
       "folder": "Finished",
@@ -606,7 +606,7 @@
     {
       "id": "it-rgrecback-e01e7d",
       "name": "직사각 등걸이",
-      "displayname": "완제품 루앙 그레이 직사각 등걸이",
+      "displayName": "완제품 루앙 그레이 직사각 등걸이",
       "sku": "RGRECBACK",
       "unit": "ea",
       "folder": "Finished",
@@ -618,7 +618,7 @@
     {
       "id": "it-rgtissue-f95ab6",
       "name": "티슈커버",
-      "displayname": "완제품 루앙 그레이 티슈커버",
+      "displayName": "완제품 루앙 그레이 티슈커버",
       "sku": "RGTISSUE",
       "unit": "ea",
       "folder": "Finished",
@@ -630,7 +630,7 @@
     {
       "id": "it-rp35cushion-7a8990",
       "name": "30x50쿠션커버",
-      "displayname": "완제품 루앙 핑크 30x50쿠션커버",
+      "displayName": "완제품 루앙 핑크 30x50쿠션커버",
       "sku": "RP35CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -642,7 +642,7 @@
     {
       "id": "it-rp40cushion-238b52",
       "name": "40쿠션커버",
-      "displayname": "완제품 루앙 핑크 40쿠션커버",
+      "displayName": "완제품 루앙 핑크 40쿠션커버",
       "sku": "RP40CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -654,7 +654,7 @@
     {
       "id": "it-rp50cushion-34ad9a",
       "name": "50쿠션커버",
-      "displayname": "완제품 루앙 핑크 50쿠션커버",
+      "displayName": "완제품 루앙 핑크 50쿠션커버",
       "sku": "RP50CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -666,7 +666,7 @@
     {
       "id": "it-rp50basicsit-ba92ac",
       "name": "50기본형 방석커버",
-      "displayname": "완제품 루앙 핑크 50기본형 방석커버",
+      "displayName": "완제품 루앙 핑크 50기본형 방석커버",
       "sku": "RP50BASICSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -678,7 +678,7 @@
     {
       "id": "it-rp45wingsit-6a1d51",
       "name": "45날개형 방석커버",
-      "displayname": "완제품 루앙 핑크 45날개형 방석커버",
+      "displayName": "완제품 루앙 핑크 45날개형 방석커버",
       "sku": "RP45WINGSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -690,7 +690,7 @@
     {
       "id": "it-rp50wingsit-b17c40",
       "name": "50날개형 방석커버",
-      "displayname": "완제품 루앙 핑크 50날개형 방석커버",
+      "displayName": "완제품 루앙 핑크 50날개형 방석커버",
       "sku": "RP50WINGSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -702,7 +702,7 @@
     {
       "id": "it-rphexback-5d4cdb",
       "name": "육각형 등걸이",
-      "displayname": "완제품 루앙 핑크 육각형 등걸이",
+      "displayName": "완제품 루앙 핑크 육각형 등걸이",
       "sku": "RPHEXBACK",
       "unit": "ea",
       "folder": "Finished",
@@ -714,7 +714,7 @@
     {
       "id": "it-rprecback-96d109",
       "name": "직사각 등걸이",
-      "displayname": "완제품 루앙 핑크 직사각 등걸이",
+      "displayName": "완제품 루앙 핑크 직사각 등걸이",
       "sku": "RPRECBACK",
       "unit": "ea",
       "folder": "Finished",
@@ -726,7 +726,7 @@
     {
       "id": "it-rptissue-c5c12e",
       "name": "티슈커버",
-      "displayname": "완제품 루앙 핑크 티슈커버",
+      "displayName": "완제품 루앙 핑크 티슈커버",
       "sku": "RPTISSUE",
       "unit": "ea",
       "folder": "Finished",
@@ -738,7 +738,7 @@
     {
       "id": "it-rgd35cushion-723531",
       "name": "30x50쿠션커버",
-      "displayname": "완제품 루앙 골드 30x50쿠션커버",
+      "displayName": "완제품 루앙 골드 30x50쿠션커버",
       "sku": "RGD35CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -750,7 +750,7 @@
     {
       "id": "it-rgd40cushion-f1ebcc",
       "name": "40쿠션커버",
-      "displayname": "완제품 루앙 골드 40쿠션커버",
+      "displayName": "완제품 루앙 골드 40쿠션커버",
       "sku": "RGD40CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -762,7 +762,7 @@
     {
       "id": "it-rgd50cushion-384dc9",
       "name": "50쿠션커버",
-      "displayname": "완제품 루앙 골드 50쿠션커버",
+      "displayName": "완제품 루앙 골드 50쿠션커버",
       "sku": "RGD50CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -774,7 +774,7 @@
     {
       "id": "it-rgd50basicsit-c4897d",
       "name": "50기본형 방석커버",
-      "displayname": "완제품 루앙 골드 50기본형 방석커버",
+      "displayName": "완제품 루앙 골드 50기본형 방석커버",
       "sku": "RGD50BASICSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -786,7 +786,7 @@
     {
       "id": "it-rgd45wingsit-689fde",
       "name": "45날개형 방석커버",
-      "displayname": "완제품 루앙 골드 45날개형 방석커버",
+      "displayName": "완제품 루앙 골드 45날개형 방석커버",
       "sku": "RGD45WINGSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -798,7 +798,7 @@
     {
       "id": "it-rgd50wingsit-cb4ff8",
       "name": "50날개형 방석커버",
-      "displayname": "완제품 루앙 골드 50날개형 방석커버",
+      "displayName": "완제품 루앙 골드 50날개형 방석커버",
       "sku": "RGD50WINGSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -810,7 +810,7 @@
     {
       "id": "it-rgdhexback-ddd824",
       "name": "육각형 등걸이",
-      "displayname": "완제품 루앙 골드 육각형 등걸이",
+      "displayName": "완제품 루앙 골드 육각형 등걸이",
       "sku": "RGDHEXBACK",
       "unit": "ea",
       "folder": "Finished",
@@ -822,7 +822,7 @@
     {
       "id": "it-rgdrecback-1b7154",
       "name": "직사각 등걸이",
-      "displayname": "완제품 루앙 골드 직사각 등걸이",
+      "displayName": "완제품 루앙 골드 직사각 등걸이",
       "sku": "RGDRECBACK",
       "unit": "ea",
       "folder": "Finished",
@@ -834,7 +834,7 @@
     {
       "id": "it-rgdtissue-af29ec",
       "name": "티슈커버",
-      "displayname": "완제품 루앙 골드 티슈커버",
+      "displayName": "완제품 루앙 골드 티슈커버",
       "sku": "RGDTISSUE",
       "unit": "ea",
       "folder": "Finished",
@@ -846,7 +846,7 @@
     {
       "id": "it-rb35cushion-c307d3",
       "name": "30x50쿠션커버",
-      "displayname": "완제품 루앙 베이지 30x50쿠션커버",
+      "displayName": "완제품 루앙 베이지 30x50쿠션커버",
       "sku": "RB35CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -858,7 +858,7 @@
     {
       "id": "it-rb40cushion-7fb208",
       "name": "40쿠션커버",
-      "displayname": "완제품 루앙 베이지 40쿠션커버",
+      "displayName": "완제품 루앙 베이지 40쿠션커버",
       "sku": "RB40CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -870,7 +870,7 @@
     {
       "id": "it-rb50cushion-6707dd",
       "name": "50쿠션커버",
-      "displayname": "완제품 루앙 베이지 50쿠션커버",
+      "displayName": "완제품 루앙 베이지 50쿠션커버",
       "sku": "RB50CUSHION",
       "unit": "ea",
       "folder": "Finished",
@@ -882,7 +882,7 @@
     {
       "id": "it-rb50basicsit-96cfc5",
       "name": "50기본형 방석커버",
-      "displayname": "완제품 루앙 베이지 50기본형 방석커버",
+      "displayName": "완제품 루앙 베이지 50기본형 방석커버",
       "sku": "RB50BASICSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -894,7 +894,7 @@
     {
       "id": "it-rb45wingsit-ea7115",
       "name": "45날개형 방석커버",
-      "displayname": "완제품 루앙 베이지 45날개형 방석커버",
+      "displayName": "완제품 루앙 베이지 45날개형 방석커버",
       "sku": "RB45WINGSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -906,7 +906,7 @@
     {
       "id": "it-rb50wingsit-bdccf7",
       "name": "50날개형 방석커버",
-      "displayname": "완제품 루앙 베이지 50날개형 방석커버",
+      "displayName": "완제품 루앙 베이지 50날개형 방석커버",
       "sku": "RB50WINGSIT",
       "unit": "ea",
       "folder": "Finished",
@@ -918,7 +918,7 @@
     {
       "id": "it-rbhexback-66c27d",
       "name": "육각형 등걸이",
-      "displayname": "완제품 루앙 베이지 육각형 등걸이",
+      "displayName": "완제품 루앙 베이지 육각형 등걸이",
       "sku": "RBHEXBACK",
       "unit": "ea",
       "folder": "Finished",
@@ -930,7 +930,7 @@
     {
       "id": "it-rbrecback-68f5f0",
       "name": "직사각 등걸이",
-      "displayname": "완제품 루앙 베이지 직사각 등걸이",
+      "displayName": "완제품 루앙 베이지 직사각 등걸이",
       "sku": "RBRECBACK",
       "unit": "ea",
       "folder": "Finished",
@@ -942,7 +942,7 @@
     {
       "id": "it-rbtissue-df63fe",
       "name": "티슈커버",
-      "displayname": "완제품 루앙 베이지 티슈커버",
+      "displayName": "완제품 루앙 베이지 티슈커버",
       "sku": "RBTISSUE",
       "unit": "ea",
       "folder": "Finished",

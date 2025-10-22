@@ -142,6 +142,30 @@ class InMemoryRepo extends ChangeNotifier
     return [l1Id, l2Id, l3Id];
   }
 
+  // InMemoryRepo 내부
+  Future<List<String>> itemPathNames(String itemId) async {
+    final it = _items[itemId]; // 보유한 맵/스토리지에 맞춰 조회
+    if (it == null) return const [];
+
+    // 예시: 영→한 매핑 테이블(원하시면 앱 공용 utils로 이동)
+    String folderKo(String? f) {
+      switch (f) {
+        case 'Finished': return '완제품';
+        case 'Semi-finished': return '반제품';
+        case 'Raw': return '원자재';
+        case 'Sub': return '부자재';
+        default: return f ?? '';
+      }
+    }
+
+    return [
+      folderKo(it.folder),
+      it.subfolder ?? '',
+      (it.subsubfolder ?? '').replaceAll('_', ' '), // 스네이크 → 공백
+    ].where((e) => e.isNotEmpty).toList();
+  }
+
+
   // ============================== 폴더 CRUD ===============================
   Future<List<FolderNode>> listFolderChildren(String? parentId) async {
     final set = _childrenIndex[parentId];
@@ -284,12 +308,7 @@ class InMemoryRepo extends ChangeNotifier
   /// itemId -> [l1Id, l2Id?, l3Id?] (없으면 null)
   List<String>? itemPathIds(String itemId) => _itemPaths[itemId];
 
-  /// itemId의 경로를 사람이 읽는 이름들로 반환. 예: ['Finished','cushion']
-  Future<List<String>> itemPathNames(String itemId) async {
-    final ids = _itemPaths[itemId];
-    if (ids == null) return const [];
-    return ids.map((fid) => _folders[fid]?.name ?? '(deleted)').toList();
-  }
+
 
   // ──────────── 아이템 편집/이동/삭제 ────────────
   Future<void> renameItem({required String id, required String newName}) async {

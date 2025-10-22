@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/order.dart';
 import '../../repos/repo_interfaces.dart';
 import 'order_form_screen.dart';
+import '../../utils/item_presentation.dart';
 
 // ⛳ 개별 품목 부족분 모달 (정적 show 사용)
 import '../bom/shortage_result_screen.dart';
@@ -151,8 +152,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    '완제품 ID: $itemId',
+                  child: ItemLabel(
+                    itemId: itemId,
+                    full: false,                  // 전체 경로까지 표시 (원하면 false)
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),

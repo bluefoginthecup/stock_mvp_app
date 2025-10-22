@@ -40,6 +40,7 @@ Future<void> main() async {
           create: (ctx) => RepoItemPathFacade(ctx.read<InMemoryRepo>()),
         ),
 
+
         // ✅ InventoryService 주입
         Provider<InventoryService>(
           create: (ctx) => InventoryService(

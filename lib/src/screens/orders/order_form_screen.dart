@@ -223,42 +223,45 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
               const SizedBox(height: 8),
 
               // 주문 라인 목록 (각 라인에서 ItemRepo로 이름 조회)
-              ..._order.lines.map((ln) {
-                return FutureBuilder<Item?>(
-                  future: itemsRepo.getItem(ln.itemId),
-                  builder: (context, snap) {
-                    final itemName = snap.data?.name ?? context.t.item_loading_or_missing;
-                    return ListTile(
-                      key: ValueKey(ln.id),
-                      leading: const Icon(Icons.shopping_cart),
-                      title: ItemLabel(
-                        itemId: ln.itemId,
-                        full: true,
-                      ),
 
-                      subtitle: Row(
-                        children: [
-                          const SizedBox(width: 0), // 필요시 공간 조절
-                          QtyControl(
-                            label: '수량',          // ← 라벨 켜기 (i18n이면 context.t.qty)
-                            value: ln.qty,
-                            min: 1,
-                            step: 1,
-                            onChanged: (q) => _updateQty(ln.id, q),
-                            // 옵션 조절
-                            dense: true,
-                            fieldWidth: 48,         // 숫자 필드 너비 살짝 줄이기
-                            labelGap: 8,
-                            gap: 4,
-                          ),
-                        ],
-                      ),
 
-                      trailing: const SizedBox.shrink(), // ← 충돌 방지
-                    );
-                  },
+                ..._order.lines.map((ln) {
+                return ListTile(
+                key: ValueKey(ln.id),
+                leading: const Icon(Icons.shopping_cart),
+
+                // 전체 경로 라벨 표시
+                title: ItemLabel(
+                itemId: ln.itemId,
+                full: false,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                ),
+
+                subtitle: Row(
+                children: [
+                QtyControl(
+                label: '수량',
+                value: ln.qty,
+                min: 1,
+                step: 1,
+                onChanged: (q) => _updateQty(ln.id, q),
+                dense: true,
+                fieldWidth: 48,
+                labelGap: 8,
+                gap: 4,
+                ),
+                ],
+                ),
+
+                trailing: IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () => _removeLine(ln.id),
+                ),
                 );
-              }),
+                }),
+
+
               const SizedBox(height: 32),
               FilledButton(
                 onPressed: _save,
