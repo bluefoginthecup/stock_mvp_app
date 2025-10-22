@@ -423,9 +423,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         return ListTile(
           leading:
           Icon(low ? Icons.warning_amber_rounded : Icons.inventory_2),
+          isThreeLine: true,
           title: ItemLabel(
             itemId: it.id,
-            full: true, // 전체 경로 포함 (false면 [루앙 그레이] 커버 형식)
+            full: false, // 전체 경로 포함 (false면 [루앙 그레이] 커버 형식)
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(

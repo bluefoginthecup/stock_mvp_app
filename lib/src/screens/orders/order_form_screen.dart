@@ -191,7 +191,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
              leading: const Icon(Icons.inventory_2),
      title: ItemLabel(
        itemId: it.id,
-       full: true,
+       full: false,
      ),
      subtitle: Row(
        children: [

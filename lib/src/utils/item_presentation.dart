@@ -172,9 +172,9 @@ class ItemLabel extends StatelessWidget {
         return Text(
           snap.data!,
           style: style,
-          maxLines: maxLines,
-          softWrap: softWrap,
-          overflow: overflow,
+          maxLines: 2,
+          softWrap: true,
+          overflow: TextOverflow.ellipsis,
         );
       },
     );
