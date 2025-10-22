@@ -1,6 +1,7 @@
 class Item {
   final String id;
   final String name;
+  final String? displayName;
   final String sku;
   final String unit; // 'EA','SET','ROLL' etc.=
   @Deprecated('Use tree path via repo (itemPathIds / itemPathNames).')
@@ -15,6 +16,7 @@ class Item {
   Item({
     required this.id,
     required this.name,
+    this.displayName,
     required this.sku,
     required this.unit,
     required this.folder,
@@ -26,6 +28,7 @@ class Item {
 
   Item copyWith({
     String? name,
+    String? displayName,
     String? sku,
     String? unit,
     @Deprecated('Use tree path via repo.') String? folder,
@@ -36,6 +39,7 @@ class Item {
     return Item(
       id: id,
       name: name ?? this.name,
+      displayName: displayName ?? this.displayName,
       sku: sku ?? this.sku,
       unit: unit ?? this.unit,
       folder: folder ?? this.folder,
@@ -48,6 +52,7 @@ class Item {
   factory Item.fromJson(Map<String, dynamic> json) => Item(
     id: json['id'],
     name: json['name'],
+    displayName: json['displayName'], // ✅ 추가
     sku: json['sku'],
     unit: json['unit'],
     folder: json['folder'],
@@ -59,7 +64,8 @@ class Item {
   Map<String, dynamic> toJson() => {
       'id': id,
       'name': name,
-      'sku': sku,
+    if (displayName != null) 'displayName': displayName, // ✅ 추가
+    'sku': sku,
       'unit': unit,
       'folder': folder,
       'subfolder': subfolder,
