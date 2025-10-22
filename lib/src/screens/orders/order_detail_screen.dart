@@ -4,6 +4,8 @@ import '../../models/order.dart';
 import '../../repos/repo_interfaces.dart';
 import '../bom/shortage_test_screen.dart';
 import 'order_form_screen.dart';
+import '../bom/shortage_result_screen.dart';
+
 
 class OrderDetailScreen extends StatefulWidget {
     final Order order;
@@ -80,29 +82,38 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ] else
               const Text('(주문 라인이 없습니다)'),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.calculate),
-              label: const Text('부족 계산 보기'),
-              onPressed: hasLines
-                  ? () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ShortageTestScreen(),
+            // (변경) 실제 부족분 결과 모달로 표시
+                        ElevatedButton.icon(
+                    icon: const Icon(Icons.calculate),
+                    label: const Text('부족분 계산'),
+                    onPressed: () async {
+                      // 👉 주문 라인에서 대상 완제품 id/수량을 가져온다.
+                      //    실제 필드명은 프로젝트의 Order/OrderLine 정의에 맞게 바꿔주세요.
+                      //    예시: order.lines.first.finishedItemId / order.lines.first.qty
+                      final order = widget.order;
+                      if (order.lines.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('주문 품목이 없습니다.')),
+                        );
+                        return;
+                      }
+                      final line = order.lines.first; // TODO: 여러 라인 선택 UI로 확장 가능
+                      final finishedId = line.itemId; // 또는 line.finishedItemId
+                      final qty = line.qty;
+
+                      await ShortageResultScreen.show(
+                        context,
+                        finishedItemId: finishedId,
+                        orderQty: qty,
+                      );
+                    },
                   ),
-                );
-              }
-                  : null,
-            ),
             const SizedBox(height: 12),
-            Text(
-              '※ 이 버튼은 BOM 기반 부족 계산 테스트용입니다.\n'
-                  '   실제 연계는 order_planning_service.dart로 확장 가능.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.grey),
-            ),
+      // 안내 문구 교체
+                  Text(
+                    '현재 선택한 주문 품목 기준으로 세미/원자재/부자재 필요·부족을 계산해 보여줍니다.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                  ),
           ],
         ),
       ),
