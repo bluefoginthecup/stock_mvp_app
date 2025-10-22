@@ -4,7 +4,8 @@ import '../../models/order.dart';
 import '../../repos/repo_interfaces.dart';
 import '../bom/shortage_test_screen.dart';
 import 'order_form_screen.dart';
-import '../bom/shortage_result_screen.dart';
+import '../bom/order_shortage_result_screen.dart';
+
 
 
 class OrderDetailScreen extends StatefulWidget {
@@ -90,22 +91,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       // 👉 주문 라인에서 대상 완제품 id/수량을 가져온다.
                       //    실제 필드명은 프로젝트의 Order/OrderLine 정의에 맞게 바꿔주세요.
                       //    예시: order.lines.first.finishedItemId / order.lines.first.qty
-                      final order = widget.order;
-                      if (order.lines.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('주문 품목이 없습니다.')),
-                        );
-                        return;
-                      }
-                      final line = order.lines.first; // TODO: 여러 라인 선택 UI로 확장 가능
-                      final finishedId = line.itemId; // 또는 line.finishedItemId
-                      final qty = line.qty;
+                      // (신규) 전체 품목 결과 화면으로 이동
+                           Navigator.of(context).push(
+                                 MaterialPageRoute(
+                                       builder: (_) => OrderShortageResultScreen(order: widget.order),
+                             ),
+                           );
 
-                      await ShortageResultScreen.show(
-                        context,
-                        finishedItemId: finishedId,
-                        orderQty: qty,
-                      );
                     },
                   ),
             const SizedBox(height: 12),

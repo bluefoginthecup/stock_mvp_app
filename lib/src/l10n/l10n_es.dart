@@ -9,10 +9,10 @@ class L10nEs extends L10n {
   L10nEs([String locale = 'es']) : super(locale);
 
   @override
-  String get adjust_set_quantity_title => 'set QTy';
+  String get adjust_set_quantity_title => 'establecer cant.';
 
   @override
-  String get hint_longpress_to_edit_qty => 'long press to edit QTY';
+  String get hint_longpress_to_edit_qty => 'mantén presionado para editar la cantidad';
 
   @override
   String adjust_current_qty(int qty, int minQty) {
