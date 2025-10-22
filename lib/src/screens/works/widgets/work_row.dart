@@ -95,7 +95,7 @@ class WorkRow extends StatelessWidget {
                     children: [
                   // 🧭 [루앙] 50기본형 방석커버 형태로 표시
                   Expanded(
-                    child: ItemLabel(itemId: w.itemId, full: true),
+                    child: ItemLabel(itemId: w.itemId, full: false),
                   ),
               Text(
                 '×${w.qty}',

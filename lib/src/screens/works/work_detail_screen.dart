@@ -93,7 +93,7 @@ class WorkDetailScreen extends StatelessWidget {
                            Expanded(
                              child: ItemLabel(
                                itemId: w.itemId,
-                                   full: true, // [루앙] 50기본형…  (full: true 로 바꾸면 전체 브레드크럼)
+                                   full: false, // [루앙] 50기본형…  (full: true 로 바꾸면 전체 브레드크럼)
                                  ),
                              ),
                            const SizedBox(width: 8),

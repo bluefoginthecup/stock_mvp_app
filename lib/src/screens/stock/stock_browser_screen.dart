@@ -12,6 +12,7 @@ import '../../ui/common/search_field.dart'; // 공용 검색 위젯
 import '../../ui/common/path_picker.dart'; // 파일 최상단 import 필요
 import '../../ui/common/entity_actions.dart';
 import 'stock_item_detail_screen.dart';
+import '../../utils/item_presentation.dart';
 
 
 class StockBrowserScreen extends StatefulWidget {
@@ -422,14 +423,18 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         return ListTile(
           leading:
           Icon(low ? Icons.warning_amber_rounded : Icons.inventory_2),
-          title: Text(
-            it.name,
+          title: ItemLabel(
+            itemId: it.id,
+            full: true, // 전체 경로 포함 (false면 [루앙 그레이] 커버 형식)
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: low ? Colors.red : null,
               fontWeight: FontWeight.w600,
             ),
           ),
-            subtitle: FutureBuilder<List<String>>(
+
+          subtitle: FutureBuilder<List<String>>(
                future: repo.itemPathNames(it.id),
                builder: (_, snap) {
              final path = (snap.data ?? const []);
