@@ -183,8 +183,8 @@ class ItemLabel extends StatelessWidget {
         final label = Text(
                      snap.data!,
                      style: style,
-                     maxLines: maxLines,
-                     softWrap: softWrap,
+                     maxLines: 2,
+                     softWrap: true,
                      overflow: overflow,
                    );
         // 우선순위: 1) onTap 명시  2) autoNavigate+opener 주입  3) 클릭 없음
