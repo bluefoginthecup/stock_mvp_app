@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/shortage_service.dart';
 import '../../services/bom_service.dart';
+import '../../utils/item_presentation.dart'; // ✅ 추가
+
 
 /// 주문 상세에서 호출하는 "부족분 결과" 모달
 class ShortageResultScreen extends StatefulWidget {
@@ -131,12 +133,16 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
                 Row(
                   children: [
                     const Text('대상: '),
-                    Expanded(
-                      child: Text(
-                        vm.finishedItemId,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
+             Expanded(
+                   child: ItemLabel(
+                     itemId: vm.finishedItemId,
+                     full: false,                 // 전체 경로 포함 (원하면 false)
+                     maxLines: 2,                // 두 줄 허용
+                     softWrap: true,
+                     overflow: TextOverflow.ellipsis,
+                     style: theme.textTheme.titleMedium,
+                   ),
+             ),
                   ],
                 ),
                 const SizedBox(height: 8.0),
@@ -216,12 +222,15 @@ class _NeedShortRow extends StatelessWidget {
           const SizedBox(width: 8.0),
 
           // ItemLabel 대체: 우선 ID 텍스트
-          Expanded(
-            child: Text(
-              vm.itemId,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+        Expanded(
+               child: ItemLabel(
+                 itemId: vm.itemId,
+                 full: false,                // 짧은 라벨([태그] 이름)
+                 maxLines: 2,                // 길면 2줄로
+                 softWrap: true,
+                 overflow: TextOverflow.ellipsis,
+               ),
+         ),
 
           const SizedBox(width: 8.0),
           Text('필요 ${vm.need}'),

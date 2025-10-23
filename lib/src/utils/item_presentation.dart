@@ -147,6 +147,7 @@ class ItemLabel extends StatelessWidget {
   final TextOverflow? overflow;    // 말줄임/잘림
   final TextStyle? style;          // 텍스트 스타일
   final String separator;          // 브레드크럼 구분자 (full=true일 때)
+  final VoidCallback? onTap;
 
   const ItemLabel({
     super.key,
@@ -157,6 +158,7 @@ class ItemLabel extends StatelessWidget {
     this.overflow = TextOverflow.ellipsis,
     this.style,
     this.separator = ' › ',
+    this.onTap,
   });
 
   @override
@@ -169,13 +171,20 @@ class ItemLabel extends StatelessWidget {
       future: full ? svc.fullLabel(itemId, sep: separator) : svc.shortLabel(itemId),
       builder: (ctx, snap) {
         if (!snap.hasData) return const SizedBox.shrink();
-        return Text(
-          snap.data!,
-          style: style,
-          maxLines: 2,
-          softWrap: true,
-          overflow: TextOverflow.ellipsis,
-        );
+        final label = Text(
+                     snap.data!,
+                     style: style,
+                     maxLines: maxLines,
+                     softWrap: softWrap,
+                     overflow: overflow,
+                   );
+               // onTap이 주어졌을 때만 클릭 가능하게
+               return onTap == null
+                   ? label
+                   : InkWell(
+                       onTap: onTap,
+                       child: label,
+                     );
       },
     );
   }

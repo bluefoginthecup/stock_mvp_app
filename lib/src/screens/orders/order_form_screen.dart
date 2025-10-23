@@ -9,6 +9,9 @@ import '../../ui/common/ui.dart';
 import '../../ui/common/search_field.dart'; // 🔍 공용 검색필드 (디바운스 내장)
 import '../../utils/item_presentation.dart';
 import '../../ui/common/delete_more_menu.dart';
+import '../../ui/common/suggestion_panel.dart';
+
+
 
 
 class OrderFormScreen extends StatefulWidget {
@@ -28,6 +31,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   final _customerC = TextEditingController();
   final _memoC = TextEditingController();
   final _searchC = TextEditingController(); // 🔍 검색 입력
+  final ScrollController _pageScroll = ScrollController(); // ✅ 페이지 스크롤 컨트롤러
   bool _searching = false; // 🔍 로딩 표시
   List<Item> _results = <Item>[]; // 🔍 결과 버퍼
   late Order _order;
@@ -50,6 +54,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     _customerC.dispose();
     _memoC.dispose();
     _searchC.dispose(); // 🔍
+    _pageScroll.dispose();
     super.dispose();
   }
 
@@ -89,6 +94,21 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
         _order = _order.copyWith(lines: [..._order.lines, line]);
       }
     });
+
+        // ✅ 새 라인이 “추가”된 경우에만 자연스럽게 맨 아래로 스크롤
+        if (idx < 0) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (_pageScroll.hasClients) {
+              final target = _pageScroll.position.maxScrollExtent + 200; // 여유치
+              _pageScroll.animateTo(
+                target,
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
   }
 
   void _updateQty(String lineId, int newQty) {
@@ -169,6 +189,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
      // 변경: 전역 검색만 사용 (검색어 없으면 결과 섹션 숨김)
      body: ListView(
+       controller: _pageScroll,
+       physics: const ClampingScrollPhysics(), // ✅ 튕김감 제거
        padding: const EdgeInsets.all(16),
        children: [
          AppSearchField(
@@ -184,30 +206,19 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
            },
          ),
          if (_searching) const LinearProgressIndicator(),
-         if (!_searching && _searchC.text.trim().isNotEmpty) ...[
-           const SizedBox(height: 8),
-           if (_results.isEmpty) Text('검색 결과가 없습니다.'),
-           ..._results.map((it) => ListTile(
-             leading: const Icon(Icons.inventory_2),
-     title: ItemLabel(
-       itemId: it.id,
-       full: false,
-     ),
-     subtitle: Row(
-       children: [
-         Expanded(child: Text('SKU: ${it.sku}')),
-         const SizedBox(width: 8),
-         FilledButton(
-           onPressed: () => _addLine(it),
-           child: const Text('+ 추가'),
-         ),
-       ],
-     ),
-     trailing: const SizedBox.shrink(), // ← title 공간 확보
-     isThreeLine: true,                 // ← 2줄 title + 1줄 subtitle
-           )),
-           const Divider(height: 24),
-         ],
+    // ▼▼ 검색 결과 패널 (최대 5행 + 스크롤)
+             if (_results.isNotEmpty)
+               SuggestionPanel<Item>(
+                 items: _results,
+                 rowHeight: 56,
+                 maxRows: 5,
+                 itemBuilder: (_, it) => ListTile(
+                   title: Text(it.displayName ?? it.name),
+                   subtitle: (it.sku?.isNotEmpty ?? false) ? Text(it.sku!) : null,
+                   onTap: () => _addLine(it),
+                 ),
+               ),
+
               // 고객/메모
               TextField(
                 controller: _customerC,
@@ -271,5 +282,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           ),
     );
   }
+
 }
 
