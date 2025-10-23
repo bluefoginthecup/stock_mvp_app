@@ -1,6 +1,55 @@
 {
   "version": 1,
   "folders": [
+      {
+        "id": "f-rawmaterial-a74a0c",
+        "name": "RawMaterial",
+        "parentId": null,
+        "depth": 1,
+        "order": 0
+      },
+      {
+        "id": "f-rawmaterial-fabric-8347c0",
+        "name": "fabric",
+        "parentId": "f-rawmaterial-a74a0c",
+        "depth": 2,
+        "order": 0
+      },
+      {
+        "id": "f-rawmaterial-fabric-top-412a62",
+        "name": "Top",
+        "parentId": "f-rawmaterial-fabric-8347c0",
+        "depth": 3,
+        "order": 0
+      },
+      {
+        "id": "f-rawmaterial-fabric-back-21d8fd",
+        "name": "Back",
+        "parentId": "f-rawmaterial-fabric-8347c0",
+        "depth": 3,
+        "order": 1
+      },
+      {
+        "id": "f-submaterial-7e3a30",
+        "name": "SubMaterial",
+        "parentId": null,
+        "depth": 1,
+        "order": 1
+      },
+      {
+        "id": "f-submaterial-piping-215ba5",
+        "name": "piping",
+        "parentId": "f-submaterial-7e3a30",
+        "depth": 2,
+        "order": 0
+      },
+      {
+        "id": "f-submaterial-zipper-92d72f",
+        "name": "Zipper",
+        "parentId": "f-submaterial-7e3a30",
+        "depth": 2,
+        "order": 1
+      },
     {
       "id": "f-semifinished-5e4eac",
       "name": "SemiFinished",
@@ -87,6 +136,126 @@
     }
   ],
   "items": [
+      {
+        "id": "it-top-1902-05-2d3b08",
+        "name": "탑 화이트",
+        "displayName": "원자재 Top 탑 화이트",
+        "sku": "Top-1902-05",
+        "unit": "roll",
+        "folder": "RawMaterial",
+        "subfolder": "fabric",
+        "subsubfolder": "Top",
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-top-1902-06-2e3b0a",
+        "name": "탑 연그레이",
+        "displayName": "원자재 Top 탑 연그레이",
+        "sku": "Top-1902-06",
+        "unit": "roll",
+        "folder": "RawMaterial",
+        "subfolder": "fabric",
+        "subsubfolder": "Top",
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-top-1902-07-2f3b0b",
+        "name": "탑 다크그레이",
+        "displayName": "원자재 Top 탑 다크그레이",
+        "sku": "Top-1902-07",
+        "unit": "roll",
+        "folder": "RawMaterial",
+        "subfolder": "fabric",
+        "subsubfolder": "Top",
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-top-1902-08-303b0d",
+        "name": "탑 화이트",
+        "displayName": "원자재 Top 탑 화이트",
+        "sku": "Top-1902-08",
+        "unit": "roll",
+        "folder": "RawMaterial",
+        "subfolder": "fabric",
+        "subsubfolder": "Top",
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-dot-s3-b72ca4",
+        "name": "도트 화이트",
+        "displayName": "원자재 Back 도트 화이트",
+        "sku": "Dot-s3",
+        "unit": "roll",
+        "folder": "RawMaterial",
+        "subfolder": "fabric",
+        "subsubfolder": "Back",
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-dot-s4-b22c9c",
+        "name": "도트 연그레이",
+        "displayName": "원자재 Back 도트 연그레이",
+        "sku": "Dot-s4",
+        "unit": "roll",
+        "folder": "RawMaterial",
+        "subfolder": "fabric",
+        "subsubfolder": "Back",
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-dot-s5-b12c9a",
+        "name": "도트 아이보리",
+        "displayName": "원자재 Back 도트 아이보리",
+        "sku": "Dot-s5",
+        "unit": "roll",
+        "folder": "RawMaterial",
+        "subfolder": "fabric",
+        "subsubfolder": "Back",
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-dot-s6-b42c9f",
+        "name": "도트 네이비",
+        "displayName": "원자재 Back 도트 네이비",
+        "sku": "Dot-s6",
+        "unit": "roll",
+        "folder": "RawMaterial",
+        "subfolder": "fabric",
+        "subsubfolder": "Back",
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-pip48ivory-79dce4",
+        "name": "파이핑 줄",
+        "displayName": "부자재 파이핑 줄",
+        "sku": "Pip48ivory",
+        "unit": "Yard",
+        "folder": "SubMaterial",
+        "subfolder": "piping",
+        "subsubfolder": null,
+        "minQty": 0,
+        "qty": 0
+      },
+      {
+        "id": "it-zip52-afb277",
+        "name": "52cm지퍼",
+        "displayName": "부자재 52cm지퍼",
+        "sku": "Zip52",
+        "unit": "Ea",
+        "folder": "SubMaterial",
+        "subfolder": "Zipper",
+        "subsubfolder": null,
+        "minQty": 0,
+        "qty": 0
+      },
     {
       "id": "it-sfrg35cushion-e2111a",
       "name": "30x50쿠션커버",
