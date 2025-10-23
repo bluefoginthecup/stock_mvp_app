@@ -187,21 +187,37 @@ class _ComponentPickerState extends State<ComponentPicker> {
                   ? const Center(child: Text('선택 가능한 항목이 없습니다.'))
                   : ListView.separated(
                 shrinkWrap: true,
-                itemCount: _results.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, i) {
-                  final it = _results[i];
-                  return ListTile(
-                    leading: const Icon(Icons.inventory_2),
-                    title: ItemLabel(itemId: it.id, full: true),
-                    subtitle: Text('SKU: ${it.sku ?? '-'}'),
-                    trailing: FilledButton(
-                      onPressed: () => Navigator.pop(context, it.id),
-                      child: const Text('선택'),
-                    ),
-                    onTap: () => Navigator.pop(context, it.id),
-                  );
-                },
+    itemCount: _results.length,
+    separatorBuilder: (_, __) => const Divider(height: 1),
+    itemBuilder: (context, i) {
+    final it = _results[i];
+    return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+    child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    Row(
+    children: [
+    const Icon(Icons.inventory_2, size: 20),
+    const SizedBox(width: 8),
+    Expanded(child: ItemLabel(itemId: it.id, full: false)),
+    ],
+    ),
+    const SizedBox(height: 4),
+    Text('SKU: ${it.sku ?? '-'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+    const SizedBox(height: 6),
+    Align(
+    alignment: Alignment.centerRight,
+    child: FilledButton(
+    onPressed: () => Navigator.pop(context, it.id),
+    child: const Text('선택'),
+    ),
+    ),
+    ],
+    ),
+    );
+    },
+
               ),
             ),
           ],

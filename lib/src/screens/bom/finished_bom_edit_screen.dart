@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/bom.dart';
 import 'bom_row_editor.dart';
+import '../../utils/item_presentation.dart'; // ✅ 라벨 표시용 위젯
 
 class FinishedBomEditScreen extends StatefulWidget {
   final String finishedItemId;
@@ -62,16 +63,17 @@ class _FinishedBomEditScreenState extends State<FinishedBomEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Finished BOM 편집'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.save),
-              tooltip: '저장',
-              onPressed: _save,
-            ),
-          ],
-        ),
+      appBar: AppBar(
+        title: const Text('Finished BOM 편집'), // ✅ 간단히 유지
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: '저장',
+            onPressed: _save,
+          ),
+        ],
+      ),
+
       floatingActionButton: FloatingActionButton(onPressed: _addRow, child: const Icon(Icons.add)),
       body: _rows.isEmpty
           ? const Center(child: Text('레시피가 없습니다. + 버튼으로 행을 추가하세요.'))
@@ -81,16 +83,22 @@ class _FinishedBomEditScreenState extends State<FinishedBomEditScreen> {
         itemBuilder: (_, i) {
           final r = _rows[i];
           return ListTile(
-            leading: Icon(r.kind == BomKind.semi
-                ? Icons.hub
-                : r.kind == BomKind.raw
-                ? Icons.category
-                : Icons.extension),
-            title: Text('${r.componentItemId}  x ${r.qtyPer}  (loss ${r.wastePct})'),
+            leading: Icon(
+              r.kind == BomKind.semi
+                  ? Icons.hub
+                  : r.kind == BomKind.raw
+                  ? Icons.category
+                  : Icons.extension,
+            ),
+            // ✅ 제목: 구성품도 ID 대신 라벨 표시
+            title: ItemLabel(itemId: r.componentItemId),
+            // ✅ 수량/로스율은 서브타이틀로 깔끔하게
+            subtitle: Text('x ${r.qtyPer}  (loss ${r.wastePct}%)'),
             onTap: () => _editRow(i),
             trailing: IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () => setState(() => _rows.removeAt(i))),
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => setState(() => _rows.removeAt(i)),
+            ),
           );
         },
       ),
