@@ -65,11 +65,19 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
     // 필요/부족 수량 표시는 올림(ceil)
     int _ceil(double v) => v == v.floorToDouble() ? v.toInt() : v.ceil();
 
+        // ✅ 어떤 타입/널이 와도 안전하게 int로 변환
+        int _toInt(Object? v, {int fallback = 0}) {
+          if (v is int) return v;
+          if (v is num) return v.toInt();
+          return fallback; // v == null 이면 0
+        }
     List<RowVm> toRows(Map<String, double> need, {Map<String, double>? short}) {
       return need.keys.map((id) {
         final n = need[id] ?? 0.0;
         final s = short != null ? (short[id] ?? 0.0) : 0.0;
-        return RowVm(itemId: id, need: _ceil(n), shortage: _ceil(s));
+        final stock = _toInt(items.stockOf(id)); // ✅ 널/타입 방어
+
+        return RowVm(itemId: id, need: _ceil(n), shortage: _ceil(s), stock: stock, );
       }).where((r) => r.need > 0).toList()
         ..sort((a, b) => a.itemId.compareTo(b.itemId));
     }
@@ -80,7 +88,8 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
 
     // finished 현재고 (num → int 안전 변환)
     final finStockNum = items.stockOf(widget.finishedItemId);
-    final finStock = (finStockNum is int) ? finStockNum : (finStockNum as num).toInt();
+       // ✅ 완제품 현재고도 방어
+        final finStock = _toInt(items.stockOf(widget.finishedItemId));
 
     return _Vm(
       finishedItemId: widget.finishedItemId,
@@ -99,6 +108,12 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
     return FutureBuilder<_Vm>(
       future: _future,
       builder: (context, snap) {
+        if (snap.hasError) {
+          return Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text('오류: ${snap.error}', style: TextStyle(color: Colors.red)),
+          );
+        }
         if (!snap.hasData) {
           return const Padding(
             padding: EdgeInsets.all(24.0),
@@ -141,6 +156,7 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
                      softWrap: true,
                      overflow: TextOverflow.ellipsis,
                      style: theme.textTheme.titleMedium,
+                     autoNavigate: true,
                    ),
              ),
                   ],
@@ -213,38 +229,54 @@ class _NeedShortRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final danger = vm.shortage > 0;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.inventory_2, size: 18.0),
-          const SizedBox(width: 8.0),
+          // 1줄: 아이템 아이콘 + 이름
+          Row(
+            children: [
+              const Icon(Icons.inventory_2, size: 18.0),
+              const SizedBox(width: 8.0),
+              Expanded(
+                child: ItemLabel(
+                  itemId: vm.itemId,
+                  full: false,
+                  maxLines: 2,
+                  softWrap: true,
+                  overflow: TextOverflow.ellipsis,
+                  autoNavigate: true,
+                ),
+              ),
+            ],
+          ),
 
-          // ItemLabel 대체: 우선 ID 텍스트
-        Expanded(
-               child: ItemLabel(
-                 itemId: vm.itemId,
-                 full: false,                // 짧은 라벨([태그] 이름)
-                 maxLines: 2,                // 길면 2줄로
-                 softWrap: true,
-                 overflow: TextOverflow.ellipsis,
-               ),
-         ),
+          const SizedBox(height: 6.0),
 
-          const SizedBox(width: 8.0),
-          Text('필요 ${vm.need}'),
-          const SizedBox(width: 10.0),
-          _Badge(
-            label: '부족',
-            value: '${vm.shortage}',
-            tone: danger ? BadgeTone.danger : BadgeTone.ok,
+          // 2줄: 수치 배지들 (여러 줄로 자동 개행)
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 6.0,
+            children: [
+              _Badge(label: '현재고', value: '${vm.stock}'),
+              _Badge(label: '필요',   value: '${vm.need}'),
+              _Badge(
+                label: '부족',
+                value: '${vm.shortage}',
+                tone: danger ? BadgeTone.danger : BadgeTone.ok,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 }
+
 
 enum BadgeTone { ok, danger }
 
@@ -283,7 +315,8 @@ class RowVm {
   final String itemId;
   final int need;
   final int shortage;
-  const RowVm({required this.itemId, required this.need, required this.shortage});
+  final int stock; // ✅ 추가
+  const RowVm({required this.itemId, required this.need, required this.shortage, required this.stock, });
 }
 
 class _Vm {
@@ -303,5 +336,6 @@ class _Vm {
     required this.semi,
     required this.raw,
     required this.sub,
+
   });
 }

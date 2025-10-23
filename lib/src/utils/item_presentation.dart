@@ -103,6 +103,8 @@ abstract class ItemPathProvider {
   Future<List<String>> itemPathNames(String itemId);
 }
 
+
+
 /// InMemoryRepo를 ItemPathProvider로 노출하기 위한 간단한 퍼사드
 class RepoItemPathFacade implements ItemPathProvider {
   final InMemoryRepo _repo;
@@ -137,6 +139,10 @@ class ItemPresentationService {
     return buildFullBreadcrumb(itemName: _bestName(item), pathNames: names, sep: sep);
   }
 }
+//인터페이스 정의 (표현 계층에 두기) -> 이 인터페이스만 보면 “아이템 상세를 연다(open)”는 뜻만 있어요.
+abstract class ItemDetailOpener {
+  Future<void> open(BuildContext context, String itemId);
+}
 
 /// 어디서나 쓰는 라벨 위젯
 class ItemLabel extends StatelessWidget {
@@ -148,6 +154,8 @@ class ItemLabel extends StatelessWidget {
   final TextStyle? style;          // 텍스트 스타일
   final String separator;          // 브레드크럼 구분자 (full=true일 때)
   final VoidCallback? onTap;
+  final bool autoNavigate;     // 🔸 true면 오프너 주입 받아서 자동 이동
+
 
   const ItemLabel({
     super.key,
@@ -159,6 +167,7 @@ class ItemLabel extends StatelessWidget {
     this.style,
     this.separator = ' › ',
     this.onTap,
+    this.autoNavigate = false, // 기본 OFF
   });
 
   @override
@@ -178,13 +187,18 @@ class ItemLabel extends StatelessWidget {
                      softWrap: softWrap,
                      overflow: overflow,
                    );
-               // onTap이 주어졌을 때만 클릭 가능하게
-               return onTap == null
-                   ? label
-                   : InkWell(
-                       onTap: onTap,
-                       child: label,
-                     );
+        // 우선순위: 1) onTap 명시  2) autoNavigate+opener 주입  3) 클릭 없음
+        if (onTap != null) {
+          return InkWell(onTap: onTap, child: label);
+        }
+
+        if (autoNavigate) {
+          final opener = context.read<ItemDetailOpener?>(); // 없으면 null
+          if (opener != null) {
+            return InkWell(onTap: () => opener.open(context, itemId), child: label);
+          }
+        }
+        return label;
       },
     );
   }

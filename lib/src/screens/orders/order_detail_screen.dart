@@ -158,6 +158,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
+                    autoNavigate: true,
                   ),
                 ),
                 Text(

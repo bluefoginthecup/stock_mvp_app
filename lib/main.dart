@@ -9,6 +9,7 @@ import 'src/services/inventory_service.dart';  // ← 추가
 import 'src/utils/item_presentation.dart';
 
 import 'src/repos/inmem_seed_importer.dart';
+import 'src/ui/nav/item_detail_opener.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // ✅ rootBundle 사용 시 필수
@@ -34,7 +35,8 @@ Future<void> main() async {
         Provider<BomRepo>(create: (ctx) => BomRepoView(ctx.read<InMemoryRepo>())),
         Provider<WorkRepo>(create: (ctx) => WorkRepoView(ctx.read<InMemoryRepo>())),
         Provider<PurchaseRepo>(create: (ctx) => PurchaseRepoView(ctx.read<InMemoryRepo>())),
-
+        Provider<ItemDetailOpener>(create: (_) => AppItemDetailOpener(), // ✅ 오프너 등록
+        ),
         // ItemPathProvider는 "비-Listenable 파사드"로 주입
         Provider<ItemPathProvider>(
           create: (ctx) => RepoItemPathFacade(ctx.read<InMemoryRepo>()),
