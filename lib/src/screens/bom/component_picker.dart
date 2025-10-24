@@ -4,19 +4,24 @@ import 'package:provider/provider.dart';
 
 import '../../models/item.dart';
 import '../../models/bom.dart';
-import '../../repos/inmem_repo.dart';        // ✅ InMemoryRepo 직접 사용
-import '../../utils/item_presentation.dart'; // ItemLabel
+import '../../repos/repo_interfaces.dart';        // ✅ 인터페이스 의존
+import '../../ui/common/search_field.dart';       // ✅ 디바운스 내장 검색 필드
+import '../../ui/common/suggestion_panel.dart';   // ✅ 공용 결과 패널
+import '../../utils/item_presentation.dart';      // ✅ ItemLabel / 라벨 유틸
 
 /// BOM 구성품 선택 다이얼로그.
 /// 선택 시 itemId(String)를 pop으로 반환한다.
 class ComponentPicker extends StatefulWidget {
-  final BomRoot root;         // finished OR semi
-  final String initialQuery;
+  final BomRoot root;              // finished 또는 semi 용으로 호출
+  final String initialQuery;       // 초기 검색어
+  /// 필요하면 외부에서 도메인 제약(예: 세미/원자재만)을 주입할 수 있음
+  final bool Function(Item)? predicate;
 
   const ComponentPicker({
     super.key,
     required this.root,
     this.initialQuery = '',
+    this.predicate,
   });
 
   @override
@@ -25,105 +30,16 @@ class ComponentPicker extends StatefulWidget {
 
 class _ComponentPickerState extends State<ComponentPicker> {
   final _searchC = TextEditingController();
-  bool _loading = true;
-  bool _searching = false;
-
-  /// 'ALL' | 'SemiFinished' | 'Raw' | 'Sub'
-  String _activeL1 = 'ALL';
-
-  List<Item> _items = const [];
   List<Item> _results = const [];
+  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
     _searchC.text = widget.initialQuery;
-    _activeL1 = _defaultL1For(widget.root);
-    _loadInitial();
-  }
-
-  String _defaultL1For(BomRoot root) {
-    switch (root) {
-      case BomRoot.finished:
-        return 'ALL'; // 세 가지 모두
-      case BomRoot.semi:
-        return 'Raw'; // 기본 Raw에서 시작
+    if (widget.initialQuery.trim().isNotEmpty) {
+      _onSearchChanged(widget.initialQuery);
     }
-  }
-
-  List<String> _allowedL1(BomRoot root) {
-    switch (root) {
-      case BomRoot.finished:
-        return const ['SemiFinished', 'Raw', 'Sub'];
-      case BomRoot.semi:
-        return const ['Raw', 'Sub'];
-    }
-  }
-
-  Future<void> _loadInitial() async {
-    setState(() => _loading = true);
-
-    // ✅ InMemoryRepo 직접 사용 (listItemsByFolderPath, pathIdsByNames 활용)
-    final repo = context.read<InMemoryRepo>();
-    final allowed = _allowedL1(widget.root);
-
-    final List<Item> acc = [];
-    for (final l1Name in allowed) {
-      // 이름 -> id들
-      final ids = await repo.pathIdsByNames(
-        l1Name: l1Name,
-        createIfMissing: true, // 존재 안 하면 만들어줌 (시드 환경에서도 안전)
-      );
-      // L1 전체 재귀 조회
-      final items = await repo.listItemsByFolderPath(
-        l1: ids[0],
-        recursive: true,
-      );
-      acc.addAll(items);
-    }
-
-    // 중복 제거
-    final map = {for (final it in acc) it.id: it};
-    _items = map.values.toList();
-
-    _applyFilters();
-    if (mounted) setState(() => _loading = false);
-  }
-
-  void _applyFilters() {
-    final q = _searchC.text.trim().toLowerCase();
-    final active = _activeL1;
-
-    Iterable<Item> list = _items;
-
-    // 활성 L1 필터 (ALL이면 패스)
-    if (active != 'ALL') {
-      // 간단하게 이름 문자열 포함으로 1차 필터 (repo 저장 방식에 따라 향후 보강 가능)
-      list = list.where((it) {
-        // ItemLabel은 id만 필요하지만, 여기선 속성으로 걸러야 하므로
-        // 이름/sku 문자열로 대충 1차 필터
-        final name = (it.name ?? '');
-        return name.contains(active); // 예: "Raw", "Sub" 등이 이름경로에 포함되도록 시드 구성 권장
-      });
-    }
-
-    // 키워드(이름/sku) 필터
-    if (q.isNotEmpty) {
-      list = list.where((it) {
-        final name = (it.name ?? '').toLowerCase();
-        final sku = (it.sku ?? '').toLowerCase();
-        return name.contains(q) || sku.contains(q);
-      });
-    }
-
-    _results = list.toList()
-      ..sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
-  }
-
-  Future<void> _onSearchChanged() async {
-    setState(() => _searching = true);
-    _applyFilters();
-    setState(() => _searching = false);
   }
 
   @override
@@ -132,100 +48,116 @@ class _ComponentPickerState extends State<ComponentPicker> {
     super.dispose();
   }
 
+  Future<void> _onSearchChanged(String keyword) async {
+    final k = keyword.trim();
+    if (k.isEmpty) {
+      setState(() => _results = const []);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final repo = context.read<ItemRepo>();
+      var list = await repo.searchItemsGlobal(k);
+
+      // 필요 시 외부 도메인 제약(predicate) 적용
+      if (widget.predicate != null) {
+        list = list.where(widget.predicate!).toList();
+      } else {
+        // 기본 제약 샘플: 완제품 BOM 편집 중이면 구성품으로 "완제품 제외"
+        // (실제 필드명은 프로젝트 모델에 맞게 교체)
+        // if (widget.root == BomRoot.finished) {
+        //   list = list.where((it) => it.kind != ItemKind.finished).toList();
+        // }
+      }
+
+      setState(() => _results = list);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final allowed = _allowedL1(widget.root);
+    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
 
-    return AlertDialog(
-      title: const Text('구성품 선택'),
-      content: SizedBox(
-        width: 520,
+    // 화면 비율 기반으로 넉넉한 크기 계산
+    final dialogW = (size.width * 0.9).clamp(640.0, 1100.0); // 최소 640, 최대 1100
+    final dialogH = (size.height * 0.9).clamp(520.0, 900.0); // 최소 520, 최대 900
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16), // 바깥 여백 조금만
+      child: SizedBox(
+        width: dialogW,
+        height: dialogH,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            if (allowed.isNotEmpty)
-              Wrap(
-                spacing: 8, runSpacing: 8,
+            // 상단 타이틀바 (AlertDialog 대체)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+              child: Row(
                 children: [
-                  ChoiceChip(
-                    label: const Text('전체'),
-                    selected: _activeL1 == 'ALL',
-                    onSelected: (_) => setState(() {
-                      _activeL1 = 'ALL';
-                      _applyFilters();
-                    }),
+                  const Text('구성품 선택', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                    tooltip: '닫기',
                   ),
-                  for (final l1 in allowed)
-                    ChoiceChip(
-                      label: Text(l1),
-                      selected: _activeL1 == l1,
-                      onSelected: (_) => setState(() {
-                        _activeL1 = l1;
-                        _applyFilters();
-                      }),
-                    ),
                 ],
               ),
-            const SizedBox(height: 12),
-
-            TextField(
-              controller: _searchC,
-              decoration: const InputDecoration(
-                hintText: '이름 또는 SKU로 검색',
-                prefixIcon: Icon(Icons.search),
-              ),
-              onChanged: (_) => _onSearchChanged(),
             ),
-            const SizedBox(height: 8),
-
-            if (_loading) const LinearProgressIndicator(),
-            if (!_loading && _searching) const LinearProgressIndicator(),
-            const SizedBox(height: 8),
-
-            Flexible(
-              child: _results.isEmpty
-                  ? const Center(child: Text('선택 가능한 항목이 없습니다.'))
-                  : ListView.separated(
-                shrinkWrap: true,
-    itemCount: _results.length,
-    separatorBuilder: (_, __) => const Divider(height: 1),
-    itemBuilder: (context, i) {
-    final it = _results[i];
-    return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-    child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-    Row(
-    children: [
-    const Icon(Icons.inventory_2, size: 20),
-    const SizedBox(width: 8),
-    Expanded(child: ItemLabel(itemId: it.id, full: false)),
-    ],
-    ),
-    const SizedBox(height: 4),
-    Text('SKU: ${it.sku ?? '-'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-    const SizedBox(height: 6),
-    Align(
-    alignment: Alignment.centerRight,
-    child: FilledButton(
-    onPressed: () => Navigator.pop(context, it.id),
-    child: const Text('선택'),
-    ),
-    ),
-    ],
-    ),
-    );
-    },
-
+            const Divider(height: 1),
+            // 본문
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    AppSearchField(
+                      controller: _searchC,
+                      hint: '구성품 검색',
+                      onChanged: _onSearchChanged, // 🔍 디바운스 적용
+                    ),
+                    const SizedBox(height: 12),
+                    if (_loading)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
+                        child: LinearProgressIndicator(),
+                      ),
+                    Expanded(
+                      child: _results.isEmpty
+                          ? Center(
+                        child: Text(
+                          _searchC.text.trim().isEmpty ? '검색어를 입력하세요' : '검색 결과가 없습니다',
+                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                        ),
+                      )
+                          : SuggestionPanel<Item>(
+                        items: _results,
+                        itemBuilder: (ctx, it) => ListTile(
+                          leading: const Icon(Icons.widgets_outlined),
+                          // B안: repo에서 라벨/경로 비동기 생성
+                          title: ItemLabel(itemId: it.id, full: false),
+                          subtitle: ItemLabel(itemId: it.id, full: true),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => Navigator.pop(context, it.id),
+                          // 보기 편하게 줄간격 약간 촘촘하게
+                          visualDensity: const VisualDensity(vertical: -1),
+                        ),
+                        rowHeight: 56,
+                        separated: true,
+                        elevation: 1.0,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
-      ],
     );
   }
+
 }

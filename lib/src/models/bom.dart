@@ -65,3 +65,33 @@ class BomRow {
   String toString() =>
       'BomRow(root=$root, parent=$parentItemId <- ${kind.name}:${componentItemId}, qtyPer=$qtyPer, waste=$wastePct)';
 }
+
+
+/// 문자열 ↔ enum 매핑 유틸 (시드 파싱용)e
+extension BomRootX on BomRoot {
+  static BomRoot fromString(String s) {
+    switch (s) {
+      case 'finished':
+        return BomRoot.finished;
+      case 'semi':
+        return BomRoot.semi;
+      default:
+        throw ArgumentError('Invalid BomRoot: $s');
+    }
+  }
+}
+
+extension BomKindX on BomKind {
+  static BomKind fromString(String s) {
+    switch (s) {
+      case 'semi':
+        return BomKind.semi;
+      case 'raw':
+        return BomKind.raw;
+      case 'sub':
+        return BomKind.sub;
+      default:
+        throw ArgumentError('Invalid BomKind: $s');
+    }
+  }
+}

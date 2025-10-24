@@ -1120,6 +1120,24 @@
       "minQty": 0,
       "qty": 0
     }
+  ],
+  "boms": [
+    {
+      "root": "finished",
+      "parentItemId": "it-rg50basicsit-41acc8",
+      "componentItemId": "it-sfrg50basicsit-05b8fe",
+      "kind": "semi",
+      "qtyPer": 1,
+      "wastePct": 5
+    },
+    {
+      "root": "finished",
+      "parentItemId": "it-rg50basicsit-41acc8",
+      "componentItemId": "it-semi-back-dot-gray",
+      "kind": "semi",
+      "qtyPer": 1,
+      "wastePct": 0
+    }
   ]
 }
 

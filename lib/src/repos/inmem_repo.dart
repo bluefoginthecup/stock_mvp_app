@@ -754,17 +754,20 @@ class InMemoryRepo extends ChangeNotifier
     Future<void> upsertBomRow(BomRow row) async {
       if (row.root == BomRoot.finished) {
         final cur = finishedBomOf(row.parentItemId);
-        final next = [
-          ...cur.where((r) => r.componentItemId != row.componentItemId),
-          row,
-        ];
+      // 🔧 교체 기준을 (componentItemId, kind)로 강화
+            final next = [
+              ...cur.where((r) =>
+                  !(r.componentItemId == row.componentItemId && r.kind == row.kind)),
+              row,
+            ];
         upsertFinishedBom(row.parentItemId, next);
       } else {
         final cur = semiBomOf(row.parentItemId);
         final next = [
-          ...cur.where((r) => r.componentItemId != row.componentItemId),
-          row,
-        ];
+              ...cur.where((r) =>
+                  !(r.componentItemId == row.componentItemId && r.kind == row.kind)),
+              row,
+            ];
         upsertSemiBom(row.parentItemId, next);
       }
     }
@@ -805,6 +808,19 @@ class InMemoryRepo extends ChangeNotifier
     final rows = _bomByFinished[finishedItemId];
     if (rows == null) return const [];
     return List.unmodifiable(rows);
+  }
+
+  // ✅ 부모별 BOM을 한 번에 교체(배치) — 시드용으로 안정적
+    Future<void> replaceBomRows({
+      required BomRoot root,
+      required String parentItemId,
+      required List<BomRow> rows,
+    }) async {
+    if (root == BomRoot.finished) {
+      await upsertFinishedBom(parentItemId, rows);
+    } else {
+      await upsertSemiBom(parentItemId, rows);
+    }
   }
 
   @override
