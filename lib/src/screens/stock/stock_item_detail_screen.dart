@@ -13,6 +13,7 @@ import '../../models/txn.dart' show Txn;
 import '../txns/widgets/txn_row.dart'; // ← TxnRow가 있는 실제 경로로 맞춰주세요
 
 
+import '../../dev/bom_debug.dart'; // ← 콘솔 덤프 유틸
 
 class StockItemDetailScreen extends StatefulWidget {
   final String itemId;
@@ -88,7 +89,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
               child: Text(context.t.txn_list_empty_hint),
             );
           }
-          // ✅ 이미 만들어둔 표시 규칙(TxnRow) 재사용 → +/−, 색상, 뱃지 모두 일관
+          // ✅ 이미 만들어둔 표시 규칙(TxnRow) 재사용 → /−, 색상, 뱃지 모두 일관
                     return ListView.separated(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       itemCount: filtered.length,
@@ -360,6 +361,14 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                               ?.copyWith(color: Colors.grey),
                         ),
                       ],
+    const SizedBox(height: 12),
+                          // 🔎 이 아이템의 Finished/Semi 레시피를 콘솔(JSON)로 출력
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                BomDebug.dumpItemBomsToConsole(context, widget.itemId),
+                            icon: const Icon(Icons.terminal),
+                            label: const Text('BOM 콘솔 출력'),
+                          ),
                     ],
                   ),
                 ),
