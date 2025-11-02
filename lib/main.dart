@@ -22,7 +22,7 @@ Future<void> main() async {
   // ✅ 새 임포터 시그니처에 맞춤 (InMemoryRepo가 ItemRepo & BomRepo를 모두 구현)
   final importer = UnifiedSeedImporter(
     itemRepo: inmem,
-    bomRepo: inmem, // 만약 BomRepo를 구현하지 않으면 null로 두세요.
+    bomRepo: null, // 만약 BomRepo를 구현하지 않으면 null로 두세요.
     verbose: true,    // 👈 디버그 로그 ON
   );
 
@@ -30,7 +30,7 @@ Future<void> main() async {
   await importer.importUnifiedFromAssets(
     itemsAssetPath: 'assets/seeds/2025-10-26/items.json',
     foldersAssetPath: 'assets/seeds/2025-10-26/folders.json',
-    bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
+    // bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
     clearBefore: true,
   );
 
