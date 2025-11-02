@@ -11,6 +11,7 @@ import '../txns/adjust_form.dart';
 import '../../ui/common/qty_control.dart';
 import '../../models/txn.dart' show Txn;
 import '../txns/widgets/txn_row.dart'; // ← TxnRow가 있는 실제 경로로 맞춰주세요
+import 'stock_in_dialog.dart';
 
 
 import '../../dev/bom_debug.dart'; // ← 콘솔 덤프 유틸
@@ -417,8 +418,41 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     ),
     ],
 
+    // Seed 힌트 버튼들 다음, BOM 콘솔 버튼 근처에 추가
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.receipt_long),
+                          label: const Text('입출고 기록'),
+                          onPressed: _showRecentTxns, // ← 이미 위에 구현하신 함수
+                        ),
 
-    const SizedBox(height: 12),
+
+                        // ✅ BOM 편집 버튼 (완제품/반제품)
+                        if (_isFinished == true) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.edit),
+                            label: const Text('BOM 편집 (완제품)'),
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => FinishedBomEditScreen(finishedItemId: widget.itemId),
+                              ),
+                            ),
+                          ),
+                        ] else if (_isFinished == false) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.edit),
+                            label: const Text('BOM 편집 (반제품)'),
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => SemiBomEditScreen(semiItemId: widget.itemId),
+                              ),
+                            ),
+                          ),
+                        ],
+//bom 콘솔 출력
+                        const SizedBox(height: 12),
                           // 🔎 이 아이템의 Finished/Semi 레시피를 콘솔(JSON)로 출력
                           OutlinedButton.icon(
                             onPressed: () =>
@@ -448,7 +482,35 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                     child: FilledButton.icon(
                       icon: const Icon(Icons.add),
                       label: const Text('입고'),
-                      onPressed: (_item == null) ? null : _openAdjust,
+                      onPressed: (_item == null)
+                          ? null
+                          : () async {
+                        final result = await showDialog(
+                          context: context,
+                          builder: (_) => StockInDialog(item: _item!),
+                        );
+
+                        if (result == null) return;
+
+                        // 결과값 추출
+                        final entered = result['enteredQtyIn'] as double;
+                        final isBulk = result['isBulk'] as bool;
+                        final conv = result['conversionRate'] as double;
+                        final unitIn = result['unitIn'] as String;
+                        final unitOut = result['unitOut'] as String;
+
+                        final qtyOutUnit = isBulk ? entered * conv : entered;
+
+                        // 실제 재고 반영
+                        final repo = context.read<ItemRepo>();
+                        await repo.adjustQty(
+                          itemId: _item!.id,
+                          delta: qtyOutUnit.round(), // ← 여기만
+                          note: '입고 ($unitIn → $unitOut)',
+                        );
+                        await _load(); // 새로고침
+                      },
+
                     ),
                   ),
                 ],
