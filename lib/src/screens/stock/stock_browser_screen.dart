@@ -177,28 +177,29 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('재고 브라우저'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.ios_share),
-              tooltip: '아이템 JSON 내보내기',
-              onPressed: () async {
-                final repo = context.read<InMemoryRepo>();
-                final svc = ExportService(repo: repo);
-                try {
-                  await svc.exportItemsEditedJson();
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('items_edited.json 내보내기 완료')),
-                  );
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('내보내기 실패: $e')),
-                  );
-                }
-              },
-            ),
-          ],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'JSON 내보내기',
+            onPressed: () async {
+              final repo = context.read<InMemoryRepo>();
+              final svc = ExportService(repo: repo);
+              try {
+                await svc.exportEditedJson();
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('폴더/아이템 JSON 내보내기 완료')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('내보내기 실패: $e')),
+                );
+              }
+            },
+          ),
+        ],
+
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
