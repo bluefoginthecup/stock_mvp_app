@@ -177,30 +177,28 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('재고 브라우저'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.ios_share),
-            tooltip: 'JSON 내보내기',
-            onPressed: () async {
-              final repo = context.read<InMemoryRepo>();
-              final svc = ExportService(repo: repo);
-              try {
-                await svc.exportAndShareEditedJson();
-                if (mounted) {
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.ios_share),
+              tooltip: '아이템 JSON 내보내기',
+              onPressed: () async {
+                final repo = context.read<InMemoryRepo>();
+                final svc = ExportService(repo: repo);
+                try {
+                  await svc.exportItemsEditedJson();
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('JSON 내보내기 완료 (메일앱으로 공유 가능)')),
+                    const SnackBar(content: Text('items_edited.json 내보내기 완료')),
                   );
-                }
-              } catch (e) {
-                if (mounted) {
+                } catch (e) {
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('내보내기 실패: $e')),
                   );
                 }
-              }
-            },
-          ),
-        ],
+              },
+            ),
+          ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

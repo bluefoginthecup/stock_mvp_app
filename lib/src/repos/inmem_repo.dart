@@ -636,6 +636,14 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
+//===== items, folders 내보내기  ========
+
+  /// ✅ 현재 메모리에 있는 모든 아이템 반환
+  List<Item> allItems() => _items.values.toList();
+
+  /// (선택) 폴더도 필요하면 이렇게
+  List<FolderNode> allFolders() => _folders.values.toList();
+
   // =============================== TxnRepo ================================
   @override
   Future<List<Txn>> listTxns() async {
