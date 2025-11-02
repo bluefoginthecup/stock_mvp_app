@@ -373,6 +373,36 @@ class UnifiedSeedImporter {
     return num.tryParse(t) ?? fallback;
   }
 
+
+    // flat 컬럼들을 stockHints 맵으로 추출
+    Map<String, dynamic>? _extractStockHints(Map<String, dynamic> m) {
+        num? _numOrNull(dynamic v) {
+          if (v == null || (v is String && v.trim().isEmpty)) return null;
+          return _toNum(v);
+        }
+        String? _strOrNull(dynamic v) {
+          final s = (v ?? '').toString().trim();
+          return s.isEmpty ? null : s;
+        }
+
+        final qty             = _numOrNull(m['stockHints_qty'] ?? m['h_qty'] ?? m['qty']); // qty는 seed 초기재고 정책과도 겹치므로 우선 보관
+        final usableQtyM      = _numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
+        final unitIn          = _strOrNull(m['unit_in'] ?? m['unitIn']);
+        final unitOut         = _strOrNull(m['unit_out'] ?? m['unitOut'] ?? m['unit']); // unitOut 없으면 unit 참고
+        final conversionRate  = _numOrNull(m['conversion_rate'] ?? m['conversionRate']);
+
+        final hasAny = qty != null || usableQtyM != null || unitIn != null || unitOut != null || conversionRate != null;
+        if (!hasAny) return null;
+
+        return {
+          if (qty != null) 'qty': qty,
+          if (usableQtyM != null) 'usable_qty_m': usableQtyM,
+          if (unitIn != null) 'unit_in': unitIn,
+          if (unitOut != null) 'unit_out': unitOut,
+          if (conversionRate != null) 'conversion_rate': conversionRate,
+        };
+      }
+
   /// items.json 의 1 row(Map)를 임포트 친화적으로 정규화
   Map<String, dynamic> _normalizeItemMap(Map<String, dynamic> src) {
     final m = Map<String, dynamic>.from(src);
@@ -406,6 +436,13 @@ class UnifiedSeedImporter {
         if (p.length > 2) m['subsubfolder'] = (p.elementAt(2) ?? '').toString();
       }
     }
+
+    // flat → stockHints 묶기 (이미 stockHints가 있으면 보강만)
+        final extracted = _extractStockHints(m);
+        if (extracted != null) {
+          final curr = (m['stockHints'] is Map) ? Map<String, dynamic>.from(m['stockHints']) : <String, dynamic>{};
+          m['stockHints'] = {...curr, ...extracted};
+        }
 
     // 초기 재고 매핑
     if (m['qty'] == null) {

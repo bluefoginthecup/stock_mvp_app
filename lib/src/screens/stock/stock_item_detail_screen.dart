@@ -217,6 +217,135 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
           print('${context.t.common_error}: $e');
         }
   }
+//시드 힌트 보기
+  void _openSeedHintsSheet(Item it) {
+    final h = it.stockHints;
+    if (h == null) return;
+
+    String fmt(num? v) {
+      if (v == null) return '-';
+      final s = v.toStringAsFixed(2);
+      return s.replaceFirst(RegExp(r'\.0+$'), '').replaceFirst(RegExp(r'(\.\d*[1-9])0+$'), r'\1');
+    }
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final unitOut = h.unitOut ?? it.unit;
+        final hasConv = (h.unitIn != null && h.unitOut != null && h.conversionRate != null);
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16, right: 16, top: 12,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.tips_and_updates),
+                          const SizedBox(width: 8),
+                          Text('Seed 재고 힌트', style: Theme.of(ctx).textTheme.titleMedium),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        children: [
+                          if (h.usableQtyM != null)
+                            Chip(label: Text('가용 ${fmt(h.usableQtyM)} m')),
+                          if (h.qty != null)
+                            Chip(label: Text('Seed ${fmt(h.qty)} $unitOut')),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 16),
+                  _kv(ctx, 'Seed 수량', h.qty == null ? '-' : '${fmt(h.qty)} $unitOut'),
+                  _kv(ctx, '사용가능(m)', fmt(h.usableQtyM)),
+                  _kv(ctx, '출고 단위', unitOut),
+                  _kv(ctx, '입고 단위', h.unitIn ?? '-'),
+                  _kv(ctx, '환산식', hasConv ? '1 ${h.unitIn} = ${fmt(h.conversionRate)} ${h.unitOut}' : '-'),
+                  const SizedBox(height: 8),
+                ],
+              )
+
+          ),
+        );
+      },
+    );
+  }
+
+// 작은 key-value 줄
+  Widget _kv(BuildContext ctx, String k, String v) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 108, child: Text(k, style: Theme.of(ctx).textTheme.bodyMedium)),
+        const SizedBox(width: 8),
+        Expanded(child: Text(v, style: Theme.of(ctx).textTheme.bodyMedium)),
+      ],
+    ),
+  );
+
+
+  bool _hasHints(Item it) {
+    final h = it.stockHints;
+    if (h == null) return false;
+    return h.qty != null || h.usableQtyM != null || h.conversionRate != null || h.unitIn != null || h.unitOut != null;
+  }
+
+  String _fmtNum(num? v, {int frac = 2}) {
+    if (v == null) return '-';
+    final s = v.toStringAsFixed(frac);
+    // 소수점 0 제거 (예: 30.00 → 30, 30.50 → 30.5)
+    return s.replaceFirst(RegExp(r'\.0+$'), '').replaceFirst(RegExp(r'(\.\d*[1-9])0+$'), r'\1');
+  }
+
+  Widget _seedHintsCard(Item it) {
+    final h = it.stockHints!;
+    final unitOut = (h.unitOut ?? it.unit);
+    final hasConv = (h.unitIn != null && h.unitOut != null && h.conversionRate != null);
+
+    Widget kv(String k, String v) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(width: 120, child: Text(k, style: Theme.of(context).textTheme.bodyMedium)),
+          const SizedBox(width: 8),
+          Expanded(child: Text(v, style: Theme.of(context).textTheme.bodyMedium)),
+        ],
+      ),
+    );
+
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Seed 재고 힌트', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            kv('Seed 수량', h.qty == null ? '-' : '${_fmtNum(h.qty)} $unitOut'),
+            kv('사용가능(m)', _fmtNum(h.usableQtyM)),
+            kv('출고 단위', unitOut),
+            kv('입고 단위', h.unitIn ?? '-'),
+            kv('환산식', hasConv ? '1 ${h.unitIn} = ${_fmtNum(h.conversionRate)} ${h.unitOut}' : '-'),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -273,94 +402,22 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
 
-                      // 최근 입출고 내역 버튼
-                      FilledButton.tonalIcon(
-                        onPressed: _showRecentTxns,
-                        icon: const Icon(Icons.history),
-                        label: Text(context.t.txn_recent_button), // 예: "최근 입출고 내역"
-                      ),
+                      // ▶▶ StockHints 배지 노출 (있을 때만)
+                      if (item.stockHints != null) ...[
+                        const SizedBox(height: 8),if (item.stockHints != null) ...[
+    const SizedBox(height: 8),
+    Align(
+    alignment: Alignment.centerLeft,
+    child: OutlinedButton.icon(
+    icon: const Icon(Icons.tips_and_updates),
+    label: const Text('Seed 재고 힌트'),
+    onPressed: () => _openSeedHintsSheet(item),
+    ),
+    ),
+    ],
 
-                      const SizedBox(height: 24),
-                      Text(
-                        context.t.bom_edit_section_title,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 8),
 
-                      if (_isFinished == true) ...[
-                        FilledButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    FinishedBomEditScreen(finishedItemId: widget.itemId),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.account_tree),
-                          label: Text(context.t.bom_edit_finished),
-                        ),
-                      ] else if (_isFinished == false) ...[
-                        FilledButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    SemiBomEditScreen(semiItemId: widget.itemId),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.account_tree_outlined),
-                          label: Text(context.t.bom_edit_semi),
-                        ),
-                      ] else ...[
-                        // 구분 불가 → 둘 다 제공
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            FilledButton.tonalIcon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        FinishedBomEditScreen(finishedItemId: widget.itemId),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.account_tree),
-                              label: Text(context.t.bom_edit_finished),
-                            ),
-                            FilledButton.tonalIcon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        SemiBomEditScreen(semiItemId: widget.itemId),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.account_tree_outlined),
-                              label: Text(context.t.bom_edit_semi),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          context.t.bom_edit_unknown_type_hint,
-                          // 예: '유형을 확정할 수 없어 두 버튼을 모두 표시합니다.'
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: Colors.grey),
-                        ),
-                      ],
     const SizedBox(height: 12),
                           // 🔎 이 아이템의 Finished/Semi 레시피를 콘솔(JSON)로 출력
                           OutlinedButton.icon(
@@ -370,6 +427,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                             label: const Text('BOM 콘솔 출력'),
                           ),
                     ],
+                  ],
                   ),
                 ),
           // ✅ 하단 고정 입출고 버튼바 (Scaffold level)

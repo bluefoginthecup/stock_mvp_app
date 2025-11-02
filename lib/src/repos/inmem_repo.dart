@@ -730,6 +730,36 @@ class InMemoryRepo extends ChangeNotifier
     }
   }
 
+  // ── stockHints 기반 폴백 헬퍼들 ────────────────────────────
+
+// Seed 힌트: 출고단위 기준 수량 (예: Roll이 아닌, item.unit/혹은 unit_out 기준)
+  double hintQtyOut(String itemId) {
+    final it = _items[itemId];
+    if (it == null) return 0;
+    final q = it.stockHints?.qty;
+    return q == null ? 0 : q.toDouble();
+  }
+
+// Seed 힌트: 사용가능 미터 (usable_qty_m가 있으면 우선, 없으면 qty*conversion_rate)
+  double hintUsableMeters(String itemId) {
+    final it = _items[itemId];
+    if (it == null) return 0;
+    final u = it.stockHints?.usableQtyM;
+    if (u != null) return u.toDouble();
+    final q = it.stockHints?.qty;
+    final r = it.stockHints?.conversionRate;
+    if (q != null && r != null) return q.toDouble() * r.toDouble();
+    return 0;
+  }
+
+// Seed 힌트: 출고단위 표시용 (없으면 Item.unit)
+  String hintUnitOut(String itemId) {
+    final it = _items[itemId];
+    if (it == null) return '';
+    return (it.stockHints?.unitOut ?? it.unit).toString();
+  }
+
+
   // =============================== BomRepo ================================
   // ─────────────────────────────────────────────
   // ItemRepo: BOM APIs (2단계 구조) 구현

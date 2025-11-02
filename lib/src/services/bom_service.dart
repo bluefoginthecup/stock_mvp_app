@@ -26,7 +26,9 @@ class BomService {
     return m;
   }
 
-  Explode2L explode2Levels({required String finishedId, required int finishedShortage}) {
+  Explode2L explode2Levels({
+    required String finishedId,
+    required double finishedShortage}) {
     if (finishedShortage <= 0) {
       return const Explode2L(
         semiNeed: {},

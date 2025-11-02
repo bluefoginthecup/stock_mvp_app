@@ -323,7 +323,7 @@ class _Vm {
   final String finishedItemId;
   final int orderQty;
   final int finishedStock;
-  final int finishedShortage;
+  final double finishedShortage;
   final List<RowVm> semi;
   final List<RowVm> raw;
   final List<RowVm> sub;

@@ -264,7 +264,7 @@ class _LineVm {
   final String finishedItemId;
   final int orderQty;
   final int finishedStock;
-  final int finishedShortage;
+  final double finishedShortage;
   final List<_RowVm> semi;
   final List<_RowVm> raw;
   final List<_RowVm> sub;
