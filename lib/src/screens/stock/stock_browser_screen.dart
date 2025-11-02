@@ -13,6 +13,7 @@ import '../../ui/common/path_picker.dart'; // 파일 최상단 import 필요
 import '../../ui/common/entity_actions.dart';
 import 'stock_item_detail_screen.dart';
 import '../../utils/item_presentation.dart';
+import '../../services/export_service.dart';
 
 
 class StockBrowserScreen extends StatefulWidget {
@@ -174,7 +175,33 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     final hasKeyword = _searchC.text.trim().isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('재고 브라우저')),
+      appBar: AppBar(
+        title: const Text('재고 브라우저'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share),
+            tooltip: 'JSON 내보내기',
+            onPressed: () async {
+              final repo = context.read<InMemoryRepo>();
+              final svc = ExportService(repo: repo);
+              try {
+                await svc.exportAndShareEditedJson();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('JSON 내보내기 완료 (메일앱으로 공유 가능)')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('내보내기 실패: $e')),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
