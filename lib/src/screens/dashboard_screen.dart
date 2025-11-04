@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import '../repos/repo_interfaces.dart';
 import '../ui/common/ui.dart';
+import '../screens/stock/stock_browser_screen.dart';
+
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -23,10 +25,32 @@ class DashboardScreen extends StatelessWidget {
               Text(context.t.dashboard_summary, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Wrap(spacing: 12, runSpacing: 12, children: [
-                //전체품목
-                _StatCard(title: context.t.dashboard_total_items, value: items.length.toString()),
-                //임계치이하
-                _StatCard(title: context.t.dashboard_below_threshold, value: low.length.toString()),
+          _StatCard(
+             title: context.t.dashboard_total_items,
+             value: items.length.toString(),
+             onTap: () {
+               // 전체 재고 브라우저로 이동
+               Navigator.push(
+                 context,
+                 MaterialPageRoute(
+                   builder: (_) => const StockBrowserScreen(), // 토글 OFF 기본
+                 ),
+               );
+             },
+           ),
+          _StatCard(
+             title: context.t.dashboard_below_threshold,
+             value: low.length.toString(),
+             onTap: () {
+               // 임계치 이하 모드로 바로 이동 (앱바 토글/필터칩의 초기상태 = 켜짐)
+               Navigator.push(
+                 context,
+                 MaterialPageRoute(
+                   builder: (_) => const StockBrowserScreen(showLowStockOnly: true),
+                 ),
+               );
+             },
+           ),
               ]),
               const SizedBox(height: 24),
               ElevatedButton.icon(
@@ -76,13 +100,18 @@ class DashboardScreen extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
-  const _StatCard({required this.title, required this.value});
+  final VoidCallback? onTap;
+  const _StatCard({required this.title, required this.value, this.onTap});
+
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,6 +122,7 @@ class _StatCard extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

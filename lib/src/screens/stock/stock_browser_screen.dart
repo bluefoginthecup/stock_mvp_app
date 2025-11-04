@@ -21,7 +21,11 @@ import '../../repos/repo_interfaces.dart';     // ✅ ItemRepo.adjustQty 사용
 
 
 class StockBrowserScreen extends StatefulWidget {
-  const StockBrowserScreen({super.key});
+    final bool showLowStockOnly; // ✅ 신규: 임계치 이하 필터 초기값
+    const StockBrowserScreen({
+      super.key,
+      this.showLowStockOnly = false,
+    });
 
   @override
   State<StockBrowserScreen> createState() => _StockBrowserScreenState();
@@ -33,6 +37,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   String? _l2Id;
   String? _l3Id; // L3 선택 시 아이템 표시
   final _searchC = TextEditingController();
+  bool _lowOnly = false; // ✅ 현재 "임계치 이하만" 보기 상태
 
   // ───────────────────────── Common helpers ─────────────────────────
   String? get _selectedId => _l3Id ?? _l2Id ?? _l1Id;
@@ -79,6 +84,12 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     });
   }
   // ──────────────────────────────────────────────────────────────────
+
+  @override
+    void initState() {
+        super.initState();
+        _lowOnly = widget.showLowStockOnly;
+      }
 
   @override
   void dispose() {
@@ -217,6 +228,21 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               onChanged: (_) => _debouncedRebuild(),
             ),
           ),
+    // ✅ 상단에 필터칩 UI (AppBar 토글과 동일 기능)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                child: Wrap(
+                  spacing: 8,
+                  children: [
+                    FilterChip(
+                      label: const Text('필터:임계치'),
+                      selected: _lowOnly,
+                      onSelected: (v) => setState(() => _lowOnly = v),
+                      avatar: const Icon(Icons.warning_amber_rounded, size: 18),
+                    ),
+                  ],
+                ),
+              ),
           const Divider(height: 1),
 
           // 검색어가 있을 땐 폴더+아이템 동시 검색
@@ -231,20 +257,43 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 recursive: true,
               )
                   : (
-                  depth == 0
-                  // 루트: 폴더만
-                      ? repo.listFolderChildren(null)
-                  // L1/L2/L3: 폴더 + "직속" 아이템
-                      : Future.wait([
-                    repo.listFolderChildren(_selectedId),
-                    repo.listItemsByFolderPath(
-                      l1: _l1Id,
-                      l2: _l2Id,
-                      l3: _l3Id,
-                      keyword: null,
-                      recursive: false, // 직속만
-                    ),
-                  ])
+
+                      // ✅ _lowOnly면: 루트=전역 아이템 필터 / L1~L3=재귀적으로 아이템 모으기
+                      _lowOnly
+                          ? (
+                              depth == 0
+                                  // 루트토글: 전역 아이템 중 임계치 이하만
+                                  ? Future.value(
+                                      _applyLowStockFilter(repo.allItems().toList()),
+                                    )
+                                  // L1/L2/L3토글: 하위 전부 재귀로 아이템 수집
+                                  : Future.wait([
+                                      repo.listFolderChildren(_selectedId),
+                                      repo.listItemsByFolderPath(
+                                        l1: _l1Id,
+                                        l2: _l2Id,
+                                        l3: _l3Id,
+                                        keyword: null,
+                                        recursive: true, // ✅ 재귀 ON
+                                      ),
+                                    ])
+                            )
+                          : (
+                              depth == 0
+                                  // 루트(기본): 폴더만
+                                  ? repo.listFolderChildren(null)
+                                  // L1/L2/L3(기본): 폴더 +  직속 아이템
+                                  : Future.wait([
+                                      repo.listFolderChildren(_selectedId),
+                                      repo.listItemsByFolderPath(
+                                        l1: _l1Id,
+                                        l2: _l2Id,
+                                        l3: _l3Id,
+                                        keyword: null,
+                                        recursive: false, // 직속만
+                                      ),
+                                    ])
+                            )
               ),
               builder: (ctx, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
@@ -254,12 +303,26 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   return Center(child: Text('오류: ${snap.error}'));
                 }
 
+                // ✅ 루트(depth==0) + 토글: 전역 임계치 이하 아이템만 평평하게 표시
+                                if (depth == 0 && _lowOnly) {
+                                  final items = (snap.data as List<Item>);
+                                  if (items.isEmpty) {
+                                    return const Center(child: Text('임계치 이하 아이템이 없습니다.'));
+                                  }
+                                  return ListView(children: [_buildItemList(items)]);
+                                }
+
+
                 // 🔍 검색 결과 모드 (Dart 3 레코드 사용)
                 if (hasKeyword) {
                   final (folders, items) =
                   snap.data as (List<FolderNode>, List<Item>);
-                  if (folders.isEmpty && items.isEmpty) {
-                    return const Center(child: Text('검색 결과가 없습니다.'));
+    final filteredItems = _lowOnly
+                         ? _applyLowStockFilter(items)
+                          : items;
+                      if (folders.isEmpty && filteredItems.isEmpty) {
+
+    return const Center(child: Text('검색 결과가 없습니다.'));
                   }
                   return ListView(
                     children: [
@@ -270,13 +333,14 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                               style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       if (folders.isNotEmpty) _buildFolderList(folders),
-                      if (items.isNotEmpty)
-                        const Padding(
+                        if (filteredItems.isNotEmpty)
+
+                          const Padding(
                           padding: EdgeInsets.all(8.0),
                           child: Text('📦 아이템',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
-                      if (items.isNotEmpty) _buildItemList(items),
+                      if (filteredItems.isNotEmpty) _buildItemList(filteredItems),
                     ],
                   );
                 }
@@ -290,13 +354,16 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   }
                   return _buildFolderList(folders);
                 }
-
-                // 📦 L1/L2/L3 → 폴더 + 직속 아이템
+// 📦 L1/L2/L3 → 폴더 + 직속 아이템
                 final result = snap.data as List<Object>;
                 final folders = result[0] as List<FolderNode>;
                 final items = result[1] as List<Item>;
 
-                if (folders.isEmpty && items.isEmpty) {
+                final filteredItems = _lowOnly
+                    ? _applyLowStockFilter(items)
+                    : items;
+
+                if (folders.isEmpty && filteredItems.isEmpty) {
                   return const Center(
                     child: Text('하위 폴더나 아이템이 없습니다.  버튼으로 추가하세요.'),
                   );
@@ -305,7 +372,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 return ListView(
                   children: [
                     if (folders.isNotEmpty) _buildFolderList(folders),
-                    if (items.isNotEmpty) _buildItemList(items),
+                    if (filteredItems.isNotEmpty) _buildItemList(filteredItems),
                   ],
                 );
               },
@@ -356,6 +423,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   }
 
   // ───────────────────────── Helper UIs ─────────────────────────
+   // ✅ 공통: 임계치 이하 필터
+    List<Item> _applyLowStockFilter(List<Item> items) {
+        return items.where((it) => it.minQty > 0 && it.qty <= it.minQty).toList();
+      }
 
   Widget _buildFolderList(List<FolderNode> nodes) {
     final repo = context.read<InMemoryRepo>();
