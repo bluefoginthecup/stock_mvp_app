@@ -31,6 +31,7 @@ Future<void> main() async {
     itemsAssetPath: 'assets/seeds/2025-10-26/items.json',
     foldersAssetPath: 'assets/seeds/2025-10-26/folders.json',
     // bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
+    lotsAssetPath: 'assets/seeds/2025-10-26/lots.json',
     clearBefore: true,
   );
 

@@ -128,7 +128,7 @@ class OrderPlanningService {
             refType: RefType.purchase,
             refId: 'cancel-${_uuid.v4()}', // 기존 것 덮는게 목적이라 id는 의미 없음
             note: '예정입고 취소 (order:${order.id})',
-            sourceKey: '${baseKey}:pin',
+            sourceKey: '$baseKey:pin',
           );
           await txns.upsertPlannedInBySourceKey(t);
         }
@@ -146,7 +146,7 @@ class OrderPlanningService {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
           isDeleted: false,
-          sourceKey: '${baseKey}:work',
+          sourceKey: '$baseKey:work',
         );
         await works.upsertBySourceKey(w);
 
@@ -161,7 +161,7 @@ class OrderPlanningService {
           refType: RefType.work,
           refId: w.id, // upsertPlannedInBySourceKey가 기존 id로 바꾸며, 같은 key로 덮어쓰기됨
           note: '작업 예정입고 (order:${order.id})',
-          sourceKey: '${baseKey}:pin', // txn은 별도 suffix로 구분
+          sourceKey: '$baseKey:pin', // txn은 별도 suffix로 구분
         );
         await txns.upsertPlannedInBySourceKey(t);
       } else {
@@ -177,7 +177,7 @@ class OrderPlanningService {
           refType: RefType.purchase,
           refId: pid,
           note: '구매 예정입고 (order:${order.id})',
-          sourceKey: '${baseKey}:pin',
+          sourceKey: '$baseKey:pin',
         );
         await txns.upsertPlannedInBySourceKey(t);
       }

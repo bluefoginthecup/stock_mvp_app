@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import '../models/item.dart';
 import '../models/folder_node.dart';
 import '../models/bom.dart';
+import '../models/lot.dart'; // ✅ Practical-MIN: Lot 모델
 import '../repos/repo_interfaces.dart';
 
 class UnifiedSeedImporter {
@@ -26,22 +27,28 @@ class UnifiedSeedImporter {
     if (verbose) print('[SeedImporter] $msg');
   }
 
-  /// assets 에서 통합 임포트 (BOM 은 옵션)
+  /// assets 에서 통합 임포트 (BOM/Lots 옵션)
   Future<void> importUnifiedFromAssets({
     required String itemsAssetPath,
     required String foldersAssetPath,
-    String? bomAssetPath, // ← optional
+    String? bomAssetPath,   // optional
+    String? lotsAssetPath,  // ✅ optional (Practical-MIN)
     bool clearBefore = false,
   }) async {
     _log('Loading assets...');
-    String itemsJson, foldersJson, bomJson = '';
+    String itemsJson, foldersJson, bomJson = '', lotsJson = '';
     try {
       itemsJson   = await rootBundle.loadString(itemsAssetPath);
       foldersJson = await rootBundle.loadString(foldersAssetPath);
       if (bomAssetPath != null && bomAssetPath.isNotEmpty) {
         bomJson = await rootBundle.loadString(bomAssetPath);
       }
-      _log('Loaded: items(${itemsJson.length}B), folders(${foldersJson.length}B), bom(${bomJson.isEmpty ? "none" : "${bomJson.length}B"})');
+      if (lotsAssetPath != null && lotsAssetPath.isNotEmpty) {
+        lotsJson = await rootBundle.loadString(lotsAssetPath);
+      }
+      _log('Loaded: items(${itemsJson.length}B), folders(${foldersJson.length}B), '
+          'bom(${bomJson.isEmpty ? "none" : "${bomJson.length}B"}), '
+          'lots(${lotsJson.isEmpty ? "none" : "${lotsJson.length}B"})');
     } catch (e) {
       _log('❌ Asset load failed: $e');
       rethrow;
@@ -51,14 +58,17 @@ class UnifiedSeedImporter {
       itemsJson: itemsJson,
       foldersJson: foldersJson,
       bomJson: bomJson,
+      lotsJson: lotsJson, // ✅
       clearBefore: clearBefore,
     );
 
-    // 루트 폴더 / 대표 아이템 경로 확인 로그
+    // 디버그 편의 로그 (repo 가 지원할 때만)
     final dyn = itemRepo as dynamic;
     if (dyn.listFolderChildren is Function) {
-      final roots = await dyn.listFolderChildren(null);
-      print('🟢 ROOT FOLDERS: ${roots.map((f) => f.name).toList()}');
+      try {
+        final roots = await dyn.listFolderChildren(null);
+        print('🟢 ROOT FOLDERS: ${roots.map((f) => f.name).toList()}');
+      } catch (_) {}
     }
     if (dyn.searchItemsGlobal is Function) {
       try {
@@ -72,22 +82,24 @@ class UnifiedSeedImporter {
     }
   }
 
-  /// JSON 문자열 3종을 직접 받아 임포트
+  /// JSON 문자열 3(+1 lots)종을 직접 받아 임포트
   Future<void> importAll({
     required String itemsJson,
     required String foldersJson,
     required String bomJson, // 빈 문자열일 수 있음
+    String lotsJson = '',    // ✅ 기본값 빈 문자열
     bool clearBefore = false,
   }) async {
-    dynamic itemsPayload, foldersPayload, bomPayload;
+    dynamic itemsPayload, foldersPayload, bomPayload, lotsPayload;
 
     try {
       itemsPayload   = jsonDecode(itemsJson);
       foldersPayload = jsonDecode(foldersJson);
       bomPayload     = bomJson.trim().isEmpty ? const [] : jsonDecode(bomJson);
+      lotsPayload    = lotsJson.trim().isEmpty ? const [] : jsonDecode(lotsJson);
       _log('Decoded JSON OK.');
 
-      // 디버그 로그
+      // 가벼운 구조 로그
       _log('itemsPayload top=${_topKeys(itemsPayload)}');
       if (itemsPayload is Map) {
         final itemsList = itemsPayload['items'] as List?;
@@ -108,20 +120,19 @@ class UnifiedSeedImporter {
     final items   = _parseItemsV1(itemsPayload, tag: 'items.json');
     final folders = _parseFoldersV1(foldersPayload, tag: 'folders.json');
     final bomRows = _parseBomV1(bomPayload, tag: 'bom.json');
+    final lotsMap = _parseLotsV1(lotsPayload, tag: 'lots.json'); // ✅ itemId -> List<Lot>
 
-    _log('Parsed -> items:${items.length}, folders:${folders.length}, bomRows:${bomRows.length}');
-    if (items.isEmpty) {
-      _log('⚠️ items가 0개입니다. payload type=${itemsPayload.runtimeType}, top-level=${_topKeys(itemsPayload)}');
-    }
-    if (bomRows.isEmpty) {
-      _log('ℹ️ bomRows가 0개입니다. (정상일 수도 있음)');
-    }
+    _log('Parsed -> items:${items.length}, folders:${folders.length}, bomRows:${bomRows.length}, lotsItems:${lotsMap.length}');
+    if (items.isEmpty)  _log('⚠️ items가 0개입니다. payload type=${itemsPayload.runtimeType}, top-level=${_topKeys(itemsPayload)}');
+    if (bomRows.isEmpty) _log('ℹ️ bomRows가 0개입니다. (정상일 수도 있음)');
+    if (lotsMap.isEmpty) _log('ℹ️ lots가 비어있습니다. (정상일 수도 있음)');
 
+    // 초기화
     if (clearBefore) {
       await _clearAllIfSupported();
     }
 
-    // Folders (저장 기능이 있는 Repo라면 실제 저장)
+    // Folders (repo 가 폴더생성 지원시 생성)
     if (folders.isNotEmpty) _persistFoldersIfSupported(folders);
 
     // Items upsert
@@ -167,6 +178,9 @@ class UnifiedSeedImporter {
       _log('BOM upsert done: ok=$bomOk fail=$bomFail');
     }
 
+    // ✅ LOTS upsert (repo 가 지원할 때만)
+    _persistLotsIfSupported(lotsMap);
+
     // UI 갱신(ChangeNotifier 기반 Repo)
     try {
       final dyn = itemRepo as dynamic;
@@ -194,41 +208,25 @@ class UnifiedSeedImporter {
         _log('[$tag] skip row#$idx: not a Map');
         continue;
       }
+      // 1) 임포트 친화 정규화
       final m = _normalizeItemMap(Map<String, dynamic>.from(e));
 
-      final id = (m['id'] ?? '').toString();
-      if (id.isEmpty) {
-        _log('[$tag] skip row#$idx: empty id');
-        continue;
+      // 2) 확정: Practical-MIN 정합성 위해 Item.fromJson 사용
+      try {
+        // 기본 보호: id 없으면 스킵
+        final id = (m['id'] ?? '').toString();
+        if (id.isEmpty) {
+          _log('[$tag] skip row#$idx: empty id');
+          continue;
+        }
+        // 안전 기본값(선택): conversion_mode 없을 때
+        m['conversion_mode'] ??= 'fixed';
+
+        final it = Item.fromJson(m);
+        out.add(it);
+      } catch (err) {
+        _log('[$tag] skip row#$idx: Item parse error $err');
       }
-
-      final String name = (m['name'] ?? '').toString();
-      final String sku  = (m['sku'] ?? id).toString();
-      final String unit = (m['unit'] ?? 'EA').toString();
-
-      // folder/sub*/subsub* (normalize 에서 path→folder 변환 이미 수행)
-      final String folder = (m['folder'] ?? 'Uncategorized').toString();
-      final String? subfolder =
-      (m['subfolder']?.toString().isEmpty ?? true) ? null : m['subfolder'].toString();
-      final String? subsubfolder =
-      (m['subsubfolder']?.toString().isEmpty ?? true) ? null : m['subsubfolder'].toString();
-
-      final it = Item(
-        id: id,
-        name: name,
-        displayName: m['displayName'] as String?,
-        sku: sku,
-        unit: unit,
-        folder: folder,
-        subfolder: subfolder,
-        subsubfolder: subsubfolder,
-        minQty: (m['minQty'] is int) ? m['minQty'] : (int.tryParse('${m['minQty']}') ?? 0),
-        qty: (m['qty'] is int) ? m['qty'] : (int.tryParse('${m['qty']}') ?? 0),
-        kind: m['kind'] as String?,
-        attrs: (m['attrs'] is Map) ? Map<String, dynamic>.from(m['attrs']) : null,
-        stockHints: StockHints.fromJson(m['stockHints']),
-      );
-      out.add(it);
     }
 
     if (out.isNotEmpty) {
@@ -295,7 +293,39 @@ class UnifiedSeedImporter {
     return out;
   }
 
-  // ===== Helpers =====
+  /// ✅ Lots 파서: lots 배열 또는 {lots:[...]} 모두 지원
+  Map<String, List<Lot>> _parseLotsV1(dynamic payload, {String tag = ''}) {
+    final list = (payload is List)
+        ? payload
+        : (payload is Map && payload['lots'] is List)
+        ? (payload['lots'] as List)
+        : const [];
+
+    if (list.isEmpty) {
+      _log('[$tag] No lots. shape=${_topKeys(payload)}');
+      return const {};
+    }
+
+    final byItem = <String, List<Lot>>{};
+    var idx = 0;
+    for (final e in list) {
+      idx++;
+      if (e is! Map) {
+        _log('[$tag] skip row#$idx: not a Map');
+        continue;
+      }
+      final m = Map<String, dynamic>.from(e);
+      try {
+        final lot = Lot.fromJson(m);
+        byItem.putIfAbsent(lot.itemId, () => []).add(lot);
+      } catch (err) {
+        _log('[$tag] skip row#$idx: parse error $err');
+      }
+    }
+    return byItem;
+  }
+
+  // ===== Persist helpers =====
 
   Future<void> _clearAllIfSupported() async {
     try {
@@ -345,6 +375,29 @@ class UnifiedSeedImporter {
     }();
   }
 
+  /// ✅ Lots upsert: repo 가 upsertLots(itemId, List<Lot>) 지원할 때만 수행
+  void _persistLotsIfSupported(Map<String, List<Lot>> byItem) {
+    if (byItem.isEmpty) return;
+    try {
+      final dyn = itemRepo as dynamic;
+      if (dyn.upsertLots is! Function) {
+        _log('Lots persistence not supported by repo (no upsertLots). Skipped.');
+        return;
+      }
+      var itemsCnt = 0, lotsCnt = 0;
+      byItem.forEach((itemId, lots) {
+        dyn.upsertLots(itemId, lots);
+        itemsCnt++;
+        lotsCnt += lots.length;
+      });
+      _log('Lots persisted: items=$itemsCnt lots=$lotsCnt');
+    } catch (e) {
+      _log('Lots persist failed: $e');
+    }
+  }
+
+  // ===== Helpers =====
+
   BomKind _parseBomKind(String s) {
     switch (s) {
       case 'semi':
@@ -373,35 +426,34 @@ class UnifiedSeedImporter {
     return num.tryParse(t) ?? fallback;
   }
 
+  // flat 컬럼들을 stockHints 맵으로 추출 (임포트 친화 정규화)
+  Map<String, dynamic>? _extractStockHints(Map<String, dynamic> m) {
+    num? _numOrNull(dynamic v) {
+      if (v == null || (v is String && v.trim().isEmpty)) return null;
+      return _toNum(v);
+    }
+    String? _strOrNull(dynamic v) {
+      final s = (v ?? '').toString().trim();
+      return s.isEmpty ? null : s;
+    }
 
-    // flat 컬럼들을 stockHints 맵으로 추출
-    Map<String, dynamic>? _extractStockHints(Map<String, dynamic> m) {
-        num? _numOrNull(dynamic v) {
-          if (v == null || (v is String && v.trim().isEmpty)) return null;
-          return _toNum(v);
-        }
-        String? _strOrNull(dynamic v) {
-          final s = (v ?? '').toString().trim();
-          return s.isEmpty ? null : s;
-        }
+    final qty             = _numOrNull(m['stockHints_qty'] ?? m['h_qty'] ?? m['qty']); // qty는 seed 초기재고 정책과도 겹치므로 우선 보관
+    final usableQtyM      = _numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
+    final unitIn          = _strOrNull(m['unit_in'] ?? m['unitIn']);
+    final unitOut         = _strOrNull(m['unit_out'] ?? m['unitOut'] ?? m['unit']); // unitOut 없으면 unit 참고
+    final conversionRate  = _numOrNull(m['conversion_rate'] ?? m['conversionRate']);
 
-        final qty             = _numOrNull(m['stockHints_qty'] ?? m['h_qty'] ?? m['qty']); // qty는 seed 초기재고 정책과도 겹치므로 우선 보관
-        final usableQtyM      = _numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
-        final unitIn          = _strOrNull(m['unit_in'] ?? m['unitIn']);
-        final unitOut         = _strOrNull(m['unit_out'] ?? m['unitOut'] ?? m['unit']); // unitOut 없으면 unit 참고
-        final conversionRate  = _numOrNull(m['conversion_rate'] ?? m['conversionRate']);
+    final hasAny = qty != null || usableQtyM != null || unitIn != null || unitOut != null || conversionRate != null;
+    if (!hasAny) return null;
 
-        final hasAny = qty != null || usableQtyM != null || unitIn != null || unitOut != null || conversionRate != null;
-        if (!hasAny) return null;
-
-        return {
-          if (qty != null) 'qty': qty,
-          if (usableQtyM != null) 'usable_qty_m': usableQtyM,
-          if (unitIn != null) 'unit_in': unitIn,
-          if (unitOut != null) 'unit_out': unitOut,
-          if (conversionRate != null) 'conversion_rate': conversionRate,
-        };
-      }
+    return {
+      if (qty != null) 'qty': qty,
+      if (usableQtyM != null) 'usable_qty_m': usableQtyM,
+      if (unitIn != null) 'unit_in': unitIn,
+      if (unitOut != null) 'unit_out': unitOut,
+      if (conversionRate != null) 'conversion_rate': conversionRate,
+    };
+  }
 
   /// items.json 의 1 row(Map)를 임포트 친화적으로 정규화
   Map<String, dynamic> _normalizeItemMap(Map<String, dynamic> src) {
@@ -413,7 +465,7 @@ class UnifiedSeedImporter {
     // folder 오탈자/대소문자 정규화
     if (m['folder'] is String) {
       final f0 = (m['folder'] as String).trim().toLowerCase();
-      if (f0 == 'semiFinished' || f0 == 'semifinished') m['folder'] = 'SemiFinished';
+      if (f0 == 'semifinished' || f0 == 'semifinished') m['folder'] = 'SemiFinished';
       else if (f0 == 'finished') m['folder'] = 'Finished';
       else if (f0 == 'sub') m['folder'] = 'Sub';
     }
@@ -438,11 +490,11 @@ class UnifiedSeedImporter {
     }
 
     // flat → stockHints 묶기 (이미 stockHints가 있으면 보강만)
-        final extracted = _extractStockHints(m);
-        if (extracted != null) {
-          final curr = (m['stockHints'] is Map) ? Map<String, dynamic>.from(m['stockHints']) : <String, dynamic>{};
-          m['stockHints'] = {...curr, ...extracted};
-        }
+    final extracted = _extractStockHints(m);
+    if (extracted != null) {
+      final curr = (m['stockHints'] is Map) ? Map<String, dynamic>.from(m['stockHints']) : <String, dynamic>{};
+      m['stockHints'] = {...curr, ...extracted};
+    }
 
     // 초기 재고 매핑
     if (m['qty'] == null) {
@@ -457,6 +509,7 @@ class UnifiedSeedImporter {
 
     // minQty 기본값
     m['minQty'] ??= 0;
+
     return m;
   }
 }

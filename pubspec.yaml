@@ -38,4 +38,5 @@ flutter:
     - assets/seeds/2025-10-26/folders.json
     - assets/seeds/2025-10-26/items.json
     - assets/seeds/2025-10-26/bom.json
+    - assets/seeds/2025-10-26/lots.json
 

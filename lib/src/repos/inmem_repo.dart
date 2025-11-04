@@ -15,6 +15,9 @@ import 'dart:async'; // ✅ StreamController 사용을 위해 필요
 import '../models/folder_node.dart';
 import '../utils/item_presentation.dart';
 
+import '../models/lot.dart';
+
+
 // === Common move types (top-level) ===
 enum EntityKind { item, folder }
 
@@ -436,11 +439,11 @@ class InMemoryRepo extends ChangeNotifier
         }
     }
 
+
     notifyListeners();
   }
 
   // (하위호환) 아이템 전용 이동 → 통합 API 위임
-  @Deprecated('Use moveEntityToPath instead.')
   Future<void> moveItemToPath({
     required String itemId,
     required List<String> pathIds, // [L1], [L1,L2], [L1,L2,L3] 허용
@@ -449,6 +452,68 @@ class InMemoryRepo extends ChangeNotifier
       MoveRequest(kind: EntityKind.item, id: itemId, pathIds: pathIds),
     );
   }
+  // itemId -> FIFO 리스트
+  final Map<String, List<Lot>> _lotsByItem = {};
+
+// FIFO 조회 (receivedAt asc)
+  List<Lot> lotsByItem(String itemId) {
+    final list = _lotsByItem[itemId] ?? const [];
+    final sorted = [...list]..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
+    return sorted;
+  }
+
+// 일괄 upsert (같은 lotNo 있으면 교체, 없으면 추가)
+  void upsertLots(String itemId, List<Lot> lots) {
+    final map = {for (final l in lotsByItem(itemId)) l.lotNo: l};
+    for (final l in lots) {
+      map[l.lotNo] = l;
+    }
+    _lotsByItem[itemId] = map.values.toList()
+      ..sort((a, b) => a.receivedAt.compareTo(b.receivedAt));
+    notifyListeners();
+  }
+
+// 간단 입고 헬퍼
+  void receiveLots(String itemId, List<Map<String, dynamic>> inputs) {
+    final newLots = inputs.map((m) => Lot(
+      itemId: itemId,
+      lotNo: m['lot_no'] as String,
+      receivedQtyRoll: (m['received_qty_roll'] ?? 1).toDouble(),
+      measuredLengthM: (m['measured_length_m'] ?? m['length_m'] ?? 0).toDouble(),
+      usableQtyM: (m['usable_qty_m'] ?? m['measured_length_m'] ?? 0).toDouble(),
+      status: (m['status'] as String?) ?? 'active',
+      receivedAt: DateTime.tryParse(m['received_at'] ?? '') ?? DateTime.now(),
+    )).toList();
+    upsertLots(itemId, newLots);
+  }
+
+// FIFO 차감: outQtyM만큼 앞에서부터 차감, 변경된 Lot 리스트 반환
+  List<Lot> consumeLotsFifo(String itemId, double outQtyM) {
+    double remain = outQtyM;
+    final lots = lotsByItem(itemId);
+    final changed = <Lot>[];
+
+    for (final l in lots) {
+      if (remain <= 0) break;
+      if (l.usableQtyM <= 0) continue;
+
+      final take = remain <= l.usableQtyM ? remain : l.usableQtyM;
+      l.usableQtyM -= take;
+      remain -= take;
+      changed.add(l);
+    }
+
+    // 저장
+    _lotsByItem[itemId] = lots;
+    notifyListeners();
+
+    if (remain > 0) {
+      // 필요 시 경고/예외 처리: 잔량 부족
+      // throw StateError('Not enough lot qty for $itemId: short ${remain}m');
+    }
+    return changed;
+  }
+
 
   // === 폴더+아이템 동시 검색 ===
   Future<(List<FolderNode>, List<Item>)> searchAll({

@@ -2,19 +2,23 @@
 import 'package:provider/provider.dart';
 
 import '../../models/item.dart';
+import '../../models/lot.dart';                // 🔧 Lot 모델 (Practical-MIN)
+import '../../repos/inmem_repo.dart';          // 🔧 InMemoryRepo(FIFO/lot upsert)
 import '../../repos/repo_interfaces.dart';
+
 import '../../ui/common/ui.dart';
-import '../../utils/item_presentation.dart'; // ItemLabel
+import '../../utils/item_presentation.dart';   // ItemLabel
+
 import '../bom/finished_bom_edit_screen.dart';
 import '../bom/semi_bom_edit_screen.dart';
+
 import '../txns/adjust_form.dart';
 import '../../ui/common/qty_control.dart';
 import '../../models/txn.dart' show Txn;
-import '../txns/widgets/txn_row.dart'; // ← TxnRow가 있는 실제 경로로 맞춰주세요
+import '../txns/widgets/txn_row.dart';         // ← 프로젝트 실제 경로로 맞춰주세요
 import 'stock_in_dialog.dart';
 
-
-import '../../dev/bom_debug.dart'; // ← 콘솔 덤프 유틸
+import '../../dev/bom_debug.dart';             // 콘솔 덤프 유틸
 
 class StockItemDetailScreen extends StatefulWidget {
   final String itemId;
@@ -26,8 +30,9 @@ class StockItemDetailScreen extends StatefulWidget {
 
 class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
   Item? _item;
-  String? _name; // 사람 읽는 이름 (repo.nameOf)
-  bool? _isFinished; // finished/semi 추정
+  String? _name;              // 사람 읽는 이름 (repo.nameOf)
+  bool? _isFinished;          // finished/semi 추정
+  bool _isLot = false;        // 🔧 Practical-MIN: 롤 관리 모드 여부
 
   @override
   void initState() {
@@ -41,45 +46,50 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     final name = await itemRepo.nameOf(widget.itemId);
 
     bool? finishedGuess;
-    // 레거시 폴더 체계로 finished/semi 추정 (없으면 null)
     if (item != null) {
+      // 레거시 폴더 체계로 finished/semi 추정 (없으면 null)
       final segs = <String>[
         item.folder,
         if (item.subfolder != null) item.subfolder!,
         if (item.subsubfolder != null) item.subsubfolder!,
       ].map((e) => e.toLowerCase());
       final joined = segs.join('/');
-      if (joined.contains('finished') || joined.contains('완제품')) finishedGuess = true;
-      else if (joined.contains('semi') || joined.contains('반제품') || joined.contains('세미')) finishedGuess = false;
+      if (joined.contains('finished') || joined.contains('완제품')) {
+        finishedGuess = true;
+      } else if (joined.contains('semi') || joined.contains('반제품') || joined.contains('세미')) {
+        finishedGuess = false;
+      }
+    }
+
+    // 🔧 Practical-MIN: conversionMode 로 롤 모드 판정
+    bool isLot = false;
+    if (item != null) {
+      final mode = (item.conversionMode).toLowerCase();
+      isLot = (mode == 'lot');
     }
 
     if (!mounted) return;
     setState(() {
       _item = item;
       _name = name ?? item?.name ?? widget.itemId;
-      _isFinished = finishedGuess; // null이면 두 버튼 다 보여줌
+      _isFinished = finishedGuess;
+      _isLot = isLot;
     });
   }
 
   Future<void> _showRecentTxns() async {
-    // 간이: TxnRepo.listTxns() → itemId로 필터 → 하단 모달에 표시
     try {
       final txnRepo = context.read<TxnRepo>();
-    // 1) 전체 조회 (시그니처에 맞게)
-          //   - named 파라미터가 없다면 이렇게 전건 조회 후 필터
-          final all = await txnRepo.listTxns();
-          // 2) Txn으로 캐스팅 후 itemId 필터
-          final List<Txn> filtered = all
-              .cast<Txn>()
-              .where((t) => t.itemId == widget.itemId)
-              .toList();
-          // 3) null-safe 정렬 (ts → createdAt → epoch)
-          DateTime _ts(Txn x) =>
-              x.ts ?? (x as dynamic).createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          filtered.sort((a, b) => _ts(b).compareTo(_ts(a)));
+      final all = await txnRepo.listTxns();
+      final List<Txn> filtered = all
+          .cast<Txn>()
+          .where((t) => t.itemId == widget.itemId)
+          .toList();
+      DateTime _ts(Txn x) =>
+          x.ts ?? (x as dynamic).createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      filtered.sort((a, b) => _ts(b).compareTo(_ts(a)));
 
-
-    if (!mounted) return;
+      if (!mounted) return;
       showModalBottomSheet(
         context: context,
         showDragHandle: true,
@@ -90,13 +100,12 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
               child: Text(context.t.txn_list_empty_hint),
             );
           }
-          // ✅ 이미 만들어둔 표시 규칙(TxnRow) 재사용 → /−, 색상, 뱃지 모두 일관
-                    return ListView.separated(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (_, i) => TxnRow(t: filtered[i]),
-                    );
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: filtered.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (_, i) => TxnRow(t: filtered[i]),
+          );
         },
       );
     } catch (e) {
@@ -107,118 +116,115 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     }
   }
 
-  // ✅ 입출고 폼 열기 헬퍼
+  // ✅ 입출고 폼 열기(일반 모드)
   void _openAdjust() {
-        if (_item == null) return;
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => Scaffold(
-              appBar: AppBar(title: Text(context.t.adjust_set_quantity_title)),
-              body: SafeArea(
-                child: Padding(
-                  // 키보드 올라올 때 하단 여백
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
-                    left: 16, right: 16, top: 16,
-                  ),
-                  // ✅ AdjustForm이 TextField를 써도 이제 Material/Scaffold 조상 보장
-                  child: AdjustForm(item: _item!),
-                ),
-              ),
-            ),
-          ),
-        );
-      }
-
-  /// ✅ 이 프로젝트 표준: ItemRepo.adjustQty(itemId, delta, refType?, refId?, note?)
-    Future<void> _applyQtyChange({required int delta, required int newQty}) async {
-        final itemRepo = context.read<ItemRepo>();
-        await itemRepo.adjustQty(
-          itemId: _item!.id,
-          delta: delta,
-          refType: 'MANUAL',
-          // refId는 없으면 생략 가능; note만 남겨둡니다.
-          note: 'Detail:setQty ${_item!.qty} → $newQty',
-        );
-      }
-
-    // ✅ "재고" 롱프레스 → 절대 수량 변경 바텀시트
-    Future<void> _openQtyChangeSheet() async {
-        if (_item == null) return;
-        final currentQty = _item!.qty;
-        int localQty = currentQty;
-
-        final newQty = await showModalBottomSheet<int>(
-          context: context,
-          useSafeArea: true,
-          isScrollControlled: true,
-          showDragHandle: true,
-          builder: (ctx) {
-            return Padding(
+    if (_item == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(context.t.adjust_set_quantity_title)),
+          body: SafeArea(
+            child: Padding(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                bottom: MediaQuery.of(context).viewInsets.bottom,
                 left: 16, right: 16, top: 16,
               ),
-              child: StatefulBuilder(
-                builder: (ctx, setSB) {
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        ctx.t.adjust_set_quantity_title, // 예: "수량 변경"
-                        style: Theme.of(ctx).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 12),
-                      // ✅ qty_control 사용 (시그니처는 프로젝트에 맞게 조정)
-                      QtyControl(
-                        value: localQty,
-                        onChanged: (v) => setSB(() => localQty = v),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, null),
-                            child: Text(ctx.t.common_cancel),
-                          ),
-                          const Spacer(),
-                          FilledButton.icon(
-                            icon: const Icon(Icons.save),
-                            onPressed: () => Navigator.pop(ctx, localQty),
-                            label: Text(ctx.t.btn_apply),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  );
-                },
-              ),
-            );
-          },
-        );
-
-        if (newQty == null || newQty == currentQty) return;
-
-        try {
-          final delta = newQty - currentQty;
-          await _applyQtyChange(delta: delta, newQty: newQty);
-          await _load(); // ✅ 화면 리프레시
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(context.t.btn_save)),
-          );
-        } catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${context.t.common_error}: $e')),
-
-          );
-          print('${context.t.common_error}: $e');
-        }
+              child: AdjustForm(item: _item!),
+            ),
+          ),
+        ),
+      ),
+    );
   }
-//시드 힌트 보기
+
+  /// ✅ 표준: ItemRepo.adjustQty(itemId, delta, refType?, refId?, note?)
+  Future<void> _applyQtyChange({required int delta, required int newQty}) async {
+    final itemRepo = context.read<ItemRepo>();
+    await itemRepo.adjustQty(
+      itemId: _item!.id,
+      delta: delta,
+      refType: 'MANUAL',
+      note: 'Detail:setQty ${_item!.qty} → $newQty',
+    );
+  }
+
+  // ✅ "재고" 롱프레스 → 절대 수량 변경 시트
+  Future<void> _openQtyChangeSheet() async {
+    if (_item == null) return;
+    final currentQty = _item!.qty;
+    int localQty = currentQty;
+
+    final newQty = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            left: 16, right: 16, top: 16,
+          ),
+          child: StatefulBuilder(
+            builder: (ctx, setSB) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    ctx.t.adjust_set_quantity_title,
+                    style: Theme.of(ctx).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  QtyControl(
+                    value: localQty,
+                    onChanged: (v) => setSB(() => localQty = v),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, null),
+                        child: Text(ctx.t.common_cancel),
+                      ),
+                      const Spacer(),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.save),
+                        onPressed: () => Navigator.pop(ctx, localQty),
+                        label: Text(ctx.t.btn_apply),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (newQty == null || newQty == currentQty) return;
+
+    try {
+      final delta = newQty - currentQty;
+      await _applyQtyChange(delta: delta, newQty: newQty);
+      await _load(); // 리프레시
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.t.btn_save)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${context.t.common_error}: $e')),
+      );
+      // ignore: avoid_print
+      print('${context.t.common_error}: $e');
+    }
+  }
+
+  // 시드 힌트 보기
   void _openSeedHintsSheet(Item it) {
     final h = it.stockHints;
     if (h == null) return;
@@ -226,7 +232,9 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     String fmt(num? v) {
       if (v == null) return '-';
       final s = v.toStringAsFixed(2);
-      return s.replaceFirst(RegExp(r'\.0+$'), '').replaceFirst(RegExp(r'(\.\d*[1-9])0+$'), r'\1');
+      return s
+          .replaceFirst(RegExp(r'\.0+$'), '')
+          .replaceFirst(RegExp(r'(\.\d*[1-9])0+$'), r'\1');
     }
 
     showModalBottomSheet(
@@ -242,48 +250,47 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
               left: 16, right: 16, top: 12,
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
             ),
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.tips_and_updates),
-                          const SizedBox(width: 8),
-                          Text('Seed 재고 힌트', style: Theme.of(ctx).textTheme.titleMedium),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 6,
-                        children: [
-                          if (h.usableQtyM != null)
-                            Chip(label: Text('가용 ${fmt(h.usableQtyM)} m')),
-                          if (h.qty != null)
-                            Chip(label: Text('Seed ${fmt(h.qty)} $unitOut')),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 16),
-                  _kv(ctx, 'Seed 수량', h.qty == null ? '-' : '${fmt(h.qty)} $unitOut'),
-                  _kv(ctx, '사용가능(m)', fmt(h.usableQtyM)),
-                  _kv(ctx, '출고 단위', unitOut),
-                  _kv(ctx, '입고 단위', h.unitIn ?? '-'),
-                  _kv(ctx, '환산식', hasConv ? '1 ${h.unitIn} = ${fmt(h.conversionRate)} ${h.unitOut}' : '-'),
-                  const SizedBox(height: 8),
-                ],
-              )
-
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.tips_and_updates),
+                        const SizedBox(width: 8),
+                        Text('Seed 재고 힌트', style: Theme.of(ctx).textTheme.titleMedium),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      children: [
+                        if (h.usableQtyM != null)
+                          Chip(label: Text('가용 ${fmt(h.usableQtyM)} m')),
+                        if (h.qty != null)
+                          Chip(label: Text('Seed ${fmt(h.qty)} $unitOut')),
+                      ],
+                    ),
+                  ],
+                ),
+                const Divider(height: 16),
+                _kv(ctx, 'Seed 수량', h.qty == null ? '-' : '${fmt(h.qty)} $unitOut'),
+                _kv(ctx, '사용가능(m)', fmt(h.usableQtyM)),
+                _kv(ctx, '출고 단위', unitOut),
+                _kv(ctx, '입고 단위', h.unitIn ?? '-'),
+                _kv(ctx, '환산식', hasConv ? '1 ${h.unitIn} = ${fmt(h.conversionRate)} ${h.unitOut}' : '-'),
+                const SizedBox(height: 8),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-// 작은 key-value 줄
+  // 작은 key-value 줄
   Widget _kv(BuildContext ctx, String k, String v) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: Row(
@@ -296,18 +303,22 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     ),
   );
 
-
   bool _hasHints(Item it) {
     final h = it.stockHints;
     if (h == null) return false;
-    return h.qty != null || h.usableQtyM != null || h.conversionRate != null || h.unitIn != null || h.unitOut != null;
+    return h.qty != null ||
+        h.usableQtyM != null ||
+        h.conversionRate != null ||
+        h.unitIn != null ||
+        h.unitOut != null;
   }
 
   String _fmtNum(num? v, {int frac = 2}) {
     if (v == null) return '-';
     final s = v.toStringAsFixed(frac);
-    // 소수점 0 제거 (예: 30.00 → 30, 30.50 → 30.5)
-    return s.replaceFirst(RegExp(r'\.0+$'), '').replaceFirst(RegExp(r'(\.\d*[1-9])0+$'), r'\1');
+    return s
+        .replaceFirst(RegExp(r'\.0+$'), '')
+        .replaceFirst(RegExp(r'(\.\d*[1-9])0+$'), r'\1');
   }
 
   Widget _seedHintsCard(Item it) {
@@ -347,176 +358,368 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final item = _item;
 
     return Scaffold(
-              appBar: AppBar(title: Text(context.t.stock_item_detail_title)),
-          body: item == null
-              ? const Center(child: CircularProgressIndicator())
-              : Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 아이템 라벨 (경로/이름 표시)
-                      Row(
-                        children: [
-                          const Icon(Icons.inventory_2),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ItemLabel(
-                              itemId: widget.itemId,
-                              full: true,
-                              maxLines: 2,
-                              softWrap: true,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium,
-                              separator: ' / ',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // 재고 수량 / 단위
-                      Row(
-                        children: [
-                      // ✅ 재고 칩 롱프레스: 수량 변경 시트 열기
-                                            Tooltip(
-                                              message: context.t.hint_longpress_to_edit_qty, // 예: "롱프레스하여 수량 변경"
-                                                  child: InkWell(
-                                                borderRadius: BorderRadius.circular(24),
-                                  onLongPress: _openQtyChangeSheet,
-                                  child: Chip(
-                                avatar: const Icon(Icons.numbers, size: 16),
-                                label: Text('${context.t.common_stock}: ${item.qty}'),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Chip(
-                            avatar: const Icon(Icons.straighten, size: 16),
-                            label: Text('${context.t.item_unit}: ${item.unit}'),
-                          ),
-                        ],
-                      ),
-
-                      // ▶▶ StockHints 배지 노출 (있을 때만)
-                      if (item.stockHints != null) ...[
-                        const SizedBox(height: 8),if (item.stockHints != null) ...[
-    const SizedBox(height: 8),
-    Align(
-    alignment: Alignment.centerLeft,
-    child: OutlinedButton.icon(
-    icon: const Icon(Icons.tips_and_updates),
-    label: const Text('Seed 재고 힌트'),
-    onPressed: () => _openSeedHintsSheet(item),
-    ),
-    ),
-    ],
-
-    // Seed 힌트 버튼들 다음, BOM 콘솔 버튼 근처에 추가
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.receipt_long),
-                          label: const Text('입출고 기록'),
-                          onPressed: _showRecentTxns, // ← 이미 위에 구현하신 함수
-                        ),
-
-
-                        // ✅ BOM 편집 버튼 (완제품/반제품)
-                        if (_isFinished == true) ...[
-                          const SizedBox(height: 8),
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.edit),
-                            label: const Text('BOM 편집 (완제품)'),
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => FinishedBomEditScreen(finishedItemId: widget.itemId),
-                              ),
-                            ),
-                          ),
-                        ] else if (_isFinished == false) ...[
-                          const SizedBox(height: 8),
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.edit),
-                            label: const Text('BOM 편집 (반제품)'),
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => SemiBomEditScreen(semiItemId: widget.itemId),
-                              ),
-                            ),
-                          ),
-                        ],
-//bom 콘솔 출력
-                        const SizedBox(height: 12),
-                          // 🔎 이 아이템의 Finished/Semi 레시피를 콘솔(JSON)로 출력
-                          OutlinedButton.icon(
-                            onPressed: () =>
-                                BomDebug.dumpItemBomsToConsole(context, widget.itemId),
-                            icon: const Icon(Icons.terminal),
-                            label: const Text('BOM 콘솔 출력'),
-                          ),
-                    ],
-                  ],
-                  ),
-                ),
-          // ✅ 하단 고정 입출고 버튼바 (Scaffold level)
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Row(
+      appBar: AppBar(title: Text(context.t.stock_item_detail_title)),
+      body: item == null
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+        padding: const EdgeInsets.all(16),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 아이템 라벨 (경로/이름 표시)
+              Row(
                 children: [
+                  const Icon(Icons.inventory_2),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.remove),
-                      label: const Text('출고'),
-                      onPressed: (_item == null) ? null : _openAdjust,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.add),
-                      label: const Text('입고'),
-                      onPressed: (_item == null)
-                          ? null
-                          : () async {
-                        final result = await showDialog(
-                          context: context,
-                          builder: (_) => StockInDialog(item: _item!),
-                        );
-
-                        if (result == null) return;
-
-                        // 결과값 추출
-                        final entered = result['enteredQtyIn'] as double;
-                        final isBulk = result['isBulk'] as bool;
-                        final conv = result['conversionRate'] as double;
-                        final unitIn = result['unitIn'] as String;
-                        final unitOut = result['unitOut'] as String;
-
-                        final qtyOutUnit = isBulk ? entered * conv : entered;
-
-                        // 실제 재고 반영
-                        final repo = context.read<ItemRepo>();
-                        await repo.adjustQty(
-                          itemId: _item!.id,
-                          delta: qtyOutUnit.round(), // ← 여기만
-                          note: '입고 ($unitIn → $unitOut)',
-                        );
-                        await _load(); // 새로고침
-                      },
-
+                    child: ItemLabel(
+                      itemId: widget.itemId,
+                      full: true,
+                      maxLines: 2,
+                      softWrap: true,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      separator: ' / ',
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+
+              // 재고 수량 / 단위
+              Row(
+                children: [
+                  // ✅ 재고 칩 롱프레스: 수량 변경 시트
+                  Tooltip(
+                    message: context.t.hint_longpress_to_edit_qty,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onLongPress: _openQtyChangeSheet,
+                      child: Chip(
+                        avatar: const Icon(Icons.numbers, size: 16),
+                        label: Text('${context.t.common_stock}: ${item.qty}'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Chip(
+                    avatar: const Icon(Icons.straighten, size: 16),
+                    label: Text('${context.t.item_unit}: ${item.unit}'),
+                  ),
+                ],
+              ),
+
+              // ----- 롤 모드 전용 UI -----
+              if (_isLot && item != null) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Chip(
+                      avatar: const Icon(Icons.swap_horiz, size: 16),
+                      label: Text('입고단위→출고단위: ${item.unitIn} → ${item.unitOut}'),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.calculate, size: 16),
+                      label: Text('환산율: 1 ${item.unitIn} = ${item.conversionRate} ${item.unitOut}'),
+                    ),
+                    const Chip(
+                      avatar: Icon(Icons.rule, size: 16),
+                      label: Text('모드: 롤별 FIFO'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('롤 입고'),
+                      onPressed: () => _openLotReceive(context, item.id),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.upload),
+                      label: const Text('M 출고(FIFO)'),
+                      onPressed: () => _openLotIssue(context, item.id),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _LotListInline(itemId: item.id),
+                const SizedBox(height: 12),
+              ],
+
+              // ▶▶ SeedHints 배지/버튼 (있을 때만)
+              if (_hasHints(item)) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.tips_and_updates),
+                    label: const Text('Seed 재고 힌트'),
+                    onPressed: () => _openSeedHintsSheet(item),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.receipt_long),
+                label: const Text('입출고 기록'),
+                onPressed: _showRecentTxns,
+              ),
+
+              // ✅ BOM 편집 버튼 (완제품/반제품)
+              if (_isFinished == true) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.edit),
+                  label: const Text('BOM 편집 (완제품)'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => FinishedBomEditScreen(finishedItemId: widget.itemId),
+                    ),
+                  ),
+                ),
+              ] else if (_isFinished == false) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.edit),
+                  label: const Text('BOM 편집 (반제품)'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SemiBomEditScreen(semiItemId: widget.itemId),
+                    ),
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => BomDebug.dumpItemBomsToConsole(context, widget.itemId),
+                icon: const Icon(Icons.terminal),
+                label: const Text('BOM 콘솔 출력'),
+              ),
+            ],
           ),
-        );
+        ),
+      ),
+
+
+    // 🔧 롤 모드에서는 하단 고정바 숨김(전용 모달 사용)
+    bottomNavigationBar: _isLot
+    ? null
+        : SafeArea(
+    child: Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+    child: Row(
+    children: [
+    Expanded(
+    child: OutlinedButton.icon(
+    icon: const Icon(Icons.remove),
+    label: const Text('출고'),
+    onPressed: (_item == null) ? null : _openAdjust,
+    ),
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+    child: FilledButton.icon(
+    icon: const Icon(Icons.add),
+    label: const Text('입고'),
+    onPressed: (_item == null)
+    ? null
+        : () async {
+    final result = await showDialog(
+    context: context,
+    builder: (_) => StockInDialog(item: _item!),
+    );
+    if (result == null) return;
+
+    final entered = result['enteredQtyIn'] as double;
+    final isBulk = result['isBulk'] as bool;
+    final conv = result['conversionRate'] as double;
+    final unitIn = result['unitIn'] as String;
+    final unitOut = result['unitOut'] as String;
+
+    final qtyOutUnit = isBulk ? entered * conv : entered;
+
+    final repo = context.read<ItemRepo>();
+    await repo.adjustQty(
+    itemId: _item!.id,
+    delta: qtyOutUnit.round(),
+    note: '입고 ($unitIn → $unitOut)',
+    );
+    await _load();
+    },
+    ),
+    ),
+    ],
+    ),
+    ),
+    ),
+    );
+  }
+
+  // ===== Practical-MIN: 롤 입고 모달 =====
+  void _openLotReceive(BuildContext ctx, String itemId) {
+    final repo = context.read<InMemoryRepo>();
+    final rows = <Map<String, TextEditingController>>[
+      {'lot': TextEditingController(), 'len': TextEditingController()}
+    ];
+
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          left: 16, right: 16, top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
+        child: StatefulBuilder(
+          builder: (ctx, setSB) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('롤 입고 (실측 길이 m)', style: Theme.of(ctx).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              ...rows.map((r) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: r['lot'],
+                        decoration: const InputDecoration(labelText: 'Lot No'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 140,
+                      child: TextField(
+                        controller: r['len'],
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: '길이 (m)'),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => setSB(() => rows.add({
+                      'lot': TextEditingController(),
+                      'len': TextEditingController(),
+                    })),
+                    child: const Text('+ 행 추가'),
+                  ),
+                  const Spacer(),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.save),
+                    label: const Text('저장'),
+                    onPressed: () {
+                      final inputs = rows.map((c) => {
+                        'lot_no': c['lot']!.text.trim().isEmpty
+                            ? 'L${DateTime.now().millisecondsSinceEpoch}'
+                            : c['lot']!.text.trim(),
+                        'received_qty_roll': 1,
+                        'measured_length_m': double.tryParse(c['len']!.text) ?? 0,
+                        'usable_qty_m': double.tryParse(c['len']!.text) ?? 0,
+                        'status': 'active',
+                      }).where((m) => (m['measured_length_m'] as double) > 0).toList();
+
+                      if (inputs.isNotEmpty) {
+                        repo.receiveLots(itemId, inputs);
+                        Navigator.pop(ctx);
+                        _load(); // 새로고침
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ===== Practical-MIN: M 출고(FIFO) 모달 =====
+  void _openLotIssue(BuildContext ctx, String itemId) {
+    final repo = context.read<InMemoryRepo>();
+    final c = TextEditingController();
+
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          left: 16, right: 16, top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('M 단위 출고 (FIFO)', style: Theme.of(ctx).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            TextField(
+              controller: c,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: '출고량 (m)'),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              icon: const Icon(Icons.check),
+              label: const Text('출고'),
+              onPressed: () {
+                final m = double.tryParse(c.text) ?? 0;
+                if (m > 0) {
+                  repo.consumeLotsFifo(itemId, m);
+                  Navigator.pop(ctx);
+                  _load(); // 새로고침
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ===== Practical-MIN: 인라인 Lot 목록 =====
+class _LotListInline extends StatelessWidget {
+  final String itemId;
+  const _LotListInline({required this.itemId});
+
+  @override
+  Widget build(BuildContext context) {
+    final lots = context.select<InMemoryRepo, List<Lot>>(
+          (r) => r.lotsByItem(itemId),
+    );
+    if (lots.isEmpty) return const Text('등록된 롤 없음');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Lot 목록', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        ...lots.map((l) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Text(
+            '${l.lotNo} — ${l.usableQtyM.toStringAsFixed(2)} / ${l.measuredLengthM.toStringAsFixed(2)} m (${l.status})',
+          ),
+        )),
+      ],
+    );
   }
 }
