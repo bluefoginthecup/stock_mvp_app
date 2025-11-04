@@ -362,6 +362,13 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
   Widget build(BuildContext context) {
     final item = _item;
 
+    final totalUsableM = context.select<InMemoryRepo, double>(
+          (r) => r.lotsByItem(item!.id).fold<double>(0.0, (s, l) => s + l.usableQtyM),
+    );
+    final lotCount = context.select<InMemoryRepo, int>(
+          (r) => r.lotsByItem(item!.id).length,
+    );
+
     return Scaffold(
       appBar: AppBar(title: Text(context.t.stock_item_detail_title)),
       body: item == null
@@ -403,7 +410,10 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                       onLongPress: _openQtyChangeSheet,
                       child: Chip(
                         avatar: const Icon(Icons.numbers, size: 16),
-                        label: Text('${context.t.common_stock}: ${item.qty}'),
+                        label: Text(_isLot
+                            ? 'EA 재고: ${item.qty}'
+                            : '${context.t.common_stock}: ${item.qty}'),
+
                       ),
                     ),
                   ),
@@ -412,6 +422,18 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                     avatar: const Icon(Icons.straighten, size: 16),
                     label: Text('${context.t.item_unit}: ${item.unit}'),
                   ),
+          if (_isLot) ...[
+                           const SizedBox(width: 8),
+                       Chip(
+                         avatar: const Icon(Icons.linear_scale, size: 16),
+                         label: Text('가용합계: ${_fmtNum(totalUsableM)} m'),
+                       ),
+                       const SizedBox(width: 8),
+                       Chip(
+                         avatar: const Icon(Icons.inventory, size: 16),
+                         label: Text('롤: $lotCount개'),
+                       ),
+                     ],
                 ],
               ),
 
@@ -424,11 +446,16 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                   children: [
                     Chip(
                       avatar: const Icon(Icons.swap_horiz, size: 16),
-                      label: Text('입고단위→출고단위: ${item.unitIn} → ${item.unitOut}'),
+                      label: Text('입고→출고: ${(item.unitIn ?? '-')} → ${(item.unitOut ?? item.unit)}'),
+
                     ),
                     Chip(
                       avatar: const Icon(Icons.calculate, size: 16),
-                      label: Text('환산율: 1 ${item.unitIn} = ${item.conversionRate} ${item.unitOut}'),
+    label: Text(
+                           (item.conversionRate == null)
+                             ? '환산율: 롤별 실측'
+                             : '환산율: 1 ${item.unitIn} = ${_fmtNum(item.conversionRate)} ${(item.unitOut ?? item.unit)}',
+                         ),
                     ),
                     const Chip(
                       avatar: Icon(Icons.rule, size: 16),
