@@ -211,20 +211,45 @@ class InMemoryRepo extends ChangeNotifier
     }
     notifyListeners();
   }
-
   Future<void> deleteFolderNode(String id) async {
-    // 하위 폴더가 있으면 삭제 불가
-    final hasChildren = _childrenIndex[id]?.isNotEmpty == true;
-    if (hasChildren) throw StateError('Folder has subfolders');
-
-    // 어떤 아이템 경로에도 쓰이면 삭제 불가
-    final isUsed = _itemPaths.values.any((path) => path.contains(id));
-    if (isUsed) throw StateError('Folder is referenced by items');
-
-    final node = _folders.remove(id);
-    if (node != null) {
-      _childrenIndex[node.parentId]?.remove(id);
+    // 0) 자식/아이템 참조 검사 (기존 로직 유지)
+    final children = _childrenIndex[id];
+    if (children != null && children.isNotEmpty) {
+      throw StateError('Folder has subfolders');
     }
+    final isUsed = _itemPaths.values.any((Object? p) {
+      if (p == null) return false;
+      if (p is List) return p.contains(id);
+      if (p is String) return p.split('/').contains(id);
+      return false;
+    });
+
+    if (isUsed) {
+      throw StateError('Folder is referenced by items');
+    }
+
+    // 1) 노드 존재 확인
+    final node = _folders[id];
+    if (node == null) {
+      throw StateError('Folder not found: $id');
+    }
+
+    // 2) 부모의 children 인덱스에서 먼저 제거 (여기가 핵심!)
+    final pid = node.parentId;
+    if (pid != null) {
+      _childrenIndex[pid]?.remove(id);
+      // 필요하면 비어 있으면 버킷 제거
+      if ((_childrenIndex[pid]?.isEmpty ?? false)) {
+        _childrenIndex.remove(pid);
+      }
+    }
+
+    // 3) 이 폴더 키인 버킷도 정리
+    _childrenIndex.remove(id);
+
+    // 4) 마지막에 _folders에서 제거
+    _folders.remove(id);
+
     notifyListeners();
   }
 
@@ -619,6 +644,10 @@ class InMemoryRepo extends ChangeNotifier
   @override
   Future<Item?> getItem(String id) async => _items[id];
 
+  // 동기 캐시 접근용 (UI용)
+  Item? getItemById(String id) => _items[id];
+
+
   @override
   Future<void> upsertItem(Item item) async {
     _items[item.id] = item;
@@ -657,6 +686,61 @@ class InMemoryRepo extends ChangeNotifier
   @override
   Future<String?> nameOf(String itemId) async {
     return _items[itemId]?.name; // 없으면 null
+  }
+// ===== Item partial update (meta) =====
+  void updateItemMeta({
+    required String id,
+
+    // 표시/분류
+    String? displayName,
+    int? minQty,
+    String? unit,
+    String? folder,
+    String? subfolder,
+    String? subsubfolder,
+    String? kind,
+    Map<String, dynamic>? attrs,
+
+    // 환산(롤/하이브리드)
+    String? unitIn,
+    String? unitOut,
+    double? conversionRate,
+    String? conversionMode,
+
+    // 레거시 폴백 메타
+    StockHints? stockHints,
+
+    // attrs 병합 동작 제어
+    bool mergeAttrs = true,
+  }) {
+    final old = _items[id];
+    if (old == null) return;
+
+    // attrs는 기본 병합: 새 값이 있으면 덮어쓰고, 없는 키는 유지
+    final mergedAttrs = (mergeAttrs && attrs != null && old.attrs != null)
+        ? {...old.attrs!, ...attrs}
+        : (attrs ?? old.attrs);
+
+    final updated = old.copyWith(
+      displayName: displayName ?? old.displayName,
+      minQty: minQty ?? old.minQty,
+      unit: unit ?? old.unit,
+      folder: folder ?? old.folder,
+      subfolder: subfolder ?? old.subfolder,
+      subsubfolder: subsubfolder ?? old.subsubfolder,
+      kind: kind ?? old.kind,
+      attrs: mergedAttrs,
+
+      unitIn: unitIn ?? old.unitIn,
+      unitOut: unitOut ?? old.unitOut,
+      conversionRate: conversionRate ?? old.conversionRate,
+      conversionMode: conversionMode ?? old.conversionMode,
+
+      stockHints: stockHints ?? old.stockHints,
+    );
+
+    _items[id] = updated;
+    notifyListeners();
   }
 
   // ============================== OrderRepo ===============================

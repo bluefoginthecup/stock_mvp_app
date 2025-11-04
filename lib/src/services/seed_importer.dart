@@ -465,7 +465,7 @@ class UnifiedSeedImporter {
     // folder 오탈자/대소문자 정규화
     if (m['folder'] is String) {
       final f0 = (m['folder'] as String).trim().toLowerCase();
-      if (f0 == 'semifinished' || f0 == 'semifinished') m['folder'] = 'SemiFinished';
+      if (f0 == 'Semifinished' || f0 == 'semifinished') m['folder'] = 'SemiFinished';
       else if (f0 == 'finished') m['folder'] = 'Finished';
       else if (f0 == 'sub') m['folder'] = 'Sub';
     }

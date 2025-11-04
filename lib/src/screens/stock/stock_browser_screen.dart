@@ -495,15 +495,16 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   context,
                   message: '"${n.name}" 폴더를 삭제하시겠어요?',
                 );
-                if (ok) {
+                if (ok == true) {
                   try {
                     await repo.deleteFolderNode(n.id);
                     if (!mounted) return;
                     setState(() {});
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  } catch (e ,st) {
+                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('삭제 실패: $e')),
-                    );
+                     );
+                    print('삭제실패: $e\n$st');
                   }
                 }
                 break;
