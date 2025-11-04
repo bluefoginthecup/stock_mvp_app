@@ -70,6 +70,23 @@ Future<bool> runStockInOutFlow(
       unitOut: isIn ? item.unitOut : res.enteredUnit,
       conversionRate: res.conversionRate,
     );
+
+
+    // ✅ 변경된 단위/환산 정보까지 함께 표시
+    final msg = StringBuffer('단위/환산 프로필이 업데이트되었습니다: ');
+    if (res.enteredUnit.isNotEmpty && res.targetUnit.isNotEmpty) {
+      msg.write('1 ${res.enteredUnit} = ${res.conversionRate} ${res.targetUnit}');
+    } else {
+      msg.write('환산율 ${res.conversionRate}');
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg.toString()),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   return true;

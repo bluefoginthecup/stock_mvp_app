@@ -317,11 +317,21 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                       ? null
                       : () async {
                     final it = _item!;
+                    final itemRepo = context.read<ItemRepo>();
                     final changed = await runStockInOutFlow(
                       context,
                       isIn: false,
                       item: it,
-                      // updateProfile: yourRepo.updateUnits, // 준비되면 연결
+
+                      updateProfile: ({required String itemId, String? unitIn, String? unitOut, double? conversionRate}) {
+                                               // ← 실제 연결
+                        return itemRepo.updateUnits(       itemId: itemId,
+                          unitIn: unitIn,
+                          unitOut: unitOut,
+                          conversionRate: conversionRate,
+                        );
+                      },
+
                     );
                     if (changed) await _load();
                   },
@@ -336,11 +346,19 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                       ? null
                       : () async {
                     final it = _item!;
+                    final itemRepo = context.read<ItemRepo>(); // 반드시 꺼내기
                     final changed = await runStockInOutFlow(
                       context,
                       isIn: true,
                       item: it,
-                      // updateProfile: yourRepo.updateUnits, // 준비되면 연결
+                      updateProfile: ({required String itemId, String? unitIn, String? unitOut, double? conversionRate}) {
+                        return itemRepo.updateUnits(
+                          itemId: itemId,
+                          unitIn: unitIn,
+                          unitOut: unitOut,
+                          conversionRate: conversionRate,
+                        );
+                      },
                     );
                     if (changed) await _load();
                   },

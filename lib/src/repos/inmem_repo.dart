@@ -692,6 +692,8 @@ class InMemoryRepo extends ChangeNotifier
     final it = _items[itemId];
     if (it == null) return;
 
+    print('[updateUnits] $itemId, unitIn=$unitIn, unitOut=$unitOut, conv=$conversionRate');
+
     final updated = it.copyWith(
       unitIn: unitIn ?? it.unitIn,
       unitOut: unitOut ?? it.unitOut,
