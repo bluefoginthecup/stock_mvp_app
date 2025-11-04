@@ -2,6 +2,7 @@
 import 'dart:async'; // Timer 디바운스용
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../ui/common/ui.dart';
 
 import '../../models/folder_node.dart';
 import '../../models/item.dart';
@@ -540,29 +541,36 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               ),
             );
           },
-        // ✅ 이제 롱프레스 = 재고 강제변경 바로 열기
-                  onLongPress: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => Scaffold(
-                          appBar: AppBar(title: const Text('수량 강제변경')),
-                          body: SafeArea(
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                bottom: MediaQuery.of(context).viewInsets.bottom,
-                                left: 16, right: 16, top: 16,
-                              ),
-                              child: AdjustForm(item: it),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+
+                      // ✅ 롱프레스 = 공통 바텀시트 플로우
+                      onLongPress: () => _openQtyChangeSheetFor(it),
         );
       }).toList(),
     );
   }
+
+
+    // ───────────────────────── 수량 강제변경: 공통 플로우 호출 ─────────────────────────
+    Future<void> _openQtyChangeSheetFor(Item item) async {
+        final itemRepo = context.read<ItemRepo>();
+        await runQtySetFlow(
+          context,
+          currentQty: item.qty,
+          unit: item.unit,
+          minQtyHint: item.minQty,
+          apply: (delta, newQty) async {
+            await itemRepo.adjustQty(
+              itemId: item.id,
+              delta: delta,
+              refType: 'MANUAL',
+              note: 'Browser:setQty ${item.qty} → $newQty',
+            );
+          },
+          onSuccess: () => setState(() {}),       // 목록 갱신
+          successMessage: context.t.btn_save,     // 로컬라이즈 키
+          errorPrefix: context.t.common_error,
+        );
+      }
 
   // ───────────────────────── Folder Children Provider ─────────────────────────
 
