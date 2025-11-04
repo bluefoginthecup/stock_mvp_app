@@ -268,6 +268,32 @@ class L10nEs extends L10n {
   String get settings_language_title => 'Configuración de idioma';
 
   @override
+  String get common_stock_in => '입고';
+
+  @override
+  String get common_stock_out => '출고';
+
+  @override
+  String get label_in_qty => '입고 수량';
+
+  @override
+  String get label_out_qty => '출고 수량';
+
+  @override
+  String get validate_positive_number => '0보다 큰 숫자를 입력하세요';
+
+  @override
+  String get label_in_unit => '입고 단위';
+
+  @override
+  String get label_out_unit => '출고 단위';
+
+  @override
+  String label_conversion_rate(String unitIn, String unitOut) {
+    return '$unitIn → $unitOut 환산비율';
+  }
+
+  @override
   String get stock_list_empty_hint => 'Sin artículos. Toca + para agregar.';
 
   @override

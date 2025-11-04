@@ -171,6 +171,24 @@
   "settings_language_spanish": "Español",
   "settings_language_system": "시스템 기본",
   "settings_language_title": "언어설정",
+
+  "common_stock_in": "입고",
+  "common_stock_out": "출고",
+  "label_in_qty": "입고 수량",
+  "label_out_qty": "출고 수량",
+  "validate_positive_number": "0보다 큰 숫자를 입력하세요",
+  "label_in_unit": "입고 단위",
+  "label_out_unit": "출고 단위",
+  "label_conversion_rate": "{unitIn} → {unitOut} 환산비율",
+  "@label_conversion_rate": {
+    "placeholders": {
+      "unitIn": { "type": "String" },
+      "unitOut": { "type": "String" }
+    }
+  },
+
+
+
   "stock_list_empty_hint": "재고가 없습니다. +로 추가하세요.",
   "stock_list_title": "재고 목록",
   "stock_new_item_title": "새 품목",

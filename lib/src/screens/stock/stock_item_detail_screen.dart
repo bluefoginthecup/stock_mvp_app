@@ -12,12 +12,13 @@ import '../bom/semi_bom_edit_screen.dart';
 
 import '../txns/adjust_form.dart';
 import '../../models/txn.dart' show Txn;
-import '../txns/widgets/txn_row.dart';         // ← 프로젝트 실제 경로로 맞춰주세요
-import 'stock_in_dialog.dart';
+import '../txns/widgets/txn_row.dart';
 import 'stock_item_edit_sheet.dart';
 import 'stock_item_full_edit_screen.dart';
 import 'widgets/item_meta_overview.dart';
 import '../../ui/common/qty_set_sheet.dart';
+import 'stock_inout_dialog.dart';
+import '../../ui/common/inout_flow.dart';
 
 import '../../dev/bom_debug.dart';             // 콘솔 덤프 유틸
 
@@ -312,7 +313,18 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.remove),
                   label: const Text('출고'),
-                  onPressed: (_item == null) ? null : _openAdjust,
+                  onPressed: (_item == null)
+                      ? null
+                      : () async {
+                    final it = _item!;
+                    final changed = await runStockInOutFlow(
+                      context,
+                      isIn: false,
+                      item: it,
+                      // updateProfile: yourRepo.updateUnits, // 준비되면 연결
+                    );
+                    if (changed) await _load();
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -323,27 +335,14 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                   onPressed: (_item == null)
                       ? null
                       : () async {
-                    final result = await showDialog(
-                      context: context,
-                      builder: (_) => StockInDialog(item: _item!),
+                    final it = _item!;
+                    final changed = await runStockInOutFlow(
+                      context,
+                      isIn: true,
+                      item: it,
+                      // updateProfile: yourRepo.updateUnits, // 준비되면 연결
                     );
-                    if (result == null) return;
-
-                    final entered = result['enteredQtyIn'] as double;
-                    final isBulk = result['isBulk'] as bool;
-                    final conv = result['conversionRate'] as double;
-                    final unitIn = result['unitIn'] as String;
-                    final unitOut = result['unitOut'] as String;
-
-                    final qtyOutUnit = isBulk ? entered * conv : entered;
-
-                    final repo = context.read<ItemRepo>();
-                    await repo.adjustQty(
-                      itemId: _item!.id,
-                      delta: qtyOutUnit.round(),
-                      note: '입고 ($unitIn → $unitOut)',
-                    );
-                    await _load();
+                    if (changed) await _load();
                   },
                 ),
               ),
@@ -351,6 +350,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
           ),
         ),
       ),
+
     );
   }
 }

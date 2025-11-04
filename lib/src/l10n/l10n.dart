@@ -571,6 +571,54 @@ abstract class L10n {
   /// **'언어설정'**
   String get settings_language_title;
 
+  /// No description provided for @common_stock_in.
+  ///
+  /// In ko, this message translates to:
+  /// **'입고'**
+  String get common_stock_in;
+
+  /// No description provided for @common_stock_out.
+  ///
+  /// In ko, this message translates to:
+  /// **'출고'**
+  String get common_stock_out;
+
+  /// No description provided for @label_in_qty.
+  ///
+  /// In ko, this message translates to:
+  /// **'입고 수량'**
+  String get label_in_qty;
+
+  /// No description provided for @label_out_qty.
+  ///
+  /// In ko, this message translates to:
+  /// **'출고 수량'**
+  String get label_out_qty;
+
+  /// No description provided for @validate_positive_number.
+  ///
+  /// In ko, this message translates to:
+  /// **'0보다 큰 숫자를 입력하세요'**
+  String get validate_positive_number;
+
+  /// No description provided for @label_in_unit.
+  ///
+  /// In ko, this message translates to:
+  /// **'입고 단위'**
+  String get label_in_unit;
+
+  /// No description provided for @label_out_unit.
+  ///
+  /// In ko, this message translates to:
+  /// **'출고 단위'**
+  String get label_out_unit;
+
+  /// No description provided for @label_conversion_rate.
+  ///
+  /// In ko, this message translates to:
+  /// **'{unitIn} → {unitOut} 환산비율'**
+  String label_conversion_rate(String unitIn, String unitOut);
+
   /// No description provided for @stock_list_empty_hint.
   ///
   /// In ko, this message translates to:
