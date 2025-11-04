@@ -48,6 +48,7 @@ Future<void> adjustQty({
     String? refType,
     String? refId,
     String? note,
+    String? memo,
   }) {
     return inner.adjustQty(
       itemId: itemId,
@@ -55,6 +56,7 @@ Future<void> adjustQty({
       refType: refType,
       refId: refId,
       note: note,
+      memo: memo,
     );
   }
 @override

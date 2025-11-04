@@ -661,7 +661,8 @@ class InMemoryRepo extends ChangeNotifier
     String? refType, // ← 인터페이스에 맞춰 String
     String? refId,   // ← 인터페이스에 맞춰 String
     String? note,
-  }) async {
+    String? memo,
+}) async {
     final it = _items[itemId];
     if (it == null) return;
 
@@ -678,6 +679,7 @@ class InMemoryRepo extends ChangeNotifier
       refType: RefTypeX.fromString(refType ?? 'order'),
       refId: refId ?? 'unknown',
       note: note,
+      memo: memo,
     );
     _txns[txn.id] = txn;
     notifyListeners();
@@ -835,6 +837,7 @@ class InMemoryRepo extends ChangeNotifier
     required String refType,
     required String refId,
     String? note,
+    String? memo,
   }) async {
     final txn = Txn(
       id: _uuid.v4(),
@@ -846,6 +849,7 @@ class InMemoryRepo extends ChangeNotifier
       refType: RefTypeX.fromString(refType),
       refId: refId,
       note: note ?? 'planned inbound',
+      memo: memo,
     );
     _txns[txn.id] = txn;
     notifyListeners();
@@ -881,7 +885,61 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
+    @override
+    Future<void> addOutPlanned({
+      required String itemId,
+      required int qty,
+      required String refType,
+      required String refId,
+      String? note,
+      String? memo,
+    }) async {
+    final txn = Txn(
+      id: _uuid.v4(),
+      ts: DateTime.now(),
+      type: TxnType.out_,
+      status: TxnStatus.planned,
+      itemId: itemId,
+      qty: qty,
+      refType: RefTypeX.fromString(refType),
+      refId: refId,
+      note: note ?? 'planned outbound',
+      memo: memo,
+    );
+    _txns[txn.id] = txn;
+    notifyListeners();
+  }
   @override
+  Future<void> addOutActual({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note,
+    String? memo,
+  }) async {
+    final txn = Txn(
+      id: _uuid.v4(),
+      ts: DateTime.now(),
+      type: TxnType.out_,
+      status: TxnStatus.actual,
+      itemId: itemId,
+      qty: qty,
+      refType: RefTypeX.fromString(refType),
+      refId: refId,
+      note: note ?? 'actual outbound',
+      memo: memo,
+    );
+    _txns[txn.id] = txn;
+
+    final it = _items[itemId];
+    if (it != null) {
+      _items[itemId] = it.copyWith(qty: it.qty - qty); // 출고는 감소
+    }
+    notifyListeners();
+  }
+
+@override
   Future<void> deleteTxn(String txnId) async {
     _txns.remove(txnId);
     notifyListeners();
@@ -889,8 +947,9 @@ class InMemoryRepo extends ChangeNotifier
 
   @override
   Future<void> deletePlannedByRef({required String refType, required String refId}) async {
+    final refEnum = RefTypeX.fromString(refType);
     final toRemove = _txns.values
-        .where((t) => t.refType == refType && t.refId == refId && t.isPlanned == true)
+        .where((t) => t.refType == refEnum && t.refId == refId && t.isPlanned == true)
         .map((t) => t.id)
         .toList();
     for (final id in toRemove) {

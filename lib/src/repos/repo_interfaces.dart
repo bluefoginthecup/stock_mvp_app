@@ -39,7 +39,8 @@ abstract class ItemRepo {
     String? refType,
     String? refId,
     String? note,
-  });
+    String? memo,
+});
 
     /// 단위/환산 프로필 업데이트 (선택적 필드만 변경)
     Future<void> updateUnits({

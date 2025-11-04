@@ -57,6 +57,7 @@ Future<bool> runStockInOutFlow(
     itemId: item.id,
        delta: deltaRounded,
     refType: 'MANUAL',
+    memo: res.memo, // ✅ 메모 전달
     note: [
       isIn ? '입고' : '출고',
       '(${res.enteredUnit} → ${res.targetUnit}, x${res.conversionRate})',

@@ -41,6 +41,7 @@ class Txn {
     String? refId,
     String? note,
     String? sourceKey,
+    String? memo,
   }) {
     return Txn(
       id: id ?? this.id,
@@ -53,6 +54,7 @@ class Txn {
       refId: refId ?? this.refId,
       note: note ?? this.note,
       sourceKey: sourceKey ?? this.sourceKey,
+      memo: memo ?? this.memo,
     );
   }
 
@@ -109,6 +111,8 @@ class Txn {
     String? note,
     DateTime? ts,
     TxnStatus status = TxnStatus.actual, // ★ 기본값 actual
+    String? memo,
+    String? sourceKey,
 
   }) {
     return Txn(
@@ -121,6 +125,9 @@ class Txn {
       refType: refType,
       refId: refId,
       note: note,
+      memo: memo,
+      sourceKey: sourceKey,
+
 
     );
   }
@@ -134,6 +141,8 @@ class Txn {
     String? note,
     DateTime? ts,
     TxnStatus status = TxnStatus.actual, // ★ 기본값 actual
+    String? memo,
+    String? sourceKey,
 
   }) {
     return Txn(
@@ -146,6 +155,8 @@ class Txn {
       refType: refType,
       refId: refId,
       note: note,
+      memo: memo,
+      sourceKey: sourceKey,
     );
   }
 
