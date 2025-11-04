@@ -682,6 +682,25 @@ class InMemoryRepo extends ChangeNotifier
     _txns[txn.id] = txn;
     notifyListeners();
   }
+  @override
+  Future<void> updateUnits({
+    required String itemId,
+    String? unitIn,
+    String? unitOut,
+    double? conversionRate,
+  }) async {
+    final it = _items[itemId];
+    if (it == null) return;
+
+    final updated = it.copyWith(
+      unitIn: unitIn ?? it.unitIn,
+      unitOut: unitOut ?? it.unitOut,
+      conversionRate: conversionRate ?? it.conversionRate,
+    );
+
+    _items[itemId] = updated;
+    notifyListeners();
+  }
 
   @override
   Future<String?> nameOf(String itemId) async {

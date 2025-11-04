@@ -41,6 +41,13 @@ abstract class ItemRepo {
     String? note,
   });
 
+    /// 단위/환산 프로필 업데이트 (선택적 필드만 변경)
+    Future<void> updateUnits({
+      required String itemId,
+      String? unitIn,
+      String? unitOut,
+      double? conversionRate,
+    });
   /// itemId → 사람 읽는 아이템명
   Future<String?> nameOf(String itemId);
 

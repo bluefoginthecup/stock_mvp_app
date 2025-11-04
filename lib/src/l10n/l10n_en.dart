@@ -47,6 +47,12 @@ class L10nEn extends L10n {
   String get common_error => 'error';
 
   @override
+  String get common_warning => '경고';
+
+  @override
+  String get common_continue => '계속';
+
+  @override
   String get dashboard_below_threshold => 'Below threshold';
 
   @override

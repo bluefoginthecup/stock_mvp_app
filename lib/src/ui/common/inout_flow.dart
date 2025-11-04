@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../ui/common/ui.dart';
 
 import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
@@ -31,10 +32,24 @@ Future<bool> runStockInOutFlow(
     unitInHint: item.unitIn,
     unitOutHint: item.unitOut,
     conversionRateHint: item.conversionRate,
+    currentQtyHint: item.qty, // ← 추가
   );
   if (res == null) return false;
 
   final signedDelta = (res.enteredQty * res.conversionRate) * (isIn ? 1 : -1);
+  final nextQty = item.qty + signedDelta.round();
+
+  // ❗ 출고 시 마이너스 방지: Snackbar로 안내 후 취소
+    if (!isIn && nextQty < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('출고 불가: 현재 재고(${item.qty}${item.unit})보다 많이 출고할 수 없습니다.'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return false;
+    }
 
   final itemRepo = context.read<ItemRepo>();
   await itemRepo.adjustQty(

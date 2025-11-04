@@ -169,6 +169,18 @@ abstract class L10n {
   /// **'에러'**
   String get common_error;
 
+  /// No description provided for @common_warning.
+  ///
+  /// In ko, this message translates to:
+  /// **'경고'**
+  String get common_warning;
+
+  /// No description provided for @common_continue.
+  ///
+  /// In ko, this message translates to:
+  /// **'계속'**
+  String get common_continue;
+
   /// No description provided for @dashboard_below_threshold.
   ///
   /// In ko, this message translates to:

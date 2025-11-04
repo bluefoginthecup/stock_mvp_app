@@ -58,6 +58,19 @@ Future<void> adjustQty({
     );
   }
 @override
+Future<void> updateUnits({
+  required String itemId,
+  String? unitIn,
+  String? unitOut,
+  double? conversionRate,
+}) => inner.updateUnits(
+  itemId: itemId,
+  unitIn: unitIn,
+  unitOut: unitOut,
+  conversionRate: conversionRate,
+);
+
+@override
 Future<String?> nameOf(String itemId) => inner.nameOf(itemId);
 
   // ★ 추가: 새 인터페이스 구현

@@ -27,7 +27,8 @@ Future<StockInOutResult?> showStockInOutDialog(
       required String itemUnit,          // 아이템 현재 기본 단위 (ex. M, EA)
       String? unitInHint,                // 기존 unitIn 힌트
       String? unitOutHint,               // 기존 unitOut 힌트
-      double? conversionRateHint,        // 기존 환산율 힌트
+      double? conversionRateHint,       // 기존 환산율 힌트
+      int? currentQtyHint, // int/double 앱 스키마에 맞춰서
     }) {
   final formKey = GlobalKey<FormState>();
 
@@ -38,9 +39,9 @@ Future<StockInOutResult?> showStockInOutDialog(
   String targetUnit = itemUnit; // 실제 qty가 적립/차감되는 단위
 
   final qtyC = TextEditingController(text: '');
-  final convC = TextEditingController(
-    text: (conversionRateHint ?? 1).toString(),
-  );
+  final safeConv = (conversionRateHint ?? 0) > 0 ? conversionRateHint! : 1.0;
+  final convC = TextEditingController(text: safeConv.toString());
+
   final memoC = TextEditingController();
   bool updateProfile = false; // <-- 지역 상태
 
@@ -51,6 +52,11 @@ Future<StockInOutResult?> showStockInOutDialog(
     // 1 enteredUnit = c targetUnit
     return q * c;
   }
+
+    int previewNextQtySigned() {
+        final delta = previewTarget() * (isIn ? 1 : -1);
+        return ((currentQtyHint ?? 0) + delta).round();
+      }
 
   return showDialog<StockInOutResult>(
     context: context,
@@ -131,17 +137,26 @@ Future<StockInOutResult?> showStockInOutDialog(
 
               const SizedBox(height: 12),
               // 미리보기
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  isIn
-                      ? '미리보기: +${previewTarget().toStringAsFixed(2)} $targetUnit'
-                      : '미리보기: -${previewTarget().toStringAsFixed(2)} $targetUnit',
-                  style: Theme.of(ctx).textTheme.bodyMedium,
-                ),
-              ),
+                       Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Text(
+                             isIn
+                                 ? '미리보기: +${previewTarget().toStringAsFixed(2)} $targetUnit'
+                                 : '미리보기: -${previewTarget().toStringAsFixed(2)} $targetUnit',
+                             style: Theme.of(ctx).textTheme.bodyMedium,
+                           ),
+                           const SizedBox(height: 4),
+                           if (currentQtyHint != null) // ✅ 이 위치가 중요함: children 리스트 안에서만 가능
+                             Text(
+                               '변경 후 재고: ${previewNextQtySigned()} $targetUnit',
+                               style: Theme.of(ctx).textTheme.bodyMedium,
+                             ),
+                         ],
+                       ),
 
-              const SizedBox(height: 8),
+
+                       const SizedBox(height: 8),
               TextFormField(
                 controller: memoC,
                 decoration: InputDecoration(
