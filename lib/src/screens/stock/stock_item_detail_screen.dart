@@ -20,6 +20,13 @@ import 'stock_in_dialog.dart';
 
 import '../../dev/bom_debug.dart';             // 콘솔 덤프 유틸
 
+class _LotSummary {
+  final double totalUsableM;
+  final int lotCount;
+  const _LotSummary(this.totalUsableM, this.lotCount);
+}
+
+
 class StockItemDetailScreen extends StatefulWidget {
   final String itemId;
   const StockItemDetailScreen({super.key, required this.itemId});
@@ -362,13 +369,6 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
   Widget build(BuildContext context) {
     final item = _item;
 
-    final totalUsableM = context.select<InMemoryRepo, double>(
-          (r) => r.lotsByItem(item!.id).fold<double>(0.0, (s, l) => s + l.usableQtyM),
-    );
-    final lotCount = context.select<InMemoryRepo, int>(
-          (r) => r.lotsByItem(item!.id).length,
-    );
-
     return Scaffold(
       appBar: AppBar(title: Text(context.t.stock_item_detail_title)),
       body: item == null
@@ -379,63 +379,72 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 아이템 라벨 (경로/이름 표시)
-              Row(
-                children: [
-                  const Icon(Icons.inventory_2),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ItemLabel(
-                      itemId: widget.itemId,
-                      full: true,
-                      maxLines: 2,
-                      softWrap: true,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium,
-                      separator: ' / ',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // 재고 수량 / 단위
-              Row(
-                children: [
-                  // ✅ 재고 칩 롱프레스: 수량 변경 시트
-                  Tooltip(
-                    message: context.t.hint_longpress_to_edit_qty,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(24),
-                      onLongPress: _openQtyChangeSheet,
-                      child: Chip(
-                        avatar: const Icon(Icons.numbers, size: 16),
-                        label: Text(_isLot
-                            ? 'EA 재고: ${item.qty}'
-                            : '${context.t.common_stock}: ${item.qty}'),
-
+          // 아이템 라벨 (경로/이름 표시)
+                        Row(
+                          children: [
+                            const Icon(Icons.inventory_2),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                    child: ItemLabel(
+                                      itemId: widget.itemId,
+                                      full: true,
+                                      maxLines: 2,
+                                      softWrap: true,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context).textTheme.titleMedium,
+                                  separator: ' / ',
+                                ),
+                            ),
+                        ],
                       ),
-                    ),
+                  const SizedBox(height: 12),
+
+                  // 재고 수량 / 단위  롤 합계/개수 (Selector로 안전하게)
+                  Selector<InMemoryRepo, _LotSummary>(
+                    selector: (ctx, repo) {
+                      final lots = repo.lotsByItem(widget.itemId);
+                      final total = lots.fold<double>(0.0, (s, l) => s + l.usableQtyM);
+                      return _LotSummary(total, lots.length);
+                    },
+                    shouldRebuild: (prev, next) =>
+                        prev.totalUsableM != next.totalUsableM || prev.lotCount != next.lotCount,
+                    builder: (ctx, sum, _) {
+                      final it = _item!; // 위에서 item != null 보장
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          Tooltip(
+                            message: context.t.hint_longpress_to_edit_qty,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(24),
+                              onLongPress: _openQtyChangeSheet,
+                              child: Chip(
+                                avatar: const Icon(Icons.numbers, size: 16),
+                                label: Text(_isLot
+                                    ? 'EA 재고: ${it.qty}'
+                                    : '${context.t.common_stock}: ${it.qty}'),
+                              ),
+                            ),
+                          ),
+                          Chip(
+                            avatar: const Icon(Icons.straighten, size: 16),
+                            label: Text('${context.t.item_unit}: ${it.unit}'),
+                          ),
+                          if (_isLot)
+                            Chip(
+                              avatar: const Icon(Icons.linear_scale, size: 16),
+                              label: Text('가용합계: ${_fmtNum(sum.totalUsableM)} m'),
+                            ),
+                          if (_isLot)
+                            Chip(
+                              avatar: const Icon(Icons.inventory, size: 16),
+                              label: Text('롤: ${sum.lotCount}개'),
+                            ),
+                        ],
+                      );
+                    },
                   ),
-                  const SizedBox(width: 8),
-                  Chip(
-                    avatar: const Icon(Icons.straighten, size: 16),
-                    label: Text('${context.t.item_unit}: ${item.unit}'),
-                  ),
-          if (_isLot) ...[
-                           const SizedBox(width: 8),
-                       Chip(
-                         avatar: const Icon(Icons.linear_scale, size: 16),
-                         label: Text('가용합계: ${_fmtNum(totalUsableM)} m'),
-                       ),
-                       const SizedBox(width: 8),
-                       Chip(
-                         avatar: const Icon(Icons.inventory, size: 16),
-                         label: Text('롤: $lotCount개'),
-                       ),
-                     ],
-                ],
-              ),
 
               // ----- 롤 모드 전용 UI -----
               if (_isLot && item != null) ...[

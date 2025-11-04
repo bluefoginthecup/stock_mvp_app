@@ -14,6 +14,9 @@ import '../../ui/common/entity_actions.dart';
 import 'stock_item_detail_screen.dart';
 import '../../utils/item_presentation.dart';
 import '../../services/export_service.dart';
+import '../../ui/common/qty_set_sheet.dart';   // ✅ 공통 바텀시트
+import '../../repos/repo_interfaces.dart';     // ✅ ItemRepo.adjustQty 사용
+
 
 
 class StockBrowserScreen extends StatefulWidget {
@@ -469,7 +472,66 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
              return Text('${it.sku} • ${it.unit}$pathStr');
            },
          ),
-          trailing: Text('${it.qty}'),
+            // ✅ 우측: 수량 표시 + more(액션 시트) 버튼
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                      Text('${it.qty}'),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.more_vert),
+                        tooltip: '아이템 작업',
+                        onPressed: () async {
+                          final action = await showEntityActionsSheet(context);
+                          if (action == null) return;
+
+                          switch (action) {
+                            case EntityAction.rename:
+                              final newName = await showRenameDialog(
+                                context,
+                                initial: it.name,
+                                title: '아이템 이름 변경',
+                              );
+                              if (newName != null &&
+                                  newName.isNotEmpty &&
+                                  newName != it.name) {
+                                await repo.renameItem(id: it.id, newName: newName);
+                                if (!mounted) return;
+                                setState(() {});
+                              }
+                              break;
+
+                            case EntityAction.move:
+                              final dest = await showPathPicker(
+                                context,
+                                childrenProvider: folderChildrenProvider(repo),
+                                title: '아이템 이동',
+                              );
+                              if (dest != null && dest.isNotEmpty) {
+                                await repo.moveEntityToPath(
+                                  MoveRequest(kind: EntityKind.item, id: it.id, pathIds: dest),
+                                );
+                                if (!mounted) return;
+                                setState(() {});
+                              }
+                              break;
+
+                            case EntityAction.delete:
+                              final ok = await showDeleteConfirm(
+                                context,
+                                message: '"${it.name}"을(를) 삭제하시겠어요?',
+                              );
+                              if (ok) {
+                                await repo.deleteItem(it.id);
+                                if (!mounted) return;
+                                setState(() {});
+                              }
+                              break;
+                          }
+                        },
+                      ),
+                    ],
+                  ),
           onTap: () async {
             await Navigator.push(
               context,
@@ -478,52 +540,25 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               ),
             );
           },
-          onLongPress: () async {
-            final action = await showEntityActionsSheet(context);
-            if (action == null) return;
-
-            switch (action) {
-              case EntityAction.rename:
-                final newName = await showRenameDialog(
-                  context,
-                  initial: it.name,
-                  title: '아이템 이름 변경',
-                );
-                if (newName != null && newName.isNotEmpty && newName != it.name) {
-                  await repo.renameItem(id: it.id, newName: newName);
-                  if (!mounted) return;
-                  setState(() {});
-                }
-                break;
-
-              case EntityAction.move:
-                final dest = await showPathPicker(
-                  context,
-                  childrenProvider: folderChildrenProvider(repo),
-                  title: '아이템 이동',
-                );
-                if (dest != null && dest.isNotEmpty) {
-                  await repo.moveEntityToPath( // ✅ 통합 API
-                    MoveRequest(kind: EntityKind.item, id: it.id, pathIds: dest),
-                  );
-                  if (!mounted) return;
-                  setState(() {});
-                }
-                break;
-
-              case EntityAction.delete:
-                final ok = await showDeleteConfirm(
-                  context,
-                  message: '"${it.name}"을(를) 삭제하시겠어요?',
-                );
-                if (ok) {
-                  await repo.deleteItem(it.id);
-                  if (!mounted) return;
-                  setState(() {});
-                }
-                break;
-            }
-          },
+        // ✅ 이제 롱프레스 = 재고 강제변경 바로 열기
+                  onLongPress: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => Scaffold(
+                          appBar: AppBar(title: const Text('수량 강제변경')),
+                          body: SafeArea(
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                bottom: MediaQuery.of(context).viewInsets.bottom,
+                                left: 16, right: 16, top: 16,
+                              ),
+                              child: AdjustForm(item: it),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
         );
       }).toList(),
     );
