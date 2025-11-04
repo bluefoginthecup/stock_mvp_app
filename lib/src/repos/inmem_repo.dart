@@ -858,6 +858,7 @@ class InMemoryRepo extends ChangeNotifier
     required String refType,
     required String refId,
     String? note,
+    String? memo,
   }) async {
     final txn = Txn(
       id: _uuid.v4(),
@@ -869,6 +870,7 @@ class InMemoryRepo extends ChangeNotifier
       refType: RefTypeX.fromString(refType),
       refId: refId,
       note: note ?? 'actual inbound',
+      memo: memo,
     );
     _txns[txn.id] = txn; // ✅ Map 저장
 

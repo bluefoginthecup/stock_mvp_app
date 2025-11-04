@@ -37,7 +37,8 @@ Future<bool> runStockInOutFlow(
   if (res == null) return false;
 
   final signedDelta = (res.enteredQty * res.conversionRate) * (isIn ? 1 : -1);
-  final nextQty = item.qty + signedDelta.round();
+  final deltaRounded = signedDelta.round();
+  final nextQty = item.qty +  signedDelta.round();
 
   // ❗ 출고 시 마이너스 방지: Snackbar로 안내 후 취소
     if (!isIn && nextQty < 0) {
@@ -54,7 +55,7 @@ Future<bool> runStockInOutFlow(
   final itemRepo = context.read<ItemRepo>();
   await itemRepo.adjustQty(
     itemId: item.id,
-    delta: signedDelta.round(), // 내부 qty가 int라면 round 유지
+       delta: deltaRounded,
     refType: 'MANUAL',
     note: [
       isIn ? '입고' : '출고',
@@ -62,6 +63,21 @@ Future<bool> runStockInOutFlow(
       if (res.memo != null) '[${res.memo}]',
     ].join(' '),
   );
+
+   // ✅ 입·출고 완료 스낵바
+   final absDelta = deltaRounded.abs();
+   final doneMsg = isIn
+       ? '입고 완료: $absDelta ${item.unit} (현재 재고 ${nextQty}${item.unit})'
+       : '출고 완료: -$absDelta ${item.unit} (현재 재고 ${nextQty}${item.unit})';
+   ScaffoldMessenger.of(context)
+     ..hideCurrentSnackBar()
+     ..showSnackBar(
+       SnackBar(
+         content: Text(doneMsg),
+         behavior: SnackBarBehavior.floating,
+         duration: const Duration(seconds: 2),
+       ),
+     );
 
   if (res.updateProfile && updateProfile != null) {
     await updateProfile(

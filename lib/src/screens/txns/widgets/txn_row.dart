@@ -107,23 +107,38 @@ class TxnRow extends StatelessWidget {
                       ],
                     ),
                   ),
-          subtitle: Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(fmtYmdHm(t.ts)),
-              reasonBadge,
-              if (customer != null) Text('주문자 $customer'),
-              if (t.refType == RefType.order)
-                Text('주문번호 ${shortId(t.refId)}')
-              else if (t.refType == RefType.work)
-                Text('작업번호 ${shortId(t.refId)}')
-              else if (t.refType == RefType.purchase)
-                  Text('발주번호 ${shortId(t.refId)}')
 
-            ],
-          ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(fmtYmdHm(t.ts)),
+                          reasonBadge,
+                          if (customer != null) Text('주문자 $customer'),
+                          if (t.refType == RefType.order && t.refId != null)
+                            Text('주문번호 ${shortId(t.refId!)}')
+                          else if (t.refType == RefType.work && t.refId != null)
+                            Text('작업번호 ${shortId(t.refId!)}')
+                          else if (t.refType == RefType.purchase && t.refId != null)
+                            Text('발주번호 ${shortId(t.refId!)}'),
+                        ],
+                      ),
+                      if (t.memo != null && t.memo!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '메모: ${t.memo!}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
           trailing: trailing ?? DeleteMoreMenu<Txn>(entity: t),
           dense: true,
           visualDensity: VisualDensity.compact,

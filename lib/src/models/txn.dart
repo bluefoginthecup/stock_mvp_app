@@ -14,6 +14,8 @@ class Txn {
   final String? note;
   final String? sourceKey; // optional memo
 
+  final String? memo;
+
   const Txn({
     required this.id,
     required this.ts,
@@ -25,6 +27,7 @@ class Txn {
     required this.refId,
     this.sourceKey,
     this.note,
+    this.memo,
   }) : assert(qty > 0, 'qty must be > 0');
 
   Txn copyWith({
@@ -70,6 +73,7 @@ class Txn {
       refType: RefType.values.firstWhere((e) => e.name == (json['refType'] as String)),
       refId: json['refId'] as String,
       note: json['note'] as String?,
+      memo: json['memo'] as String?,
     );
   }
 
@@ -83,6 +87,7 @@ class Txn {
         'refType': refType.name,
         'refId': refId,
         'note': note,
+    if (memo != null && memo!.isNotEmpty) 'memo': memo, // ✅ 추가
       };
 
   @override
