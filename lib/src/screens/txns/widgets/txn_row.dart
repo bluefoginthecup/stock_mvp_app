@@ -44,7 +44,7 @@ class TxnRow extends StatelessWidget {
 
     if (t.refType == RefType.order && t.refId != null && orderRepo != null) {
       try {
-        final r  = await orderRepo.customerNameOf(t.refId!);
+        final r  = await orderRepo.customerNameOf(t.refId);
         final rt = r?.trim();
         if (rt != null && rt.isNotEmpty) customer = rt;
       } catch (_) {}

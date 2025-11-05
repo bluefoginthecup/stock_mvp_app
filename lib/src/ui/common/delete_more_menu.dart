@@ -7,7 +7,7 @@ import '../../repos/inmem_repo.dart';
 
 import '../../models/order.dart';
 import '../../models/work.dart';
-import '../../models/purchase.dart';
+import '../../models/purchase_order.dart'; // ✅ 변경: purchase.dart → purchase_order.dart
 import '../../models/txn.dart';
 
 import '../common/ui.dart'; // confirmDelete, showUndoSnackBar
@@ -15,7 +15,7 @@ import '../common/ui.dart'; // confirmDelete, showUndoSnackBar
 enum _MoreAction { softDelete, hardDelete }
 
 /// 더보기(⋯) 메뉴에 "삭제" 액션을 공통 제공하는 위젯.
-/// T: Order / Work / Purchase / Txn
+/// T: Order / Work / PurchaseOrder / Txn
 class DeleteMoreMenu<T> extends StatelessWidget {
   final T entity;
 
@@ -34,7 +34,7 @@ class DeleteMoreMenu<T> extends StatelessWidget {
       return ('주문', '이 주문을 삭제할까요?', '이 주문을 완전히 삭제할까요? (되돌릴 수 없음)', '주문을 삭제했어요');
     } else if (entity is Work) {
       return ('작업계획', '이 작업을 삭제할까요? (진행/완료면 취소 처리)', '이 작업을 완전히 삭제할까요? (되돌릴 수 없음)', '작업계획을 삭제했어요');
-    } else if (entity is Purchase) {
+    } else if (entity is PurchaseOrder) {
       return ('발주', '이 발주를 삭제할까요?', '이 발주를 완전히 삭제할까요? (되돌릴 수 없음)', '발주를 삭제했어요');
     } else if (entity is Txn) {
       return ('입출고 기록', '이 기록을 삭제할까요?', '이 기록을 완전히 삭제할까요? (되돌릴 수 없음)', '입출고 기록을 삭제했어요');
@@ -51,13 +51,13 @@ class DeleteMoreMenu<T> extends StatelessWidget {
       confirmLabel: hard ? '완전 삭제' : '삭제',
     );
     if (!confirmed) return;
-     // ✅ 콜백에서 context를 쓰지 않기 위해, 필요한 의존성/레포를 "지금" 캡처해둔다.
-     final inv = context.read<InventoryService>();
-     final orderRepo    = context.read<OrderRepo>();
-     final workRepo     = context.read<WorkRepo>();
-     final purchaseRepo = context.read<PurchaseRepo>();
-     final inmem        = context.read<InMemoryRepo>(); // Txn 복원용
 
+    // ✅ 필요한 의존성/레포를 "지금" 캡처
+    final inv          = context.read<InventoryService>();
+    final orderRepo    = context.read<OrderRepo>();
+    final workRepo     = context.read<WorkRepo>();
+    final poRepo       = context.read<PurchaseOrderRepo>(); // ✅ 변경: PurchaseRepo → PurchaseOrderRepo
+    final inmem        = context.read<InMemoryRepo>(); // Txn 복원용
 
     if (entity is Order) {
       final id = (entity as Order).id;
@@ -68,67 +68,66 @@ class DeleteMoreMenu<T> extends StatelessWidget {
         showUndoSnackBar(context, message: undoMsg, onUndo: () async {
           if (snap != null) {
             await orderRepo.upsertOrder(snap.copyWith(isDeleted: false));
-
           }
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('주문을 완전 삭제했어요')),
+        );
+      }
+      onChanged?.call();
+
+    } else if (entity is Work) {
+      final id = (entity as Work).id;
+      final snap = await workRepo.getWorkById(id);
+
+      await inv.deleteWorkSafe(id, hard: hard);
+      if (!hard) {
+        showUndoSnackBar(context, message: undoMsg, onUndo: () async {
+          if (snap != null) {
+            await workRepo.updateWork(snap.copyWith(isDeleted: false));
+          }
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('작업계획을 완전 삭제했어요')),
+        );
+      }
+      onChanged?.call();
+
+    } else if (entity is PurchaseOrder) {
+      final id = (entity as PurchaseOrder).id;
+      final snap = await poRepo.getPurchaseOrderById(id);
+
+      // NOTE: InventoryService 내부 메서드명이 deletePurchase 인 상태라면 유지
+      // (이미 PurchaseOrderRepo로 교체해 두었다면 내부에서 soft/hard 처리)
+      await inv.deletePurchase(id, hard: hard);
+
+      if (!hard) {
+        showUndoSnackBar(context, message: undoMsg, onUndo: () async {
+          if (snap != null) {
+            await poRepo.updatePurchaseOrder(snap.copyWith(isDeleted: false)); // ✅ 변경
+          }
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('발주를 완전 삭제했어요')),
+        );
+      }
+      onChanged?.call();
+
+    } else if (entity is Txn) {
+      final t = entity as Txn;
+
+      await inv.deleteTxn(t.id); // 혹은 txnRepo를 직접 써도 됨
+
+      // Txn은 하드삭제만. Undo로 "기록 복원" 제공
+      showUndoSnackBar(context, message: undoMsg, onUndo: () {
+        inmem.restoreTxnForUndo(t);
       });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('주문을 완전 삭제했어요')),
-      );
+      onChanged?.call();
     }
-    onChanged?.call();
-
-  } else if (entity is Work) {
-    final id = (entity as Work).id;
-    final snap = await workRepo.getWorkById(id);
-
-    await inv.deleteWorkSafe(id, hard: hard);
-    if (!hard) {
-      showUndoSnackBar(context, message: undoMsg, onUndo: () async {
-        if (snap != null) {
-          await workRepo.updateWork(snap.copyWith(isDeleted: false));
-
-        }
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('작업계획을 완전 삭제했어요')),
-      );
-    }
-    onChanged?.call();
-
-  } else if (entity is Purchase) {
-    final id = (entity as Purchase).id;
-    final snap = await purchaseRepo.getPurchaseById(id);
-
-    await inv.deletePurchase(id, hard: hard);
-    if (!hard) {
-      showUndoSnackBar(context, message: undoMsg, onUndo: () async {
-        if (snap != null) {
-          await purchaseRepo.updatePurchase(snap.copyWith(isDeleted: false));
-
-        }
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('발주를 완전 삭제했어요')),
-      );
-    }
-    onChanged?.call();
-
-  } else if (entity is Txn) {
-    final t = entity as Txn;
-
-    await inv.deleteTxn(t.id); // or use a captured txnRepo if you prefer
-
-    // Txn은 하드삭제만. Undo로 "기록 복원"만 제공 (정책에 맞게)
-    showUndoSnackBar(context, message: undoMsg, onUndo: () {
-      inmem.restoreTxnForUndo(t);
-
-    });
-    onChanged?.call();
   }
-}
 
   @override
   Widget build(BuildContext context) {

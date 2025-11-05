@@ -6,7 +6,8 @@ import '../models/types.dart';
 import '../models/order.dart';
 import '../models/txn.dart';
 import '../models/work.dart';
-import '../models/purchase.dart';
+import '../models/purchase_order.dart';
+import '../models/purchase_line.dart';
 import '../repos/repo_interfaces.dart';
 
 // 🔑 sourceKey 기반 upsert/lookup 확장
@@ -16,7 +17,7 @@ class OrderPlanningService {
   final ItemRepo items;
   final OrderRepo orders;
   final WorkRepo works;
-  final PurchaseRepo purchases;
+  final PurchaseOrderRepo purchases;
   final TxnRepo txns;
 
   final _uuid = const Uuid();

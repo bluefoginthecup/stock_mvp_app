@@ -75,8 +75,8 @@ class WorkDetailScreen extends StatelessWidget {
 
           // 날짜 포맷(로케일 반영)
           final locale = Localizations.localeOf(context).toString();
-          final createdAtText = (w.createdAt != null)
-              ? DateFormat.yMMMd(locale).add_Hms().format(w.createdAt!)
+          final createdAtText = (w.createdAt! ==null)
+              ? DateFormat.yMMMd(locale).add_Hms().format(w.createdAt)
               : null;
 
           return Padding(

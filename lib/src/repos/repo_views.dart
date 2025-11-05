@@ -3,10 +3,13 @@ import '../models/order.dart';
 import '../models/txn.dart';
 import '../models/bom.dart';
 import '../models/work.dart';
-import '../models/purchase.dart';
+import '../models/purchase_order.dart';
+import '../models/purchase_line.dart';
+
 import 'repo_interfaces.dart';
 import 'inmem_repo.dart';
 import '../models/types.dart';
+
 
 class ItemRepoView implements ItemRepo {
 final InMemoryRepo inner;
@@ -212,27 +215,29 @@ class WorkRepoView implements WorkRepo {
 
 }
 
-// --- PurchaseRepoView ---
-class PurchaseRepoView implements PurchaseRepo {
-  final InMemoryRepo _m;
-  PurchaseRepoView(this._m);
-
-  @override Future<String> createPurchase(Purchase p) => _m.createPurchase(p);
-  @override Future<Purchase?> getPurchaseById(String id) => _m.getPurchaseById(id);
-  @override Stream<List<Purchase>> watchAllPurchases() => _m.watchAllPurchases();
-  @override Future<void> updatePurchase(Purchase p) => _m.updatePurchase(p);
+  ///--- PurchaseRepoView ---///
+///
+class PurchaseRepoView implements PurchaseOrderRepo { // ✅ 표준 인터페이스 구현
+  final InMemoryRepo _repo;
+  PurchaseRepoView(this._repo);
 
   @override
-  Future<void> completePurchase(String id) => _m.completePurchase(id);
+  Future<String> createPurchaseOrder(PurchaseOrder po) => _repo.createPurchaseOrder(po);
   @override
-    Future<void> updatePurchaseStatus(String id, PurchaseStatus status) => _m.updatePurchaseStatus(id, status);
-
-    @override
-    Future<void> cancelPurchase(String id) => _m.cancelPurchase(id);
-// 🧹 삭제 위임
-    @override
-    Future<void> softDeletePurchase(String purchaseId) => _m.softDeletePurchase(purchaseId);
-    @override
-    Future<void> hardDeletePurchase(String purchaseId) => _m.hardDeletePurchase(purchaseId);
-
+  Future<void> updatePurchaseOrder(PurchaseOrder po) => _repo.updatePurchaseOrder(po);
+  @override
+  Future<void> updatePurchaseOrderStatus(String id, PurchaseOrderStatus s) =>
+      _repo.updatePurchaseOrderStatus(id, s);
+  @override
+  Stream<List<PurchaseOrder>> watchAllPurchaseOrders() => _repo.watchAllPurchaseOrders();
+  @override
+  Future<PurchaseOrder?> getPurchaseOrderById(String id) => _repo.getPurchaseOrderById(id);
+  @override
+  Future<void> softDeletePurchaseOrder(String id) => _repo.softDeletePurchaseOrder(id);
+  @override
+  Future<void> hardDeletePurchaseOrder(String id) => _repo.hardDeletePurchaseOrder(id);
+  @override
+  Future<void> upsertLines(String id, List<PurchaseLine> lines) => _repo.upsertLines(id, lines);
+  @override
+  Future<List<PurchaseLine>> getLines(String id) => _repo.getLines(id);
 }

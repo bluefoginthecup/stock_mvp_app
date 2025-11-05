@@ -35,6 +35,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
   late TextEditingController unitOutC;
   late TextEditingController conversionRateC;
   String conversionMode = 'fixed'; // fixed | lot
+  late TextEditingController supplierC;
 
   Item? it;
 
@@ -62,6 +63,11 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       unitInC = TextEditingController();
       unitOutC = TextEditingController();
       conversionRateC = TextEditingController();
+      if (it != null) {
+        supplierC = TextEditingController(text: it!.supplierName ?? '');
+      } else {
+        supplierC = TextEditingController();
+      }
       return;
     }
 
@@ -89,6 +95,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     unitOutC = TextEditingController(text: i.unitOut);
     conversionRateC = TextEditingController(text: i.conversionRate.toString());
     conversionMode = i.conversionMode;
+    supplierC = TextEditingController(text: i.supplierName ?? '');
   }
 
   @override
@@ -107,6 +114,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     unitInC.dispose();
     unitOutC.dispose();
     conversionRateC.dispose();
+    supplierC.dispose();
     super.dispose();
   }
 
@@ -151,6 +159,8 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       kind: kindC.text.trim().isEmpty ? null : kindC.text.trim(),
       attrs: parsedAttrs, // mergeAttrs=true 기본 → 기존 키 유지되며 덮어쓰기
 
+      // 공급처
+      supplierName: supplierC.text.trim().isEmpty ? null : supplierC.text.trim(),
       // 환산
       unitIn: unitInC.text.trim().isEmpty ? null : unitInC.text.trim(),
       unitOut: unitOutC.text.trim().isEmpty ? null : unitOutC.text.trim(),
@@ -233,6 +243,12 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
               Text('분류/속성', style: text.titleSmall),
               const SizedBox(height: 8),
               TextFormField(controller: kindC, decoration: _dec('kind (Finished / SemiFinished / Sub ...)')),
+              // 아이템 편집 화면
+              // build 안
+              TextFormField(
+                controller: supplierC,
+                decoration: const InputDecoration(labelText: '공급처(상호)'),
+              ),
               TextFormField(
                 controller: attrsC,
                 decoration: _dec('attrs (JSON)'),

@@ -13,6 +13,9 @@ import 'src/utils/item_presentation.dart';
 
 import 'src/ui/nav/item_detail_opener.dart';
 import 'src/services/seed_importer.dart';
+import 'src/providers/cart_manager.dart';
+import 'src/models/purchase_order.dart'; // ⬅️ 추가
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // ✅ rootBundle 사용 시 필수
@@ -45,6 +48,8 @@ Future<void> main() async {
 
         // 변경 통지자는 단 하나: InMemoryRepo (ChangeNotifier)
         ChangeNotifierProvider<InMemoryRepo>.value(value: inmem),
+        ChangeNotifierProvider(create: (_) => CartManager()),
+
 
         // 화면엔 인터페이스(비-Listenable)로 주입 → Provider OK
         Provider<ItemRepo>(create: (ctx) => ItemRepoView(ctx.read<InMemoryRepo>())),
@@ -52,7 +57,20 @@ Future<void> main() async {
         Provider<TxnRepo>(create: (ctx) => TxnRepoView(ctx.read<InMemoryRepo>())),
         Provider<BomRepo>(create: (ctx) => BomRepoView(ctx.read<InMemoryRepo>())),
         Provider<WorkRepo>(create: (ctx) => WorkRepoView(ctx.read<InMemoryRepo>())),
-        Provider<PurchaseRepo>(create: (ctx) => PurchaseRepoView(ctx.read<InMemoryRepo>())),
+
+        // 1) Repo 파사드(비-Listenable) 주입
+        Provider<PurchaseOrderRepo>(
+          create: (ctx) => PurchaseRepoView(ctx.read<InMemoryRepo>()),
+        ),
+
+// 2) 목록 갱신은 StreamProvider로 구독
+        StreamProvider<List<PurchaseOrder>>(
+          create: (ctx) => ctx.read<PurchaseOrderRepo>().watchAllPurchaseOrders(),
+          initialData: const [],
+        ),
+
+
+
         Provider<ItemDetailOpener>(create: (_) => AppItemDetailOpener()),
 
         // ItemPathProvider는 "비-Listenable 파사드"로 주입
@@ -64,7 +82,7 @@ Future<void> main() async {
         Provider<InventoryService>(
           create: (ctx) => InventoryService(
             works: ctx.read<WorkRepo>(),
-            purchases: ctx.read<PurchaseRepo>(),
+            purchases: ctx.read<PurchaseOrderRepo>(),
             txns: ctx.read<TxnRepo>(),
             boms: ctx.read<BomRepo>(),
             orders: ctx.read<OrderRepo>(),

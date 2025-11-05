@@ -7,9 +7,10 @@ import '../models/txn.dart';
 import '../models/bom.dart';
 import '../models/types.dart';
 import '../models/work.dart';
-import '../models/purchase.dart';
+import '../repos/repo_interfaces.dart'; // ✅ 인터페이스(추상클래스)들
+import '../models/purchase_order.dart'; // ✅ 실제 모델 타입
+import '../models/purchase_line.dart';  // ✅ 실제 모델 타입
 
-import 'repo_interfaces.dart';
 import 'dart:async'; // ✅ StreamController 사용을 위해 필요
 
 import '../models/folder_node.dart';
@@ -29,7 +30,7 @@ class MoveRequest {
 }
 
 class InMemoryRepo extends ChangeNotifier
-    implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseRepo, ItemPathProvider {
+    implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseOrderRepo {
   final _uuid = const Uuid();
   final Map<String, Item> _items = {};
   final Map<String, Order> _orders = {};
@@ -729,6 +730,7 @@ class InMemoryRepo extends ChangeNotifier
     String? unitOut,
     double? conversionRate,
     String? conversionMode,
+    String? supplierName, // ← 추가 (nullable 의미: 전달 시에만 변경)
 
     // 레거시 폴백 메타
     StockHints? stockHints,
@@ -760,6 +762,7 @@ class InMemoryRepo extends ChangeNotifier
       conversionMode: conversionMode ?? old.conversionMode,
 
       stockHints: stockHints ?? old.stockHints,
+      supplierName: supplierName ?? old.supplierName,
     );
 
     _items[id] = updated;
@@ -1236,74 +1239,74 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
-  // ----------------- PurchaseRepo -----------------
-  final _purchases = <String, Purchase>{};
+  // ----------------- PurchaseOrder -----------------
+  final _po = <String, PurchaseOrder>{};
+  final _poLines = <String, List<PurchaseLine>>{}; // key: orderId
 
   @override
-  Future<String> createPurchase(Purchase p) async {
-    _purchases[p.id] = p;
+  Future<String> createPurchaseOrder(PurchaseOrder p) async {
+    _po[p.id] = p;
+    _poLines[p.id] = _poLines[p.id] ?? <PurchaseLine>[];
     notifyListeners();
     return p.id;
   }
 
   @override
-  Future<Purchase?> getPurchaseById(String id) async => _purchases[id];
+  Future<void> updatePurchaseOrder(PurchaseOrder p) async {
+    _po[p.id] = p.copyWith(); // updatedAt 갱신 로직은 모델에서 처리
+    notifyListeners();
+  }
 
   @override
-  Stream<List<Purchase>> watchAllPurchases() {
-    final c = StreamController<List<Purchase>>.broadcast();
-    void emit() => c.add(_purchases.values.where((p) => p.isDeleted != true).toList());
+  Future<void> updatePurchaseOrderStatus(String id, PurchaseOrderStatus status) async {
+    final cur = _po[id];
+    if (cur == null) return;
+    _po[id] = cur.copyWith(status: status);
+    notifyListeners();
+  }
+
+  @override
+  Stream<List<PurchaseOrder>> watchAllPurchaseOrders() {
+    final c = StreamController<List<PurchaseOrder>>.broadcast();
+    void emit() => c.add(_po.values.where((e)=>!e.isDeleted).toList());
     c.onListen = emit;
-    final listener = () => emit();
-    addListener(listener);
-    c.onCancel = () => removeListener(listener);
+    final l = () => emit();
+    addListener(l);
+    c.onCancel = () => removeListener(l);
     return c.stream;
   }
 
   @override
-  Future<void> updatePurchase(Purchase p) async {
-    _purchases[p.id] = p;
+  Future<PurchaseOrder?> getPurchaseOrderById(String id) async => _po[id];
+
+  @override
+  Future<void> softDeletePurchaseOrder(String id) async {
+    final cur = _po[id];
+    if (cur == null) return;
+    _po[id] = cur.copyWith(isDeleted: true);
     notifyListeners();
   }
 
   @override
-  Future<void> updatePurchaseStatus(String id, PurchaseStatus status) async {
-    final p = _purchases[id];
-    if (p == null) return;
-    _purchases[id] = p.copyWith(status: status, updatedAt: DateTime.now());
+  Future<void> hardDeletePurchaseOrder(String id) async {
+    _po.remove(id);
+    _poLines.remove(id);
+    notifyListeners();
+  }
+
+// ---- Lines ----
+  @override
+  Future<void> upsertLines(String orderId, List<PurchaseLine> lines) async {
+    final list = _poLines[orderId] ?? <PurchaseLine>[];
+    // 단순 대체(필요시 merge로 바꿔도 됨)
+    _poLines[orderId] = lines;
     notifyListeners();
   }
 
   @override
-  Future<void> cancelPurchase(String id) async {
-    await updatePurchaseStatus(id, PurchaseStatus.canceled);
-  }
+  Future<List<PurchaseLine>> getLines(String orderId) async =>
+      List.unmodifiable(_poLines[orderId] ?? const <PurchaseLine>[]);
 
-  // ===== PurchaseRepo.completePurchase =====
-  @override
-  Future<void> completePurchase(String id) async {
-    final p = _purchases[id];
-    if (p == null) return;
-    if (p.status == PurchaseStatus.received) return;
-
-    // 상태 업데이트
-    _purchases[id] = p.copyWith(status: PurchaseStatus.received, updatedAt: DateTime.now());
-    notifyListeners();
-  }
-
-  @override
-  Future<void> softDeletePurchase(String purchaseId) async {
-    final p = _purchases[purchaseId];
-    if (p == null) return;
-    _purchases[purchaseId] = p.copyWith(isDeleted: true, updatedAt: DateTime.now());
-    notifyListeners();
-  }
-
-  @override
-  Future<void> hardDeletePurchase(String purchaseId) async {
-    _purchases.remove(purchaseId);
-    notifyListeners();
-  }
 
   // (하위호환) 폴더 전용 이동 → 통합 API 위임
   @Deprecated('Use moveEntityToPath instead.')

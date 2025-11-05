@@ -69,6 +69,11 @@ class ItemMetaOverview extends StatelessWidget {
             kv('subfolder', item.subfolder ?? '-'),
             kv('subsubfolder', item.subsubfolder ?? '-'),
 
+             const SizedBox(height: 8),
+             // 2-1) 공급처
+             kv('공급처', item.supplierName ?? '-'),
+
+
             const SizedBox(height: 8),
             // 3) 재고/임계치
             kv('minQty', item.minQty.toString(), mono: true),

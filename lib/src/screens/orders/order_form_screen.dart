@@ -143,7 +143,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       items: context.read<ItemRepo>(),
       orders: context.read<OrderRepo>(),
       works: context.read<WorkRepo>(),
-      purchases: context.read<PurchaseRepo>(),
+      purchases: context.read<PurchaseOrderRepo>(),
       txns: context.read<TxnRepo>(),
     );
 

@@ -4,7 +4,8 @@ import '../models/order.dart';
 import '../models/txn.dart';
 import '../models/bom.dart';
 import '../models/work.dart';
-import '../models/purchase.dart';
+import '../models/purchase_order.dart';
+import '../models/purchase_line.dart';
 import '../models/types.dart';
 
 /// 공통 규칙:
@@ -146,25 +147,16 @@ abstract class WorkRepo {
   Future<void> hardDeleteWork(String workId);
 }
 
-// Purchase 전용 — 메서드 이름에 Purchase 접두사
-abstract class PurchaseRepo {
-  Future<String> createPurchase(Purchase p);
-  Future<Purchase?> getPurchaseById(String id);
-  Stream<List<Purchase>> watchAllPurchases();
-  Future<void> updatePurchase(Purchase p);
-  Future<void> completePurchase(String id);
+abstract class PurchaseOrderRepo {
+  Future<String> createPurchaseOrder(PurchaseOrder po);
+  Future<void> updatePurchaseOrder(PurchaseOrder po);
+  Future<void> updatePurchaseOrderStatus(String id, PurchaseOrderStatus status);
+  Stream<List<PurchaseOrder>> watchAllPurchaseOrders();
+  Future<PurchaseOrder?> getPurchaseOrderById(String id);
+  Future<void> softDeletePurchaseOrder(String id);
+  Future<void> hardDeletePurchaseOrder(String id);
 
-  /// 상태만 변경(재고 반영 없음). 예) planned → ordered
-  Future<void> updatePurchaseStatus(String id, PurchaseStatus status);
-
-  /// 선택: 편의 메서드
-  Future<void> cancelPurchase(String id) =>
-      updatePurchaseStatus(id, PurchaseStatus.canceled);
-
-  // 🧹 삭제 정책
-  /// 기본: 소프트 삭제(isDeleted=true)로 숨김
-  Future<void> softDeletePurchase(String purchaseId);
-
-  /// 관리용: 하드 삭제
-  Future<void> hardDeletePurchase(String purchaseId);
+  // Lines
+  Future<void> upsertLines(String orderId, List<PurchaseLine> lines);
+  Future<List<PurchaseLine>> getLines(String orderId);
 }

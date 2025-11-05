@@ -1,27 +1,48 @@
+// lib/src/screens/purchases/purchase_detail_screen.dart
+import 'package:flutter/material.dart';
 import '../../repos/repo_interfaces.dart';
-import '../../models/purchase.dart';
-import '../../models/types.dart';
+import '../../models/purchase_order.dart';
 import '../../ui/common/ui.dart';
 
 class PurchaseDetailScreen extends StatelessWidget {
-  final PurchaseRepo repo;
-  final Purchase purchase;
-  const PurchaseDetailScreen({super.key, required this.repo, required this.purchase});
+  final PurchaseOrderRepo repo;
+  final PurchaseOrder order;
 
-  PurchaseStatus _next(PurchaseStatus s) {
+  const PurchaseDetailScreen({
+    super.key,
+    required this.repo,
+    required this.order,
+  });
+
+  PurchaseOrderStatus _next(PurchaseOrderStatus s) {
     switch (s) {
-      case PurchaseStatus.planned: return PurchaseStatus.ordered;
-      case PurchaseStatus.ordered: return PurchaseStatus.received;
-      case PurchaseStatus.received:
-      case PurchaseStatus.canceled: return s;
+      case PurchaseOrderStatus.draft:
+        return PurchaseOrderStatus.ordered;
+      case PurchaseOrderStatus.ordered:
+        return PurchaseOrderStatus.received;
+      case PurchaseOrderStatus.received:
+      case PurchaseOrderStatus.canceled:
+        return s;
+    }
+  }
+
+  String _statusLabel(BuildContext ctx, PurchaseOrderStatus s) {
+    // 필요하면 L10n으로 치환하세요.
+    switch (s) {
+      case PurchaseOrderStatus.draft:    return '임시';
+      case PurchaseOrderStatus.ordered:  return '발주됨';
+      case PurchaseOrderStatus.received: return '입고완료';
+      case PurchaseOrderStatus.canceled: return '취소됨';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final p = purchase;
-    final canNext = p.status != PurchaseStatus.received && p.status != PurchaseStatus.canceled;
+    final p = order;
+    final canNext = p.status != PurchaseOrderStatus.received &&
+        p.status != PurchaseOrderStatus.canceled;
     final next = _next(p.status);
+
     return Scaffold(
       appBar: AppBar(title: Text(context.t.purchase_detail_title)),
       body: Padding(
@@ -32,55 +53,53 @@ class PurchaseDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(context.t.purchase_detail_item(p.itemId), style: Theme.of(context).textTheme.titleLarge),
+                // 기본 정보
+                Text(
+                  p.supplierName?.isNotEmpty == true
+                      ? '공급처: ${p.supplierName}'
+                      : '공급처: (미지정)',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 8),
-            Text(context.t.purchase_detail_id(p.id)),
-                            Text(context.t.purchase_detail_qty(p.qty)),
-                            if (p.vendorId != null)
-                              Text(context.t.purchase_detail_vendor(p.vendorId!)),
-                          if (p.note != null)
-                            Text(context.t.purchase_detail_note(p.note!)),
+                Text('발주 ID: ${p.id}'),
+                if (p.eta != null) Text('ETA: ${p.eta}'),
 
-      const SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Text(context.t.field_status_label),
-                            const SizedBox(width: 6),
-                            Chip(
-                                  label: Text(
-                                    // enum → 라벨 (Labels 없으면 아래 코멘트 참고)
-                                    Labels.purchaseStatus(context, p.status),
-                              ),
-                        ),
+                    const SizedBox(width: 6),
+                    Chip(label: Text(_statusLabel(context, p.status))),
                   ],
                 ),
+
                 const Spacer(),
+
+                // 액션 버튼들
                 Row(
                   children: [
                     Expanded(
                       child: ElevatedButton(
                         onPressed: canNext
-                            ? () => repo.updatePurchase(
-                          p.copyWith(status: next, updatedAt: DateTime.now()),
-                        )
+                            ? () => repo.updatePurchaseOrderStatus(p.id, next)
                             : null,
-    child: Text(
-                              switch (p.status) {
-                                PurchaseStatus.planned  => context.t.purchase_action_order,
-                                PurchaseStatus.ordered  => context.t.purchase_action_receive,
-                                _                        => context.t.purchase_already_received,
-                              },
-                            )
+                        child: Text(
+                          switch (p.status) {
+                            PurchaseOrderStatus.draft   => context.t.purchase_action_order,
+                            PurchaseOrderStatus.draft => context.t.purchase_action_order,
+                            PurchaseOrderStatus.ordered => context.t.purchase_action_receive,
+                            _                           => context.t.purchase_already_received,
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: p.status == PurchaseStatus.received
+                        onPressed: p.status == PurchaseOrderStatus.received
                             ? null
-                            : () => repo.updatePurchase(
-                          p.copyWith(status: PurchaseStatus.canceled, updatedAt: DateTime.now()),
-                        ),
+                            : () => repo.updatePurchaseOrderStatus(
+                            p.id, PurchaseOrderStatus.canceled),
                         child: Text(context.t.common_cancel),
                       ),
                     ),

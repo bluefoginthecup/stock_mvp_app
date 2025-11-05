@@ -27,6 +27,9 @@ class Item {
   /// 레거시: 초기 임포트용 메타(존치, 폴백 소스)
   final StockHints? stockHints;
 
+  /// 거래처
+  final String? supplierName;
+
   Item({
     required this.id,
     required this.name,
@@ -40,6 +43,8 @@ class Item {
     required this.qty,
     this.kind,
     this.attrs,
+    this.supplierName,
+
 
     // 신규 환산 필드 (옵션 파라미터 + 합리적 기본값)
     String? unitIn,
@@ -73,6 +78,8 @@ class Item {
     String? conversionMode,
 
     StockHints? stockHints,
+    String? supplierName,
+
   }) {
     final baseUnit = unit ?? this.unit;
     return Item(
@@ -96,6 +103,7 @@ class Item {
       conversionMode: conversionMode ?? this.conversionMode,
 
       stockHints: stockHints ?? this.stockHints,
+      supplierName: supplierName ?? this.supplierName,
     );
   }
 
@@ -149,6 +157,7 @@ class Item {
       conversionMode: convMode,
 
       stockHints: hints,
+      supplierName: json['supplierName'] as String?,
     );
   }
 
@@ -174,6 +183,7 @@ class Item {
 
     // 레거시 보존(있을 때만)
     if (stockHints != null) 'stockHints': stockHints!.toJson(),
+    'supplierName': supplierName,
   };
 }
 
