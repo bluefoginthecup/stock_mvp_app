@@ -1266,8 +1266,11 @@ class InMemoryRepo extends ChangeNotifier
   @override
   Stream<List<PurchaseOrder>> watchAllPurchaseOrders() {
     final c = StreamController<List<PurchaseOrder>>.broadcast();
-    void emit() => c.add(_po.values.where((e)=>!e.isDeleted).toList());
-    c.onListen = emit;
+    void emit() {
+      final list = _po.values.where((e) => !e.isDeleted).toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)); // ✅ 최신 수정순
+      c.add(list);
+    }c.onListen = emit;
     final l = () => emit();
     addListener(l);
     c.onCancel = () => removeListener(l);
@@ -1301,9 +1304,13 @@ class InMemoryRepo extends ChangeNotifier
 // ---- Lines ----
   @override
   Future<void> upsertLines(String orderId, List<PurchaseLine> lines) async {
-    final list = _poLines[orderId] ?? <PurchaseLine>[];
-    // 단순 대체(필요시 merge로 바꿔도 됨)
-    _poLines[orderId] = lines;
+    // 버킷 보장
+    _poLines[orderId] = List<PurchaseLine>.from(lines); // ✅ defensive copy
+    // 라인 변경도 최근 수정으로 간주
+    final cur = _po[orderId];
+    if (cur != null) {
+      _po[orderId] = cur.copyWith(); // ✅ 모델에서 updatedAt now 처리
+    }
     notifyListeners();
   }
 

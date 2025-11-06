@@ -8,6 +8,7 @@ class PurchaseLine {
   final String unit;
   final double qty;         // 소수 허용, 필요시 int로 바꿔도 됨
   final String? note;
+  final String? memo;
 
   PurchaseLine({
     required this.id,
@@ -17,11 +18,18 @@ class PurchaseLine {
     required this.unit,
     required this.qty,
     this.note,
+    this.memo,
   });
 
-  PurchaseLine copyWith({double? qty, String? note}) => PurchaseLine(
-    id: id, orderId: orderId, itemId: itemId, name: name, unit: unit,
-    qty: qty ?? this.qty, note: note ?? this.note,
+  PurchaseLine copyWith({double? qty, String? note, String? memo, }) => PurchaseLine(
+    id: id,
+    orderId: orderId,
+    itemId: itemId,
+    name: name,
+    unit: unit,
+    qty: qty ?? this.qty,
+    note: note ?? this.note,
+    memo: memo ?? this.memo,
   );
 
   factory PurchaseLine.fromJson(Map<String, dynamic> j) => PurchaseLine(
@@ -32,7 +40,7 @@ class PurchaseLine {
 
   Map<String, dynamic> toJson() => {
     'id': id, 'orderId': orderId, 'itemId': itemId,
-    'name': name, 'unit': unit, 'qty': qty, 'note': note,
+    'name': name, 'unit': unit, 'qty': qty, 'note': note, 'memo':memo,
   };
 
 
