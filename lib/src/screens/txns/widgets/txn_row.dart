@@ -120,11 +120,11 @@ class TxnRow extends StatelessWidget {
                           reasonBadge,
                           if (customer != null) Text('주문자 $customer'),
                           if (t.refType == RefType.order && t.refId != null)
-                            Text('주문번호 ${shortId(t.refId!)}')
+                            Text('주문번호 ${shortId(t.refId)}')
                           else if (t.refType == RefType.work && t.refId != null)
-                            Text('작업번호 ${shortId(t.refId!)}')
+                            Text('작업번호 ${shortId(t.refId)}')
                           else if (t.refType == RefType.purchase && t.refId != null)
-                            Text('발주번호 ${shortId(t.refId!)}'),
+                            Text('발주번호 ${shortId(t.refId)}'),
                         ],
                       ),
                       if (t.memo != null && t.memo!.isNotEmpty)

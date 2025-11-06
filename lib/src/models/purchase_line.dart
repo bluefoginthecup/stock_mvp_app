@@ -1,3 +1,5 @@
+import '../models/item.dart';
+
 class PurchaseLine {
   final String id;
   final String orderId;     // FK → PurchaseOrder.id
@@ -32,4 +34,21 @@ class PurchaseLine {
     'id': id, 'orderId': orderId, 'itemId': itemId,
     'name': name, 'unit': unit, 'qty': qty, 'note': note,
   };
+
+
 }
+
+extension PurchaseLineView on PurchaseLine {
+  /// name 우선, 없으면 Item의 displayName/name, 그래도 없으면 기본값
+  String displayNameWith(Item? it) {
+    final n = name.trim();
+    if (n.isNotEmpty) return n;
+
+    if (it != null) {
+      final dn = (it.displayName ?? it.name).trim();
+      if (dn.isNotEmpty) return dn;
+    }
+    return '(이름없음)';
+  }
+}
+

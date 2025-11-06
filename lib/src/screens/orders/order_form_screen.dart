@@ -214,7 +214,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                  maxRows: 5,
                  itemBuilder: (_, it) => ListTile(
                    title: Text(it.displayName ?? it.name),
-                   subtitle: (it.sku?.isNotEmpty ?? false) ? Text(it.sku!) : null,
+                   subtitle: (it.sku.isNotEmpty ?? false) ? Text(it.sku) : null,
                    onTap: () => _addLine(it),
                  ),
                ),

@@ -109,7 +109,11 @@ class PurchaseDetailScreen extends StatelessWidget {
             ),
           ),
         ),
+
+
       ),
+
     );
+
   }
 }

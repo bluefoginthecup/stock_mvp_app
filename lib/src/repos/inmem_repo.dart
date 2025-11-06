@@ -888,7 +888,6 @@ class InMemoryRepo extends ChangeNotifier
     notifyListeners();
   }
 
-    @override
     Future<void> addOutPlanned({
       required String itemId,
       required int qty,
@@ -912,7 +911,6 @@ class InMemoryRepo extends ChangeNotifier
     _txns[txn.id] = txn;
     notifyListeners();
   }
-  @override
   Future<void> addOutActual({
     required String itemId,
     required int qty,
@@ -1293,6 +1291,12 @@ class InMemoryRepo extends ChangeNotifier
     _poLines.remove(id);
     notifyListeners();
   }
+
+  Future<PurchaseOrder?> getPurchaseOrder(String id) async => _po[id];
+
+  Future<List<PurchaseLine>> listPurchaseLines(String orderId) async =>
+  List.unmodifiable(_poLines[orderId] ?? const <PurchaseLine>[]);
+
 
 // ---- Lines ----
   @override

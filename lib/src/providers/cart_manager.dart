@@ -42,10 +42,32 @@ class CartManager extends ChangeNotifier {
         notifyListeners();
       }
 
+  // ✅ 새로 추가: 수량 변경
+  void updateQty(int index, double qty) {
+    if (qty <= 0) return;
+    _items[index] = _items[index].copyWith(qty: qty);
+    notifyListeners();
+  }
   void updateSupplier(int idx, String s) {
     _items[idx] = _items[idx].copyWith(supplierName: s.trim());
     notifyListeners();
   }
+
+  // ✅ 새로 추가: 공급처 일괄 지정
+  void setAllSupplier(String supplier) {
+    final s = supplier.trim();
+    for (var i = 0; i < _items.length; i++) {
+      _items[i] = _items[i].copyWith(supplierName: s);
+    }
+    notifyListeners();
+  }
+
+  // ✅ 새로 추가: 요약
+  int get supplierCount =>
+      _items.map((e) => e.supplierName.trim()).toSet().length;
+
+  double get totalQty =>
+      _items.fold(0.0, (acc, e) => acc + (e.qty));
 
   Future<List<String>> createPurchaseOrdersFromCart(InMemoryRepo repo) async {
     final grouped = <String, List<CartItem>>{};
