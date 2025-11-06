@@ -96,6 +96,7 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
+
 class _StatCard extends StatelessWidget {
   final String title;
   final String value;
@@ -108,22 +109,20 @@ class _StatCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: _StatContents(),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text(value, style: const TextStyle(fontSize: 20)),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// 내용은 분리해도 되고 그대로 두어도 됩니다.
-// (여기선 단순화를 위해 원래 구조 유지해도 무방)
-class _StatContents extends StatelessWidget {
-  const _StatContents({super.key});
-  @override
-  Widget build(BuildContext context) {
-    // 필요시 title/value를 받아서 표시하도록 원래대로 두세요.
-    return SizedBox.shrink();
-  }
-}

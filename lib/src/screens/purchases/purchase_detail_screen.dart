@@ -55,15 +55,21 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
   String _statusLabel(BuildContext ctx, PurchaseOrderStatus s) {
     switch (s) {
-      case PurchaseOrderStatus.draft:    return '임시';
-      case PurchaseOrderStatus.ordered:  return '발주됨';
+      case PurchaseOrderStatus.draft:    return '임시저장';
+      case PurchaseOrderStatus.ordered:  return '발주완료';
       case PurchaseOrderStatus.received: return '입고완료';
-      case PurchaseOrderStatus.canceled: return '취소됨';
+      case PurchaseOrderStatus.canceled: return '발주취소';
     }
   }
 
   Future<void> _editHeader() async {
     if (_po == null) return;
+    if (_po == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('발주서를 불러오는 중입니다')),
+              );
+        return;
+      }
     final updated = await showModalBottomSheet<PurchaseOrder>(
       context: context,
       isScrollControlled: true,
@@ -141,19 +147,17 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         title: Text(t.purchase_detail_title),
         actions: [
           IconButton(
-            onPressed: po == null ? null : _editHeader,
+            onPressed: _editHeader,
             icon: const Icon(Icons.edit),
             tooltip: '헤더 편집',
           ),
         ],
       ),
-      floatingActionButton: (po == null)
-          ? null
-          : FloatingActionButton.extended(
-        onPressed: _addLine,
-        icon: const Icon(Icons.add),
-        label: Text(t.btn_add),
-      ),
+        floatingActionButton: FloatingActionButton.extended(
+               onPressed: _addLine,
+               icon: const Icon(Icons.add),
+           label: Text(t.btn_add),
+     ),
       body: po == null
           ? const Center(child: CircularProgressIndicator())
           : Padding(
@@ -182,7 +186,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                     confirmDismiss: (_) async => true,
                     onDismissed: (_) async => _removeLine(ln),
                     child: ListTile(
-                      title: Text('${ln.itemId}  × ${ln.qty}'),
+                      title: Text('${ln.name}  × ${ln.qty}'),
                       // unitPrice/메모 필드 미사용(모델에 없음)
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _editLine(ln),
@@ -238,8 +242,8 @@ class _HeaderCard extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('공급처: $supplier', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
-          Text('ID: ${po.id}'),
-          Text('ETA: ${po.eta.toLocal()}'.split('.').first),
+          Text('발주ID: ${po.id}'),
+          Text('입고예정일: ${po.eta.toLocal()}'.split('.').first),
           const SizedBox(height: 8),
           Row(
             children: [

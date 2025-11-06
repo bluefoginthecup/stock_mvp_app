@@ -6,8 +6,9 @@ import '../../models/purchase_order.dart';// ✅ 변경됨
 import '../../models/types.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/ui.dart';
-import '../purchases/purchase_order_detail_screen.dart'; // 경로는 프로젝트 구조에 맞게
+import '../purchases/purchase_detail_screen.dart'; // 경로는 프로젝트 구조에 맞게
 import '../../repos/inmem_repo.dart';
+
 
 class PurchaseListScreen extends StatelessWidget {
   const PurchaseListScreen({super.key});
@@ -61,12 +62,15 @@ class PurchaseListScreen extends StatelessWidget {
     subtitle: Text('상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}'),
     trailing: const Icon(Icons.chevron_right),
     onTap: () {
-    Navigator.push(
-    context,
-    MaterialPageRoute(
-    builder: (_) => PurchaseOrderDetailScreen(poId: p.id),
-    ),
-    );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PurchaseDetailScreen(
+            repo: context.read<PurchaseOrderRepo>(),
+            orderId: p.id, // ✅ 최신 방식
+          ),
+        ),
+      );
     },
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     ),
