@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../../repos/inmem_repo.dart';
 import '../../models/purchase_order.dart';
 import '../../models/purchase_line.dart';
-import 'purchase_order_print_view.dart' show PurchaseOrderPrintView, PrintLine;
+import 'purchase_order_print_view.dart'
+    show PurchaseOrderPrintView, PurchaseOrderPrintViewMobile, PrintLine;
+
 
 class PurchaseOrderDetailScreen extends StatelessWidget {
   final String poId;
@@ -54,24 +56,29 @@ class PurchaseOrderDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('발주서 상세'),
         actions: [
-          // ⬇️ 발주서 보기 버튼 추가
           FutureBuilder<(PurchaseOrder?, List<PurchaseLine>)>(
             future: _load(),
             builder: (ctx, snap) {
               final enabled = snap.connectionState == ConnectionState.done && snap.hasData && snap.data!.$1 != null;
-              return IconButton(
-                tooltip: '발주서 보기',
-                icon: const Icon(Icons.picture_as_pdf),
-                onPressed: !enabled ? null : () {
+              return PopupMenuButton<String>(
+                tooltip: '보기',
+                enabled: enabled,
+                onSelected: (v) {
                   final (po, rawLines) = snap.data!;
                   final printLines = rawLines.map((e) => _toPrintLine(repo, e)).toList();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PurchaseOrderPrintView(order: po!, lines: printLines),
-                    ),
-                  );
+                  Widget screen;
+                  if (v == 'a4') {
+                    screen = PurchaseOrderPrintView(order: po!, lines: printLines);
+                  } else {
+                    screen = PurchaseOrderPrintViewMobile(order: po!, lines: printLines);
+                  }
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
                 },
+                itemBuilder: (ctx) => const [
+                  PopupMenuItem(value: 'a4', child: Text('A4 발주서 보기')),
+                  PopupMenuItem(value: 'mobile', child: Text('모바일용 발주서 보기')),
+                ],
+                icon: const Icon(Icons.visibility),
               );
             },
           ),
