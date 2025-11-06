@@ -45,6 +45,7 @@ class OrderListScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab-orders',
         onPressed: () async {
           final id = const Uuid().v4();
           await Navigator.push(context, MaterialPageRoute(builder: (_) => OrderFormScreen(orderId: id, createIfMissing: true)));

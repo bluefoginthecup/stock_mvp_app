@@ -595,6 +595,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           floatingActionButton: Builder(builder: (_) {
             final isLeaf = _selectedDepth >= 3;
             return FloatingActionButton(
+              heroTag: 'fab-stock',
               onPressed: () async {
                 final act = await showModalBottomSheet<String>(
                   context: context,

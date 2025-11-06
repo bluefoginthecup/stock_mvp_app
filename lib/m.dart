@@ -14,11 +14,8 @@ import 'src/utils/item_presentation.dart';
 import 'src/ui/nav/item_detail_opener.dart';
 import 'src/services/seed_importer.dart';
 import 'src/providers/cart_manager.dart';
-import 'src/models/purchase_order.dart'; // ⬅️ 유지
+import 'src/models/purchase_order.dart'; // ⬅️ 추가
 
-// ⬇️⬇️ 추가: 탭 내비 컨트롤러 & 스크린
-import 'src/app/main_tab_controller.dart';
-import 'src/app/main_tab_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // ✅ rootBundle 사용 시 필수
@@ -43,6 +40,7 @@ Future<void> main() async {
 
   print('[main] InMemoryRepo instance = ${identityHashCode(inmem)}');
 
+
   runApp(
     MultiProvider(
       providers: [
@@ -52,8 +50,6 @@ Future<void> main() async {
         ChangeNotifierProvider<InMemoryRepo>.value(value: inmem),
         ChangeNotifierProvider(create: (_) => CartManager()),
 
-        // ⬇️⬇️ 추가: 하단 탭 상태 전용 컨트롤러
-        ChangeNotifierProvider(create: (_) => MainTabController()),
 
         // 화면엔 인터페이스(비-Listenable)로 주입 → Provider OK
         Provider<ItemRepo>(create: (ctx) => ItemRepoView(ctx.read<InMemoryRepo>())),
@@ -67,11 +63,13 @@ Future<void> main() async {
           create: (ctx) => PurchaseRepoView(ctx.read<InMemoryRepo>()),
         ),
 
-        // 2) 목록 갱신은 StreamProvider로 구독
+// 2) 목록 갱신은 StreamProvider로 구독
         StreamProvider<List<PurchaseOrder>>(
           create: (ctx) => ctx.read<PurchaseOrderRepo>().watchAllPurchaseOrders(),
           initialData: const [],
         ),
+
+
 
         Provider<ItemDetailOpener>(create: (_) => AppItemDetailOpener()),
 

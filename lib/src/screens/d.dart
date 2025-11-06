@@ -1,9 +1,9 @@
-// lib/src/screens/dashboard_screen.dart
+
 import 'package:provider/provider.dart';
 import '../repos/repo_interfaces.dart';
 import '../ui/common/ui.dart';
 import '../screens/stock/stock_browser_screen.dart';
-import '../app/main_tab_controller.dart'; // ✅ 추가
+
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -21,55 +21,49 @@ class DashboardScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(context.t.dashboard_summary,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              //요약
+              Text(context.t.dashboard_summary, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               Wrap(spacing: 12, runSpacing: 12, children: [
                 _StatCard(
                   title: context.t.dashboard_total_items,
                   value: items.length.toString(),
                   onTap: () {
-                    // ✅ 탭 전환: 재고 탭으로 이동
-                    context.read<MainTabController>().setIndex(1);
+                    // 전체 재고 브라우저로 이동
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const StockBrowserScreen(), // 토글 OFF 기본
+                      ),
+                    );
                   },
                 ),
                 _StatCard(
                   title: context.t.dashboard_below_threshold,
                   value: low.length.toString(),
                   onTap: () {
-                    // ✅ 임계치 이하만 보는 전용 화면 push (탭 내부 네비 그대로 사용)
+                    // 임계치 이하 모드로 바로 이동 (앱바 토글/필터칩의 초기상태 = 켜짐)
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                        const StockBrowserScreen(showLowStockOnly: true),
+                        builder: (_) => const StockBrowserScreen(showLowStockOnly: true),
                       ),
                     );
                   },
                 ),
               ]),
               const SizedBox(height: 24),
-
-              // ✅ 나머지 버튼들은 그대로 pushNamed 써도 OK (또는 탭 전환으로 바꿔도 됨)
               ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(2),
+                onPressed: () => Navigator.pushNamed(context, '/orders'),
                 icon: const Icon(Icons.assignment),
                 label: Text(context.t.dashboard_orders),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(1),
+                onPressed: () => Navigator.pushNamed(context, '/stock'),
                 icon: const Icon(Icons.inventory_2),
                 label: Text(context.t.dashboard_stock),
               ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(3),
-                icon: const Icon(Icons.local_shipping),
-                label: Text(context.t.dashboard_purchases),
-              ),
-
-              // 필요 시 기존 라우트 유지
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/txns'),
@@ -84,10 +78,17 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/purchases'),
+                icon: const Icon(Icons.local_shipping),
+                label: Text(context.t.dashboard_purchases),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
                 onPressed: () => Navigator.pushNamed(context, '/settings/language'),
                 icon: const Icon(Icons.settings),
                 label: Text(context.t.settings_language_title),
               ),
+
             ],
           );
         },
@@ -102,28 +103,26 @@ class _StatCard extends StatelessWidget {
   final VoidCallback? onTap;
   const _StatCard({required this.title, required this.value, this.onTap});
 
+
   @override
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: _StatContents(),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Text(value, style: TextStyle(fontSize: 20)),
+            ],
+          ),
         ),
       ),
     );
-  }
-}
-
-// 내용은 분리해도 되고 그대로 두어도 됩니다.
-// (여기선 단순화를 위해 원래 구조 유지해도 무방)
-class _StatContents extends StatelessWidget {
-  const _StatContents({super.key});
-  @override
-  Widget build(BuildContext context) {
-    // 필요시 title/value를 받아서 표시하도록 원래대로 두세요.
-    return SizedBox.shrink();
   }
 }

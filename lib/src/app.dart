@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:stockapp_mvp/src/app/main_tab_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/orders/order_list_screen.dart';
 //import 'screens/stock/stock_list_screen.dart';
@@ -38,9 +39,8 @@ class StockApp extends StatelessWidget {
       ],
       theme: ThemeData( /* ... */ ),
       routes: {
-        '/': (_) => const DashboardScreen(),    // 아래 AppBar 타이틀도 i18n으로
+        '/': (_) => const MainTabScreen(),    // 아래 AppBar 타이틀도 i18n으로
         '/orders': (_) => const OrderListScreen(),
-       // '/stock': (_) => const StockListScreen(),
         '/stock': (_) => const StockBrowserScreen(),
         '/txns': (_) => const TxnListScreen(),
         '/works': (_) => const WorkListScreen(),
