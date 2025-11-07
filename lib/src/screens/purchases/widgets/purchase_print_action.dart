@@ -13,12 +13,26 @@ class PurchasePrintAction extends StatelessWidget {
 
   PrintLine _toPrintLine(InMemoryRepo repo, PurchaseLine l) {
     final it = repo.getItemById(l.itemId);
+
+    // 표시이름 보강
     final fallbackName = (l.name.trim().isNotEmpty)
-        ? l.name
+        ? l.name.trim()
         : (it?.displayName ?? it?.name ?? l.itemId);
-    final spec = '';    // 필요시 it.attrs 등 활용
-    final amount = 0.0; // 단가*수량 계산 로직 있으면 반영
-    final memo = '';    // 라인 메모 쓰면 연결
+
+    // 스펙(선택): 필요 없으면 빈문자 유지
+    final spec = (it?.attrs?['nominalSize'] ?? '').toString().trim();
+
+    // ✅ color_no 우선순위: PurchaseLine.colorNo → Item.attrs['color_no']
+    //  - PurchaseLine.colorNo가 non-nullable이면 아래 첫 줄을 `final ln = l.colorNo.trim();`로 쓰세요.
+    final ln = (l is dynamic && (l.colorNo is String)) ? (l.colorNo as String).trim() : '';
+    final colorNo = ln.isNotEmpty
+        ? ln
+        : ((it?.attrs?['color_no'] ?? '').toString().trim());
+
+    // 단가/메모(현재 미사용이면 0/빈문자)
+    final amount = 0.0;
+    final memo = '';
+
     return PrintLine(
       itemName: fallbackName,
       spec: spec,
@@ -26,8 +40,10 @@ class PurchasePrintAction extends StatelessWidget {
       qty: l.qty,
       amount: amount,
       memo: memo,
+      colorNo: colorNo, // ✅ 이제 실제 값이 들어감
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

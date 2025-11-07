@@ -41,10 +41,13 @@ class PurchaseOrderDetailScreen extends StatelessWidget {
       final name = l.displayNameWith(it);                  // 네가 쓰는 헬퍼 그대로 재사용
       final spec = '';                                     // 필요 시 it의 속성으로 채워도 됨
       final amount = 0.0;                                  // 단가*수량 계산 로직 있으면 반영
-      final memo = '';                                     // 라인에 메모가 있으면 연결
+      final memo = '';
+      final colorNo='';
+      // 라인에 메모가 있으면 연결
       return PrintLine(
         itemName: name,
         spec: spec,
+        colorNo: colorNo,
         unit: l.unit,
         qty: l.qty,
         amount: amount,

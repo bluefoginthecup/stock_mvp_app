@@ -66,6 +66,7 @@ class OrderPlanningService {
   Future<void> saveOrderAndAutoPlanShortage(
       Order order, {
         bool preferWork = true,
+        bool forceMake = false, // ← 재고/부족 무시하고 라인 수량대로 생산
       }) async {
     // 1) 기존 라인과 동일한지(=메타만 변경인지) 먼저 판단 (이 시점엔 아직 저장 전)
         var onlyMeta = await _isOnlyMetaChanged(order);
@@ -87,61 +88,54 @@ class OrderPlanningService {
         }
 
 
-    // 3) 라인이 바뀐 경우: 각 라인별 부족분 → sourceKey 기반 upsert
-    for (var i = 0; i < order.lines.length; i++) {
+        // 3) 라인이 바뀐 경우: 각 라인별 '계획 수량' 산출 → sourceKey 기반 upsert
+
+        for (var i = 0; i < order.lines.length; i++) {
       final ln = order.lines[i];
       final it = await items.getItem(ln.itemId);
       if (it == null) continue;
 
-      // 현재 단순 재고 기준 부족분 계산 (예약 고려 로직이 있다면 그 로직을 사용하세요)
-      final available = it.qty;
-      final short = (ln.qty - available).clamp(0, 1 << 31);
+    // 3-A) 부족분(short) 계산 (예약 고려가 있다면 바꾸세요)
+          final available = it.qty; // 현재 단순 가용
+          final shortRaw = ln.qty - available;
+          final double short = shortRaw <= 0 ? 0 : shortRaw.toDouble();
 
-      // 라인별 고정키
+          // 3-B) 최종 계획 수량 결정
+          // - forceMake=true  : 재고 무시 → 라인 수량대로 작업
+          // - forceMake=false : 부족분만큼만 작업
+          final double plannedQty = (forceMake ? ln.qty.toDouble() : short);
+
+    // 라인별 고정키
       final baseKey = _lineKey(order, i, ln);
 
-      if (short <= 0) {
-        // 부족분이 없어졌다면(=기존 계획 취소 필요)
-        // sourceKey 로 기존 레코드가 있다면 '0'으로 덮어써도 되고,
-        // delete/cancel API가 있다면 거기로 정리하세요. 여기선 0 덮어서 "없음" 상태로 만듭니다.
-        if (preferWork) {
-          final w = Work(
-            id: _uuid.v4(),
-            itemId: ln.itemId,
-            qty: 0,
-            orderId: order.id,
-            status: WorkStatus.planned,
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-            isDeleted: false,
-            sourceKey: '${baseKey}:work',
-          );
-          await works.upsertBySourceKey(w);
-        } else {
-          // 구매안의 Txn planned-in 0 으로 덮어쓰기
-          final t = Txn(
-            id: _uuid.v4(),
-            ts: DateTime.now(),
-            type: TxnType.in_,
-            status: TxnStatus.planned,
-            itemId: ln.itemId,
-            qty: 0,
-            refType: RefType.purchase,
-            refId: 'cancel-${_uuid.v4()}', // 기존 것 덮는게 목적이라 id는 의미 없음
-            note: '예정입고 취소 (order:${order.id})',
-            sourceKey: '$baseKey:pin',
-          );
-          await txns.upsertPlannedInBySourceKey(t);
-        }
-        continue;
-      }
+    // 3-C) 계획 수량이 0 이하면:
+          //  - Work(qty>0 assert) 생성을 절대 하지 않음
+          //  - 필요 시 예정입고 Txn만 0으로 upsert하여 "취소" 표기
+          if (plannedQty <= 0) {
+            // preferWork 모드에선 work 스킵. (기존 planned-in 취소만 반영할지 선택)
+            final t = Txn(
+              id: _uuid.v4(),
+              ts: DateTime.now(),
+              type: TxnType.in_,
+              status: TxnStatus.planned,
+              itemId: ln.itemId,
+              qty: 0,
+              refType: preferWork ? RefType.work : RefType.purchase,
+              refId: 'cancel-${_uuid.v4()}',
+              note: '예정입고 취소 (order:${order.id})',
+              sourceKey: '$baseKey:pin',
+            );
+            await txns.upsertPlannedInBySourceKey(t);
+            continue;
+          }
 
       if (preferWork) {
-        // 3-A) 생산 Work 계획 upsert (sourceKey 고정)
+        // 3-D) 생산 Work 계획 upsert (sourceKey 고정)
         final w = Work(
           id: _uuid.v4(), // upsertPlannedInBySourceKey가 기존 id로 바꿔서 저장
           itemId: ln.itemId,
-          qty: short,
+          qty: plannedQty.toInt(),
+// ← short 또는 라인수량(강제생산)
           orderId: order.id,
           status: WorkStatus.planned,
           createdAt: DateTime.now(),
@@ -158,7 +152,8 @@ class OrderPlanningService {
           type: TxnType.in_,
           status: TxnStatus.planned,
           itemId: ln.itemId,
-          qty: short,
+          qty: plannedQty.toInt(),
+
           refType: RefType.work,
           refId: w.id, // upsertPlannedInBySourceKey가 기존 id로 바꾸며, 같은 key로 덮어쓰기됨
           note: '작업 예정입고 (order:${order.id})',
@@ -174,7 +169,7 @@ class OrderPlanningService {
           type: TxnType.in_,
           status: TxnStatus.planned,
           itemId: ln.itemId,
-          qty: short,
+          qty: plannedQty.toInt(), // 구매 모드에서도 동일 로직 사용 가능
           refType: RefType.purchase,
           refId: pid,
           note: '구매 예정입고 (order:${order.id})',

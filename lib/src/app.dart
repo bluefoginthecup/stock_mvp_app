@@ -27,8 +27,13 @@ class StockApp extends StatelessWidget {
         create: (_) => LangController()..load(),
         child: Builder(
         builder: (context) {
+    final GlobalKey<NavigatorState> rootNavKey = GlobalKey<NavigatorState>();
+    final GlobalKey<ScaffoldMessengerState> messengerKey = GlobalKey<ScaffoldMessengerState>();
     final lang = context.watch<LangController>();
+
     return MaterialApp(
+      navigatorKey: rootNavKey,
+      scaffoldMessengerKey: messengerKey,
       locale: lang.locale,
       onGenerateTitle: (ctx) => L10n.of(ctx).app_title,
       localizationsDelegates: L10n.localizationsDelegates,

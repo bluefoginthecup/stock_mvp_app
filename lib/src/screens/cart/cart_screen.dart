@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
 import '../../providers/cart_manager.dart';
 import '../../repos/inmem_repo.dart';
+import '../../screens/orders/order_from_cart.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -89,7 +91,17 @@ class CartScreen extends StatelessWidget {
         final ids = await cart.createPurchaseOrdersFromCart(repo);
         if (ctx.mounted) {
           ScaffoldMessenger.of(ctx).showSnackBar(
-            SnackBar(content: Text('발주서 ${ids.length}건 생성 완료!')),
+            SnackBar(content: Text('발주서 ${ids.length}건 생성 완료!'),
+              action: SnackBarAction(
+                label: '목록 보기',
+                onPressed: () {
+                  Navigator.push(
+                    ctx,
+                    MaterialPageRoute(builder: (_) => const PurchaseListScreen()),
+                  );
+                },
+              ),
+            ),
           );
         }
       } catch (e) {
@@ -236,6 +248,15 @@ class CartScreen extends StatelessWidget {
                 icon: const Icon(Icons.shopping_bag),
                 label: const Text('발주서 생성'),
                 onPressed: () => _createPOs(context),
+              ),
+
+              const SizedBox(height: 8),
+
+              // 추가: 주문 생성(재고보충)
+              ElevatedButton.icon(
+                onPressed: () async => await onCreateInternalOrderPressed(context),
+                icon: const Icon(Icons.shopping_bag),
+                label: const Text('주문 생성'), //
               ),
             ],
           ),

@@ -441,6 +441,8 @@ class _EditLineSheetState extends State<_EditLineSheet> {
   late final TextEditingController nameC;
   late final TextEditingController unitC;
   late final TextEditingController qtyC;
+  final TextEditingController colorNoC = TextEditingController();
+
 
   @override
   void initState() {
@@ -450,6 +452,8 @@ class _EditLineSheetState extends State<_EditLineSheet> {
     nameC   = TextEditingController(text: i?.name ?? '');
     unitC   = TextEditingController(text: i?.unit ?? 'EA');
     qtyC    = TextEditingController(text: i?.qty.toString() ?? '1');
+    colorNoC.text = i?.colorNo ?? '';
+
   }
 
   @override
@@ -458,6 +462,7 @@ class _EditLineSheetState extends State<_EditLineSheet> {
     nameC.dispose();
     unitC.dispose();
     qtyC.dispose();
+    colorNoC.dispose(); // ✅ 추가
     super.dispose();
   }
 
@@ -502,6 +507,15 @@ class _EditLineSheetState extends State<_EditLineSheet> {
                     helperText: '아이템 피커 연동 전 임시 입력',
                   ),
                 ),
+
+                const SizedBox(height: 12),
+                TextField(
+                  controller: colorNoC,
+                  decoration: const InputDecoration(
+                    labelText: '색상번호(colorNo)',
+                    helperText: '예: 01, 2, 014N 등',
+                  ),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: unitC,
@@ -528,6 +542,8 @@ class _EditLineSheetState extends State<_EditLineSheet> {
                       name: nameC.text.trim(),
                       unit: unitC.text.trim(),
                       qty: qty,
+                      colorNo: colorNoC.text.trim(),
+
                     );
 
                     Navigator.pop(context, line);

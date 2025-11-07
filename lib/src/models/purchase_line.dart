@@ -9,12 +9,14 @@ class PurchaseLine {
   final double qty;         // 소수 허용, 필요시 int로 바꿔도 됨
   final String? note;
   final String? memo;
+  final String? colorNo;
 
   PurchaseLine({
     required this.id,
     required this.orderId,
     required this.itemId,
     required this.name,
+    this.colorNo,
     required this.unit,
     required this.qty,
     this.note,
@@ -30,6 +32,7 @@ class PurchaseLine {
     qty: qty ?? this.qty,
     note: note ?? this.note,
     memo: memo ?? this.memo,
+    colorNo: colorNo,
   );
 
   factory PurchaseLine.fromJson(Map<String, dynamic> j) => PurchaseLine(

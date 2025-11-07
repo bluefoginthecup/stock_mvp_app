@@ -26,7 +26,6 @@ class OrderFormScreen extends StatefulWidget {
   @override
   State<OrderFormScreen> createState() => _OrderFormScreenState();
 }
-
 class _OrderFormScreenState extends State<OrderFormScreen> {
   final _customerC = TextEditingController();
   final _memoC = TextEditingController();
@@ -80,7 +79,6 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   }
 
   void _addLine(Item item) {
-    // ✅ 이미 있으면 수량 +1, 없으면 추가
     final idx = _order.lines.indexWhere((l) => l.itemId == item.id);
     setState(() {
       if (idx >= 0) {
@@ -95,20 +93,19 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       }
     });
 
-        // ✅ 새 라인이 “추가”된 경우에만 자연스럽게 맨 아래로 스크롤
-        if (idx < 0) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            if (_pageScroll.hasClients) {
-              final target = _pageScroll.position.maxScrollExtent + 200; // 여유치
-              _pageScroll.animateTo(
-                target,
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOut,
-              );
-            }
-          });
+    if (idx < 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_pageScroll.hasClients) {
+          final target = _pageScroll.position.maxScrollExtent + 200;
+          _pageScroll.animateTo(
+            target,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOut,
+          );
         }
+      });
+    }
   }
 
   void _updateQty(String lineId, int newQty) {
@@ -139,6 +136,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       memo: _memoC.text.trim(),
     );
 
+    final isInternal = updated.customer.trim() == '재고보충';
+
     final svc = OrderPlanningService(
       items: context.read<ItemRepo>(),
       orders: context.read<OrderRepo>(),
@@ -147,30 +146,52 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       txns: context.read<TxnRepo>(),
     );
 
-    await svc.saveOrderAndAutoPlanShortage(updated, preferWork: true);
+    await svc.saveOrderAndAutoPlanShortage(
+      updated,
+      preferWork: true,
+      forceMake: isInternal,
+    );
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('저장 + 부족분 자동 계획 생성 완료')),
-    );
-    Navigator.pop(context, _order.id);
-  }
 
+    // 컨텍스트 기반 스낵바 + 액션
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          content: const Text('저장 + 부족분 자동 계획 생성 완료'),
+          action: SnackBarAction(
+            label: '주문상세 보기',
+            onPressed: () {
+              // 현재 화면이 pop된 후에도 동작하도록 rootNavigator 사용
+              Navigator.of(context, rootNavigator: true)
+                  .pushNamed('/orders/detail', arguments: _order.id);
+            },
+          ),
+        ),
+      );
+
+    // 현재 화면 닫기 (호출부가 결과를 사용할 수도 있음)
+    Navigator.of(context).pop(_order.id);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final itemsRepo = context.read<ItemRepo>();   // 🔍 전역검색용
-    final String? orderId = widget.orderId;
+    final itemsRepo = context.read<ItemRepo>(); // 🔍 전역검색용
+    final orderId = widget.orderId; // non-null
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.t.order_form_title),
+      appBar: AppBar(
+        title: Text(context.t.order_form_title),
         actions: [
-          if (orderId != null && orderId.isNotEmpty)
+          if (orderId.isNotEmpty)
             FutureBuilder<Order?>(
-              future: context.read<OrderRepo>().getOrder(orderId), // ← 인자 전달 + 비동기 처리
+              future: context.read<OrderRepo>().getOrder(orderId),
               builder: (ctx, snap) {
                 if (snap.connectionState == ConnectionState.waiting) {
-                  return const SizedBox.shrink(); // 로딩 중엔 임시로 숨김
+                  return const SizedBox.shrink();
                 }
                 final order = snap.data;
                 if (order == null) return const SizedBox.shrink();
@@ -178,110 +199,107 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                 return DeleteMoreMenu<Order>(
                   entity: order,
                   onChanged: () {
-                    // 삭제/Undo 후 편집화면 정리
                     Navigator.maybePop(context);
                   },
                 );
               },
             ),
         ],
-    ),
-
-     // 변경: 전역 검색만 사용 (검색어 없으면 결과 섹션 숨김)
-     body: ListView(
-       controller: _pageScroll,
-       physics: const ClampingScrollPhysics(), // ✅ 튕김감 제거
-       padding: const EdgeInsets.all(16),
-       children: [
-         AppSearchField(
-           controller: _searchC,
-           hint: '품목 검색: 이름 또는 SKU',
-           onChanged: (q) async {
-             final qq = q.trim();
-             if (qq.isEmpty) { setState(() { _results = []; _searching = false; }); return; }
-             setState(() => _searching = true);
+      ),
+      body: ListView(
+        controller: _pageScroll,
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          AppSearchField(
+            controller: _searchC,
+            hint: '품목 검색: 이름 또는 SKU',
+            onChanged: (q) async {
+              final qq = q.trim();
+              if (qq.isEmpty) {
+                setState(() {
+                  _results = [];
+                  _searching = false;
+                });
+                return;
+              }
+              setState(() => _searching = true);
               final res = await itemsRepo.searchItemsGlobal(qq);
-             if (!mounted) return;
-             setState(() { _results = res; _searching = false; });
-           },
-         ),
-         if (_searching) const LinearProgressIndicator(),
-    // ▼▼ 검색 결과 패널 (최대 5행 + 스크롤)
-             if (_results.isNotEmpty)
-               SuggestionPanel<Item>(
-                 items: _results,
-                 rowHeight: 56,
-                 maxRows: 5,
-                 itemBuilder: (_, it) => ListTile(
-                   title: Text(it.displayName ?? it.name),
-                   subtitle: (it.sku.isNotEmpty ?? false) ? Text(it.sku) : null,
-                   onTap: () => _addLine(it),
-                 ),
-               ),
-
-              // 고객/메모
-              TextField(
-                controller: _customerC,
-                decoration: InputDecoration(labelText: context.t.field_customer),
+              if (!mounted) return;
+              setState(() {
+                _results = res;
+                _searching = false;
+              });
+            },
+          ),
+          if (_searching) const LinearProgressIndicator(),
+          if (_results.isNotEmpty)
+            SuggestionPanel<Item>(
+              items: _results,
+              rowHeight: 56,
+              maxRows: 5,
+              itemBuilder: (_, it) => ListTile(
+                title: Text(it.displayName ?? it.name),
+                subtitle: (it.sku.isNotEmpty) ? Text(it.sku) : null,
+                onTap: () => _addLine(it),
               ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _memoC,
-                decoration: InputDecoration(labelText: context.t.field_memo),
-              ),
-              const SizedBox(height: 16),
-              Text(context.t.section_order_items, style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
+            ),
 
-              // 주문 라인 목록 (각 라인에서 ItemRepo로 이름 조회)
+          TextField(
+            controller: _customerC,
+            decoration: InputDecoration(labelText: context.t.field_customer),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _memoC,
+            decoration: InputDecoration(labelText: context.t.field_memo),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            context.t.section_order_items,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
 
-
-                ..._order.lines.map((ln) {
-                return ListTile(
-                key: ValueKey(ln.id),
-                leading: const Icon(Icons.shopping_cart),
-
-                // 전체 경로 라벨 표시
-                title: ItemLabel(
+          ..._order.lines.map((ln) {
+            return ListTile(
+              key: ValueKey(ln.id),
+              leading: const Icon(Icons.shopping_cart),
+              title: ItemLabel(
                 itemId: ln.itemId,
                 full: false,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                ),
-
-                subtitle: Row(
+              ),
+              subtitle: Row(
                 children: [
-                QtyControl(
-                label: '수량',
-                value: ln.qty,
-                min: 1,
-                step: 1,
-                onChanged: (q) => _updateQty(ln.id, q),
-                dense: true,
-                fieldWidth: 48,
-                labelGap: 8,
-                gap: 4,
-                ),
+                  QtyControl(
+                    label: '수량',
+                    value: ln.qty,
+                    min: 1,
+                    step: 1,
+                    onChanged: (q) => _updateQty(ln.id, q),
+                    dense: true,
+                    fieldWidth: 48,
+                    labelGap: 8,
+                    gap: 4,
+                  ),
                 ],
-                ),
-
-                trailing: IconButton(
+              ),
+              trailing: IconButton(
                 icon: const Icon(Icons.delete_outline),
                 onPressed: () => _removeLine(ln.id),
-                ),
-                );
-                }),
-
-
-              const SizedBox(height: 32),
-              FilledButton(
-                onPressed: _save,
-                child: Text(context.t.btn_save),
               ),
-            ],
+            );
+          }),
+
+          const SizedBox(height: 32),
+          FilledButton(
+            onPressed: _save,
+            child: Text(context.t.btn_save),
           ),
+        ],
+      ),
     );
   }
-
 }
-

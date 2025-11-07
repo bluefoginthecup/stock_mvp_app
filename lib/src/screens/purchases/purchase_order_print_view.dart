@@ -6,6 +6,7 @@ import '../../models/purchase_order.dart';
 class PrintLine {
   final String itemName;
   final String spec;
+  final String colorNo;
   final String unit;
   final double qty;
   final double amount;
@@ -13,6 +14,7 @@ class PrintLine {
   const PrintLine({
     required this.itemName,
     required this.spec,
+    required this.colorNo,
     required this.unit,
     required this.qty,
     required this.amount,
@@ -150,6 +152,7 @@ class PurchaseOrderPrintView extends StatelessWidget {
       children: const [
         _Th('No.', style: head),
         _Th('품명', style: head),
+        _Th('색상코드', style: head),
         _Th('규격', style: head),
         _Th('단위', style: head),
         _Th('수량', style: head),
@@ -163,11 +166,12 @@ class PurchaseOrderPrintView extends StatelessWidget {
       columnWidths: const {
         0: FixedColumnWidth(32),
         1: FlexColumnWidth(3),
-        2: FlexColumnWidth(2),
-        3: FixedColumnWidth(44),
-        4: FixedColumnWidth(56),
-        5: FlexColumnWidth(2),
+        2: FlexColumnWidth(1.4), // 색상코드
+        3: FlexColumnWidth(2),
+        4: FixedColumnWidth(44),
+        5: FixedColumnWidth(56),
         6: FlexColumnWidth(2),
+        7: FlexColumnWidth(2),
       },
       children: [
         header,
@@ -176,6 +180,7 @@ class PurchaseOrderPrintView extends StatelessWidget {
             children: [
               _Td('${i + 1}', style: cell),
               _Td(lines[i].itemName, style: cell),
+              _Td(lines[i].colorNo, style: cell),
               _Td(lines[i].spec, style: cell),
               _Td(lines[i].unit, style: cell),
               _Td(_fmtNum(lines[i].qty), style: cell),
@@ -454,6 +459,9 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
                   children: [
                     if (l.spec.isNotEmpty)
                       Text('규격: ${l.spec}', style: const TextStyle(fontSize: 11)),
+                    if (l.colorNo.isNotEmpty)
+                      Text('색상번호: ${l.colorNo}', style: const TextStyle(fontSize: 11)),
+
                     // Text('금액: ${_fmtMoney(l.amount)}원',
                     //     style: const TextStyle(fontSize: 11)),
                     if (l.memo.isNotEmpty)
