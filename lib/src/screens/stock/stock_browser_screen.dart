@@ -33,7 +33,7 @@ class StockBrowserScreen extends StatefulWidget {
 }
 
    ///  장바구니 담기 고정 바 시작 ///
-const double _kSelectBarHeight = 56.0;
+const double _kSelectBarHeight = 36.0;
 
 class _SelectBarHeader extends SliverPersistentHeaderDelegate {
   final Widget child;
@@ -404,6 +404,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     final repo = context.read<InMemoryRepo>();
     final depth = _selectedDepth;
     final hasKeyword = _searchC.text.trim().isNotEmpty;
+    final sel = context.watch<ItemSelectionController>();
+
 
     return ChangeNotifierProvider(
       create: (_) => ItemSelectionController(),
@@ -433,18 +435,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   }
                 },
               ),
-              if (!sel.selectionMode)
-                IconButton(
-                  tooltip: '멀티 선택',
-                  icon: const Icon(Icons.checklist),
-                  onPressed: () => sel.enter(),
-                )
-              else
-                IconButton(
-                  tooltip: '선택 취소',
-                  icon: const Icon(Icons.close),
-                  onPressed: sel.exit,
-                ),
+
               IconButton(
                 icon: const Icon(Icons.shopping_cart),
                 tooltip: '장바구니 보기',
@@ -471,9 +462,24 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                child: Wrap(
-                  spacing: 8,
+                child: Row(
+                  spacing: 2,
+                  mainAxisAlignment: MainAxisAlignment.start, // 💡 왼쪽 정렬
+
                   children: [
+                    // ✅ 멀티선택 토글 (필터 왼쪽)
+                    IconButton(
+                      tooltip: sel.selectionMode ? '선택 취소' : '멀티 선택',
+                      icon: Icon(sel.selectionMode ? Icons.close : Icons.checklist),
+                      onPressed: sel.selectionMode ? sel.exit : sel.enter,
+                      style: IconButton.styleFrom(
+                        // 연보라 톤(테마 연계) — FAB와 톤 맞추기
+                        minimumSize: const Size(40, 36), // 칩 높이와 비슷하게
+                        padding: const EdgeInsets.all(8),
+                      ),
+                    ),
+
+
                     FilterChip(
                       label: const Text('필터:임계치'),
                       selected: _lowOnly,
@@ -601,10 +607,27 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                                   }
                                 }
 
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('장바구니에 ${sel.selected.length}개 담았어요 (×${qty.toStringAsFixed(0)})')),
+                                if (!mounted) return;ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    behavior: SnackBarBehavior.floating, // 💡 floating으로 바꿔 높이 줄이기
+                                    margin: const EdgeInsets.all(12), // 선택: 살짝 띄워서 가볍게
+                                    content: Text(
+                                      '장바구니에 ${sel.selected.length}개 담았어요 (×${qty.toStringAsFixed(0)})',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                    action: SnackBarAction(
+                                      label: '보기', // 💡 한 글자만 남겨 더 슬림하게
+                                      textColor: Theme.of(context).colorScheme.onPrimary,
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => const CartScreen()),
+                                        );
+                                      },
+                                    ),
+                                  ),
                                 );
+
                                 sel.exit();
                               },
                               onSelectAll: () => sel.selectAll(currentItems.map((e) => e.id)),

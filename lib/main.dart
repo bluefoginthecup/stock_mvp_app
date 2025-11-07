@@ -19,6 +19,7 @@ import 'src/models/purchase_order.dart'; // ⬅️ 유지
 // ⬇️⬇️ 추가: 탭 내비 컨트롤러 & 스크린
 import 'src/app/main_tab_controller.dart';
 import 'src/app/main_tab_screen.dart';
+import 'src/screens/stock/widgets/item_selection_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // ✅ rootBundle 사용 시 필수
@@ -54,6 +55,9 @@ Future<void> main() async {
 
         // ⬇️⬇️ 추가: 하단 탭 상태 전용 컨트롤러
         ChangeNotifierProvider(create: (_) => MainTabController()),
+        ChangeNotifierProvider<ItemSelectionController>(
+          create: (_) => ItemSelectionController(),
+        ),
 
         // 화면엔 인터페이스(비-Listenable)로 주입 → Provider OK
         Provider<ItemRepo>(create: (ctx) => ItemRepoView(ctx.read<InMemoryRepo>())),

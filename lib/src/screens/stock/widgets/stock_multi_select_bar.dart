@@ -24,21 +24,56 @@ class StockMultiSelectBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), // 🔹 상하 여백 줄임
           child: Row(
             children: [
-              Expanded(child: Text('선택됨 $selectedCount / $totalCount')),
-              TextButton.icon(onPressed: onSelectAll, icon: const Icon(Icons.select_all), label: const Text('전체')),
-              TextButton.icon(onPressed: onClear,     icon: const Icon(Icons.clear_all),  label: const Text('해제')),
+              Expanded(
+                child: Text(
+                  '선택됨 $selectedCount / $totalCount',
+                  style: Theme.of(context).textTheme.bodyMedium, // 🔹 글씨 크기도 살짝 줄이기
+                ),
+              ),
+
+              // 🔹 텍스트 버튼 공통 스타일
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 6), // 좌우만 살짝 여유
+                  minimumSize: const Size(0, 32), // 기본 40~48dp → 줄이기
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치영역 최소화
+                  visualDensity: VisualDensity.compact, // 내부 간격 줄이기
+                ),
+                onPressed: onSelectAll,
+                icon: const Icon(Icons.select_all, size: 18),
+                label: const Text('전체'),
+              ),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: onClear,
+                icon: const Icon(Icons.clear_all, size: 18),
+                label: const Text('해제'),
+              ),
               const SizedBox(width: 8),
+
               FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  minimumSize: const Size(0, 34),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
                 onPressed: selectedCount == 0 ? null : onAddToCart,
-                icon: const Icon(Icons.add_shopping_cart),
+                icon: const Icon(Icons.add_shopping_cart, size: 18),
                 label: const Text('담기'),
               ),
             ],
           ),
         ),
+
       ),
     );
   }
