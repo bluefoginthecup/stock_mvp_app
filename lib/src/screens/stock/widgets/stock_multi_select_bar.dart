@@ -19,6 +19,7 @@ class StockMultiSelectBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
+      color: const Color(0xFFE6E0F8),
       elevation: 8,
       child: SafeArea(
         top: false,

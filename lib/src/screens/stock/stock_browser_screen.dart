@@ -32,6 +32,36 @@ class StockBrowserScreen extends StatefulWidget {
   State<StockBrowserScreen> createState() => _StockBrowserScreenState();
 }
 
+   ///  장바구니 담기 고정 바 시작 ///
+const double _kSelectBarHeight = 56.0;
+
+class _SelectBarHeader extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+  const _SelectBarHeader({required this.child, this.height = _kSelectBarHeight});
+
+  @override
+  double get minExtent => height;
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Material(
+      elevation: 2,
+
+      color: Theme.of(context).colorScheme.surface,
+      child: SizedBox(height: height, child: child),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _SelectBarHeader old) =>
+      old.child != child || old.height != height;
+}
+
+  /// 고정바 끝 ///
+
 class _StockBrowserScreenState extends State<StockBrowserScreen> {
   Timer? _debounce;
   String? _l1Id;
@@ -547,46 +577,47 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                           const SliverToBoxAdapter(child: SizedBox(height: 80)));
                     }
 
-                    // Overlay 선택바 + 스크롤 본문
-                    return Stack(
-                      children: [
-                        CustomScrollView(slivers: slivers),
-                        if (sel.selectionMode)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
+                    // 선택 모드일 때 상단 고정 헤더를 끼운 슬리버 배열로 교체
+                    final sliversWithSelectBar = <Widget>[
+                      if (sel.selectionMode)
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _SelectBarHeader(
+                            height: _kSelectBarHeight,
                             child: StockMultiSelectBar(
                               selectedCount: sel.selected.length,
                               totalCount: currentItems.length,
                               onAddToCart: () async {
                                 final qty = await _askQty(context);
                                 if (qty == null) return;
-                                final byId = {
-                                  for (final it in currentItems) it.id: it
-                                };
+
+                                final byId = { for (final it in currentItems) it.id: it };
                                 final cart = context.read<CartManager>();
+
                                 for (final id in sel.selected) {
                                   final it = byId[id];
                                   if (it != null) {
                                     cart.addFromItem(it, qty: qty);
                                   }
                                 }
+
                                 if (!mounted) return;
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(
-                                          '장바구니에 ${sel.selected.length}개 담았어요 (×${qty.toStringAsFixed(0)})')),
+                                  SnackBar(content: Text('장바구니에 ${sel.selected.length}개 담았어요 (×${qty.toStringAsFixed(0)})')),
                                 );
                                 sel.exit();
                               },
-                              onSelectAll: () =>
-                                  sel.selectAll(currentItems.map((e) => e.id)),
+                              onSelectAll: () => sel.selectAll(currentItems.map((e) => e.id)),
                               onClear: sel.exit,
                             ),
                           ),
-                      ],
-                    );
+                        ),
+                      ...slivers, // ← 기존에 너가 구성하던 SliverList/SliverGrid/폴더/아이템 목록들
+                    ];
+
+// Stack 제거, 바로 스크롤 뷰 반환
+                    return CustomScrollView(slivers: sliversWithSelectBar);
+
                   },
                 ),
               ),
