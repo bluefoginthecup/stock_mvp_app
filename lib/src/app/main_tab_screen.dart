@@ -1,6 +1,8 @@
 // lib/src/app/main_tab_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
+import 'package:stockapp_mvp/src/screens/txns/txn_list_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/stock/stock_browser_screen.dart';
 import '../screens/orders/order_list_screen.dart';
@@ -20,8 +22,10 @@ class MainTabScreen extends StatelessWidget {
       DashboardScreen(),
       OrderListScreen(),
       StockBrowserScreen(),
+      TxnListScreen(),
       WorkListScreen(),
       PurchaseListScreen(),
+      LanguageSettingsScreen(),
     ];
 
     return Scaffold(
@@ -35,8 +39,10 @@ class MainTabScreen extends StatelessWidget {
           NavigationDestination(icon: Icon(Icons.dashboard), label: '대시보드'),
           NavigationDestination(icon: Icon(Icons.receipt_long), label: '주문'),
           NavigationDestination(icon: Icon(Icons.inventory_2), label: '재고'),
+          NavigationDestination(icon: Icon(Icons.swap_vert), label: '입출고기록'),
           NavigationDestination(icon: Icon(Icons.handyman), label: '작업'),
           NavigationDestination(icon: Icon(Icons.local_shipping), label: '발주'),
+
         ],
       ),
     );

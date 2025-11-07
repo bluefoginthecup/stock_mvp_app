@@ -52,39 +52,40 @@ class DashboardScreen extends StatelessWidget {
 
               // ✅ 나머지 버튼들은 그대로 pushNamed 써도 OK (또는 탭 전환으로 바꿔도 됨)
               ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(2),
+                onPressed: () => context.read<MainTabController>().setIndex(1),
                 icon: const Icon(Icons.assignment),
                 label: Text(context.t.dashboard_orders),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(1),
+                onPressed: () => context.read<MainTabController>().setIndex(2),
                 icon: const Icon(Icons.inventory_2),
                 label: Text(context.t.dashboard_stock),
               ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(3),
-                icon: const Icon(Icons.local_shipping),
-                label: Text(context.t.dashboard_purchases),
-              ),
+
 
               // 필요 시 기존 라우트 유지
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/txns'),
+                onPressed: () => context.read<MainTabController>().setIndex(3),
                 icon: const Icon(Icons.swap_vert),
                 label: Text(context.t.dashboard_txns),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/works'),
+                onPressed: () => context.read<MainTabController>().setIndex(4),
                 icon: const Icon(Icons.precision_manufacturing),
                 label: Text(context.t.dashboard_works),
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/settings/language'),
+                onPressed: () => context.read<MainTabController>().setIndex(5),
+                icon: const Icon(Icons.local_shipping),
+                label: Text(context.t.dashboard_purchases),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => context.read<MainTabController>().setIndex(6),
                 icon: const Icon(Icons.settings),
                 label: Text(context.t.settings_language_title),
               ),

@@ -1,11 +1,14 @@
 // lib/src/screens/purchases/purchase_detail_screen.dart
-import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase_order.dart';
 import '../../models/purchase_line.dart';
 import '../../ui/common/ui.dart';
+import 'widgets/purchase_print_action.dart';
+import 'package:provider/provider.dart';     // ⬅️ context.read 확장자
+import '../../repos/inmem_repo.dart';         // ⬅️ InMemoryRepo 타입
+
 
 class PurchaseDetailScreen extends StatefulWidget {
   final PurchaseOrderRepo repo;
@@ -141,6 +144,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   Widget build(BuildContext context) {
     final po = _po;
     final t = context.t;
+    final itemRepo = context.read<InMemoryRepo>(); // ⬅️ 추가
 
     return Scaffold(
       appBar: AppBar(
@@ -151,6 +155,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
             icon: const Icon(Icons.edit),
             tooltip: '헤더 편집',
           ),
+          PurchasePrintAction(poId: widget.orderId), // ✅ PDF 보기
         ],
       ),
         floatingActionButton: FloatingActionButton.extended(
@@ -186,7 +191,11 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                     confirmDismiss: (_) async => true,
                     onDismissed: (_) async => _removeLine(ln),
                     child: ListTile(
-                      title: Text('${ln.name}  × ${ln.qty}'),
+                      title: Text(// 있으면 name, 없으면 itemRepo로 보강
+                        (ln.name.trim().isNotEmpty)
+                            ? '${ln.name} × ${ln.qty} ${ln.unit}'
+                            : '${(itemRepo.getItemById(ln.itemId)?.displayName ?? ln.itemId)} × ${ln.qty} ${ln.unit}',
+                      ),
                       // unitPrice/메모 필드 미사용(모델에 없음)
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _editLine(ln),
