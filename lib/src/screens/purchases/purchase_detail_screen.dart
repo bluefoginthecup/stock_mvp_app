@@ -8,6 +8,7 @@ import '../../ui/common/ui.dart';
 import 'widgets/purchase_print_action.dart';
 import 'package:provider/provider.dart';     // ⬅️ context.read 확장자
 import '../../repos/inmem_repo.dart';         // ⬅️ InMemoryRepo 타입
+import '../../services/inventory_service.dart';
 
 
 class PurchaseDetailScreen extends StatefulWidget {
@@ -209,11 +210,25 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               status: po.status,
               onAdvance: () async {
                 final next = _next(po.status);
-                if (next == po.status) return;
-                await widget.repo.updatePurchaseOrderStatus(po.id, next);
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다')));
-                await _reload();
+                    if (next == po.status) return;
+                      if (po.status == PurchaseOrderStatus.ordered &&
+                          next == PurchaseOrderStatus.received) {
+                        // ✅ 입고 처리: Txn 생성 + 재고증가 + 상태전환까지 일괄
+                        await context.read<InventoryService>().receivePurchase(po.id);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('입고 완료: 입출고기록 생성 및 재고 반영됨')),
+                        );
+                        await _reload();
+                      } else {
+                        // draft → ordered 등 단순 상태 전환
+                        await widget.repo.updatePurchaseOrderStatus(po.id, next);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('저장되었습니다')),
+                        );
+                        await _reload();
+                      }
               },
               onCancel: po.status == PurchaseOrderStatus.received
                   ? null
