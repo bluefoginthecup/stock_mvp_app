@@ -7,6 +7,8 @@ import '../models/work.dart';
 import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
 import '../models/types.dart';
+import '../models/suppliers.dart';
+
 
 /// 공통 규칙:
 /// - 모든 Repo는 비동기(Future) 시그니처를 기본으로 함.
@@ -164,4 +166,15 @@ abstract class PurchaseOrderRepo {
   // Lines
   Future<void> upsertLines(String orderId, List<PurchaseLine> lines);
   Future<List<PurchaseLine>> getLines(String orderId);
+
+
+}
+
+abstract class SupplierRepo {
+  Future<List<Supplier>> list({String? q, bool onlyActive = true});
+  Future<Supplier?> get(String id);
+  /// 새로 만들기/수정 공용. 반환: 저장된 id
+  Future<String> upsert(Supplier s);
+  Future<void> softDelete(String id); // 필요 시 실제 삭제로 교체 가능
+  Future<void> toggleActive(String id, bool isActive);
 }

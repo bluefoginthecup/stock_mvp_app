@@ -9,6 +9,7 @@ import '../models/purchase_line.dart';
 import 'repo_interfaces.dart';
 import 'inmem_repo.dart';
 import '../models/types.dart';
+import '../models/suppliers.dart';
 
 
 class ItemRepoView implements ItemRepo {
@@ -245,3 +246,28 @@ class PurchaseRepoView implements PurchaseOrderRepo { // ✅ 표준 인터페이
   @override
   Future<List<PurchaseLine>> getLines(String id) => _repo.getLines(id);
 }
+
+
+///=== ✅ SupplierRepo 어댑터 (InMemoryRepo → 비-Listenable 파사드) ==///
+
+class SupplierRepoView implements SupplierRepo {
+    final InMemoryRepo _repo;
+    SupplierRepoView(this._repo);
+
+    @override
+    Future<List<Supplier>> list({String? q, bool onlyActive = true}) =>
+        _repo.list(q: q, onlyActive: onlyActive);
+
+    @override
+    Future<Supplier?> get(String id) => _repo.get(id);
+
+    @override
+    Future<String> upsert(Supplier s) => _repo.upsert(s);
+
+    @override
+    Future<void> softDelete(String id) => _repo.softDelete(id);
+
+    @override
+    Future<void> toggleActive(String id, bool isActive) =>
+        _repo.toggleActive(id, isActive);
+  }

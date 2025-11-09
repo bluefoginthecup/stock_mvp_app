@@ -1,15 +1,15 @@
-// lib/src/screens/purchases/purchase_detail_screen.dart
-import 'package:uuid/uuid.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase_order.dart';
 import '../../models/purchase_line.dart';
 import '../../ui/common/ui.dart';
 import 'widgets/purchase_print_action.dart';
-import 'package:provider/provider.dart';     // ⬅️ context.read 확장자
-import '../../repos/inmem_repo.dart';         // ⬅️ InMemoryRepo 타입
+import '../../repos/inmem_repo.dart';        // 아이템명 보강용 (원치 않으면 제거 가능)
 import '../../services/inventory_service.dart';
-
+import 'purchase_order_full_edit_screen.dart';
+import 'purchase_line_full_edit_screen.dart';
 
 class PurchaseDetailScreen extends StatefulWidget {
   final PurchaseOrderRepo repo;
@@ -45,19 +45,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     });
   }
 
-  PurchaseOrderStatus _next(PurchaseOrderStatus s) {
-    switch (s) {
-      case PurchaseOrderStatus.draft:
-        return PurchaseOrderStatus.ordered;
-      case PurchaseOrderStatus.ordered:
-        return PurchaseOrderStatus.received;
-      case PurchaseOrderStatus.received:
-      case PurchaseOrderStatus.canceled:
-        return s;
-    }
-  }
-
-  String _statusLabel(BuildContext ctx, PurchaseOrderStatus s) {
+  String _statusLabel(PurchaseOrderStatus s) {
     switch (s) {
       case PurchaseOrderStatus.draft:    return '임시저장';
       case PurchaseOrderStatus.ordered:  return '발주완료';
@@ -66,101 +54,92 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
   }
 
-  Future<void> _editHeader() async {
-    if (_po == null) return;
+  PurchaseOrderStatus _next(PurchaseOrderStatus s) {
+    switch (s) {
+      case PurchaseOrderStatus.draft:   return PurchaseOrderStatus.ordered;
+      case PurchaseOrderStatus.ordered: return PurchaseOrderStatus.received;
+      case PurchaseOrderStatus.received:
+      case PurchaseOrderStatus.canceled:
+        return s;
+    }
+  }
+
+  Future<void> _openHeaderFullEdit() async {
     if (_po == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('발주서를 불러오는 중입니다')),
       );
       return;
     }
-    final updated = await showModalBottomSheet<PurchaseOrder>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _EditHeaderSheet(po: _po!),
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PurchaseOrderFullEditScreen(
+          repo: widget.repo,
+          orderId: widget.orderId,
+        ),
+      ),
     );
-    if (updated != null) {
-      await widget.repo.updatePurchaseOrder(updated);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다')));
-      await _reload();
-    }
+    if (changed == true) await _reload();
   }
 
-  Future<void> _addLine() async {
+  Future<void> _addLineFull() async {
     if (_po == null) return;
-    // 추가
-    final created = await showModalBottomSheet<PurchaseLine>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _EditLineSheet(initial: null, orderId: widget.orderId),
+    final saved = await Navigator.push<PurchaseLine?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PurchaseLineFullEditScreen(
+          repo: widget.repo,
+          orderId: widget.orderId,
+          initial: null,
+        ),
+      ),
     );
-    if (created != null) {
-      final next = [..._lines, created];
-      await widget.repo.upsertLines(widget.orderId, next);
+    if (saved != null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('추가되었습니다')));
       await _reload();
     }
   }
 
-  Future<void> _editLine(PurchaseLine line) async {
-    // 편집
-    final edited = await showModalBottomSheet<PurchaseLine>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _EditLineSheet(initial: line, orderId: widget.orderId),
+  Future<void> _openLineFull(PurchaseLine line) async {
+    final saved = await Navigator.push<PurchaseLine?>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PurchaseLineFullEditScreen(
+          repo: widget.repo,
+          orderId: widget.orderId,
+          initial: line,
+        ),
+      ),
     );
-    if (edited != null) {
-      final next = _lines.map((e) => e.id == edited.id ? edited : e).toList();
-      await widget.repo.upsertLines(widget.orderId, next);
+    if (saved != null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다')));
       await _reload();
     }
   }
 
-  Future<void> _removeLine(PurchaseLine line) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(context.t.common_delete),
-        content: Text('${line.name} 삭제할까요?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.t.common_cancel)),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.t.common_delete)),
-        ],
-      ),
-    );
-    if (ok != true) return;
-
-    final next = _lines.where((e) => e.id != line.id).toList();
-    await widget.repo.upsertLines(widget.orderId, next);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('삭제되었습니다')));
-    await _reload();
-  }
-
   @override
   Widget build(BuildContext context) {
     final po = _po;
     final t = context.t;
-    final itemRepo = context.read<InMemoryRepo>(); // ⬅️ 추가
+    final itemRepo = context.read<InMemoryRepo>(); // 아이템명 보강용
 
     return Scaffold(
       appBar: AppBar(
         title: Text(t.purchase_detail_title),
         actions: [
           IconButton(
-            onPressed: _editHeader,
-            icon: const Icon(Icons.edit),
-            tooltip: '헤더 편집',
+            onPressed: _openHeaderFullEdit,
+            icon: const Icon(Icons.edit_note),
+            tooltip: '헤더 전체 편집',
           ),
           PurchasePrintAction(poId: widget.orderId), // ✅ PDF 보기
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addLine,
+        onPressed: _addLineFull,
         icon: const Icon(Icons.add),
         label: Text(t.btn_add),
       ),
@@ -170,8 +149,37 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _HeaderCard(po: po, statusLabel: _statusLabel(context, po.status)),
+            // 헤더 카드(조회용)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('헤더', style: Theme.of(context).textTheme.titleMedium),
+                        const SizedBox(width: 8),
+                        Chip(label: Text(_statusLabel(po.status))),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text('공급처: ${po.supplierName.trim().isEmpty ? '(미지정)' : po.supplierName}'),
+                    Text('입고예정일: ${po.eta.toLocal()}'.split('.').first),
+                    if ((po.memo ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text('적요: ${po.memo}'),
+                    ],
+                    const SizedBox(height: 8),
+                    Text('발주ID: ${po.id}', style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
+              ),
+            ),
+
             const SizedBox(height: 12),
+
+            // 라인 목록
             Expanded(
               child: _lines.isEmpty
                   ? const Center(child: Text('발주 품목이 없습니다.'))
@@ -180,37 +188,30 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 separatorBuilder: (_, __) => const Divider(height: 0),
                 itemBuilder: (ctx, i) {
                   final ln = _lines[i];
-                  return Dismissible(
-                    key: ValueKey(ln.id),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      color: Colors.red,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    confirmDismiss: (_) async => true,
-                    onDismissed: (_) async => _removeLine(ln),
-                    child: ListTile(
-                      title: Text(// 있으면 name, 없으면 itemRepo로 보강
-                        (ln.name.trim().isNotEmpty)
-                            ? '${ln.name} × ${ln.qty} ${ln.unit}'
-                            : '${(itemRepo.getItemById(ln.itemId)?.displayName ?? ln.itemId)} × ${ln.qty} ${ln.unit}',
-                      ),
-                      // unitPrice/메모 필드 미사용(모델에 없음)
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _editLine(ln),
-                    ),
+                  final titleText = (ln.name.trim().isNotEmpty)
+                      ? '${ln.name} × ${ln.qty} ${ln.unit}'
+                      : '${(itemRepo.getItemById(ln.itemId)?.displayName ?? ln.itemId)} × ${ln.qty} ${ln.unit}';
+                  final subtitle = (ln.colorNo ?? '').isEmpty ? null : '색상번호: ${ln.colorNo}';
+
+                  return ListTile(
+                    title: Text(titleText),
+                    subtitle: subtitle == null ? null : Text(subtitle),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _openLineFull(ln),
                   );
                 },
               ),
             ),
+
             const SizedBox(height: 8),
+
+            // 상태 전환/취소
             _ActionRow(
               status: po.status,
               onAdvance: () async {
                 final next = _next(po.status);
                 if (next == po.status) return;
+
                 if (po.status == PurchaseOrderStatus.draft && next == PurchaseOrderStatus.ordered) {
                   await context.read<InventoryService>().orderPurchase(po.id);
                   if (!mounted) return;
@@ -230,7 +231,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               onCancel: po.status == PurchaseOrderStatus.received
                   ? null
                   : () async {
-                // ✅ 예정입고 롤백 + 상태전환을 서비스에서 일괄 처리
                 await context.read<InventoryService>().cancelPurchase(po.id);
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -247,40 +247,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _HeaderCard extends StatelessWidget {
-  final PurchaseOrder po;
-  final String statusLabel;
-  const _HeaderCard({required this.po, required this.statusLabel});
-
-  @override
-  Widget build(BuildContext context) {
-    final supplier = po.supplierName.trim().isEmpty ? '(미지정)' : po.supplierName;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('공급처: $supplier', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text('발주ID: ${po.id}'),
-          Text('입고예정일: ${po.eta.toLocal()}'.split('.').first),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Text(context.t.field_status_label),
-              const SizedBox(width: 6),
-              Chip(label: Text(statusLabel)),
-            ],
-          ),
-          if ((po.memo ?? '').trim().isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('적요: ${po.memo}'),
-          ],
-        ]),
       ),
     );
   }
@@ -323,254 +289,3 @@ class _ActionRow extends StatelessWidget {
     );
   }
 }
-
-/// --------------------
-/// 편집 모달들
-/// --------------------
-
-class _EditHeaderSheet extends StatefulWidget {
-  final PurchaseOrder po;
-  const _EditHeaderSheet({required this.po});
-
-  @override
-  State<_EditHeaderSheet> createState() => _EditHeaderSheetState();
-}
-
-class _EditHeaderSheetState extends State<_EditHeaderSheet> {
-  late TextEditingController supplierC;
-  late TextEditingController memoC;
-  late DateTime eta;
-  late PurchaseOrderStatus status;
-
-  @override
-  void initState() {
-    super.initState();
-    supplierC = TextEditingController(text: widget.po.supplierName);
-    memoC = TextEditingController(text: widget.po.memo ?? '');
-    eta = widget.po.eta;
-    status = widget.po.status;
-  }
-
-  @override
-  void dispose() {
-    supplierC.dispose();
-    memoC.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final t = context.t;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
-      child: DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.75,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, controller) {
-          return Material(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: ListView(
-              controller: controller,
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text('헤더 편집', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: supplierC,
-                  decoration: const InputDecoration(labelText: '공급처(빈문자 허용)'),
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('납기일(ETA)'),
-                  subtitle: Text('${eta.toLocal()}'.split('.').first),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: eta,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null) {
-                      setState(() {
-                        eta = DateTime(picked.year, picked.month, picked.day, eta.hour, eta.minute, eta.second);
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<PurchaseOrderStatus>(
-                  value: status,
-                  decoration: const InputDecoration(labelText: '상태'),
-                  items: PurchaseOrderStatus.values
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s.name)))
-                      .toList(),
-                  onChanged: (s) => setState(() => status = s!),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: memoC,
-                  minLines: 2,
-                  maxLines: 5,
-                  decoration: const InputDecoration(labelText: '적요(메모)'),
-                ),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  icon: const Icon(Icons.save),
-                  label: Text(t.btn_save),
-                  onPressed: () {
-                    final updated = widget.po.copyWith(
-                      supplierName: supplierC.text,
-                      eta: eta,
-                      status: status,
-                      memo: memoC.text.trim().isEmpty ? null : memoC.text.trim(),
-                    );
-                    Navigator.pop(context, updated);
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _EditLineSheet extends StatefulWidget {
-  final PurchaseLine? initial;
-  final String orderId;
-  const _EditLineSheet({required this.initial, required this.orderId});
-
-  @override
-  State<_EditLineSheet> createState() => _EditLineSheetState();
-}
-
-class _EditLineSheetState extends State<_EditLineSheet> {
-  late final TextEditingController itemIdC; // ✅ 추가
-  late final TextEditingController nameC;
-  late final TextEditingController unitC;
-  late final TextEditingController qtyC;
-  final TextEditingController colorNoC = TextEditingController();
-
-
-  @override
-  void initState() {
-    super.initState();
-    final i = widget.initial;
-    itemIdC = TextEditingController(text: i?.itemId ?? '');   // ✅ 추가
-    nameC   = TextEditingController(text: i?.name ?? '');
-    unitC   = TextEditingController(text: i?.unit ?? 'EA');
-    qtyC    = TextEditingController(text: i?.qty.toString() ?? '1');
-    colorNoC.text = i?.colorNo ?? '';
-
-  }
-
-  @override
-  void dispose() {
-    itemIdC.dispose(); // ✅ 추가
-    nameC.dispose();
-    unitC.dispose();
-    qtyC.dispose();
-    colorNoC.dispose(); // ✅ 추가
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final isEdit = widget.initial != null;
-    final t = context.t;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
-      child: DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        builder: (_, controller) {
-          return Material(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: ListView(
-              controller: controller,
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(isEdit ? '라인 편집' : '라인 추가',
-                    style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-
-                // ✅ itemId 입력
-                TextField(
-                  controller: itemIdC,
-                  decoration: const InputDecoration(
-                    labelText: '아이템 ID(itemId)',
-                    helperText: '예: it_rouen_gray_cc_50',
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                TextField(
-                  controller: nameC,
-                  decoration: const InputDecoration(
-                    labelText: '아이템명(name)',
-                    helperText: '아이템 피커 연동 전 임시 입력',
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-                TextField(
-                  controller: colorNoC,
-                  decoration: const InputDecoration(
-                    labelText: '색상번호(colorNo)',
-                    helperText: '예: 01, 2, 014N 등',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: unitC,
-                  decoration: const InputDecoration(labelText: '단위(unit, 예: EA/M/ROLL)'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: qtyC,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: '수량(qty)'),
-                ),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  icon: Icon(isEdit ? Icons.save : Icons.add),
-                  label: Text(isEdit ? t.btn_save : t.btn_add),
-                  onPressed: () {
-                    final qty = double.tryParse(qtyC.text.trim()) ?? (widget.initial?.qty ?? 1);
-
-                    // ✅ itemId 필수 포함해서 생성
-                    final line = PurchaseLine(
-                      id: widget.initial?.id ?? const Uuid().v4(),
-                      orderId: widget.orderId,
-                      itemId: itemIdC.text.trim(),   // ✅ 추가
-                      name: nameC.text.trim(),
-                      unit: unitC.text.trim(),
-                      qty: qty,
-                      colorNo: colorNoC.text.trim(),
-
-                    );
-
-                    Navigator.pop(context, line);
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-

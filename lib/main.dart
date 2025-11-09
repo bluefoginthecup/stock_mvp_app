@@ -89,6 +89,10 @@ Future<void> main() async {
         Provider<ItemPathProvider>(
           create: (ctx) => RepoItemPathFacade(ctx.read<InMemoryRepo>()),
         ),
+// ✅ SupplierRepo 주입: 비-Listenable 파사드로 감싸서 제공
+          Provider<SupplierRepo>(
+            create: (ctx) => SupplierRepoView(ctx.read<InMemoryRepo>()),
+          ),
 
         // ✅ InventoryService 주입
         Provider<InventoryService>(

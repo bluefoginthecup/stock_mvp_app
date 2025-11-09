@@ -16,6 +16,7 @@ import '/src/screens/settings/language_settings_screen.dart';
 
 import 'screens/stock/stock_item_detail_screen.dart';
 import 'screens/purchases/purchase_detail_screen.dart';
+import 'screens/suppliers/supplier_form_screen.dart';
 
 
 import 'repos/repo_interfaces.dart';
@@ -64,6 +65,11 @@ class StockApp extends StatelessWidget {
           final orderId = ModalRoute.of(context)!.settings.arguments as String;
           final poRepo = context.read<PurchaseOrderRepo>();
           return PurchaseDetailScreen(orderId: orderId, repo: poRepo);
+        },
+        '/suppliers/new': (context) => const SupplierFormScreen(),
+        '/suppliers/edit': (context) {
+          final id = ModalRoute.of(context)!.settings.arguments as String;
+          return SupplierFormScreen(supplierId: id);
         },
       },
       initialRoute: '/',

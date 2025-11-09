@@ -17,6 +17,7 @@ import '../models/folder_node.dart';
 import '../utils/item_presentation.dart';
 
 import '../models/lot.dart';
+import '../models/suppliers.dart';
 
 
 // === Common move types (top-level) ===
@@ -31,11 +32,12 @@ class MoveRequest {
 }
 
 class InMemoryRepo extends ChangeNotifier
-    implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseOrderRepo {
+    implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseOrderRepo, SupplierRepo {
   final _uuid = const Uuid();
   final Map<String, Item> _items = {};
   final Map<String, Order> _orders = {};
   final Map<String, Txn> _txns = {};
+  final Map<String, Supplier> _suppliers = {};
 
 
   /// Finished 레시피 저장소: finishedId → rows
@@ -1660,4 +1662,51 @@ class InMemoryRepo extends ChangeNotifier
         return v[0].toUpperCase() +  v.substring(1);
     }
   }
+
+  ///=======suppliers===============//
+@override
+  Future<List<Supplier>> list({String? q, bool onlyActive = true}) async {
+    Iterable<Supplier> it = _suppliers.values;
+    if (onlyActive) it = it.where((s) => s.isActive);
+    if (q != null && q.trim().isNotEmpty) {
+      final needle = q.toLowerCase();
+      it = it.where((s) =>
+          s.name.toLowerCase().contains(needle) ||
+          (s.contactName ?? '').toLowerCase().contains(needle) ||
+          (s.phone ?? '').toLowerCase().contains(needle));
+    }
+    return it.toList()..sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  @override
+  Future<Supplier?> get(String id) async => _suppliers[id];
+
+  @override
+  Future<String> upsert(Supplier s) async {
+    final id = s.id.isEmpty ? const Uuid().v4() : s.id;
+    final now = DateTime.now();
+    final existing = _suppliers[id];
+    final saved = existing == null
+        ? s.copyWith(updatedAt: now) // createdAt은 s에 들어있다고 가정
+        : s.copyWith(updatedAt: now);
+    _suppliers[id] = saved;
+    return id;
+  }
+
+  @override
+  Future<void> softDelete(String id) async {
+    final s = _suppliers[id];
+    if (s != null) {
+      _suppliers[id] = s.copyWith(isActive: false, updatedAt: DateTime.now());
+    }
+  }
+
+  @override
+  Future<void> toggleActive(String id, bool isActive) async {
+    final s = _suppliers[id];
+    if (s != null) {
+      _suppliers[id] = s.copyWith(isActive: isActive, updatedAt: DateTime.now());
+    }
+  }
 }
+

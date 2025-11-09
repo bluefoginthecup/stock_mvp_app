@@ -4,6 +4,8 @@ import '../repos/repo_interfaces.dart';
 import '../ui/common/ui.dart';
 import '../screens/stock/stock_browser_screen.dart';
 import '../app/main_tab_controller.dart'; // ✅ 추가
+import '../models/suppliers.dart'; // ✅ 등록 후 되돌아올 때 타입 체크용 (선택)
+
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -89,6 +91,28 @@ class DashboardScreen extends StatelessWidget {
                 icon: const Icon(Icons.settings),
                 label: Text(context.t.settings_language_title),
               ),
+              const SizedBox(height: 8),
+
+// ✅ 거래처 등록 버튼 (폼 호출)
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final result = await Navigator.of(context, rootNavigator: true)
+                      .pushNamed('/suppliers/new');
+                  if (!context.mounted) return;
+                  //(선택) 저장 후 피드백
+                  if (result is Supplier) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('거래처 등록: ${result.name}')),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.person_add_alt_1),
+                label: const Text('거래처 등록'),
+              ),
+
+              const SizedBox(height: 8),
+
+
             ],
           );
         },
