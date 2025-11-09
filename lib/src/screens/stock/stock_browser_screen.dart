@@ -629,7 +629,33 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                                 );
 
                                 sel.exit();
-                              },
+                              },onMove: () async {
+                              final sel = context.read<ItemSelectionController>(); // 선택된 아이템
+                              final repo = context.read<InMemoryRepo>();
+
+                              // 기존에 쓰던 경로 선택기 사용
+                              final dest = await showPathPicker(
+                                context,
+                                childrenProvider: folderChildrenProvider(repo),
+                                title: '아이템 이동..',
+                                maxDepth: 3, // 필요시 2로 낮춰도 됨
+                              );
+
+                              if (dest == null || dest.isEmpty || !context.mounted) return;
+
+                              // 배치 이동 (repo에 moveItemsToPath가 있어야 함)
+                              final moved = await repo.moveItemsToPath(
+                                itemIds: sel.selected.toList(),
+                                pathIds: dest, // [L1], [L1,L2], [L1,L2,L3]
+                              );
+
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('아이템 $moved개 이동')),
+                              );
+                              sel.clear();
+                            },
+
                               onSelectAll: () => sel.selectAll(currentItems.map((e) => e.id)),
                               onClear: sel.exit,
                             ),

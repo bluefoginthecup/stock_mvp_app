@@ -6,6 +6,7 @@ class StockMultiSelectBar extends StatelessWidget {
   final VoidCallback onAddToCart;
   final VoidCallback onSelectAll;
   final VoidCallback onClear;
+  final VoidCallback onMove;
 
   const StockMultiSelectBar({
     super.key,
@@ -14,6 +15,7 @@ class StockMultiSelectBar extends StatelessWidget {
     required this.onAddToCart,
     required this.onSelectAll,
     required this.onClear,
+    required this.onMove,
   });
 
   @override
@@ -57,7 +59,23 @@ class StockMultiSelectBar extends StatelessWidget {
                 icon: const Icon(Icons.clear_all, size: 18),
                 label: const Text('해제'),
               ),
+
+
               const SizedBox(width: 8),
+
+          // 이동 버튼
+                        TextButton.icon(
+                              style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                    onPressed: selectedCount == 0 ? null : onMove,
+                    icon: const Icon(Icons.drive_file_move, size: 18),
+                    label: const Text('이동'),
+                  ),
+                  const SizedBox(width: 8),
 
               FilledButton.icon(
                 style: FilledButton.styleFrom(

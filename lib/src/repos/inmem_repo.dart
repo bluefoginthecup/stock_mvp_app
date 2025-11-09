@@ -527,7 +527,29 @@ class InMemoryRepo extends ChangeNotifier
         if (!_items.containsKey(req.id)) {
           throw StateError('Item not found: ${req.id}');
         }
-        _itemPaths[req.id] = List.unmodifiable(req.pathIds);
+
+    // 1) 위치(경로ID) 갱신
+            _itemPaths[req.id] = List.unmodifiable(req.pathIds);
+
+            // 2) 메타 동기화: folder / subfolder / subsubfolder
+            //    (req.pathIds = [L1, L2?, L3?] 이라고 가정)
+            List<String?> _namesFromPathIds(List<String> ids) {
+              final names = <String?>[];
+              for (final fid in ids.take(3)) {
+                names.add(_folders[fid]?.name);
+              }
+              while (names.length < 3) names.add(null);
+              return names; // [l1, l2, l3]
+            }
+            final names = _namesFromPathIds(req.pathIds);
+            final it = _items[req.id];
+            if (it != null) {
+              _items[req.id] = it.copyWith(
+                folder:       (names[0]) ?? it.folder,
+                subfolder:    (names[1]),
+                subsubfolder: (names[2]),
+              );
+            }
         break;
 
       case EntityKind.folder:
@@ -603,14 +625,35 @@ class InMemoryRepo extends ChangeNotifier
   }
 
   // (하위호환) 아이템 전용 이동 → 통합 API 위임
-  Future<void> moveItemToPath({
-    required String itemId,
-    required List<String> pathIds, // [L1], [L1,L2], [L1,L2,L3] 허용
+  // InMemoryRepo (또는 구현 Repo) 안에 추가
+// Item 여러 개를 [L1], [L1,L2], [L1,L2,L3] 경로로 이동
+  Future<int> moveItemsToPath({
+    required List<String> itemIds,
+    required List<String> pathIds,
   }) async {
-    await moveEntityToPath(
-      MoveRequest(kind: EntityKind.item, id: itemId, pathIds: pathIds),
-    );
+    int ok = 0;
+    for (final id in itemIds) {
+      try {
+        await moveEntityToPath(
+          MoveRequest(
+            kind: EntityKind.item, // ⚠️ 없다면 enum에 추가 필요
+            id: id,
+            pathIds: pathIds,
+          ),
+        );
+        ok++;
+      } catch (_) {
+        // 개별 실패는 무시하고 계속
+      }
+    }
+    if (ok > 0) {
+      // InMemoryRepo가 ChangeNotifier면
+      // notifyListeners(); // moveEntityToPath 내부에서 이미 호출한다면 생략
+    }
+    return ok;
   }
+
+
   // itemId -> FIFO 리스트
   final Map<String, List<Lot>> _lotsByItem = {};
 
