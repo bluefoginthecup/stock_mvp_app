@@ -101,6 +101,10 @@ abstract class TxnRepo {
     String? note,
   });
 
+
+  // ✅ 추가: 동기 스냅샷 (정렬까지 된 최신 리스트)
+  List<Txn> snapshotTxnsDesc();
+
   // 🧹 삭제 정책
   /// 단건 하드 삭제(실수 입력 취소 등)
   Future<void> deleteTxn(String txnId);
@@ -111,6 +115,7 @@ abstract class TxnRepo {
     required String refId,
   });
 }
+
 
 /// ✅ BOM 표준 인터페이스(최소 메서드)
 /// - 구현체 내부에 finished/semi 같은 리치 API가 있더라도, 시그니처가 다르면 @override 금지

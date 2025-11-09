@@ -1063,6 +1063,12 @@ class InMemoryRepo extends ChangeNotifier
         ..sort((a, b) => b.ts.compareTo(a.ts));
       return list;
     }
+
+  List<Txn> snapshotTxnsDesc() {
+    final list = _txns.values.toList()
+      ..sort((a, b) => b.ts.compareTo(a.ts));
+    return list;
+  }
   // ===== TxnRepo helpers =====
   @override
   Future<void> addInPlanned({
@@ -1192,10 +1198,11 @@ class InMemoryRepo extends ChangeNotifier
 
   // ===================== HELPERS =====================
   Future<void> _removePlannedTxnsByRef({required String refType, required String refId}) async {
-    final ids = _txns.values
-        .where((t) => t.refType == refType && t.refId == refId && t.isPlanned == true)
-        .map((t) => t.id)
-        .toList();
+        final refEnum = RefTypeX.fromString(refType);
+        final ids = _txns.values
+            .where((t) => t.refType == refEnum && t.refId == refId && t.isPlanned == true)
+            .map((t) => t.id)
+            .toList();
     for (final id in ids) {
       _txns.remove(id);
     }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,38 +7,36 @@ import '../../../models/types.dart';
 import '../../../ui/ui_utils.dart';
 import '../../../repos/repo_interfaces.dart';
 import '../../../ui/common/qty_badge.dart';
+import '../../../utils/item_presentation.dart'; // ItemLabel
+import '../../../ui/common/delete_more_menu.dart';
 
-// ✅ 브레드크럼 라벨 재사용
-import '../../../utils/item_presentation.dart'; // ItemLabel, ItemPresentationService
+// ────────────────────────────────────────────────────────────
+// 로깅 유틸
+// ────────────────────────────────────────────────────────────
+void _d(String msg) {
+  if (kDebugMode) debugPrint('[TxnRow] $msg');
+}
 
-import '../../../ui/common/delete_more_menu.dart'; // ▼ 더보기 메뉴 임포트 (경로 맞춰주세요)
-
-
-
-/// 입·출고 기록 한 줄 표시
-/// - 아이템명 (없으면 itemId tail)
-/// - 주문자명 (order인 경우)
-/// - 뱃지: 작업입고/주문출고
-/// - UUID는 …abcd 4글자만
-///
-
+// Provider 안전 읽기 (provider 버전 이슈로 maybeOf 사용 불가 → try/catch)
 T? _tryRead<T>(BuildContext ctx) {
   try {
-    return Provider.of<T>(ctx, listen: false);
-  } catch (_) {
-    return null; // Provider가 없으면 null
+    final v = Provider.of<T>(ctx, listen: false);
+    _d('Provider<$T> OK');
+    return v;
+  } catch (e) {
+    _d('Provider<$T> MISSING: $e');
+    return null;
   }
 }
 
+/// 입·출고 기록 한 줄 표시
 class TxnRow extends StatelessWidget {
-    final Txn t;
-    /// 선택: 외부에서 trailing 커스터마이즈 가능
-    final Widget? trailing;
-    const TxnRow({super.key, required this.t, this.trailing});
-
+  final Txn t;
+  final Widget? trailing;
+  const TxnRow({super.key, required this.t, this.trailing});
 
   Future<(String, String?)> _loadNames(BuildContext ctx) async {
-    // ItemRepo / OrderRepo가 주입되어 있지 않아도 안전하게 동작하도록 설계
+    _d('----- _loadNames start: itemId=${t.itemId}, refType=${t.refType}, refId=${t.refId}, ts=${t.ts}');
     final itemRepo  = _tryRead<ItemRepo>(ctx);
     final orderRepo = _tryRead<OrderRepo>(ctx);
 
@@ -46,42 +45,65 @@ class TxnRow extends StatelessWidget {
 
     try {
       if (itemRepo != null) {
+        _d('itemRepo.nameOf(${t.itemId})...');
         final n = await itemRepo.nameOf(t.itemId);
         final nt = n?.trim();
-        if (nt != null && nt.isNotEmpty) itemName = nt;
+        if (nt != null && nt.isNotEmpty) {
+          itemName = nt;
+          _d('item name resolved="$itemName"');
+        } else {
+          _d('item name empty');
+        }
+      } else {
+        _d('itemRepo is null → skip nameOf()');
       }
-    } catch (_) {}
+    } catch (e, st) {
+      _d('EX in itemRepo.nameOf: $e\n$st');
+    }
 
-    if (t.refType == RefType.order && t.refId != null && orderRepo != null) {
-      try {
+    try {
+      if (t.refType == RefType.order && t.refId != null && orderRepo != null) {
+        _d('orderRepo.customerNameOf(${t.refId})...');
         final r  = await orderRepo.customerNameOf(t.refId);
         final rt = r?.trim();
-        if (rt != null && rt.isNotEmpty) customer = rt;
-      } catch (_) {}
+        if (rt != null && rt.isNotEmpty) {
+          customer = rt;
+          _d('customer resolved="$customer"');
+        } else {
+          _d('customer empty');
+        }
+      } else {
+        _d('skip customer lookup (refType=${t.refType}, refId=${t.refId}, orderRepo? ${orderRepo != null})');
+      }
+    } catch (e, st) {
+      _d('EX in orderRepo.customerNameOf: $e\n$st');
     }
 
     if (itemName.isEmpty) {
       itemName = '아이템 ${shortId(t.itemId)}';
+      _d('fallback itemName="$itemName"');
     }
+
+    _d('----- _loadNames done');
     return (itemName, customer);
   }
 
-  // ✅ 네임드 라우트 이동 (routes에 '/items/detail', '/purchases/detail' 등록되어 있어야 함)
   void _goItemDetail(BuildContext context) {
+    _d('tap -> item detail: ${t.itemId}');
     Navigator.pushNamed(context, '/items/detail', arguments: t.itemId);
   }
 
   void _goPurchaseDetail(BuildContext context, String poId) {
+    _d('tap -> purchase detail: $poId');
     Navigator.pushNamed(context, '/purchases/detail', arguments: poId);
   }
 
   @override
   Widget build(BuildContext context) {
+    _d('build: txnId=${shortId(t.id)}, type=${t.type}, isPlanned=${t.isPlanned}');
     final isInbound = t.type == TxnType.in_;
 
-    // 뱃지
-    Widget reasonBadge = badge(t.refType.name, Colors.blueGrey); // ← 기본값
-
+    Widget reasonBadge = badge(t.refType.name, Colors.blueGrey);
     if (t.refType == RefType.work) {
       reasonBadge = t.isPlanned
           ? badge('작업등록', Colors.blueGrey)
@@ -94,7 +116,6 @@ class TxnRow extends StatelessWidget {
           : badge('주문출고', Colors.red, icon: Icons.shopping_cart);
     }
 
-
     final leadIcon = Icon(
       isInbound ? Icons.south_west : Icons.north_east,
       color: isInbound ? Colors.green : Colors.red,
@@ -103,35 +124,46 @@ class TxnRow extends StatelessWidget {
     return FutureBuilder<(String, String?)>(
       future: _loadNames(context),
       builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          // 진행 로그
+          _d('FutureBuilder waiting...');
+          return const ListTile(
+            dense: true,
+            title: Text('로딩 중...'),
+          );
+        }
+
+        if (snap.hasError) {
+          _d('FutureBuilder ERROR: ${snap.error}\n${snap.stackTrace}');
+          // 에러도 화면에 살짝 보여줌(임시)
+          return ListTile(
+            dense: true,
+            leading: const Icon(Icons.error, color: Colors.red),
+            title: const Text('행 렌더링 실패'),
+            subtitle: Text('${snap.error}'),
+          );
+        }
+
         final itemName = snap.data?.$1 ?? '아이템 ${shortId(t.itemId)}';
         final customer = snap.data?.$2;
 
         return ListTile(
           leading: leadIcon,
-
-          // ✅ 타이틀: [수량 배지]  [풀 경로 브레드크럼(탭 → 아이템 상세)]
           title: Padding(
             padding: const EdgeInsets.only(bottom: 2),
             child: Row(
               children: [
-                // 수량 배지
                 QtyBadge(qty: t.qty.abs(), direction: t.type, status: t.status),
                 const SizedBox(width: 8),
-
-                // 브레드크럼 (한 줄 말줄임) — 클릭 가능하게 InkWell 래핑
                 Expanded(
                   child: InkWell(
                     onTap: () => _goItemDetail(context),
-                    child: ItemLabel(
-                      itemId: t.itemId,
-                      full: true,
-                    ),
+                    child: ItemLabel(itemId: t.itemId, full: true),
                   ),
                 ),
               ],
             ),
           ),
-
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -143,8 +175,6 @@ class TxnRow extends StatelessWidget {
                   Text(fmtYmdHm(t.ts)),
                   reasonBadge,
                   if (customer != null) Text('주문자 $customer'),
-
-                  // ✅ 발주번호 탭 → 발주 상세로 이동 (밑줄+파란색으로 링크 느낌)
                   if (t.refType == RefType.purchase && t.refId != null)
                     InkWell(
                       onTap: () => _goPurchaseDetail(context, t.refId!),
@@ -174,7 +204,6 @@ class TxnRow extends StatelessWidget {
                 ),
             ],
           ),
-
           trailing: trailing ?? DeleteMoreMenu<Txn>(entity: t),
           dense: true,
           visualDensity: VisualDensity.compact,

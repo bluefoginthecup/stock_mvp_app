@@ -59,10 +59,17 @@ Future<void> main() async {
           create: (_) => ItemSelectionController(),
         ),
 
+
+      // TxnRepo 타입으로도 '같은 inmem 인스턴스'를 노출 (타입 바인딩용)
+
+  // inmem(ChangeNotifier)을 직접 넣지 말고 뷰 래퍼로 주입
+        Provider<TxnRepo>(
+          create: (ctx) => TxnRepoView(ctx.read<InMemoryRepo>()),
+        ),
+
         // 화면엔 인터페이스(비-Listenable)로 주입 → Provider OK
         Provider<ItemRepo>(create: (ctx) => ItemRepoView(ctx.read<InMemoryRepo>())),
         Provider<OrderRepo>(create: (ctx) => OrderRepoView(ctx.read<InMemoryRepo>())),
-        Provider<TxnRepo>(create: (ctx) => TxnRepoView(ctx.read<InMemoryRepo>())),
         Provider<BomRepo>(create: (ctx) => BomRepoView(ctx.read<InMemoryRepo>())),
         Provider<WorkRepo>(create: (ctx) => WorkRepoView(ctx.read<InMemoryRepo>())),
 

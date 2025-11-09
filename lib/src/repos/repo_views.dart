@@ -144,7 +144,8 @@ class TxnRepoView implements TxnRepo {
   final InMemoryRepo inner;
   TxnRepoView(this.inner);
 
-   @override
+
+  @override
    Future<List<Txn>> listTxns() => inner.listTxns();
    // 선택: 아이템별 트랜잭션 보기
    Future<List<Txn>> listTxnsByItem(String itemId) => inner.listTxnsByItem(itemId);
@@ -167,6 +168,9 @@ class TxnRepoView implements TxnRepo {
     required String refId,
     String? note})
   => inner.addInActual(itemId: itemId, qty: qty, refType: refType, refId: refId, note: note);
+
+  @override
+  List<Txn> snapshotTxnsDesc() => inner.snapshotTxnsDesc();
 
   @override
     Future<void> deleteTxn(String txnId) => inner.deleteTxn(txnId);
