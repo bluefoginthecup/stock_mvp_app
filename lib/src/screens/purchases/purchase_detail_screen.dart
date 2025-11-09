@@ -227,14 +227,17 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                    await _reload();
                  }
               },
-              onCancel: po.status == PurchaseOrderStatus.received
-                  ? null
-                  : () async {
-                await widget.repo.updatePurchaseOrderStatus(po.id, PurchaseOrderStatus.canceled);
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다')));
-                await _reload();
-              },
+                onCancel: po.status == PurchaseOrderStatus.received
+                     ? null
+                     : () async {
+               // ✅ 예정입고 롤백 + 상태전환을 서비스에서 일괄 처리
+               await context.read<InventoryService>().cancelPurchase(po.id);
+               if (!mounted) return;
+               ScaffoldMessenger.of(context).showSnackBar(
+                 const SnackBar(content: Text('발주 취소: 예정 입고 기록이 정리되었습니다')),
+               );
+               await _reload();
+             },
               labelForAdvance: switch (po.status) {
                 PurchaseOrderStatus.draft   => t.purchase_action_order,
                 PurchaseOrderStatus.ordered => t.purchase_action_receive,
