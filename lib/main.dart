@@ -18,7 +18,6 @@ import 'src/models/purchase_order.dart'; // ⬅️ 유지
 
 // ⬇️⬇️ 추가: 탭 내비 컨트롤러 & 스크린
 import 'src/app/main_tab_controller.dart';
-import 'src/app/main_tab_screen.dart';
 import 'src/screens/stock/widgets/item_selection_controller.dart';
 
 Future<void> main() async {

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stockapp_mvp/src/app/main_tab_screen.dart';
-import 'screens/dashboard_screen.dart';
 import 'screens/orders/order_list_screen.dart';
-//import 'screens/stock/stock_list_screen.dart';
 import 'screens/stock/stock_browser_screen.dart';
 
 import 'screens/txns/txn_list_screen.dart';
