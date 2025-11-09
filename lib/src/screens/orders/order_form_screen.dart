@@ -166,6 +166,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
             label: '주문상세 보기',
             onPressed: () {
               // 현재 화면이 pop된 후에도 동작하도록 rootNavigator 사용
+              if (!mounted) return;
               Navigator.of(context, rootNavigator: true)
                   .pushNamed('/orders/detail', arguments: _order.id);
             },

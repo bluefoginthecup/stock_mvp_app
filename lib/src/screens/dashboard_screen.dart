@@ -29,8 +29,8 @@ class DashboardScreen extends StatelessWidget {
                   title: context.t.dashboard_total_items,
                   value: items.length.toString(),
                   onTap: () {
-                    // ✅ 탭 전환: 재고 탭으로 이동
-                    context.read<MainTabController>().setIndex(1);
+                    // ✅ 전체품목: 재고 탭으로 이동
+                    context.read<MainTabController>().setIndex(2);
                   },
                 ),
                 _StatCard(

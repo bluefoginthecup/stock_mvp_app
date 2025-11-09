@@ -132,7 +132,7 @@ class UnifiedSeedImporter {
       await _clearAllIfSupported();
     }
 
-    // Folders (repo 가 폴더생성 지원시 생성)
+    // Folders: 시드의 id/parentId를 **보존**하여 저장
     if (folders.isNotEmpty) _persistFoldersIfSupported(folders);
 
     // Items upsert
@@ -152,8 +152,11 @@ class UnifiedSeedImporter {
     try {
       final dyn = itemRepo as dynamic;
       if (dyn.backfillPathsFromLegacy is Function) {
-        await dyn.backfillPathsFromLegacy(createFolders: true);
-        _log('backfillPathsFromLegacy() done.');
+              // ⚠️ 폴더는 위에서 이미 시드 기준으로 생성/업서트 했으므로
+              //     여기서는 createFolders=false 로 둬서 임의 생성(랜덤 id) 방지
+              await dyn.backfillPathsFromLegacy(createFolders: false);
+              _log('backfillPathsFromLegacy(createFolders:false) done.');
+
       } else {
         _log('backfillPathsFromLegacy() not available on repo (skipped).');
       }
@@ -251,7 +254,6 @@ class UnifiedSeedImporter {
       );
     }).toList();
 
-    _persistFoldersIfSupported(folders);
     return folders;
   }
 
@@ -341,34 +343,73 @@ class UnifiedSeedImporter {
     () async {
       try {
         final dyn = itemRepo as dynamic;
-        if (dyn.createFolderNode is Function) {
-          // depth 오름차순으로 부모 먼저 생성
-          folders.sort((a, b) => a.depth.compareTo(b.depth));
-          final Map<String, String> idMap = {}; // seedId -> repoId
-          var ok = 0, skip = 0;
-          for (final f in folders) {
-            final String? parentSeedId = f.parentId;
-            final String? parentRepoId = parentSeedId == null ? null : idMap[parentSeedId];
-            try {
-              final created = await dyn.createFolderNode(
-                parentId: parentRepoId,
-                name: f.name,
-              );
-              // created.id 를 시드 id에 매핑
-              if (created != null && created.id is String) {
-                idMap[f.id] = created.id as String;
+        // depth, order 기준으로 부모 먼저
+                folders.sort((a, b) {
+                    final d = a.depth.compareTo(b.depth);
+                    return d != 0 ? d : a.order.compareTo(b.order);
+                  });
+
+            var ok = 0, skip = 0, warn = 0;
+
+            // 1) 최우선: upsertFolderNode(FolderNode)
+            if (dyn.upsertFolderNode is Function) {
+              for (final f in folders) {
+                try {
+                  await dyn.upsertFolderNode(f); // id/parentId 그대로 보존
+                  ok++;
+                } catch (e) {
+                  skip++;
+                  if (verbose) _log('Folder upsert skipped (${f.id}:${f.name}): $e');
+                }
               }
-              ok++;
-            } catch (e) {
-              // 중복 등으로 실패할 수 있음 → 스킵하고 진행
-              skip++;
-              if (verbose) _log('Folder create skipped (${f.name}): $e');
+              if (verbose) _log('Folders persisted via upsertFolderNode: ok=$ok skipped=$skip');
+
+            // 2) 다음: createFolderNodeWithId(...)
+            } else if (dyn.createFolderNodeWithId is Function) {
+              for (final f in folders) {
+                try {
+                  await dyn.createFolderNodeWithId(
+                    id: f.id,
+                    parentId: f.parentId,
+                    name: f.name,
+                    depth: f.depth,
+                    order: f.order,
+                  );
+                  ok++;
+                } catch (e) {
+                  // 이미 존재 등 → 스킵
+                  skip++;
+                  if (verbose) _log('Folder createWithId skipped (${f.id}:${f.name}): $e');
+                }
+              }
+              if (verbose) _log('Folders persisted via createFolderNodeWithId: ok=$ok skipped=$skip');
+
+            // 3) 마지막 수단: createFolderNode(parentId,name) — ⚠️ id 보존 불가
+            } else if (dyn.createFolderNode is Function) {
+              _log('⚠️ Repo에 upsertFolderNode/createFolderNodeWithId가 없습니다. '
+                   'createFolderNode(parentId,name)로 생성하면 시드 id가 보존되지 않습니다.');
+              for (final f in folders) {
+                try {
+                  // parentId는 시드 id 이므로, repo에서 같은 id를 찾을 방법이 없으면 그대로 전달 불가
+                  // 일부 repo가 getFolderById를 지원한다면 보정 가능
+                  String? parentRepoId = f.parentId;
+                  if (dyn.getFolderById is Function && f.parentId != null) {
+                    final parent = await dyn.getFolderById(f.parentId);
+                    parentRepoId = parent?.id; // 없으면 null
+                  }
+                  await dyn.createFolderNode(parentId: parentRepoId, name: f.name);
+                  ok++;
+                  warn++;
+                } catch (e) {
+                  skip++;
+                  if (verbose) _log('Folder create (no-id) skipped (${f.name}): $e');
+                }
+              }
+              if (verbose) _log('Folders persisted via createFolderNode: ok=$ok skipped=$skip (⚠️id 보존 안됨:$warn)');
+
+            } else {
+              if (verbose) _log('Folder persistence not supported by repo.');
             }
-          }
-          if (verbose) _log('Folders persisted: $ok (skipped:$skip)');
-        } else {
-          if (verbose) _log('Folder persistence not supported by repo.');
-        }
       } catch (e) {
         if (verbose) _log('Folder persist failed: $e');
       }

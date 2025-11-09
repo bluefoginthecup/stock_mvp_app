@@ -36,6 +36,7 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
     final repo = context.read<InMemoryRepo>();
     String? l1Name;
     String? l2Name;
+    String? l3Name;
     if (widget.pathIds.isNotEmpty) {
       final l1 = repo.folderById(widget.pathIds[0]);
       l1Name = l1?.name;
@@ -44,6 +45,11 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       final l2 = repo.folderById(widget.pathIds[1]);
       l2Name = l2?.name;
     }
+
+        if (widget.pathIds.length >= 3) {
+          final l3 = repo.folderById(widget.pathIds[2]);
+          l3Name = l3?.name;
+        }
 
     // 필요하면 소문자 정규화(기존 시드가 'finished', 'raw'처럼 소문자였음)
     String? normalize(String? s) => s?.toLowerCase();
@@ -60,6 +66,10 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       folder: normalize(l1Name) ?? 'uncategorized',
       // 선택 필드(모델에 있으면): 중분류
       subfolder: normalize(l2Name),
+        // ✅ 3뎁스도 같이 기록
+              subsubfolder: normalize(l3Name),
+          // ✅ path 필드가 있다면 함께 저장 (모델에 path가 존재할 때)
+
     );
 
     if (!mounted) return;

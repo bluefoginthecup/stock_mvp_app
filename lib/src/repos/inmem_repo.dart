@@ -177,25 +177,158 @@ class InMemoryRepo extends ChangeNotifier
     return set.map((id) => _folders[id]!).toList(growable: false);
   }
 
-  Future<FolderNode> createFolderNode({required String? parentId, required String name}) async {
-    int depth = 1;
-    if (parentId != null) {
-      final p = _folders[parentId];
-      if (p == null) throw StateError('Parent not found');
-      depth = p.depth + 1;
-      if (depth > 3) throw StateError('Depth > 3 is not supported');
+
+  String _slugify(String s) => s
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9+]'), '-')
+      .replaceAll(RegExp(r'-+'), '-')
+      .replaceAll(RegExp(r'^-|-$'), '');
+
+  List<String> _pathNamesFrom(String? folderId, Map<String, FolderNode> folders) {
+    final names = <String>[];
+    String? cur = folderId;
+    while (cur != null && names.length < 3) {
+      final f = folders[cur];
+      if (f == null) break;
+      names.add(f.name);
+      cur = f.parentId;
     }
-    final id = _uuid.v4();
-    final node = FolderNode(id: id, name: name, parentId: parentId, depth: depth, order: 0);
+    return names.reversed.toList(); // [l1, l2, l3]
+  }
+
+  String _deterministicFolderId({
+    required String name,
+    required String? parentId,
+    required Map<String, FolderNode> folders,
+  }) {
+    final path = _pathNamesFrom(parentId, folders);
+    path.add(name);
+    final id = 'f-${path.map(_slugify).join('-')}';
+    return id;
+  }
+
+
+   Future<FolderNode> createFolderNode({
+     required String? parentId,
+     required String name,
+   }) async {
+     // 깊이 계산
+     int depth = 1;
+     if (parentId != null) {
+       final p = _folders[parentId];
+       if (p == null) throw StateError('Parent not found');
+       depth = p.depth + 1;
+       if (depth > 3) throw StateError('Depth > 3 is not supported');
+     }
+     // ✅ 랜덤 대신 '경로 기반 결정적 ID' 사용
+     final id = _deterministicFolderId(name: name, parentId: parentId, folders: _folders);
+     if (_folders.containsKey(id)) {
+       // 이미 존재하면 해당 노드 반환 (idempotent)
+       return _folders[id]!;
+     }
+     final node = FolderNode(id: id, name: name, parentId: parentId, depth: depth, order: 0);
+     _folders[id] = node;
+     final idx = _childrenIndex.putIfAbsent(
+       parentId,
+       () => SplayTreeSet((a, b) => _folders[a]!.name.compareTo(_folders[b]!.name)),
+     );
+     idx.add(id);
+     notifyListeners();
+     return node;
+   }
+// ✅ 새로 추가: 명시한 id로 생성 (이미 존재하면 에러)
+  Future<FolderNode> createFolderNodeWithId({
+    required String id,
+    required String? parentId,
+    required String name,
+    int? depth,          // 선택: 명시하면 사용, 아니면 자동 계산
+    int order = 0,
+  }) async {
+    final computedDepth = _computeDepth(parentId, depthHint: depth);
+    if (_folders.containsKey(id)) {
+      throw StateError('Folder already exists: $id');
+    }
+    final node = FolderNode(
+      id: id,
+      name: name,
+      parentId: parentId,
+      depth: computedDepth,
+      order: order,
+    );
     _folders[id] = node;
-
-    final idx = _childrenIndex.putIfAbsent(parentId, () => SplayTreeSet(
-          (a, b) => _folders[a]!.name.compareTo(_folders[b]!.name),
-    ));
-    idx.add(id);
-
+    _attachToParentIndex(parentId, id);
     notifyListeners();
     return node;
+  }
+
+// ✅ 새로 추가: 업서트 (있으면 갱신, 없으면 생성)
+// - parent 변경/이름 변경 시 children 인덱스 재정렬 처리
+  Future<void> upsertFolderNode(FolderNode f) async {
+    final computedDepth = _computeDepth(f.parentId, depthHint: f.depth);
+    final existing = _folders[f.id];
+
+    if (existing == null) {
+      // 생성
+      final node = FolderNode(
+        id: f.id,
+        name: f.name,
+        parentId: f.parentId,
+        depth: computedDepth,
+        order: f.order,
+      );
+      _folders[f.id] = node;
+      _attachToParentIndex(f.parentId, f.id);
+      notifyListeners();
+      return;
+    }
+
+    // 갱신: parent 변경이면 인덱스 이동
+    if (existing.parentId != f.parentId) {
+      _detachFromParentIndex(existing.parentId, existing.id);
+      _attachToParentIndex(f.parentId, f.id);
+    } else if (existing.name != f.name) {
+      // 이름이 정렬 키라서 재삽입 필요
+      _detachFromParentIndex(existing.parentId, existing.id);
+      // 아래에서 _folders[f.id] 갱신 후 다시 attach
+    }
+
+    _folders[f.id] = FolderNode(
+      id: f.id,
+      name: f.name,
+      parentId: f.parentId,
+      depth: computedDepth,
+      order: f.order,
+    );
+    _attachToParentIndex(f.parentId, f.id);
+    notifyListeners();
+  }
+
+// ---- helpers ----
+
+  int _computeDepth(String? parentId, {int? depthHint}) {
+    if (parentId == null) {
+      final d = depthHint ?? 1;
+      return d < 1 ? 1 : (d > 3 ? 3 : d); // 최댓값 3 유지
+    }
+    final p = _folders[parentId];
+    if (p == null) throw StateError('Parent not found: $parentId');
+    final d = p.depth + 1;
+    if (d > 3) throw StateError('Depth > 3 is not supported');
+    return d;
+  }
+
+  void _attachToParentIndex(String? parentId, String id) {
+    final idx = _childrenIndex.putIfAbsent(
+      parentId,
+          () => SplayTreeSet((a, b) => _folders[a]!.name.compareTo(_folders[b]!.name)),
+    );
+    idx.add(id);
+  }
+
+  void _detachFromParentIndex(String? parentId, String id) {
+    final idx = _childrenIndex[parentId];
+    idx?.remove(id);
   }
 
   Future<void> renameFolderNode({required String id, required String newName}) async {
