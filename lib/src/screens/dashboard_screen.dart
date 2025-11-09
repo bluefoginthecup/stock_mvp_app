@@ -91,26 +91,15 @@ class DashboardScreen extends StatelessWidget {
                 icon: const Icon(Icons.settings),
                 label: Text(context.t.settings_language_title),
               ),
-              const SizedBox(height: 8),
-
-// ✅ 거래처 등록 버튼 (폼 호출)
-              ElevatedButton.icon(
-                onPressed: () async {
-                  final result = await Navigator.of(context, rootNavigator: true)
-                      .pushNamed('/suppliers/new');
-                  if (!context.mounted) return;
-                  //(선택) 저장 후 피드백
-                  if (result is Supplier) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('거래처 등록: ${result.name}')),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.person_add_alt_1),
-                label: const Text('거래처 등록'),
-              ),
 
               const SizedBox(height: 8),
+           ElevatedButton.icon(
+             onPressed: () => Navigator.of(context, rootNavigator: true).pushNamed('/suppliers'),
+             icon: const Icon(Icons.business),
+             label: const Text('거래처 목록'),
+           ),
+           const SizedBox(height: 8),
+
 
 
             ],

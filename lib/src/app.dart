@@ -17,6 +17,7 @@ import '/src/screens/settings/language_settings_screen.dart';
 import 'screens/stock/stock_item_detail_screen.dart';
 import 'screens/purchases/purchase_detail_screen.dart';
 import 'screens/suppliers/supplier_form_screen.dart';
+import 'screens/suppliers/supplier_list_screen.dart';
 
 
 import 'repos/repo_interfaces.dart';
@@ -71,6 +72,7 @@ class StockApp extends StatelessWidget {
           final id = ModalRoute.of(context)!.settings.arguments as String;
           return SupplierFormScreen(supplierId: id);
         },
+        '/suppliers': (_) => const SupplierListScreen(),
       },
       initialRoute: '/',
     );

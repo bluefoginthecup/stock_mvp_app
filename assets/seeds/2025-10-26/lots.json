@@ -1,0 +1,22 @@
+{
+  "lots": [
+    {
+      "item_id": "it_R_top_1902-05_roll_153cm",
+      "lot_no": "TOP-05-001",
+      "received_qty_roll": 1,
+      "measured_length_m": 91.7,
+      "usable_qty_m": 91.7,
+      "status": "active",
+      "received_at": "2025-11-03T09:00:00Z"
+    },
+    {
+      "item_id": "it_R_top_1902-05_roll_153cm",
+      "lot_no": "TOP-05-002",
+      "received_qty_roll": 1,
+      "measured_length_m": 88.2,
+      "usable_qty_m": 88.2,
+      "status": "active",
+      "received_at": "2025-11-03T09:10:00Z"
+    }
+  ]
+}
