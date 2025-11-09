@@ -446,7 +446,19 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   );
                 },
               ),
-
+              Builder(builder: (_) {
+                final repo = context.watch<InMemoryRepo>();
+                return PopupMenuButton<FolderSortMode>(
+                  tooltip: '정렬',
+                  icon: const Icon(Icons.sort),
+                  initialValue: repo.sortMode,
+                  onSelected: (m) => context.read<InMemoryRepo>().setSortMode(m),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: FolderSortMode.name,   child: Text('이름순')),
+                    PopupMenuItem(value: FolderSortMode.manual, child: Text('사용자순')),
+                  ],
+                );
+              }),
             ],
           ),
           body: Column(

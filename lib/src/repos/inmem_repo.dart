@@ -21,6 +21,7 @@ import '../models/lot.dart';
 
 // === Common move types (top-level) ===
 enum EntityKind { item, folder }
+enum FolderSortMode { name, manual }
 
 class MoveRequest {
   final EntityKind kind;
@@ -64,8 +65,40 @@ class InMemoryRepo extends ChangeNotifier
   final Map<String, FolderNode> _folders = <String, FolderNode>{};
 
   /// parentId -> child folderIds (이름순 정렬)
+
   final Map<String?, SplayTreeSet<String>> _childrenIndex =
   <String?, SplayTreeSet<String>>{};
+
+    // ★ 현재 정렬 모드 (기본은 이름순으로 시작해도 되고, 사용자순으로 시작해도 됨)
+    FolderSortMode _sortMode = FolderSortMode.name;
+    FolderSortMode get sortMode => _sortMode;
+    void setSortMode(FolderSortMode mode) {
+        if (_sortMode == mode) return;
+        _sortMode = mode;
+        _rebuildChildrenIndex(); // 모드 바뀌면 정렬 다시 구성
+        notifyListeners();
+      }
+
+    // ★ children 버킷 생성 헬퍼: comparator를 한 곳에서만 정의
+    SplayTreeSet<String> _newChildBucket() => SplayTreeSet<String>((a, b) {
+        final fa = _folders[a]!;
+        final fb = _folders[b]!;
+        if (_sortMode == FolderSortMode.manual) {
+          final byOrder = fa.order.compareTo(fb.order);
+          if (byOrder != 0) return byOrder;
+        }
+        return fa.name.compareTo(fb.name); // 보조 키: 이름
+      });
+
+    // ★ 정렬 재적용 (모드 변경/데이터 변경 시 호출)
+    void _rebuildChildrenIndex() {
+        _childrenIndex.clear();
+        for (final f in _folders.values) {
+          final set = _childrenIndex.putIfAbsent(f.parentId, () => _newChildBucket());
+          set.add(f.id);
+        }
+      }
+
 
   /// itemId -> [l1Id,  l2Id?, l3Id?]
   final Map<String, List<String>> _itemPaths = <String, List<String>>{};
@@ -229,10 +262,8 @@ class InMemoryRepo extends ChangeNotifier
      }
      final node = FolderNode(id: id, name: name, parentId: parentId, depth: depth, order: 0);
      _folders[id] = node;
-     final idx = _childrenIndex.putIfAbsent(
-       parentId,
-       () => SplayTreeSet((a, b) => _folders[a]!.name.compareTo(_folders[b]!.name)),
-     );
+     final idx = _childrenIndex.putIfAbsent(parentId, () => _newChildBucket());
+
      idx.add(id);
      notifyListeners();
      return node;
@@ -319,10 +350,8 @@ class InMemoryRepo extends ChangeNotifier
   }
 
   void _attachToParentIndex(String? parentId, String id) {
-    final idx = _childrenIndex.putIfAbsent(
-      parentId,
-          () => SplayTreeSet((a, b) => _folders[a]!.name.compareTo(_folders[b]!.name)),
-    );
+    final idx = _childrenIndex.putIfAbsent(parentId, () => _newChildBucket());
+
     idx.add(id);
   }
 
@@ -386,6 +415,36 @@ class InMemoryRepo extends ChangeNotifier
 
     notifyListeners();
   }
+
+  /// 같은 부모 아래에서 폴더 순서를 재배열 (드래그 리오더 후 호출)
+  Future<void> reorderFolderChildren({
+    required String? parentId,              // null = 루트
+    required List<String> orderedChildIds,  // 최종 순서
+  }) async {
+    // 유효성: 모두 같은 부모의 자식이어야 함
+    for (final cid in orderedChildIds) {
+      final f = _folders[cid];
+      if (f == null) throw StateError('Folder not found: $cid');
+      if (f.parentId != parentId) {
+        throw StateError('Mismatched parent for $cid');
+      }
+    }
+
+    // order 재부여 (0..n-1)
+    for (var i = 0; i < orderedChildIds.length; i++) {
+      final id = orderedChildIds[i];
+      final f = _folders[id]!;
+      if (f.order != i) {
+        _folders[id] = f.copyWith(order: i);
+      }
+    }
+
+    // childrenIndex 해당 버킷 재구축
+    _childrenIndex[parentId] = _newChildBucket()..addAll(orderedChildIds);
+
+    notifyListeners();
+  }
+
 
   // ========================= 경로/검색 매칭 헬퍼 =========================
   int _wantedDepth(String? l1, String? l2, String? l3) {
@@ -580,12 +639,8 @@ class InMemoryRepo extends ChangeNotifier
 
           // 2) children index에서 부모 관계 갱신
           _childrenIndex[oldParentId]?.remove(folder.id);
-          final newIdx = _childrenIndex.putIfAbsent(
-            newParent.id,
-                () => SplayTreeSet<String>(
-                  (a, b) => _folders[a]!.name.compareTo(_folders[b]!.name),
-            ),
-          );
+          final newIdx = _childrenIndex.putIfAbsent(newParent.id, () => _newChildBucket());
+
           newIdx.add(folder.id);
 
           // 3) depth delta 계산 (서브트리 전체 depth 보정)
@@ -1521,12 +1576,7 @@ class InMemoryRepo extends ChangeNotifier
     if (folders != null) {
       for (final f in folders) {
         _folders[f.id] = f;
-        _childrenIndex
-            .putIfAbsent(
-          f.parentId,
-              () => SplayTreeSet((a, b) => _folders[a]!.name.compareTo(_folders[b]!.name)),
-        )
-            .add(f.id);
+        _childrenIndex.putIfAbsent(f.parentId, () => _newChildBucket()).add(f.id);
       }
     }
     if (items != null) {

@@ -16,6 +16,12 @@ import 'app/lang_controller.dart';
 import 'package:provider/provider.dart';
 import '/src/screens/settings/language_settings_screen.dart';
 
+import 'screens/stock/stock_item_detail_screen.dart';
+import 'screens/purchases/purchase_detail_screen.dart';
+
+
+import 'repos/repo_interfaces.dart';
+
 
 class StockApp extends StatelessWidget {
   const StockApp({super.key});
@@ -44,13 +50,22 @@ class StockApp extends StatelessWidget {
       ],
       theme: ThemeData( /* ... */ ),
       routes: {
-        '/': (_) => const MainTabScreen(),    // 아래 AppBar 타이틀도 i18n으로
+        '/': (_) => const MainTabScreen(), // 아래 AppBar 타이틀도 i18n으로
         '/orders': (_) => const OrderListScreen(),
         '/stock': (_) => const StockBrowserScreen(),
         '/txns': (_) => const TxnListScreen(),
         '/works': (_) => const WorkListScreen(),
         '/purchases': (_) => const PurchaseListScreen(),
         '/settings/language': (_) => const LanguageSettingsScreen(),
+        '/items/detail': (context) {
+          final itemId = ModalRoute.of(context)!.settings.arguments as String;
+          return StockItemDetailScreen(itemId: itemId);
+        },
+        '/purchases/detail': (context) {
+          final orderId = ModalRoute.of(context)!.settings.arguments as String;
+          final poRepo = context.read<PurchaseOrderRepo>();
+          return PurchaseDetailScreen(orderId: orderId, repo: poRepo);
+        },
       },
       initialRoute: '/',
     );
