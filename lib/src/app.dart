@@ -60,6 +60,7 @@ class StockApp extends StatelessWidget {
           return StockItemDetailScreen(itemId: itemId);
         },
         '/purchases/detail': (context) {
+          debugPrint('[Route] /purchases/detail builder called');
           final orderId = ModalRoute.of(context)!.settings.arguments as String;
           final poRepo = context.read<PurchaseOrderRepo>();
           return PurchaseDetailScreen(orderId: orderId, repo: poRepo);

@@ -211,24 +211,21 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               onAdvance: () async {
                 final next = _next(po.status);
                     if (next == po.status) return;
-                      if (po.status == PurchaseOrderStatus.ordered &&
-                          next == PurchaseOrderStatus.received) {
-                        // ✅ 입고 처리: Txn 생성 + 재고증가 + 상태전환까지 일괄
-                        await context.read<InventoryService>().receivePurchase(po.id);
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('입고 완료: 입출고기록 생성 및 재고 반영됨')),
-                        );
-                        await _reload();
-                      } else {
-                        // draft → ordered 등 단순 상태 전환
-                        await widget.repo.updatePurchaseOrderStatus(po.id, next);
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('저장되었습니다')),
-                        );
-                        await _reload();
-                      }
+                if (po.status == PurchaseOrderStatus.draft && next == PurchaseOrderStatus.ordered) {
+                     await context.read<InventoryService>().orderPurchase(po.id);
+                   if (!mounted) return;
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     const SnackBar(content: Text('발주완료: 예정 입고 기록 생성됨')),
+                   );
+                   await _reload();
+                 } else if (po.status == PurchaseOrderStatus.ordered && next == PurchaseOrderStatus.received) {
+                   await context.read<InventoryService>().receivePurchase(po.id);
+                   if (!mounted) return;
+                   ScaffoldMessenger.of(context).showSnackBar(
+                     const SnackBar(content: Text('입고 완료: 입출고기록 생성 및 재고 반영됨')),
+                   );
+                   await _reload();
+                 }
               },
               onCancel: po.status == PurchaseOrderStatus.received
                   ? null

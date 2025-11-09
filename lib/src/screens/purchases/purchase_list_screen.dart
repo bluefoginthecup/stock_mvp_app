@@ -102,23 +102,29 @@ extension on Card {
               if (p.status == PurchaseOrderStatus.draft)
                 FilledButton.tonal(
                   onPressed: () async {
-                    await poRepo.updatePurchaseOrderStatus(p.id, PurchaseOrderStatus.ordered);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('상태: 발주완료로 변경됨')),
-                      );
-                    }
-                  },
+    try {
+                          // ✅ planned 입고 생성  상태 전환까지 서비스가 처리
+                          await inv.orderPurchase(p.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('발주완료: 예정 입고 기록 생성됨')),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('처리 실패: $e')));
+                          }
+                        }
+    },
                   child: const Text('발주완료'),
                 ),
               if (p.status == PurchaseOrderStatus.ordered)
                 FilledButton(
                   onPressed: () async {
                     try {
-                      // 1) 실재고/입출고 기록 반영 (서비스 내부에서 Txn 생성/적용)
+                      // ✅ actual 입고 + 상태 전환까지 서비스가 처리
                       await inv.receivePurchase(p.id);
-                      // 2) 상태 변경
-                      await poRepo.updatePurchaseOrderStatus(p.id, PurchaseOrderStatus.received);
+
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('상태: 입고완료로 변경됨 (재고 반영됨)')),
