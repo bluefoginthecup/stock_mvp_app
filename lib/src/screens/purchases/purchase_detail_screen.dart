@@ -69,11 +69,11 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   Future<void> _editHeader() async {
     if (_po == null) return;
     if (_po == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('발주서를 불러오는 중입니다')),
-              );
-        return;
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('발주서를 불러오는 중입니다')),
+      );
+      return;
+    }
     final updated = await showModalBottomSheet<PurchaseOrder>(
       context: context,
       isScrollControlled: true,
@@ -159,11 +159,11 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           PurchasePrintAction(poId: widget.orderId), // ✅ PDF 보기
         ],
       ),
-        floatingActionButton: FloatingActionButton.extended(
-               onPressed: _addLine,
-               icon: const Icon(Icons.add),
-           label: Text(t.btn_add),
-     ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addLine,
+        icon: const Icon(Icons.add),
+        label: Text(t.btn_add),
+      ),
       body: po == null
           ? const Center(child: CircularProgressIndicator())
           : Padding(
@@ -210,34 +210,34 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               status: po.status,
               onAdvance: () async {
                 final next = _next(po.status);
-                    if (next == po.status) return;
+                if (next == po.status) return;
                 if (po.status == PurchaseOrderStatus.draft && next == PurchaseOrderStatus.ordered) {
-                     await context.read<InventoryService>().orderPurchase(po.id);
-                   if (!mounted) return;
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('발주완료: 예정 입고 기록 생성됨')),
-                   );
-                   await _reload();
-                 } else if (po.status == PurchaseOrderStatus.ordered && next == PurchaseOrderStatus.received) {
-                   await context.read<InventoryService>().receivePurchase(po.id);
-                   if (!mounted) return;
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('입고 완료: 입출고기록 생성 및 재고 반영됨')),
-                   );
-                   await _reload();
-                 }
+                  await context.read<InventoryService>().orderPurchase(po.id);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('발주완료: 예정 입고 기록 생성됨')),
+                  );
+                  await _reload();
+                } else if (po.status == PurchaseOrderStatus.ordered && next == PurchaseOrderStatus.received) {
+                  await context.read<InventoryService>().receivePurchase(po.id);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('입고 완료: 입출고기록 생성 및 재고 반영됨')),
+                  );
+                  await _reload();
+                }
               },
-                onCancel: po.status == PurchaseOrderStatus.received
-                     ? null
-                     : () async {
-               // ✅ 예정입고 롤백 + 상태전환을 서비스에서 일괄 처리
-               await context.read<InventoryService>().cancelPurchase(po.id);
-               if (!mounted) return;
-               ScaffoldMessenger.of(context).showSnackBar(
-                 const SnackBar(content: Text('발주 취소: 예정 입고 기록이 정리되었습니다')),
-               );
-               await _reload();
-             },
+              onCancel: po.status == PurchaseOrderStatus.received
+                  ? null
+                  : () async {
+                // ✅ 예정입고 롤백 + 상태전환을 서비스에서 일괄 처리
+                await context.read<InventoryService>().cancelPurchase(po.id);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('발주 취소: 예정 입고 기록이 정리되었습니다')),
+                );
+                await _reload();
+              },
               labelForAdvance: switch (po.status) {
                 PurchaseOrderStatus.draft   => t.purchase_action_order,
                 PurchaseOrderStatus.ordered => t.purchase_action_receive,

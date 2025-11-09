@@ -38,35 +38,48 @@ String fmtYmdHm(DateTime dt) {
 
 /// ── 공통 삭제 확인 다이얼로그
 Future<bool> confirmDelete(
-    BuildContext ctx, {
-      required String title,
-      required String message,
-      String confirmLabel = '삭제',
-      String cancelLabel = '취소',
-    }) async {
-  return await showDialog<bool>(
+  BuildContext ctx, {
+  required String title,
+  required String message,
+  String confirmLabel = '삭제',
+  String cancelLabel = '취소',
+}) async {
+  // ⚠️ builder 컨텍스트가 비활성화되어도 안전하도록 상위 네비게이터를 선 확보
+  final nav = Navigator.of(ctx, rootNavigator: true);
+  final result = await showDialog<bool>(
     context: ctx,
+    useRootNavigator: true,
     builder: (_) => AlertDialog(
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(cancelLabel)),
-        FilledButton.tonal(onPressed: () => Navigator.pop(ctx, true), child: Text(confirmLabel)),
+        TextButton(
+          onPressed: () => nav.pop(false),
+          child: Text(cancelLabel),
+        ),
+        FilledButton.tonal(
+          onPressed: () => nav.pop(true),
+          child: Text(confirmLabel),
+        ),
       ],
     ),
-  ) ??
-      false;
+  );
+  return result ?? false;
 }
 
 /// ── Undo 스낵바
+
 void showUndoSnackBar(
-    BuildContext ctx, {
-      required String message,
-      required VoidCallback onUndo,
-      int seconds = 5,
-      String undoLabel = '되돌리기',
-    }) {
-  ScaffoldMessenger.of(ctx).showSnackBar(
+  BuildContext ctx, {
+  required String message,
+  required VoidCallback onUndo,
+  int seconds = 5,
+  String undoLabel = '되돌리기',
+}) {
+  // 컨텍스트가 이미 dispose된 경우를 대비한 방어 코딩
+  final messenger = ScaffoldMessenger.maybeOf(ctx);
+  if (messenger == null) return;
+  messenger.showSnackBar(
     SnackBar(
       content: Text(message),
       action: SnackBarAction(label: undoLabel, onPressed: onUndo),

@@ -1,5 +1,3 @@
-import '../models/item.dart';
-
 class PurchaseLine {
   final String id;
   final String orderId;     // FK → PurchaseOrder.id
@@ -23,43 +21,49 @@ class PurchaseLine {
     this.memo,
   });
 
-  PurchaseLine copyWith({double? qty, String? note, String? memo, }) => PurchaseLine(
-    id: id,
-    orderId: orderId,
-    itemId: itemId,
-    name: name,
-    unit: unit,
-    qty: qty ?? this.qty,
-    note: note ?? this.note,
-    memo: memo ?? this.memo,
-    colorNo: colorNo,
-  );
+  // ✅ 확장된 copyWith
+  PurchaseLine copyWith({
+    String? itemId,
+    String? name,
+    String? unit,
+    String? colorNo,
+    double? qty,
+    String? note,
+    String? memo,
+  }) =>
+      PurchaseLine(
+        id: id,
+        orderId: orderId,
+        itemId: itemId ?? this.itemId,
+        name: name ?? this.name,
+        unit: unit ?? this.unit,
+        qty: qty ?? this.qty,
+        note: note ?? this.note,
+        memo: memo ?? this.memo,
+        colorNo: colorNo ?? this.colorNo,
+      );
 
   factory PurchaseLine.fromJson(Map<String, dynamic> j) => PurchaseLine(
-    id: j['id'], orderId: j['orderId'], itemId: j['itemId'],
-    name: j['name'], unit: j['unit'], qty: (j['qty'] as num).toDouble(),
+    id: j['id'],
+    orderId: j['orderId'],
+    itemId: j['itemId'],
+    name: j['name'],
+    unit: j['unit'],
+    qty: (j['qty'] as num).toDouble(),
     note: j['note'] as String?,
+    memo: j['memo'] as String?,
+    colorNo: j['colorNo'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
-    'id': id, 'orderId': orderId, 'itemId': itemId,
-    'name': name, 'unit': unit, 'qty': qty, 'note': note, 'memo':memo,
+    'id': id,
+    'orderId': orderId,
+    'itemId': itemId,
+    'name': name,
+    'unit': unit,
+    'qty': qty,
+    'note': note,
+    'memo': memo,
+    'colorNo': colorNo,
   };
-
-
 }
-
-extension PurchaseLineView on PurchaseLine {
-  /// name 우선, 없으면 Item의 displayName/name, 그래도 없으면 기본값
-  String displayNameWith(Item? it) {
-    final n = name.trim();
-    if (n.isNotEmpty) return n;
-
-    if (it != null) {
-      final dn = (it.displayName ?? it.name).trim();
-      if (dn.isNotEmpty) return dn;
-    }
-    return '(이름없음)';
-  }
-}
-
