@@ -81,16 +81,25 @@ class InMemoryRepo extends ChangeNotifier
         notifyListeners();
       }
 
-    // ★ children 버킷 생성 헬퍼: comparator를 한 곳에서만 정의
-    SplayTreeSet<String> _newChildBucket() => SplayTreeSet<String>((a, b) {
-        final fa = _folders[a]!;
-        final fb = _folders[b]!;
-        if (_sortMode == FolderSortMode.manual) {
-          final byOrder = fa.order.compareTo(fb.order);
-          if (byOrder != 0) return byOrder;
-        }
-        return fa.name.compareTo(fb.name); // 보조 키: 이름
-      });
+  SplayTreeSet<String> _newChildBucket() => SplayTreeSet<String>((a, b) {
+            if (identical(a, b) || a == b) return 0; // 같은 id면 동일
+            final fa = _folders[a]!;
+            final fb = _folders[b]!;
+            if (_sortMode == FolderSortMode.manual) {
+              final byOrder = fa.order.compareTo(fb.order);
+              if (byOrder != 0) return byOrder;
+              // manual 모드에서도 동률이면 이름으로 보조 정렬
+              final byName = fa.name.compareTo(fb.name);
+              if (byName != 0) return byName;
+              // 최종 tie-breaker: id로 구분 (동명이어도 들어가도록)
+              return a.compareTo(b);
+            } else {
+              final byName = fa.name.compareTo(fb.name);
+              if (byName != 0) return byName;
+              // 이름이 같아도 서로 다른 id면 구분되도록
+              return a.compareTo(b);
+            }
+          });
 
     // ★ 정렬 재적용 (모드 변경/데이터 변경 시 호출)
     void _rebuildChildrenIndex() {
@@ -232,17 +241,38 @@ class InMemoryRepo extends ChangeNotifier
     return names.reversed.toList(); // [l1, l2, l3]
   }
 
-  String _deterministicFolderId({
-    required String name,
-    required String? parentId,
-    required Map<String, FolderNode> folders,
-  }) {
-    final path = _pathNamesFrom(parentId, folders);
-    path.add(name);
-    final id = 'f-${path.map(_slugify).join('-')}';
-    return id;
-  }
+    // ===== 해시 유틸 =====
+    String _normalizeName(String s) => s.trim().toLowerCase();
+    int _fnv1a64(String input) {
+        const int fnvOffset = 0xcbf29ce484222325; // 14695981039346656037
+        const int fnvPrime  = 0x100000001b3;      // 1099511628211
+        int hash = fnvOffset;
+        for (final cu in input.codeUnits) {
+          hash ^= cu;
+          hash = (hash * fnvPrime) & 0xFFFFFFFFFFFFFFFF;
+        }
+        return hash;
+      }
 
+
+    /// 같은 이름도 허용: parentId/name 에 salt 를 붙여 해시를 바꿔가며 빈 ID를 찾음.
+    String _deterministicFolderIdWithSalt({
+      required String? parentId,
+      required String name,
+      required Map<String, FolderNode> folders,
+    }) {
+    final parentKey = parentId ?? 'root';
+    final normName  = _normalizeName(name); // 한글 보존  소문자/트림만
+    var salt = 0;
+    while (true) {
+      final seed  = '$parentKey/$normName#$salt';
+      final hex   = _fnv1a64(seed).toRadixString(16).padLeft(16, '0');
+      final short = hex.substring(0, 10);
+      final id    = '$parentKey-$short';
+      if (!folders.containsKey(id)) return id;
+      salt++;
+    }
+  }
 
    Future<FolderNode> createFolderNode({
      required String? parentId,
@@ -257,12 +287,29 @@ class InMemoryRepo extends ChangeNotifier
        if (depth > 3) throw StateError('Depth > 3 is not supported');
      }
      // ✅ 랜덤 대신 '경로 기반 결정적 ID' 사용
-     final id = _deterministicFolderId(name: name, parentId: parentId, folders: _folders);
-     if (_folders.containsKey(id)) {
-       // 이미 존재하면 해당 노드 반환 (idempotent)
-       return _folders[id]!;
-     }
-     final node = FolderNode(id: id, name: name, parentId: parentId, depth: depth, order: 0);
+     final trimmed = name.trim();
+          if (trimmed.isEmpty) {
+            throw StateError('Invalid folder name');
+          }
+          // ✅ 같은 이름도 허용: salt 붙여 충돌 없는 ID 찾기
+          final id = _deterministicFolderIdWithSalt(
+            parentId: parentId,
+            name: trimmed,
+            folders: _folders,
+          );
+     // ✅ 바로 여기 넣기
+     debugPrint('[createFolderNode] parent=$parentId name="$name" -> id=$id');
+     debugPrint('[children before] parent=$parentId -> ${_childrenIndex[parentId]}');
+// order: 형제 수 기반 증가값
+          final nextOrder = (_childrenIndex[parentId]?.length ?? 0);
+          final node = FolderNode(
+            id: id,
+            name: trimmed,  // 한글 그대로 저장/표시
+            parentId: parentId,
+            depth: depth,
+            order: nextOrder,
+          );
+
      _folders[id] = node;
      final idx = _childrenIndex.putIfAbsent(parentId, () => _newChildBucket());
 

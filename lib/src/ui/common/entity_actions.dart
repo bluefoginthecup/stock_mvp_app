@@ -15,14 +15,18 @@ Future<EntityAction?> showEntityActionsSheet(
     }) {
   return showModalBottomSheet<EntityAction>(
     context: context,
-    builder: (_) => SafeArea(
+    builder: (sheetContext) => SafeArea(
       child: Wrap(children: [
         if (enableRename)
           ListTile(
             leading: const Icon(Icons.drive_file_rename_outline),
             title: Text(renameLabel ?? '이름 변경'),
-            onTap: () => Navigator.pop(context, EntityAction.rename),
-          ),
+            onTap: () {
+              final nav = Navigator.maybeOf(sheetContext)
+                  ?? Navigator.of(context, rootNavigator: true);
+              nav.pop(EntityAction.rename);
+            },
+  ),
         if (enableMove)
           ListTile(
             leading: const Icon(Icons.drive_file_move),
@@ -33,59 +37,51 @@ Future<EntityAction?> showEntityActionsSheet(
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: Text(deleteLabel ?? '삭제'),
-            onTap: () => Navigator.pop(context, EntityAction.delete),
-          ),
-      ]),
+  onTap: () {
+  final nav = Navigator.maybeOf(sheetContext)
+  ?? Navigator.of(context, rootNavigator: true);
+  nav.pop(EntityAction.delete);
+  },
+          )
+
+  ]),
     ),
   );
 }
 
-/// 공통: 이름 입력 다이얼로그 (rename)
-Future<String?> showRenameDialog(
-    BuildContext context, {
-      String title = '이름 변경',
-      String? initial,
-      String hint = '새 이름 입력',
-    }) {
-  final c = TextEditingController(text: initial);
-  return showDialog<String>(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: c,
-        autofocus: true,
-        decoration: InputDecoration(hintText: hint),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('취소')),
-        TextButton(
-          onPressed: () => Navigator.pop(context, c.text.trim()),
-          child: const Text('확인'),
-        ),
-      ],
-    ),
-  );
-}
 
-/// 공통: 삭제 확인
-Future<bool> showDeleteConfirm(
-    BuildContext context, {
-      String title = '삭제',
-      required String message,
+Future<bool?> showDeleteConfirm(
+    BuildContext rootContext, {
+      String title = '삭제하시겠어요?',
+      String message = '이 작업은 되돌릴 수 없습니다.',
+      String cancelText = '취소',
+      String okText = '삭제',
     }) {
   return showDialog<bool>(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: const Text('삭제', style: TextStyle(color: Colors.red)),
-        ),
-      ],
-    ),
-  ).then((v) => v ?? false);
+    context: rootContext, // ✅ 반드시 화면(페이지)의 context 사용
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              final nav = Navigator.maybeOf(dialogContext)
+                  ?? Navigator.of(rootContext, rootNavigator: true);
+              nav.pop(false);
+            },
+            child: Text(cancelText),
+          ),
+          FilledButton.tonal(
+            onPressed: () {
+              final nav = Navigator.maybeOf(dialogContext)
+                  ?? Navigator.of(rootContext, rootNavigator: true);
+              nav.pop(true);
+            },
+            child: Text(okText),
+          ),
+        ],
+      );
+    },
+  );
 }
