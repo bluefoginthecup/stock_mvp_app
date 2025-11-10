@@ -70,6 +70,39 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   final _searchC = TextEditingController();
   bool _lowOnly = false;
 
+
+    // ───────────────────────── 삭제 에러 메시지 매핑 ─────────────────────────
+    String _friendlyDeleteError(Object e) {
+        final s = e.toString();
+        if (s.contains('subfolders')) return '하위 폴더가 있어서 삭제할 수 없습니다.';
+        if (s.contains('referenced by items')) return '아이템이 포함되어 있어서 삭제할 수 없습니다.';
+        return '삭제할 수 없습니다: $s';
+      }
+
+    // ───────────────────────── 폴더 삭제(에러=스낵바) ─────────────────────────
+    Future<void> _tryDeleteFolder(FolderNode n) async {
+        final repo = context.read<InMemoryRepo>();
+        try {
+          await repo.deleteFolderNode(n.id);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('폴더가 삭제되었습니다.')),
+          );
+          setState(() {}); // 목록 갱신
+        } on StateError catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_friendlyDeleteError(e))),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(_friendlyDeleteError(e))),
+          );
+        }
+      }
+
+
   String? get _selectedId => _l3Id ?? _l2Id ?? _l1Id;
   int get _selectedDepth =>
       _l3Id != null ? 3 : _l2Id != null ? 2 : _l1Id != null ? 1 : 0;
@@ -313,17 +346,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               message: '"${n.name}" 폴더를 삭제하시겠어요?',
             );
             if (ok == true) {
-              try {
-                await repo.deleteFolderNode(n.id);
-                if (!mounted) return;
-                setState(() {});
-              } catch (e, st) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('삭제 실패: $e')),
-                );
-                // ignore: avoid_print
-                print('삭제실패: $e\n$st');
-              }
+              await _tryDeleteFolder(n);
             }
             break;
         }
