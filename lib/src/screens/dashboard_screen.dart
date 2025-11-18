@@ -99,6 +99,13 @@ class DashboardScreen extends StatelessWidget {
              label: const Text('거래처 목록'),
            ),
            const SizedBox(height: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.receipt_long),
+                label: const Text('영수증 관리'),
+                onPressed: () {
+                  Navigator.of(context, rootNavigator: true).pushNamed('/receipts');
+                },
+              ),
 
 
 

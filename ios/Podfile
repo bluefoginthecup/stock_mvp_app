@@ -1,7 +1,6 @@
-# Uncomment this line to define a global platform for your project
-# platform :ios, '12.0'
+# ios/Podfile
+platform :ios, '16.0'   # MLKit가 요구하는 버전 이상이면 OK
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -15,7 +14,6 @@ def flutter_root
   unless File.exist?(generated_xcode_build_settings_path)
     raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
   end
-
   File.foreach(generated_xcode_build_settings_path) do |line|
     matches = line.match(/FLUTTER_ROOT\=(.*)/)
     return matches[1].strip if matches
@@ -29,8 +27,10 @@ flutter_ios_podfile_setup
 
 target 'Runner' do
   use_frameworks!
+  # use_modular_headers!   # 필요시 사용
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -38,6 +38,12 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
+    # Flutter 권장 추가 설정
     flutter_additional_ios_build_settings(target)
+
+    # 모든 Pods에 동일 배포 타깃 강제
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
+    end
   end
 end

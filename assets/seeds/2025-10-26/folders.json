@@ -552,6 +552,48 @@
       "parentId": "f-SemiFinished-emb",
       "depth": 3,
       "order": 0
+    },
+    {
+      "id": "f-raw",
+      "name": "Raw",
+      "parentId": null,
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "f-raw-fabric",
+      "name": "fabric",
+      "parentId": "f-raw",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "f-raw-fabric-top",
+      "name": "top",
+      "parentId": "f-raw-fabric",
+      "depth": 3,
+      "order": 0
+    },
+    {
+      "id": "f-finished-insert",
+      "name": "솜",
+      "parentId": "f-finished",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "f-finished-insert-pillow",
+      "name": "베개솜",
+      "parentId": "f-finished-insert",
+      "depth": 3,
+      "order": 0
+    },
+    {
+      "id": "f-finished-insert-pillow",
+      "name": "방석솜",
+      "parentId": "f-finished-insert",
+      "depth": 3,
+      "order": 0
     }
   ]
 }

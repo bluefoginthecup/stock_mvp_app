@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+    <key>NSCameraUsageDescription</key>
+    <string>카메라를 사용해 영수증을 촬영합니다.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>사진에서 영수증 이미지를 선택합니다.</string>
 </dict>
 </plist>

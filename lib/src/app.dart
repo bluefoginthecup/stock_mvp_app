@@ -18,7 +18,8 @@ import 'screens/stock/stock_item_detail_screen.dart';
 import 'screens/purchases/purchase_detail_screen.dart';
 import 'screens/suppliers/supplier_form_screen.dart';
 import 'screens/suppliers/supplier_list_screen.dart';
-
+import 'screens/receipts/receipt_create_screen.dart';
+import 'screens/receipts/receipts_home_screen.dart';
 
 import 'repos/repo_interfaces.dart';
 
@@ -73,6 +74,8 @@ class StockApp extends StatelessWidget {
           return SupplierFormScreen(supplierId: id);
         },
         '/suppliers': (_) => const SupplierListScreen(),
+        '/receipts': (_) => const ReceiptsHomeScreen(),
+        '/receipts/new': (_) => const ReceiptCreateScreen(),
       },
       initialRoute: '/',
     );

@@ -7,10 +7,22 @@ import '../models/folder_node.dart';
 import '../models/bom.dart';
 import '../models/lot.dart'; // ✅ Practical-MIN: Lot 모델
 import '../repos/repo_interfaces.dart';
+import '../repos/inmem_repo.dart'; // ✅ 폴더/lot/path 백필용 (InMemoryRepo)
 
 class UnifiedSeedImporter {
+  /// 아이템 저장용 (지금은 SqliteItemRepo)
   final ItemRepo itemRepo;
+
+  /// BOM 저장용 (지금은 InMemoryRepo 래핑)
   final BomRepo? bomRepo;
+
+  /// 폴더 트리 / lots / path 백필 담당 (지금은 InMemoryRepo)
+  ///
+  /// - upsertFolderNode / createFolderNodeWithId / listFolderChildren
+  /// - backfillPathsFromLegacy(createFolders:false)
+  /// - upsertLots
+  final InMemoryRepo? inmem;
+
   final bool verbose;
 
   // 임포트 시 초기재고 채우기 정책 (원하면 false 로 바꿔 0부터 시작)
@@ -20,6 +32,7 @@ class UnifiedSeedImporter {
   UnifiedSeedImporter({
     required this.itemRepo,
     this.bomRepo,
+    this.inmem,
     this.verbose = false,
   });
 
@@ -62,20 +75,24 @@ class UnifiedSeedImporter {
       clearBefore: clearBefore,
     );
 
-    // 디버그 편의 로그 (repo 가 지원할 때만)
-    final dyn = itemRepo as dynamic;
-    if (dyn.listFolderChildren is Function) {
-      try {
-        final roots = await dyn.listFolderChildren(null);
+    // 디버그 편의 로그
+    // - 폴더 트리는 inmem(있으면) 우선
+    final dynFolders = (inmem ?? itemRepo) as dynamic;
+    try {
+      if (dynFolders.listFolderChildren is Function) {
+        final roots = await dynFolders.listFolderChildren(null);
         print('🟢 ROOT FOLDERS: ${roots.map((f) => f.name).toList()}');
-      } catch (_) {}
-    }
-    if (dyn.searchItemsGlobal is Function) {
+      }
+    } catch (_) {}
+
+    // - 아이템 검색은 itemRepo(SQLite) 기준
+    final dynItems = itemRepo as dynamic;
+    if (dynItems.searchItemsGlobal is Function) {
       try {
-        for (final entry in (await dyn.searchItemsGlobal('rouen_gray'))) {
+        for (final entry in (await dynItems.searchItemsGlobal('rouen_gray'))) {
           print('🔹 Item ${entry.id}  folder=${entry.folder}/${entry.subfolder}/${entry.subsubfolder}');
-          if (dyn.itemPathIds is Function) {
-            print('   pathIds=${dyn.itemPathIds(entry.id)}');
+          if (dynFolders.itemPathIds is Function) {
+            print('   pathIds=${dynFolders.itemPathIds(entry.id)}');
           }
         }
       } catch (_) {}
@@ -134,12 +151,58 @@ class UnifiedSeedImporter {
 
     // Folders: 시드의 id/parentId를 **보존**하여 저장
     if (folders.isNotEmpty) _persistFoldersIfSupported(folders);
-
-    // Items upsert
+    // Items upsert (트리 지원 repo면 폴더 경로까지 같이 세팅, 아니면 그냥 upsertItem)
     var upsertOk = 0, upsertFail = 0;
     for (final it in items) {
       try {
-        await itemRepo.upsertItem(it);
+        bool handledByTree = false;
+
+        // 1) 트리 지원 repo(InMemoryRepo 스타일)인 경우에만 시도
+        try {
+          final dyn = itemRepo as dynamic;
+
+          // 여기서 getter 접근 자체가 NoSuchMethod를 낼 수 있으므로
+          // 전체를 try로 감싸놓고 실패하면 곧바로 폴백한다.
+          final hasPathIdsByNames = dyn.pathIdsByNames is Function;
+          final hasCreateItemUnderPath = dyn.createItemUnderPath is Function;
+
+          if (hasPathIdsByNames && hasCreateItemUnderPath) {
+            final l1 = (it.folder ?? '').toString();
+            final l2 = (it.subfolder ?? '').toString();
+            final l3 = (it.subsubfolder ?? '').toString();
+
+            if (l1.isNotEmpty) {
+              // 폴더 이름 → 폴더 ID 체인
+              final ids = await dyn.pathIdsByNames(
+                l1Name: l1,
+                l2Name: l2.isEmpty ? null : l2,
+                l3Name: l3.isEmpty ? null : l3,
+                createIfMissing: true,
+              ) as List?;
+
+              final pathIds = (ids ?? const [])
+                  .whereType<String>()
+                  .toList(growable: false);
+
+              if (pathIds.isNotEmpty) {
+                await dyn.createItemUnderPath(
+                  pathIds: pathIds,
+                  item: it,
+                );
+                handledByTree = true;
+              }
+            }
+          }
+        } catch (_) {
+          // pathIdsByNames / createItemUnderPath 가 없는 repo(예: SqliteItemRepo)면
+          // 여기로 떨어지고, 아래에서 자동으로 upsertItem 폴백
+        }
+
+        // 2) 트리 방식으로 처리 못했으면 그냥 upsertItem
+        if (!handledByTree) {
+          await itemRepo.upsertItem(it);
+        }
+
         upsertOk++;
       } catch (e) {
         upsertFail++;
@@ -148,21 +211,7 @@ class UnifiedSeedImporter {
     }
     _log('Items upsert done: ok=$upsertOk fail=$upsertFail');
 
-    // 레거시 경로 기반 path 백필 (Repo 가 제공할 때만)
-    try {
-      final dyn = itemRepo as dynamic;
-      if (dyn.backfillPathsFromLegacy is Function) {
-              // ⚠️ 폴더는 위에서 이미 시드 기준으로 생성/업서트 했으므로
-              //     여기서는 createFolders=false 로 둬서 임의 생성(랜덤 id) 방지
-              await dyn.backfillPathsFromLegacy(createFolders: false);
-              _log('backfillPathsFromLegacy(createFolders:false) done.');
-
-      } else {
-        _log('backfillPathsFromLegacy() not available on repo (skipped).');
-      }
-    } catch (e) {
-      _log('backfillPathsFromLegacy() failed: $e');
-    }
+    // ❌ backfillPathsFromLegacy 호출은 이제 필요 없음 (경로는 위에서 바로 세팅)
 
     // BOM upsert
     if (bomRepo == null) {
@@ -181,7 +230,7 @@ class UnifiedSeedImporter {
       _log('BOM upsert done: ok=$bomOk fail=$bomFail');
     }
 
-    // ✅ LOTS upsert (repo 가 지원할 때만)
+    // ✅ LOTS upsert (→ InMemoryRepo 우선)
     _persistLotsIfSupported(lotsMap);
 
     // UI 갱신(ChangeNotifier 기반 Repo)
@@ -249,7 +298,9 @@ class UnifiedSeedImporter {
         id: (m['id'] ?? '').toString(),
         name: (m['name'] ?? '').toString(),
         depth: (m['depth'] is int) ? m['depth'] : 1,
-        parentId: (m['parentId']?.toString().isEmpty ?? true) ? null : m['parentId'].toString(),
+        parentId: (m['parentId']?.toString().isEmpty ?? true)
+            ? null
+            : m['parentId'].toString(),
         order: (m['order'] is int) ? m['order'] : 0,
       );
     }).toList();
@@ -272,7 +323,9 @@ class UnifiedSeedImporter {
       final parentId = (m['parentId'] ?? '').toString();
       final componentItemId = (m['componentItemId'] ?? '').toString();
       if (parentId.isEmpty || componentItemId.isEmpty) {
-        _log('[$tag] skip bom#$idx: missing ids');
+        _log('[$tag] skip bom#$idx: missing ids'
+            ' (parentId="${parentId.isEmpty ? 'EMPTY' : parentId}",'
+            ' componentItemId="${componentItemId.isEmpty ? 'EMPTY' : componentItemId}")');
         continue;
       }
       final kindStr = (m['kind'] ?? '').toString().toLowerCase();
@@ -330,11 +383,21 @@ class UnifiedSeedImporter {
   // ===== Persist helpers =====
 
   Future<void> _clearAllIfSupported() async {
+    // 필요하면 itemRepo와 inmem 둘 다 지우는 것도 가능하지만,
+    // 지금은 itemRepo만 대상으로 동작 유지
     try {
-      final dyn = itemRepo as dynamic;
-      if (dyn.clearAll is Function) {
-        _log('Clearing repo...');
-        await dyn.clearAll();
+      final dynItem = itemRepo as dynamic;
+      if (dynItem.clearAll is Function) {
+        _log('Clearing itemRepo...');
+        await dynItem.clearAll();
+      }
+
+      if (inmem != null) {
+        final dynMem = inmem as dynamic;
+        if (dynMem.clearAll is Function) {
+          _log('Clearing inmem...');
+          await dynMem.clearAll();
+        }
       }
     } catch (_) {}
   }
@@ -342,74 +405,89 @@ class UnifiedSeedImporter {
   void _persistFoldersIfSupported(List<FolderNode> folders) {
     () async {
       try {
-        final dyn = itemRepo as dynamic;
+        // 폴더 트리는 inmem(있으면) 우선, 없으면 itemRepo에 시도
+        final dyn = (inmem ?? itemRepo) as dynamic;
+
         // depth, order 기준으로 부모 먼저
-                folders.sort((a, b) {
-                    final d = a.depth.compareTo(b.depth);
-                    return d != 0 ? d : a.order.compareTo(b.order);
-                  });
+        folders.sort((a, b) {
+          final d = a.depth.compareTo(b.depth);
+          return d != 0 ? d : a.order.compareTo(b.order);
+        });
 
-            var ok = 0, skip = 0, warn = 0;
+        var ok = 0, skip = 0, warn = 0;
 
-            // 1) 최우선: upsertFolderNode(FolderNode)
-            if (dyn.upsertFolderNode is Function) {
-              for (final f in folders) {
-                try {
-                  await dyn.upsertFolderNode(f); // id/parentId 그대로 보존
-                  ok++;
-                } catch (e) {
-                  skip++;
-                  if (verbose) _log('Folder upsert skipped (${f.id}:${f.name}): $e');
-                }
+        // 1) 최우선: upsertFolderNode(FolderNode)
+        if (dyn.upsertFolderNode is Function) {
+          for (final f in folders) {
+            try {
+              await dyn.upsertFolderNode(f); // id/parentId 그대로 보존
+              ok++;
+            } catch (e) {
+              skip++;
+              if (verbose) {
+                _log('Folder upsert skipped (${f.id}:${f.name}): $e');
               }
-              if (verbose) _log('Folders persisted via upsertFolderNode: ok=$ok skipped=$skip');
-
-            // 2) 다음: createFolderNodeWithId(...)
-            } else if (dyn.createFolderNodeWithId is Function) {
-              for (final f in folders) {
-                try {
-                  await dyn.createFolderNodeWithId(
-                    id: f.id,
-                    parentId: f.parentId,
-                    name: f.name,
-                    depth: f.depth,
-                    order: f.order,
-                  );
-                  ok++;
-                } catch (e) {
-                  // 이미 존재 등 → 스킵
-                  skip++;
-                  if (verbose) _log('Folder createWithId skipped (${f.id}:${f.name}): $e');
-                }
-              }
-              if (verbose) _log('Folders persisted via createFolderNodeWithId: ok=$ok skipped=$skip');
-
-            // 3) 마지막 수단: createFolderNode(parentId,name) — ⚠️ id 보존 불가
-            } else if (dyn.createFolderNode is Function) {
-              _log('⚠️ Repo에 upsertFolderNode/createFolderNodeWithId가 없습니다. '
-                   'createFolderNode(parentId,name)로 생성하면 시드 id가 보존되지 않습니다.');
-              for (final f in folders) {
-                try {
-                  // parentId는 시드 id 이므로, repo에서 같은 id를 찾을 방법이 없으면 그대로 전달 불가
-                  // 일부 repo가 getFolderById를 지원한다면 보정 가능
-                  String? parentRepoId = f.parentId;
-                  if (dyn.getFolderById is Function && f.parentId != null) {
-                    final parent = await dyn.getFolderById(f.parentId);
-                    parentRepoId = parent?.id; // 없으면 null
-                  }
-                  await dyn.createFolderNode(parentId: parentRepoId, name: f.name);
-                  ok++;
-                  warn++;
-                } catch (e) {
-                  skip++;
-                  if (verbose) _log('Folder create (no-id) skipped (${f.name}): $e');
-                }
-              }
-              if (verbose) _log('Folders persisted via createFolderNode: ok=$ok skipped=$skip (⚠️id 보존 안됨:$warn)');
-
-            } else {
-              if (verbose) _log('Folder persistence not supported by repo.');
             }
+          }
+          if (verbose) {
+            _log('Folders persisted via upsertFolderNode: ok=$ok skipped=$skip');
+          }
+
+          // 2) 다음: createFolderNodeWithId(...)
+        } else if (dyn.createFolderNodeWithId is Function) {
+          for (final f in folders) {
+            try {
+              await dyn.createFolderNodeWithId(
+                id: f.id,
+                parentId: f.parentId,
+                name: f.name,
+                depth: f.depth,
+                order: f.order,
+              );
+              ok++;
+            } catch (e) {
+              // 이미 존재 등 → 스킵
+              skip++;
+              if (verbose) {
+                _log('Folder createWithId skipped (${f.id}:${f.name}): $e');
+              }
+            }
+          }
+          if (verbose) {
+            _log(
+                'Folders persisted via createFolderNodeWithId: ok=$ok skipped=$skip');
+          }
+
+          // 3) 마지막 수단: createFolderNode(parentId,name) — ⚠️ id 보존 불가
+        } else if (dyn.createFolderNode is Function) {
+          _log('⚠️ Repo에 upsertFolderNode/createFolderNodeWithId가 없습니다. '
+              'createFolderNode(parentId,name)로 생성하면 시드 id가 보존되지 않습니다.');
+          for (final f in folders) {
+            try {
+              // parentId는 시드 id 이므로, repo에서 같은 id를 찾을 방법이 없으면 그대로 전달 불가
+              // 일부 repo가 getFolderById를 지원한다면 보정 가능
+              String? parentRepoId = f.parentId;
+              if (dyn.getFolderById is Function && f.parentId != null) {
+                final parent = await dyn.getFolderById(f.parentId);
+                parentRepoId = parent?.id; // 없으면 null
+              }
+              await dyn.createFolderNode(parentId: parentRepoId, name: f.name);
+              ok++;
+              warn++;
+            } catch (e) {
+              skip++;
+              if (verbose) {
+                _log('Folder create (no-id) skipped (${f.name}): $e');
+              }
+            }
+          }
+          if (verbose) {
+            _log(
+                'Folders persisted via createFolderNode: ok=$ok skipped=$skip (⚠️id 보존 안됨:$warn)');
+          }
+        } else {
+          if (verbose) _log('Folder persistence not supported by repo.');
+        }
       } catch (e) {
         if (verbose) _log('Folder persist failed: $e');
       }
@@ -420,9 +498,11 @@ class UnifiedSeedImporter {
   void _persistLotsIfSupported(Map<String, List<Lot>> byItem) {
     if (byItem.isEmpty) return;
     try {
-      final dyn = itemRepo as dynamic;
+      // Lots는 InMemoryRepo(inmem) 우선
+      final dyn = (inmem ?? itemRepo) as dynamic;
       if (dyn.upsertLots is! Function) {
-        _log('Lots persistence not supported by repo (no upsertLots). Skipped.');
+        _log(
+            'Lots persistence not supported by repo (no upsertLots). Skipped.');
         return;
       }
       var itemsCnt = 0, lotsCnt = 0;
@@ -473,18 +553,27 @@ class UnifiedSeedImporter {
       if (v == null || (v is String && v.trim().isEmpty)) return null;
       return _toNum(v);
     }
+
     String? _strOrNull(dynamic v) {
       final s = (v ?? '').toString().trim();
       return s.isEmpty ? null : s;
     }
 
-    final qty             = _numOrNull(m['stockHints_qty'] ?? m['h_qty'] ?? m['qty']); // qty는 seed 초기재고 정책과도 겹치므로 우선 보관
-    final usableQtyM      = _numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
+    final qty             =
+    _numOrNull(m['stockHints_qty'] ?? m['h_qty'] ?? m['qty']); // qty는 seed 초기재고 정책과도 겹치므로 우선 보관
+    final usableQtyM      =
+    _numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
     final unitIn          = _strOrNull(m['unit_in'] ?? m['unitIn']);
-    final unitOut         = _strOrNull(m['unit_out'] ?? m['unitOut'] ?? m['unit']); // unitOut 없으면 unit 참고
-    final conversionRate  = _numOrNull(m['conversion_rate'] ?? m['conversionRate']);
+    final unitOut         =
+    _strOrNull(m['unit_out'] ?? m['unitOut'] ?? m['unit']); // unitOut 없으면 unit 참고
+    final conversionRate  =
+    _numOrNull(m['conversion_rate'] ?? m['conversionRate']);
 
-    final hasAny = qty != null || usableQtyM != null || unitIn != null || unitOut != null || conversionRate != null;
+    final hasAny = qty != null ||
+        usableQtyM != null ||
+        unitIn != null ||
+        unitOut != null ||
+        conversionRate != null;
     if (!hasAny) return null;
 
     return {
@@ -506,9 +595,13 @@ class UnifiedSeedImporter {
     // folder 오탈자/대소문자 정규화
     if (m['folder'] is String) {
       final f0 = (m['folder'] as String).trim().toLowerCase();
-      if (f0 == 'Semifinished' || f0 == 'semifinished') m['folder'] = 'SemiFinished';
-      else if (f0 == 'finished') m['folder'] = 'Finished';
-      else if (f0 == 'sub') m['folder'] = 'Sub';
+      if (f0 == 'Semifinished' || f0 == 'semifinished') {
+        m['folder'] = 'SemiFinished';
+      } else if (f0 == 'finished') {
+        m['folder'] = 'Finished';
+      } else if (f0 == 'sub') {
+        m['folder'] = 'Sub';
+      }
     }
 
     // kind 없으면 folder 기준 유추
@@ -533,16 +626,22 @@ class UnifiedSeedImporter {
     // flat → stockHints 묶기 (이미 stockHints가 있으면 보강만)
     final extracted = _extractStockHints(m);
     if (extracted != null) {
-      final curr = (m['stockHints'] is Map) ? Map<String, dynamic>.from(m['stockHints']) : <String, dynamic>{};
+      final curr = (m['stockHints'] is Map)
+          ? Map<String, dynamic>.from(m['stockHints'])
+          : <String, dynamic>{};
       m['stockHints'] = {...curr, ...extracted};
     }
 
     // 초기 재고 매핑
     if (m['qty'] == null) {
-      if (useStockHintsQtyAsInitial && m['stockHints'] is Map && (m['stockHints']['qty'] != null)) {
+      if (useStockHintsQtyAsInitial &&
+          m['stockHints'] is Map &&
+          (m['stockHints']['qty'] != null)) {
         m['qty'] = m['stockHints']['qty'];
       }
-      if (m['qty'] == null && useSeedQtyAsInitial && m['seedQty'] != null) {
+      if (m['qty'] == null &&
+          useSeedQtyAsInitial &&
+          m['seedQty'] != null) {
         m['qty'] = m['seedQty'];
       }
       m['qty'] ??= 0;
@@ -553,4 +652,110 @@ class UnifiedSeedImporter {
 
     return m;
   }
+  // ===== Path resolve helpers (items.json → folders.json 매칭) =====
+
+  String _normName(String s) =>
+      s.trim().toLowerCase(); // 지금은 generator가 동일한 이름 쓰니까 이 정도면 충분
+
+  String _mapLegacyL1NameForSeed(String legacy) {
+    final v = legacy.trim().toLowerCase();
+    switch (v) {
+      case 'finished':
+        return 'Finished';
+      case 'semifinished':
+      case 'semi_finished':
+      case 'semi-finished':
+        return 'SemiFinished';
+      case 'raw':
+        return 'Raw';
+      case 'sub':
+        return 'Sub';
+      default:
+        if (v.isEmpty) return 'Finished';
+        return v[0].toUpperCase() + v.substring(1);
+    }
+  }
+
+  /// items.json 의 Item 1개에 대해, folders.json 리스트에서 [L1, L2, L3] 폴더ID 체인을 찾아줌.
+  /// 못 찾으면 빈 리스트 반환.
+  List<String> _resolvePathIdsForItem(Item it, List<FolderNode> folders) {
+    final legacyL1 = (it.folder).trim();
+    final legacyL2 = (it.subfolder ?? '').trim();
+    final legacyL3 = (it.subsubfolder ?? '').trim();
+
+    if (legacyL1.isEmpty && legacyL2.isEmpty && legacyL3.isEmpty) {
+      return const [];
+    }
+
+    final l1Name = _mapLegacyL1NameForSeed(legacyL1);
+    final l1Norm = _normName(l1Name);
+    final l2Norm = _normName(legacyL2);
+    final l3Norm = _normName(legacyL3);
+
+    // 1) depth=1, parentId=null, name=l1Name
+    final l1 = folders.firstWhere(
+          (f) =>
+      f.depth == 1 &&
+          f.parentId == null &&
+          _normName(f.name) == l1Norm,
+      orElse: () => FolderNode(
+        id: '',
+        name: '',
+        depth: 0,
+        parentId: null,
+        order: 0,
+      ),
+    );
+    if (l1.id.isEmpty) {
+      // 못 찾으면 경로 매칭 포기
+      return const [];
+    }
+
+    String? l2Id;
+    if (legacyL2.isNotEmpty) {
+      final l2 = folders.firstWhere(
+            (f) =>
+        f.depth == 2 &&
+            f.parentId == l1.id &&
+            _normName(f.name) == l2Norm,
+        orElse: () => FolderNode(
+          id: '',
+          name: '',
+          depth: 0,
+          parentId: null,
+          order: 0,
+        ),
+      );
+      if (l2.id.isNotEmpty) {
+        l2Id = l2.id;
+      }
+    }
+
+    String? l3Id;
+    if (legacyL3.isNotEmpty && l2Id != null) {
+      final l3 = folders.firstWhere(
+            (f) =>
+        f.depth == 3 &&
+            f.parentId == l2Id &&
+            _normName(f.name) == l3Norm,
+        orElse: () => FolderNode(
+          id: '',
+          name: '',
+          depth: 0,
+          parentId: null,
+          order: 0,
+        ),
+      );
+      if (l3.id.isNotEmpty) {
+        l3Id = l3.id;
+      }
+    }
+
+    final path = <String>[l1.id];
+    if (l2Id != null) path.add(l2Id);
+    if (l3Id != null) path.add(l3Id);
+
+    return path;
+  }
+
 }

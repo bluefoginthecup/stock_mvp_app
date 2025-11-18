@@ -24,6 +24,8 @@ import 'widgets/stock_multi_select_bar.dart';
 import '../../providers/cart_manager.dart';
 import '../../screens/cart/cart_screen.dart';
 
+import '../../db/app_database.dart';
+
 class StockBrowserScreen extends StatefulWidget {
   final bool showLowStockOnly;
   const StockBrowserScreen({super.key, this.showLowStockOnly = false});
@@ -439,6 +441,19 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           appBar: AppBar(
             title: const Text('재고 브라우저'),
             actions: [
+              IconButton(
+                icon: Icon(Icons.bug_report),
+                onPressed: () async {
+                  final db = context.read<AppDatabase>(); // drift database
+                  final row = await (db.select(db.items)
+                    ..where((t) => t.id.equals('it_F_rouen_gray_cc_50')))
+                      .getSingle();
+
+                  debugPrint('DEBUG ITEM ROW → $row');
+
+                },
+              ),
+
               IconButton(
                 icon: const Icon(Icons.ios_share),
                 tooltip: 'JSON 내보내기',

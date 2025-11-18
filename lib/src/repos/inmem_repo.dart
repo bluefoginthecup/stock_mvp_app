@@ -1650,43 +1650,97 @@ class InMemoryRepo extends ChangeNotifier
   // ===================== 레거시 경로 백필 (L1→L2→L3) =====================
   /// 레거시 Item.folder/subfolder(/subsubfolder) 를 트리 경로(_itemPaths)로 백필.
   /// 이미 경로가 있으면 건너뜀. 없는 것만 채움.
-  Future<void> backfillPathsFromLegacy({bool createFolders = true}) async {
+  Future<void> backfillPathsFromLegacy({bool createFolders = false}) async {
+    int linked = 0;
+    int skipped = 0;
+
     for (final e in _items.entries) {
       final item = e.value;
-      if (_itemPaths.containsKey(item.id)) continue; // 이미 배치된 아이템 스킵
 
-      // 레거시 필드가 전혀 없으면 스킵
+      // 이미 경로가 있으면 스킵
+      if (_itemPaths.containsKey(item.id)) {
+        skipped++;
+        continue;
+      }
+
       final legacyL1 = (item.folder).trim();
-      final legacyL2Raw = (item.subfolder ?? '').trim();
-      final legacyL3Raw = (item is dynamic && (item as dynamic).subsubfolder != null)
-          ? ((item as dynamic).subsubfolder as String).trim()
-          : '';
-      if (legacyL1.isEmpty && legacyL2Raw.isEmpty && legacyL3Raw.isEmpty) continue;
+      final legacyL2 = (item.subfolder ?? '').trim();
+      final legacyL3 = (item.subsubfolder ?? '').trim();
+
+      if (legacyL1.isEmpty && legacyL2.isEmpty && legacyL3.isEmpty) {
+        skipped++;
+        continue;
+      }
 
       // L1 이름 매핑 (finished/FINISHED 등 → 'Finished')
       final l1Name = _mapLegacyL1Name(legacyL1);
 
-      // L2/L3 분해 로직: subsubfolder가 있으면 우선 사용, 없으면 subfolder에서 분해("a/b")
-      String l2Name = legacyL2Raw;
-      String l3Name = legacyL3Raw;
-      if (l3Name.isEmpty && l2Name.contains('/')) {
-        final parts = l2Name.split(RegExp(r'\s*[/|>\u203A]\s*'));
-        l2Name = parts.isNotEmpty ? parts[0] : '';
-        l3Name = parts.length > 1 ? parts[1] : '';
+      // 1단계: L1 찾기
+      final l1Id = _findFolderIdByDepth(
+        depth: 1,
+        name: l1Name,
+        parentId: null,
+      );
+
+      if (l1Id == null) {
+        // 디버그용으로 앞 몇 개만 찍기
+        if (linked + skipped < 20) {
+          debugPrint('[backfill] SKIP ${item.id}: L1 "$l1Name" 못 찾음');
+        }
+        skipped++;
+        continue;
       }
 
-      // ID 탐색/생성
-      final ids = await pathIdsByNames(
-        l1Name: l1Name,
-        l2Name: l2Name.isEmpty ? null : l2Name,
-        l3Name: l3Name.isEmpty ? null : l3Name,
-        createIfMissing: createFolders,
-      );
-      final path = ids.whereType<String>().toList();
-      if (path.isNotEmpty) {
-        _itemPaths[item.id] = List.unmodifiable(path);
+      // 2단계: L2 찾기 (있다면)
+      String? l2Id;
+      if (legacyL2.isNotEmpty) {
+        l2Id = _findFolderIdByDepth(
+          depth: 2,
+          name: legacyL2,
+          parentId: l1Id,
+        );
+        if (l2Id == null && linked + skipped < 20) {
+          debugPrint('[backfill] WARN ${item.id}: L2 "$legacyL2" 못 찾음 (L1=$l1Name)');
+        }
+      }
+
+      // 3단계: L3 찾기 (있다면)
+      String? l3Id;
+      if (legacyL3.isNotEmpty && l2Id != null) {
+        l3Id = _findFolderIdByDepth(
+          depth: 3,
+          name: legacyL3,
+          parentId: l2Id,
+        );
+        if (l3Id == null && linked + skipped < 20) {
+          debugPrint('[backfill] WARN ${item.id}: L3 "$legacyL3" 못 찾음 (L1=$l1Name, L2=$legacyL2)');
+        }
+      }
+
+      final path = <String>[];
+      path.add(l1Id);
+      if (l2Id != null) path.add(l2Id);
+      if (l3Id != null) path.add(l3Id);
+
+      if (path.isEmpty) {
+        if (linked + skipped < 20) {
+          debugPrint('[backfill] SKIP ${item.id}: path 비어있음 '
+              '(L1="$legacyL1", L2="$legacyL2", L3="$legacyL3")');
+        }
+        skipped++;
+        continue;
+      }
+
+      _itemPaths[item.id] = List.unmodifiable(path);
+      linked++;
+
+      if (linked <= 20) {
+        debugPrint('[backfill] LINKED ${item.id}: '
+            '[$legacyL1 / $legacyL2 / $legacyL3] -> pathIds=$path');
       }
     }
+
+    debugPrint('[backfill] done. linked=$linked skipped=$skipped total=${_items.length}');
     notifyListeners();
   }
 
@@ -1708,6 +1762,22 @@ class InMemoryRepo extends ChangeNotifier
         if (v.isEmpty) return 'Finished';
         return v[0].toUpperCase() +  v.substring(1);
     }
+  }
+
+///====helper===///
+  ///이름 + depth + parentId 로 폴더 id 찾기 (정확 매칭)///
+  String? _findFolderIdByDepth({
+    required int depth,
+    required String name,
+    required String? parentId,
+  }) {
+    final want = _norm(name); // Finished/finished/ FINISHED / 공백 등 정규화
+    for (final f in _folders.values) {
+      if (f.depth != depth) continue;
+      if (f.parentId != parentId) continue;
+      if (_norm(f.name) == want) return f.id;
+    }
+    return null;
   }
 
   ///=======suppliers===============//

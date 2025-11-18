@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+
 import 'src/app.dart';
 import 'src/repos/inmem_repo.dart';
 import 'src/repos/repo_interfaces.dart';
 import 'src/repos/repo_views.dart';
 import 'src/services/inventory_service.dart';
 import 'src/utils/item_presentation.dart';
-
-// ▼ 기존 로더가 더 이상 필요 없다면 주석/삭제
-// import 'src/repos/inmem_seed_importer.dart';
 
 import 'src/ui/nav/item_detail_opener.dart';
 import 'src/services/seed_importer.dart';
@@ -20,15 +18,28 @@ import 'src/models/purchase_order.dart'; // ⬅️ 유지
 import 'src/app/main_tab_controller.dart';
 import 'src/screens/stock/widgets/item_selection_controller.dart';
 
+// ⬇️⬇️ Drift + SQLite 추가
+import 'src/db/app_database.dart';
+import 'src/repos/sqlite_item_repo.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // ✅ rootBundle 사용 시 필수
 
+  // 1) SQLite DB 인스턴스
+  final db = AppDatabase();
+
+  // 2) InMemoryRepo: 여전히 BOM/Txn/Work/발주/Supplier 저장용으로 사용
   final inmem = InMemoryRepo();
 
-  // ✅ 새 임포터 시그니처에 맞춤 (InMemoryRepo가 ItemRepo & BomRepo를 모두 구현)
+  // 3) Drift 기반 ItemRepo (BOM 관련은 inmem에 위임할 수 있게 옵션으로 넘김)
+  final itemRepo = SqliteItemRepo(db, bomDelegate: inmem);
+
+  // ✅ 새 임포터 시그니처에 맞춤
+  //    - Item는 SQLite(DB)에 저장
+  //    - BOM은 InMemoryRepo에 저장
   final importer = UnifiedSeedImporter(
     itemRepo: inmem,
-    bomRepo: null, // 만약 BomRepo를 구현하지 않으면 null로 두세요.
+    bomRepo: inmem,
     verbose: true,    // 👈 디버그 로그 ON
   );
 
@@ -36,7 +47,7 @@ Future<void> main() async {
   await importer.importUnifiedFromAssets(
     itemsAssetPath: 'assets/seeds/2025-10-26/items.json',
     foldersAssetPath: 'assets/seeds/2025-10-26/folders.json',
-    // bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
+    bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
     lotsAssetPath: 'assets/seeds/2025-10-26/lots.json',
     clearBefore: true,
   );
@@ -48,29 +59,37 @@ Future<void> main() async {
       providers: [
         Provider(create: (_) => const Uuid()),
 
-        // 변경 통지자는 단 하나: InMemoryRepo (ChangeNotifier)
+        // 1) DB 주입
+        Provider<AppDatabase>.value(value: db),
+
+        // 2) InMemoryRepo는 여전히 ChangeNotifier (BOM/Txn/Work 등)
         ChangeNotifierProvider<InMemoryRepo>.value(value: inmem),
         ChangeNotifierProvider(create: (_) => CartManager()),
 
-        // ⬇️⬇️ 추가: 하단 탭 상태 전용 컨트롤러
+        // 하단 탭 상태 전용 컨트롤러
         ChangeNotifierProvider(create: (_) => MainTabController()),
         ChangeNotifierProvider<ItemSelectionController>(
           create: (_) => ItemSelectionController(),
         ),
 
-
-      // TxnRepo 타입으로도 '같은 inmem 인스턴스'를 노출 (타입 바인딩용)
-
-  // inmem(ChangeNotifier)을 직접 넣지 말고 뷰 래퍼로 주입
+        // TxnRepo 타입으로도 '같은 inmem 인스턴스'를 노출 (타입 바인딩용)
         Provider<TxnRepo>(
           create: (ctx) => TxnRepoView(ctx.read<InMemoryRepo>()),
         ),
 
-        // 화면엔 인터페이스(비-Listenable)로 주입 → Provider OK
-        Provider<ItemRepo>(create: (ctx) => ItemRepoView(ctx.read<InMemoryRepo>())),
-        Provider<OrderRepo>(create: (ctx) => OrderRepoView(ctx.read<InMemoryRepo>())),
-        Provider<BomRepo>(create: (ctx) => BomRepoView(ctx.read<InMemoryRepo>())),
-        Provider<WorkRepo>(create: (ctx) => WorkRepoView(ctx.read<InMemoryRepo>())),
+        // 🔥 ItemRepo는 이제 Drift + SQLite 버전으로 교체
+        Provider<ItemRepo>.value(value: itemRepo),
+
+        // 나머지는 그대로 InMemoryRepo 래핑
+        Provider<OrderRepo>(
+          create: (ctx) => OrderRepoView(ctx.read<InMemoryRepo>()),
+        ),
+        Provider<BomRepo>(
+          create: (ctx) => BomRepoView(ctx.read<InMemoryRepo>()),
+        ),
+        Provider<WorkRepo>(
+          create: (ctx) => WorkRepoView(ctx.read<InMemoryRepo>()),
+        ),
 
         // 1) Repo 파사드(비-Listenable) 주입
         Provider<PurchaseOrderRepo>(
@@ -89,10 +108,11 @@ Future<void> main() async {
         Provider<ItemPathProvider>(
           create: (ctx) => RepoItemPathFacade(ctx.read<InMemoryRepo>()),
         ),
-// ✅ SupplierRepo 주입: 비-Listenable 파사드로 감싸서 제공
-          Provider<SupplierRepo>(
-            create: (ctx) => SupplierRepoView(ctx.read<InMemoryRepo>()),
-          ),
+
+        // ✅ SupplierRepo 주입: 비-Listenable 파사드로 감싸서 제공
+        Provider<SupplierRepo>(
+          create: (ctx) => SupplierRepoView(ctx.read<InMemoryRepo>()),
+        ),
 
         // ✅ InventoryService 주입
         Provider<InventoryService>(
