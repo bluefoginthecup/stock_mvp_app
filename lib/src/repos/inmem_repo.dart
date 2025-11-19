@@ -20,19 +20,10 @@ import '../models/lot.dart';
 import '../models/suppliers.dart';
 
 
-// === Common move types (top-level) ===
-enum EntityKind { item, folder }
-enum FolderSortMode { name, manual }
 
-class MoveRequest {
-  final EntityKind kind;
-  final String id;            // itemId or folderId
-  final List<String> pathIds; // [L1], [L1,L2], [L1,L2,L3]
-  const MoveRequest({required this.kind, required this.id, required this.pathIds});
-}
 
 class InMemoryRepo extends ChangeNotifier
-    implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseOrderRepo, SupplierRepo {
+    implements ItemRepo, OrderRepo, TxnRepo, BomRepo, WorkRepo, PurchaseOrderRepo, SupplierRepo,FolderTreeRepo {
   final _uuid = const Uuid();
   final Map<String, Item> _items = {};
   final Map<String, Order> _orders = {};

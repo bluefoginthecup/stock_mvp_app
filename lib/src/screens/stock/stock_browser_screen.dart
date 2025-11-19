@@ -6,7 +6,7 @@ import '../../ui/common/ui.dart';
 
 import '../../models/folder_node.dart';
 import '../../models/item.dart';
-import '../../repos/inmem_repo.dart';
+// import '../../repos/inmem_repo.dart'; // ❌ 더 이상 직접 의존 안 함
 import 'sheet_new_folder.dart';
 import 'stock_new_item_sheet.dart';
 import '../../ui/common/search_field.dart';
@@ -16,7 +16,7 @@ import 'stock_item_detail_screen.dart';
 import '../../utils/item_presentation.dart';
 import '../../services/export_service.dart';
 import '../../ui/common/qty_set_sheet.dart';
-import '../../repos/repo_interfaces.dart';
+import '../../repos/repo_interfaces.dart'; // ✅ ItemRepo, FolderTreeRepo, MoveRequest, FolderSortMode, EntityKind
 
 import 'widgets/item_selection_controller.dart';
 import 'widgets/stock_item_select_tile.dart';
@@ -34,7 +34,7 @@ class StockBrowserScreen extends StatefulWidget {
   State<StockBrowserScreen> createState() => _StockBrowserScreenState();
 }
 
-   ///  장바구니 담기 고정 바 시작 ///
+///  장바구니 담기 고정 바 시작 ///
 const double _kSelectBarHeight = 36.0;
 
 class _SelectBarHeader extends SliverPersistentHeaderDelegate {
@@ -51,7 +51,6 @@ class _SelectBarHeader extends SliverPersistentHeaderDelegate {
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Material(
       elevation: 2,
-
       color: Theme.of(context).colorScheme.surface,
       child: SizedBox(height: height, child: child),
     );
@@ -62,7 +61,7 @@ class _SelectBarHeader extends SliverPersistentHeaderDelegate {
       old.child != child || old.height != height;
 }
 
-  /// 고정바 끝 ///
+/// 고정바 끝 ///
 
 class _StockBrowserScreenState extends State<StockBrowserScreen> {
   Timer? _debounce;
@@ -72,38 +71,36 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   final _searchC = TextEditingController();
   bool _lowOnly = false;
 
+  // ───────────────────────── 삭제 에러 메시지 매핑 ─────────────────────────
+  String _friendlyDeleteError(Object e) {
+    final s = e.toString();
+    if (s.contains('subfolders')) return '하위 폴더가 있어서 삭제할 수 없습니다.';
+    if (s.contains('referenced by items')) return '아이템이 포함되어 있어서 삭제할 수 없습니다.';
+    return '삭제할 수 없습니다: $s';
+  }
 
-    // ───────────────────────── 삭제 에러 메시지 매핑 ─────────────────────────
-    String _friendlyDeleteError(Object e) {
-        final s = e.toString();
-        if (s.contains('subfolders')) return '하위 폴더가 있어서 삭제할 수 없습니다.';
-        if (s.contains('referenced by items')) return '아이템이 포함되어 있어서 삭제할 수 없습니다.';
-        return '삭제할 수 없습니다: $s';
-      }
-
-    // ───────────────────────── 폴더 삭제(에러=스낵바) ─────────────────────────
-    Future<void> _tryDeleteFolder(FolderNode n) async {
-        final repo = context.read<InMemoryRepo>();
-        try {
-          await repo.deleteFolderNode(n.id);
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('폴더가 삭제되었습니다.')),
-          );
-          setState(() {}); // 목록 갱신
-        } on StateError catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(_friendlyDeleteError(e))),
-          );
-        } catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(_friendlyDeleteError(e))),
-          );
-        }
-      }
-
+  // ───────────────────────── 폴더 삭제(에러=스낵바) ─────────────────────────
+  Future<void> _tryDeleteFolder(FolderNode n) async {
+    final repo = context.read<FolderTreeRepo>();
+    try {
+      await repo.deleteFolderNode(n.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('폴더가 삭제되었습니다.')),
+      );
+      setState(() {}); // 목록 갱신
+    } on StateError catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_friendlyDeleteError(e))),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_friendlyDeleteError(e))),
+      );
+    }
+  }
 
   String? get _selectedId => _l3Id ?? _l2Id ?? _l1Id;
   int get _selectedDepth =>
@@ -134,7 +131,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   }
 
   Future<void> _createFolder() async {
-    final repo = context.read<InMemoryRepo>();
+    final repo = context.read<FolderTreeRepo>();
     final sid = _selectedId;
     if (sid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +146,9 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   }
 
   Future<void> _createItem() async {
-    final repo = context.read<InMemoryRepo>();
+    final folderRepo = context.read<FolderTreeRepo>();
+    final itemRepo = context.read<ItemRepo>();
+
     if (_selectedId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('먼저 상위 폴더를 선택하세요.')),
@@ -157,7 +156,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       return;
     }
 
-    final chain = _buildPathChain(repo, _selectedId!);
+    final chain = _buildPathChain(folderRepo, _selectedId!);
     final created = await showModalBottomSheet<Item>(
       context: context,
       isScrollControlled: true,
@@ -165,11 +164,15 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     );
     if (created == null) return;
 
-    await repo.createItemUnderPath(pathIds: chain, item: created);
+    // InMemoryRepo에 있는 시그니처와 맞춰서 호출
+    await (itemRepo as dynamic).createItemUnderPath(
+      pathIds: chain,
+      item: created,
+    );
     if (mounted) setState(() {});
   }
 
-  List<String> _buildPathChain(InMemoryRepo repo, String selectedId) {
+  List<String> _buildPathChain(FolderTreeRepo repo, String selectedId) {
     final chain = <String>[];
     var cur = repo.folderById(selectedId);
     while (cur != null) {
@@ -180,7 +183,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   }
 
   Widget _breadcrumb() {
-    final repo = context.read<InMemoryRepo>();
+    final repo = context.read<FolderTreeRepo>();
     String nameOf(String? id) =>
         id == null ? '' : (repo.folderById(id)?.name ?? '(삭제됨)');
     final segs = <Widget>[
@@ -225,9 +228,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     );
   }
 
-  // ───────────────────────── Data loader (중첩 3항 제거) ─────────────────────────
+  // ───────────────────────── Data loader ─────────────────────────
   Future<Object?> _loadData(
-      InMemoryRepo repo, {
+      FolderTreeRepo folderRepo,
+      ItemRepo itemRepo, {
         required bool hasKeyword,
         required bool lowOnly,
         required int depth,
@@ -236,8 +240,9 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         required String? l3,
         required String keyword,
       }) async {
+    // 🔍 검색 모드: 폴더 + 아이템 동시 검색
     if (hasKeyword) {
-      return repo.searchAll(
+      return folderRepo.searchAll(
         l1: l1,
         l2: l2,
         l3: l3,
@@ -246,31 +251,35 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       );
     }
 
+    // 🔻 임계치 필터
     if (lowOnly) {
       if (depth == 0) {
-        return _applyLowStockFilter(repo.allItems().toList());
+        final items = await itemRepo.listItems(); // 전체 아이템
+        return _applyLowStockFilter(items);
       } else {
-        final folders = await repo.listFolderChildren(_selectedId);
-        final items = await repo.listItemsByFolderPath(
+        final folders = await folderRepo.listFolderChildren(_selectedId);
+        final items = await (itemRepo as dynamic).listItemsByFolderPath(
           l1: l1,
           l2: l2,
           l3: l3,
           recursive: true,
-        );
+        ) as List<Item>;
         return [folders, items];
       }
     }
 
+    // 일반 모드
     if (depth == 0) {
-      return repo.listFolderChildren(null);
+      // L1 루트 목록
+      return folderRepo.listFolderChildren(null);
     } else {
-      final folders = await repo.listFolderChildren(_selectedId);
-      final items = await repo.listItemsByFolderPath(
+      final folders = await folderRepo.listFolderChildren(_selectedId);
+      final items = await (itemRepo as dynamic).listItemsByFolderPath(
         l1: l1,
         l2: l2,
         l3: l3,
         recursive: false,
-      );
+      ) as List<Item>;
       return [folders, items];
     }
   }
@@ -308,7 +317,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         );
         if (action == null) return;
 
-        final repo = context.read<InMemoryRepo>();
+        final repo = context.read<FolderTreeRepo>();
         switch (action) {
           case EntityAction.rename:
             final newName =
@@ -355,11 +364,11 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       },
     );
   }
+
   SliverList _buildItemSliver(List<Item> items) {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
             (context, i) {
-          // ✅ 여기서 읽으면 Provider 스코프 안의 컨텍스트라 안전
           final sel = context.watch<ItemSelectionController>();
           final it = items[i];
           final picked = sel.selected.contains(it.id);
@@ -397,14 +406,12 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   );
                 },
                 onSuccess: () async {
-                  // 브라우저 화면 리프레시 필요 시 여기에
+                  // 필요하면 새로고침 로직 추가
                 },
                 successMessage: context.t.btn_save,
                 errorPrefix: context.t.common_error,
               );
             },
-
-
             onTogglePick: () => sel.toggle(it.id),
           );
         },
@@ -412,7 +419,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       ),
     );
   }
-
 
   SliverToBoxAdapter _sliverHeader(String text) {
     return SliverToBoxAdapter(
@@ -425,12 +431,12 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
   @override
   Widget build(BuildContext context) {
-    context.watch<InMemoryRepo>();
-    final repo = context.read<InMemoryRepo>();
+    // FolderTreeRepo 변경 알림에 반응해서 전체 빌드
+    context.watch<FolderTreeRepo>();
+    final folderRepo = context.read<FolderTreeRepo>();
+    final itemRepo = context.read<ItemRepo>();
     final depth = _selectedDepth;
     final hasKeyword = _searchC.text.trim().isNotEmpty;
-    final sel = context.watch<ItemSelectionController>();
-
 
     return ChangeNotifierProvider(
       create: (_) => ItemSelectionController(),
@@ -442,7 +448,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             title: const Text('재고 브라우저'),
             actions: [
               IconButton(
-                icon: Icon(Icons.bug_report),
+                icon: const Icon(Icons.bug_report),
                 onPressed: () async {
                   final db = context.read<AppDatabase>(); // drift database
                   final row = await (db.select(db.items)
@@ -450,15 +456,16 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       .getSingle();
 
                   debugPrint('DEBUG ITEM ROW → $row');
-
                 },
               ),
-
               IconButton(
                 icon: const Icon(Icons.ios_share),
                 tooltip: 'JSON 내보내기',
                 onPressed: () async {
-                  final svc = ExportService(repo: repo);
+                  final svc = ExportService(
+                    itemRepo: itemRepo,
+                    folderRepo: folderRepo,
+                  );
                   try {
                     await svc.exportEditedJson();
                     if (!mounted) return;
@@ -473,7 +480,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   }
                 },
               ),
-
               IconButton(
                 icon: const Icon(Icons.shopping_cart),
                 tooltip: '장바구니 보기',
@@ -485,15 +491,21 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 },
               ),
               Builder(builder: (_) {
-                final repo = context.watch<InMemoryRepo>();
+                final repo = context.watch<FolderTreeRepo>();
                 return PopupMenuButton<FolderSortMode>(
                   tooltip: '정렬',
                   icon: const Icon(Icons.sort),
                   initialValue: repo.sortMode,
-                  onSelected: (m) => context.read<InMemoryRepo>().setSortMode(m),
+                  onSelected: (m) => context.read<FolderTreeRepo>().setSortMode(m),
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: FolderSortMode.name,   child: Text('이름순')),
-                    PopupMenuItem(value: FolderSortMode.manual, child: Text('사용자순')),
+                    PopupMenuItem(
+                      value: FolderSortMode.name,
+                      child: Text('이름순'),
+                    ),
+                    PopupMenuItem(
+                      value: FolderSortMode.manual,
+                      child: Text('사용자순'),
+                    ),
                   ],
                 );
               }),
@@ -514,39 +526,34 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: Row(
                   spacing: 2,
-                  mainAxisAlignment: MainAxisAlignment.start, // 💡 왼쪽 정렬
-
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    // ✅ 멀티선택 토글 (필터 왼쪽)
                     IconButton(
                       tooltip: sel.selectionMode ? '선택 취소' : '멀티 선택',
-                      icon: Icon(sel.selectionMode ? Icons.close : Icons.checklist),
+                      icon:
+                      Icon(sel.selectionMode ? Icons.close : Icons.checklist),
                       onPressed: sel.selectionMode ? sel.exit : sel.enter,
                       style: IconButton.styleFrom(
-                        // 연보라 톤(테마 연계) — FAB와 톤 맞추기
-                        minimumSize: const Size(40, 36), // 칩 높이와 비슷하게
+                        minimumSize: const Size(40, 36),
                         padding: const EdgeInsets.all(8),
                       ),
                     ),
-
-
                     FilterChip(
                       label: const Text('필터:임계치'),
                       selected: _lowOnly,
                       onSelected: (v) => setState(() => _lowOnly = v),
-                      avatar:
-                      const Icon(Icons.warning_amber_rounded, size: 18),
+                      avatar: const Icon(Icons.warning_amber_rounded, size: 18),
                     ),
                   ],
                 ),
               ),
               const Divider(height: 1),
-
-              // ───────────────────────── Content (Slivers + overlay) ─────────────────────────
+              // ───────────────────────── Content ─────────────────────────
               Expanded(
                 child: FutureBuilder<Object?>(
                   future: _loadData(
-                    repo,
+                    folderRepo,
+                    itemRepo,
                     hasKeyword: hasKeyword,
                     lowOnly: _lowOnly,
                     depth: depth,
@@ -563,7 +570,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       return Center(child: Text('오류: ${snap.error}'));
                     }
 
-                    // 현재 화면에 실제로 표시되는 아이템 집합 (선택바 용)
                     List<Item> currentItems = [];
                     final slivers = <Widget>[];
 
@@ -580,7 +586,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                     } else if (hasKeyword) {
                       final (folders, items) =
                       snap.data as (List<FolderNode>, List<Item>);
-                      final filtered = _lowOnly ? _applyLowStockFilter(items) : items;
+                      final filtered =
+                      _lowOnly ? _applyLowStockFilter(items) : items;
 
                       if (folders.isEmpty && filtered.isEmpty) {
                         return const Center(child: Text('검색 결과가 없습니다.'));
@@ -599,8 +606,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                           _buildItemSliver(filtered),
                         ]);
                       }
-                      slivers.add(
-                          const SliverToBoxAdapter(child: SizedBox(height: 80)));
+                      slivers.add(const SliverToBoxAdapter(
+                          child: SizedBox(height: 80)));
                     } else if (depth == 0) {
                       final folders = snap.data as List<FolderNode>;
                       if (folders.isEmpty) {
@@ -614,11 +621,13 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       final result = snap.data as List<Object>;
                       final folders = result[0] as List<FolderNode>;
                       final items = result[1] as List<Item>;
-                      final filtered = _lowOnly ? _applyLowStockFilter(items) : items;
+                      final filtered =
+                      _lowOnly ? _applyLowStockFilter(items) : items;
 
                       if (folders.isEmpty && filtered.isEmpty) {
                         return const Center(
-                          child: Text('하위 폴더나 아이템이 없습니다.  버튼으로 추가하세요.'),
+                          child:
+                          Text('하위 폴더나 아이템이 없습니다.  버튼으로 추가하세요.'),
                         );
                       }
 
@@ -629,11 +638,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                         currentItems = filtered;
                         slivers.add(_buildItemSliver(filtered));
                       }
-                      slivers.add(
-                          const SliverToBoxAdapter(child: SizedBox(height: 80)));
+                      slivers.add(const SliverToBoxAdapter(
+                          child: SizedBox(height: 80)));
                     }
 
-                    // 선택 모드일 때 상단 고정 헤더를 끼운 슬리버 배열로 교체
                     final sliversWithSelectBar = <Widget>[
                       if (sel.selectionMode)
                         SliverPersistentHeader(
@@ -647,7 +655,9 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                                 final qty = await _askQty(context);
                                 if (qty == null) return;
 
-                                final byId = { for (final it in currentItems) it.id: it };
+                                final byId = {
+                                  for (final it in currentItems) it.id: it
+                                };
                                 final cart = context.read<CartManager>();
 
                                 for (final id in sel.selected) {
@@ -657,21 +667,23 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                                   }
                                 }
 
-                                if (!mounted) return;ScaffoldMessenger.of(context).showSnackBar(
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    behavior: SnackBarBehavior.floating, // 💡 floating으로 바꿔 높이 줄이기
-                                    margin: const EdgeInsets.all(12), // 선택: 살짝 띄워서 가볍게
+                                    behavior: SnackBarBehavior.floating,
+                                    margin: const EdgeInsets.all(12),
                                     content: Text(
                                       '장바구니에 ${sel.selected.length}개 담았어요 (×${qty.toStringAsFixed(0)})',
                                       style: const TextStyle(fontSize: 14),
                                     ),
                                     action: SnackBarAction(
-                                      label: '보기', // 💡 한 글자만 남겨 더 슬림하게
-                                      textColor: Theme.of(context).colorScheme.onPrimary,
+                                      label: '보기',
                                       onPressed: () {
                                         Navigator.push(
                                           context,
-                                          MaterialPageRoute(builder: (_) => const CartScreen()),
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                              const CartScreen()),
                                         );
                                       },
                                     ),
@@ -679,44 +691,46 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                                 );
 
                                 sel.exit();
-                              },onMove: () async {
-                              final sel = context.read<ItemSelectionController>(); // 선택된 아이템
-                              final repo = context.read<InMemoryRepo>();
+                              },
+                              onMove: () async {
+                                final sel =
+                                context.read<ItemSelectionController>();
+                                final repo = context.read<FolderTreeRepo>();
 
-                              // 기존에 쓰던 경로 선택기 사용
-                              final dest = await showPathPicker(
-                                context,
-                                childrenProvider: folderChildrenProvider(repo),
-                                title: '아이템 이동..',
-                                maxDepth: 3, // 필요시 2로 낮춰도 됨
-                              );
+                                final dest = await showPathPicker(
+                                  context,
+                                  childrenProvider:
+                                  folderChildrenProvider(repo),
+                                  title: '아이템 이동..',
+                                  maxDepth: 3,
+                                );
 
-                              if (dest == null || dest.isEmpty || !context.mounted) return;
+                                if (dest == null ||
+                                    dest.isEmpty ||
+                                    !context.mounted) return;
 
-                              // 배치 이동 (repo에 moveItemsToPath가 있어야 함)
-                              final moved = await repo.moveItemsToPath(
-                                itemIds: sel.selected.toList(),
-                                pathIds: dest, // [L1], [L1,L2], [L1,L2,L3]
-                              );
+                                final moved = await repo.moveItemsToPath(
+                                  itemIds: sel.selected.toList(),
+                                  pathIds: dest,
+                                );
 
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('아이템 $moved개 이동')),
-                              );
-                              sel.clear();
-                            },
-
-                              onSelectAll: () => sel.selectAll(currentItems.map((e) => e.id)),
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('아이템 $moved개 이동')),
+                                );
+                                sel.clear();
+                              },
+                              onSelectAll: () => sel.selectAll(
+                                  currentItems.map((e) => e.id)),
                               onClear: sel.exit,
                             ),
                           ),
                         ),
-                      ...slivers, // ← 기존에 너가 구성하던 SliverList/SliverGrid/폴더/아이템 목록들
+                      ...slivers,
                     ];
 
-// Stack 제거, 바로 스크롤 뷰 반환
                     return CustomScrollView(slivers: sliversWithSelectBar);
-
                   },
                 ),
               ),
@@ -760,7 +774,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   }
 
   // PathPicker용 provider
-  ChildrenProvider folderChildrenProvider(InMemoryRepo repo) {
+  ChildrenProvider folderChildrenProvider(FolderTreeRepo repo) {
     return (String? parentId) async {
       final folders = await repo.listFolderChildren(parentId);
       return folders.map((f) => PathNode(f.id, f.name)).toList();

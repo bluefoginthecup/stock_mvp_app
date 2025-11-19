@@ -1,5 +1,4 @@
-// lib/src/repos/drift_unified_repo.dart
-
+import 'package:flutter/foundation.dart';        // 👈 ChangeNotifier
 import 'package:drift/drift.dart';
 
 // DB
@@ -27,24 +26,25 @@ part 'drift_unified_repo.g.dart';
 ///  DriftUnifiedRepo
 ///  - 앱의 모든 데이터(재고/주문/생산/발주/거래처/레시피)를 Drift 하나로 통합 관리
 /// ============================================================================
-@DriftAccessor(
-  tables: [
-    Items,
-    Folders,
-    ItemPaths,
-    Txns,
-    BomRows,
-    Orders,
-    OrderLines,
-    Works,
-    PurchaseOrders,
-    PurchaseLines,
-    Suppliers,
-    Lots,
-  ],
-)
-class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
-    with _$DriftUnifiedRepoMixin
+
+// ⛔ 이제 DriftAccessor + DatabaseAccessor 안 씀
+// @DriftAccessor(
+//   tables: [
+//     Items,
+//     Folders,
+//     ItemPaths,
+//     Txns,
+//     BomRows,
+//     Orders,
+//     OrderLines,
+//     Works,
+//     PurchaseOrders,
+//     PurchaseLines,
+//     Suppliers,
+//     Lots,
+//   ],
+// )
+class DriftUnifiedRepo extends ChangeNotifier
     implements
         ItemRepo,
         TxnRepo,
@@ -52,203 +52,160 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
         OrderRepo,
         WorkRepo,
         PurchaseOrderRepo,
-        SupplierRepo {
-  DriftUnifiedRepo(AppDatabase db) : super(db);
+        SupplierRepo,
+        FolderTreeRepo {
+
+  /// Drift DB 인스턴스
+  final AppDatabase db;
+
+  DriftUnifiedRepo(this.db);
 
   // ================================================================
   // =============== ITEM REPO ======================================
   // ================================================================
 
-  // -------------------------------
-  // listItems
-  // -------------------------------
   @override
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
-    final q = select(items);
+    final q = db.select(db.items);
 
     if (folder != null && folder.isNotEmpty) {
       q.where((tbl) => tbl.folder.equals(folder));
     }
 
-    if (keyword != null && keyword
-        .trim()
-        .isNotEmpty) {
+    if (keyword != null && keyword.trim().isNotEmpty) {
       final like = '%${keyword.trim()}%';
-      q.where(
-            (tbl) => tbl.name.like(like) | tbl.displayName.like(like),
-      );
+      q.where((tbl) => tbl.name.like(like) | tbl.displayName.like(like));
     }
 
     final rows = await q.get();
     return rows.map((r) => r.toDomain()).toList();
   }
 
-  // -------------------------------
-  // searchItemsGlobal
-  // -------------------------------
   @override
   Future<List<Item>> searchItemsGlobal(String keyword) async {
     final kw = '%${keyword.trim()}%';
 
-    final rows = await (select(items)
-      ..where(
-            (t) =>
-        t.name.like(kw) |
-        t.displayName.like(kw) |
-        t.sku.like(kw) |
-        t.id.like(kw),
-      ))
+    final rows = await (db.select(db.items)
+      ..where((t) =>
+      t.name.like(kw) |
+      t.displayName.like(kw) |
+      t.sku.like(kw) |
+      t.id.like(kw)))
         .get();
 
     return rows.map((e) => e.toDomain()).toList();
   }
 
-  // -------------------------------
-  // searchItemsByPath (ItemPaths join)
-  // -------------------------------
   @override
   Future<List<Item>> searchItemsByPath({
     String? l1,
     String? l2,
     String? l3,
     required String keyword,
-    bool recursive = true, // 현재는 사용하지 않지만 시그니처 맞춤 용
+    bool recursive = true,
   }) async {
     final kw = '%${keyword.trim()}%';
 
-    final joinQuery = select(items).join([
-      innerJoin(itemPaths, itemPaths.itemId.equalsExp(items.id)),
+    final joinQuery = db.select(db.items).join([
+      innerJoin(
+        db.itemPaths,
+        db.itemPaths.itemId.equalsExp(db.items.id),
+      ),
     ]);
 
-    if (l1 != null) {
-      joinQuery.where(itemPaths.l1Id.equals(l1));
-    }
-    if (l2 != null) {
-      joinQuery.where(itemPaths.l2Id.equals(l2));
-    }
-    if (l3 != null) {
-      joinQuery.where(itemPaths.l3Id.equals(l3));
-    }
+    if (l1 != null) joinQuery.where(db.itemPaths.l1Id.equals(l1));
+    if (l2 != null) joinQuery.where(db.itemPaths.l2Id.equals(l2));
+    if (l3 != null) joinQuery.where(db.itemPaths.l3Id.equals(l3));
 
     joinQuery.where(
-      items.name.like(kw) |
-      items.displayName.like(kw) |
-      items.sku.like(kw),
+      db.items.name.like(kw) |
+      db.items.displayName.like(kw) |
+      db.items.sku.like(kw),
     );
 
     final rows = await joinQuery.get();
-    return rows.map((r) => r.readTable(items).toDomain()).toList();
+    return rows.map((r) => r.readTable(db.items).toDomain()).toList();
   }
 
-  // -------------------------------
-  // getItem
-  // -------------------------------
   @override
   Future<Item?> getItem(String id) async {
-    final row =
-    await (select(items)
-      ..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (db.select(db.items)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
     return row?.toDomain();
   }
 
-  // -------------------------------
-  // upsertItem (+ ItemPaths 유지)
-  // -------------------------------
   @override
   Future<void> upsertItem(Item item) async {
-    final companion = item.toCompanion();
-    await into(items).insertOnConflictUpdate(companion);
+    await db.into(db.items).insertOnConflictUpdate(item.toCompanion());
     await _updateItemPaths(item);
   }
 
   Future<void> _updateItemPaths(Item item) async {
-    final l1 = item.folder.isNotEmpty ? item.folder : null;
-    final l2 = item.subfolder;
-    final l3 = item.subsubfolder;
-
     final row = ItemPathsCompanion(
       itemId: Value(item.id),
-      l1Id: Value(l1),
-      l2Id: Value(l2),
-      l3Id: Value(l3),
+      l1Id: Value(item.folder.isNotEmpty ? item.folder : null),
+      l2Id: Value(item.subfolder),
+      l3Id: Value(item.subsubfolder),
     );
 
-    await into(itemPaths).insertOnConflictUpdate(row);
+    await db.into(db.itemPaths).insertOnConflictUpdate(row);
   }
 
-  // -------------------------------
-  // deleteItem (hard delete)
-  // -------------------------------
   @override
   Future<void> deleteItem(String id) async {
-    await (delete(items)
-      ..where((t) => t.id.equals(id))).go();
-    await (delete(itemPaths)
-      ..where((t) => t.itemId.equals(id))).go();
+    await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
+    await (db.delete(db.itemPaths)..where((t) => t.itemId.equals(id))).go();
   }
 
-
-  // ===============================
-  // ItemRepo: BOM 편의 메서드들 (임시 Stub)
-  // ===============================
+  // ----------------------------------------------------------
+  // BOM — finished / semi (sync 미지원 → 예외)
+  // ----------------------------------------------------------
+  @override
+  List<BomRow> finishedBomOf(String finishedItemId) =>
+      throw UnimplementedError('Use listBom() instead.');
 
   @override
-  List<BomRow> finishedBomOf(String finishedItemId) {
-    // ⚠️ Drift에서는 sync DB 쿼리가 안 되므로,
-    // 이 메서드는 실제로는 쓰지 않는 걸 권장.
-    throw UnimplementedError(
-      'finishedBomOf()는 DriftUnifiedRepo에서 sync로 지원되지 않습니다. '
-          '대신 BomRepo.listBom(finishedItemId)를 사용해 주세요.',
-    );
-  }
+  List<BomRow> semiBomOf(String semiItemId) =>
+      throw UnimplementedError('Use listBom() instead.');
 
   @override
-  List<BomRow> semiBomOf(String semiItemId) {
-    throw UnimplementedError(
-      'semiBomOf()는 DriftUnifiedRepo에서 sync로 지원되지 않습니다. '
-          '대신 BomRepo.listBom(semiItemId)를 사용해 주세요.',
-    );
-  }
-
-  @override
-  Future<void> upsertFinishedBom(String finishedItemId,
-      List<BomRow> rows,) async {
-    // root=finished 인 기존 레시피 삭제 후 통째로 갈아끼우기
-    await (delete(bomRows)
-      ..where((t) => t.parentItemId.equals(finishedItemId))..where((t) =>
-          t.root.equals(BomRoot.finished.name)))
+  Future<void> upsertFinishedBom(String finishedItemId, List<BomRow> rows) async {
+    await (db.delete(db.bomRows)
+      ..where((t) => t.parentItemId.equals(finishedItemId))
+      ..where((t) => t.root.equals(BomRoot.finished.name)))
         .go();
 
     for (final r in rows) {
-      final fixed = r.copyWith(
-        root: BomRoot.finished,
-        parentItemId: finishedItemId,
+      await db.into(db.bomRows).insertOnConflictUpdate(
+        r
+            .copyWith(
+          root: BomRoot.finished,
+          parentItemId: finishedItemId,
+        )
+            .toCompanion(),
       );
-      await into(bomRows).insertOnConflictUpdate(fixed.toCompanion());
     }
   }
 
   @override
-  Future<void> upsertSemiBom(String semiItemId,
-      List<BomRow> rows,) async {
-    await (delete(bomRows)
-      ..where((t) => t.parentItemId.equals(semiItemId))..where((t) =>
-          t.root.equals(BomRoot.semi.name)))
+  Future<void> upsertSemiBom(String semiItemId, List<BomRow> rows) async {
+    await (db.delete(db.bomRows)
+      ..where((t) => t.parentItemId.equals(semiItemId))
+      ..where((t) => t.root.equals(BomRoot.semi.name)))
         .go();
 
     for (final r in rows) {
-      final fixed = r.copyWith(
-        root: BomRoot.semi,
-        parentItemId: semiItemId,
+      await db.into(db.bomRows).insertOnConflictUpdate(
+        r
+            .copyWith(
+          root: BomRoot.semi,
+          parentItemId: semiItemId,
+        )
+            .toCompanion(),
       );
-      await into(bomRows).insertOnConflictUpdate(fixed.toCompanion());
     }
   }
 
-
-// ===============================
-// ItemRepo: adjustQty
-// ===============================
   @override
   Future<void> adjustQty({
     required String itemId,
@@ -258,48 +215,34 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
     String? note,
     String? memo,
   }) async {
-    assert(delta != 0);
-
     final now = DateTime.now();
 
-    await transaction(() async {
-      // 1) 현재 수량 읽기
-      final row = await (select(items)
-        ..where((t) => t.id.equals(itemId)))
+    await db.transaction(() async {
+      final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
           .getSingleOrNull();
+      if (row == null) return;
 
-      if (row == null) {
-        // 없는 아이템이면 그냥 리턴 (혹은 throw 해도 됨)
-        return;
-      }
-
-      final newQty = row.qty + delta;
-
-      // 2) 수량 업데이트
-      await (update(items)
-        ..where((t) => t.id.equals(itemId))).write(
-        ItemsCompanion(
-          qty: Value(newQty),
-        ),
+      await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+        ItemsCompanion(qty: Value(row.qty + delta)),
       );
 
-      // 3) Txn 기록 남기기
-      final txn = Txn(
-        id: 'txn_${now.microsecondsSinceEpoch}',
-        ts: now,
-        type: delta > 0 ? TxnType.in_ : TxnType.out_,
-        status: TxnStatus.actual,
-        itemId: itemId,
-        qty: delta.abs(),
-        refType: refType != null ? RefTypeX.fromString(refType) : RefType
-            .manual,
-        refId: refId ?? 'manual',
-        note: note,
-        memo: memo,
-        sourceKey: null,
+      await db.into(db.txns).insert(
+        Txn(
+          id: 'txn_${now.microsecondsSinceEpoch}',
+          ts: now,
+          type: delta > 0 ? TxnType.in_ : TxnType.out_,
+          status: TxnStatus.actual,
+          itemId: itemId,
+          qty: delta.abs(),
+          refType: refType != null
+              ? RefTypeX.fromString(refType)
+              : RefType.manual,
+          refId: refId ?? 'manual',
+          note: note,
+          memo: memo,
+          sourceKey: null,
+        ).toCompanion(),
       );
-
-      await into(txns).insert(txn.toCompanion());
     });
   }
 
@@ -310,72 +253,82 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
     String? unitOut,
     double? conversionRate,
   }) async {
-    final companion = ItemsCompanion(
-      unitIn: unitIn != null ? Value(unitIn) : const Value.absent(),
-      unitOut: unitOut != null ? Value(unitOut) : const Value.absent(),
-      conversionRate: conversionRate != null
-          ? Value(conversionRate)
-          : const Value.absent(),
+    await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+      ItemsCompanion(
+        unitIn: unitIn != null ? Value(unitIn) : const Value.absent(),
+        unitOut: unitOut != null ? Value(unitOut) : const Value.absent(),
+        conversionRate:
+        conversionRate != null ? Value(conversionRate) : const Value.absent(),
+      ),
     );
-
-    await (update(items)
-      ..where((t) => t.id.equals(itemId))).write(companion);
   }
 
-  // -------------------------------
-  // nameOf
-  // -------------------------------
+  @override
+  Future<List<String>> itemPathNames(String itemId) async {
+    final pathRow =
+    await (db.select(db.itemPaths)..where((t) => t.itemId.equals(itemId)))
+        .getSingleOrNull();
+    if (pathRow == null) return [];
+
+    Future<String?> getFolderName(String? id) async {
+      if (id == null) return null;
+      final row =
+      await (db.select(db.folders)..where((f) => f.id.equals(id)))
+          .getSingleOrNull();
+      return row?.name;
+    }
+
+    final names = <String>[];
+    final l1 = await getFolderName(pathRow.l1Id);
+    final l2 = await getFolderName(pathRow.l2Id);
+    final l3 = await getFolderName(pathRow.l3Id);
+
+    if (l1 != null) names.add(l1);
+    if (l2 != null) names.add(l2);
+    if (l3 != null) names.add(l3);
+
+    return names;
+  }
+
   @override
   Future<String?> nameOf(String itemId) async {
     final row =
-    await (select(items)
-      ..where((t) => t.id.equals(itemId))).getSingleOrNull();
+    await (db.select(db.items)..where((t) => t.id.equals(itemId)))
+        .getSingleOrNull();
     return row?.name;
   }
 
-  // -------------------------------
-  // stockOf (sync 미지원 → 예외)
-  // -------------------------------
   @override
-  int stockOf(String itemId) {
-    throw UnimplementedError(
-      'Use getItem() or a stream instead of sync stockOf() in Drift.',
-    );
-  }
+  int stockOf(String itemId) =>
+      throw UnimplementedError('Use getItem() instead.');
 
   // ================================================================
   // =============== TXN REPO =======================================
   // ================================================================
 
-  // 최신 트랜잭션 스냅샷 (동기 접근용 캐시)
   List<Txn> _txnSnapshot = [];
 
-  // 전체 Txn 리스트 (ts 내림차순) + 스냅샷 갱신
   @override
   Future<List<Txn>> listTxns() async {
-    final rows = await (select(txns)
+    final rows =
+    await (db.select(db.txns)
       ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
         .get();
-
-    final list = rows.map((r) => r.toDomain()).toList();
-    _txnSnapshot = list;
-    return list;
+    _txnSnapshot = rows.map((r) => r.toDomain()).toList();
+    return _txnSnapshot;
   }
 
-  // 스냅샷 그대로 돌려주기
   @override
   List<Txn> snapshotTxnsDesc() => _txnSnapshot;
 
   Future<void> _refreshTxnSnapshot() async {
-    final rows = await (select(txns)
+    final rows =
+    await (db.select(db.txns)
       ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
         .get();
     _txnSnapshot = rows.map((r) => r.toDomain()).toList();
   }
 
-  // ------------------------------------------------
-  // planned inbound 추가 (예: 발주 planned 수량)
-  // ------------------------------------------------
   @override
   Future<void> addInPlanned({
     required String itemId,
@@ -384,25 +337,20 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
     required String refId,
     String? note,
   }) async {
-    final txn = Txn.in_(
-      id: 'txn_${DateTime
-          .now()
-          .microsecondsSinceEpoch}',
-      itemId: itemId,
-      qty: qty,
-      refType: RefTypeX.fromString(refType),
-      refId: refId,
-      status: TxnStatus.planned,
-      note: note,
+    await db.into(db.txns).insert(
+      Txn.in_(
+        id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
+        itemId: itemId,
+        qty: qty,
+        refType: RefTypeX.fromString(refType),
+        refId: refId,
+        status: TxnStatus.planned,
+        note: note,
+      ).toCompanion(),
     );
-
-    await into(txns).insert(txn.toCompanion());
     await _refreshTxnSnapshot();
   }
 
-  // ------------------------------------------------
-  // actual inbound 추가 + items.qty 반영
-  // ------------------------------------------------
   @override
   Future<void> addInActual({
     required String itemId,
@@ -411,31 +359,25 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
     required String refId,
     String? note,
   }) async {
-    await transaction(() async {
-      // 1) Txn 기록(actual)
-      final txn = Txn.in_(
-        id: 'txn_${DateTime
-            .now()
-            .microsecondsSinceEpoch}',
-        itemId: itemId,
-        qty: qty,
-        refType: RefTypeX.fromString(refType),
-        refId: refId,
-        status: TxnStatus.actual,
-        note: note,
+    await db.transaction(() async {
+      await db.into(db.txns).insert(
+        Txn.in_(
+          id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
+          itemId: itemId,
+          qty: qty,
+          refType: RefTypeX.fromString(refType),
+          refId: refId,
+          status: TxnStatus.actual,
+          note: note,
+        ).toCompanion(),
       );
-      await into(txns).insert(txn.toCompanion());
 
-      // 2) items.qty 증가
-      final row = await (select(items)
-        ..where((t) => t.id.equals(itemId)))
+      final row =
+      await (db.select(db.items)..where((t) => t.id.equals(itemId)))
           .getSingleOrNull();
+      final newQty = (row?.qty ?? 0) + qty;
 
-      final currentQty = row?.qty ?? 0;
-      final newQty = currentQty + qty;
-
-      await (update(items)
-        ..where((t) => t.id.equals(itemId))).write(
+      await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
         ItemsCompanion(qty: Value(newQty)),
       );
     });
@@ -443,30 +385,21 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
     await _refreshTxnSnapshot();
   }
 
-  // ------------------------------------------------
-  // 단건 삭제 (하드 삭제)
-  // ------------------------------------------------
   @override
   Future<void> deleteTxn(String txnId) async {
-    await (delete(txns)
-      ..where((t) => t.id.equals(txnId))).go();
+    await (db.delete(db.txns)..where((t) => t.id.equals(txnId))).go();
     await _refreshTxnSnapshot();
   }
 
-  // ------------------------------------------------
-  // planned 기록 refType/refId 기준 일괄 삭제
-  // ------------------------------------------------
   @override
   Future<void> deletePlannedByRef({
     required String refType,
     required String refId,
   }) async {
-    final rt = RefTypeX.fromString(refType);
-
-    await (delete(txns)
-      ..where((t) => t.refType.equals(rt.name))..where((t) =>
-          t.refId.equals(refId))..where((t) =>
-          t.status.equals(TxnStatus.planned.name)))
+    await (db.delete(db.txns)
+      ..where((t) => t.refType.equals(refType))
+      ..where((t) => t.refId.equals(refId))
+      ..where((t) => t.status.equals(TxnStatus.planned.name)))
         .go();
 
     await _refreshTxnSnapshot();
@@ -475,87 +408,78 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
   // ================================================================
   // =============== BOM REPO =======================================
   // ================================================================
+
   @override
   Future<List<BomRow>> listBom(String parentItemId) async {
-    final rows = await (select(bomRows)
+    final rows =
+    await (db.select(db.bomRows)
       ..where((t) => t.parentItemId.equals(parentItemId)))
         .get();
-
-    return rows.map((r) => r.toDomain()).toList(); // BomRowDbMapping 확장 사용
+    return rows.map((r) => r.toDomain()).toList();
   }
 
   @override
   Future<void> upsertBomRow(BomRow row) async {
-    await into(bomRows).insertOnConflictUpdate(row.toCompanion());
+    await db.into(db.bomRows).insertOnConflictUpdate(row.toCompanion());
   }
 
-  /// id 포맷을 "root|parentItemId|componentItemId|kind" 로 가정하고 삭제
-  /// 예: 'finished|it_F_rouen_gray_cc_50|it_SF_piping_gray|raw'
   @override
   Future<void> deleteBomRow(String id) async {
     final parts = id.split('|');
-    if (parts.length != 4) {
-      // 잘못된 형식이면 그냥 무시 (원하면 throw로 바꿔도 됨)
-      return;
-    }
+    if (parts.length != 4) return;
 
-    final rootStr = parts[0];
-    final parentId = parts[1];
-    final compId = parts[2];
-    final kindStr = parts[3];
-
-    await (delete(bomRows)
-      ..where((t) => t.root.equals(rootStr))..where((t) =>
-          t.parentItemId.equals(parentId))..where((t) =>
-          t.componentItemId.equals(compId))..where((t) =>
-          t.kind.equals(kindStr)))
+    await (db.delete(db.bomRows)
+      ..where((t) => t.root.equals(parts[0]))
+      ..where((t) => t.parentItemId.equals(parts[1]))
+      ..where((t) => t.componentItemId.equals(parts[2]))
+      ..where((t) => t.kind.equals(parts[3])))
         .go();
   }
 
   // ================================================================
   // =============== ORDER REPO =====================================
   // ================================================================
+
   @override
   Future<List<Order>> listOrders() async {
-    final orderRows = await (select(orders)
+    final rows = await (db.select(db.orders)
       ..where((t) => t.isDeleted.equals(false))
       ..orderBy([(t) => OrderingTerm.desc(t.date)]))
         .get();
 
-    final result = <Order>[];
+    final list = <Order>[];
 
-    for (final o in orderRows) {
-      final lineRows = await (select(orderLines)
+    for (final o in rows) {
+      final lineRows = await (db.select(db.orderLines)
         ..where((l) => l.orderId.equals(o.id)))
           .get();
-
-      final lines = lineRows.map((r) => r.toDomain()).toList();
-      result.add(o.toDomain(lines)); // OrderRowMappingExt 사용
+      list.add(
+        o.toDomain(
+          lineRows.map((r) => r.toDomain()).toList(),
+        ),
+      );
     }
 
-    return result;
+    return list;
   }
 
   @override
   Future<Order?> getOrder(String id) async {
-    final row = await (select(orders)
-      ..where((t) => t.id.equals(id)))
+    final row =
+    await (db.select(db.orders)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     if (row == null) return null;
 
     final lineRows =
-    await (select(orderLines)
-      ..where((l) => l.orderId.equals(id))).get();
-    final lines = lineRows.map((r) => r.toDomain()).toList();
-
-    return row.toDomain(lines);
+    await (db.select(db.orderLines)..where((l) => l.orderId.equals(id)))
+        .get();
+    return row.toDomain(lineRows.map((r) => r.toDomain()).toList());
   }
 
   @override
   Future<void> upsertOrder(Order order) async {
-    await transaction(() async {
-      // 1) 헤더 upsert
-      await into(orders).insertOnConflictUpdate(
+    await db.transaction(() async {
+      await db.into(db.orders).insertOnConflictUpdate(
         OrdersCompanion(
           id: Value(order.id),
           date: Value(order.date.toIso8601String()),
@@ -563,32 +487,33 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
           memo: Value(order.memo),
           status: Value(order.status.name),
           isDeleted: Value(order.isDeleted),
-          updatedAt: Value(order.updatedAt?.toIso8601String()),
+          updatedAt: Value(order.updatedAt != null
+              ? order.updatedAt!.toIso8601String()
+              : null),
         ),
       );
 
-      // 2) 라인 싹 지우고 다시 삽입
-      await (delete(orderLines)
-        ..where((l) => l.orderId.equals(order.id))).go();
+      await (db.delete(db.orderLines)
+        ..where((l) => l.orderId.equals(order.id)))
+          .go();
 
       for (final line in order.lines) {
-        await into(orderLines).insert(line.toCompanion(order.id));
+        await db.into(db.orderLines).insert(line.toCompanion(order.id));
       }
     });
   }
 
   @override
   Future<String?> customerNameOf(String orderId) async {
-    final row = await (select(orders)
-      ..where((t) => t.id.equals(orderId)))
+    final row =
+    await (db.select(db.orders)..where((t) => t.id.equals(orderId)))
         .getSingleOrNull();
     return row?.customer;
   }
 
   @override
   Future<void> softDeleteOrder(String orderId) async {
-    await (update(orders)
-      ..where((t) => t.id.equals(orderId))).write(
+    await (db.update(db.orders)..where((t) => t.id.equals(orderId))).write(
       OrdersCompanion(
         isDeleted: const Value(true),
         updatedAt: Value(DateTime.now().toIso8601String()),
@@ -598,58 +523,54 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
 
   @override
   Future<void> hardDeleteOrder(String orderId) async {
-    await transaction(() async {
-      await (delete(orderLines)
-        ..where((l) => l.orderId.equals(orderId))).go();
-      await (delete(orders)
-        ..where((t) => t.id.equals(orderId))).go();
+    await db.transaction(() async {
+      await (db.delete(db.orderLines)
+        ..where((l) => l.orderId.equals(orderId)))
+          .go();
+      await (db.delete(db.orders)..where((t) => t.id.equals(orderId))).go();
     });
   }
 
   // ================================================================
   // =============== WORK REPO ======================================
   // ================================================================
+
   @override
   Future<String> createWork(Work w) async {
-    await into(works).insert(w.toCompanion());
+    await db.into(db.works).insert(w.toCompanion());
     return w.id;
   }
 
   @override
   Future<Work?> getWorkById(String id) async {
     final row =
-    await (select(works)
-      ..where((t) => t.id.equals(id))).getSingleOrNull();
+    await (db.select(db.works)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
     return row?.toDomain();
   }
 
   @override
   Stream<List<Work>> watchAllWorks() {
-    final q = select(works)
+    final q = db.select(db.works)
       ..where((t) => t.isDeleted.equals(false))
       ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
 
-    return q.watch().map(
-          (rows) => rows.map((r) => r.toDomain()).toList(),
-    );
+    return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
   }
 
   @override
   Future<void> updateWork(Work w) async {
-    await (update(works)
-      ..where((t) => t.id.equals(w.id)))
+    await (db.update(db.works)..where((t) => t.id.equals(w.id)))
         .write(w.toCompanion());
   }
 
   @override
-  Future<void> completeWork(String id) async {
-    await updateWorkStatus(id, WorkStatus.done);
-  }
+  Future<void> completeWork(String id) =>
+      updateWorkStatus(id, WorkStatus.done);
 
   @override
   Future<void> updateWorkStatus(String id, WorkStatus status) async {
-    await (update(works)
-      ..where((t) => t.id.equals(id))).write(
+    await (db.update(db.works)..where((t) => t.id.equals(id))).write(
       WorksCompanion(
         status: Value(status.name),
         updatedAt: Value(DateTime.now().toIso8601String()),
@@ -657,17 +578,15 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  // cancelWork는 인터페이스 기본 구현이 있지만, 여기서 명시적으로 override 해 둠
   @override
   Future<void> cancelWork(String id) =>
       updateWorkStatus(id, WorkStatus.canceled);
 
   @override
   Future<void> softDeleteWork(String workId) async {
-    await (update(works)
-      ..where((t) => t.id.equals(workId))).write(
+    await (db.update(db.works)..where((t) => t.id.equals(workId))).write(
       WorksCompanion(
-        isDeleted: const Value(true),
+        isDeleted: Value(true),
         updatedAt: Value(DateTime.now().toIso8601String()),
       ),
     );
@@ -675,30 +594,30 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
 
   @override
   Future<void> hardDeleteWork(String workId) async {
-    await (delete(works)
-      ..where((t) => t.id.equals(workId))).go();
+    await (db.delete(db.works)..where((t) => t.id.equals(workId))).go();
   }
 
   // ================================================================
   // =============== PURCHASE ORDER REPO =============================
   // ================================================================
+
   @override
   Future<String> createPurchaseOrder(PurchaseOrder po) async {
-    await into(purchaseOrders).insertOnConflictUpdate(po.toCompanion());
+    await db.into(db.purchaseOrders).insertOnConflictUpdate(po.toCompanion());
     return po.id;
   }
 
   @override
   Future<void> updatePurchaseOrder(PurchaseOrder po) async {
-    // upsert로 통일 (id 기준으로 갱신)
-    await into(purchaseOrders).insertOnConflictUpdate(po.toCompanion());
+    await db.into(db.purchaseOrders).insertOnConflictUpdate(po.toCompanion());
   }
 
   @override
-  Future<void> updatePurchaseOrderStatus(String id,
-      PurchaseOrderStatus status) async {
-    await (update(purchaseOrders)
-      ..where((t) => t.id.equals(id))).write(
+  Future<void> updatePurchaseOrderStatus(
+      String id,
+      PurchaseOrderStatus status,
+      ) async {
+    await (db.update(db.purchaseOrders)..where((t) => t.id.equals(id))).write(
       PurchaseOrdersCompanion(
         status: Value(status.name),
         updatedAt: Value(DateTime.now().toIso8601String()),
@@ -708,27 +627,23 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
 
   @override
   Stream<List<PurchaseOrder>> watchAllPurchaseOrders() {
-    final q = select(purchaseOrders)
+    final q = db.select(db.purchaseOrders)
       ..where((t) => t.isDeleted.equals(false))
       ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
-
-    return q.watch().map(
-          (rows) => rows.map((r) => r.toDomain()).toList(),
-    );
+    return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
   }
 
   @override
   Future<PurchaseOrder?> getPurchaseOrderById(String id) async {
-    final row = await (select(purchaseOrders)
-      ..where((t) => t.id.equals(id)))
+    final row =
+    await (db.select(db.purchaseOrders)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     return row?.toDomain();
   }
 
   @override
   Future<void> softDeletePurchaseOrder(String id) async {
-    await (update(purchaseOrders)
-      ..where((t) => t.id.equals(id))).write(
+    await (db.update(db.purchaseOrders)..where((t) => t.id.equals(id))).write(
       PurchaseOrdersCompanion(
         isDeleted: const Value(true),
         updatedAt: Value(DateTime.now().toIso8601String()),
@@ -738,60 +653,53 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
 
   @override
   Future<void> hardDeletePurchaseOrder(String id) async {
-    await transaction(() async {
-      await (delete(purchaseLines)
-        ..where((l) => l.orderId.equals(id))).go();
-      await (delete(purchaseOrders)
-        ..where((t) => t.id.equals(id))).go();
+    await db.transaction(() async {
+      await (db.delete(db.purchaseLines)
+        ..where((l) => l.orderId.equals(id)))
+          .go();
+      await (db.delete(db.purchaseOrders)..where((t) => t.id.equals(id))).go();
     });
   }
 
   @override
   Future<void> upsertLines(String orderId, List<PurchaseLine> lines) async {
-    await transaction(() async {
-      // 기존 라인 삭제
-      await (delete(purchaseLines)
+    await db.transaction(() async {
+      await (db.delete(db.purchaseLines)
         ..where((l) => l.orderId.equals(orderId)))
           .go();
-
-      // 새 라인 삽입
       for (final line in lines) {
-        await into(purchaseLines).insert(line.toCompanion());
+        await db.into(db.purchaseLines).insert(line.toCompanion());
       }
     });
   }
 
   @override
   Future<List<PurchaseLine>> getLines(String orderId) async {
-    final rows = await (select(purchaseLines)
+    final rows = await (db.select(db.purchaseLines)
       ..where((l) => l.orderId.equals(orderId)))
         .get();
-
     return rows.map((r) => r.toDomain()).toList();
   }
 
   // ================================================================
   // =============== SUPPLIER REPO ==================================
   // ================================================================
+
   @override
   Future<List<Supplier>> list({String? q, bool onlyActive = true}) async {
-    final query = select(suppliers);
+    final query = db.select(db.suppliers);
 
     if (onlyActive) {
       query.where((t) => t.isActive.equals(true));
     }
 
-    if (q != null && q
-        .trim()
-        .isNotEmpty) {
+    if (q != null && q.trim().isNotEmpty) {
       final k = '%${q.trim()}%';
-      query.where(
-            (t) =>
-        t.name.like(k) |
-        t.contactName.like(k) |
-        t.phone.like(k) |
-        t.email.like(k),
-      );
+      query.where((t) =>
+      t.name.like(k) |
+      t.contactName.like(k) |
+      t.phone.like(k) |
+      t.email.like(k));
     }
 
     query.orderBy([(t) => OrderingTerm.asc(t.name)]);
@@ -803,22 +711,20 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
   @override
   Future<Supplier?> get(String id) async {
     final row =
-    await (select(suppliers)
-      ..where((t) => t.id.equals(id)))
+    await (db.select(db.suppliers)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
     return row?.toDomain();
   }
 
   @override
   Future<String> upsert(Supplier s) async {
-    await into(suppliers).insertOnConflictUpdate(s.toCompanion());
+    await db.into(db.suppliers).insertOnConflictUpdate(s.toCompanion());
     return s.id;
   }
 
   @override
   Future<void> softDelete(String id) async {
-    await (update(suppliers)
-      ..where((t) => t.id.equals(id))).write(
+    await (db.update(db.suppliers)..where((t) => t.id.equals(id))).write(
       SuppliersCompanion(
         isActive: const Value(false),
         updatedAt: Value(DateTime.now().toIso8601String()),
@@ -828,12 +734,200 @@ class DriftUnifiedRepo extends DatabaseAccessor<AppDatabase>
 
   @override
   Future<void> toggleActive(String id, bool isActive) async {
-    await (update(suppliers)
-      ..where((t) => t.id.equals(id))).write(
+    await (db.update(db.suppliers)..where((t) => t.id.equals(id))).write(
       SuppliersCompanion(
         isActive: Value(isActive),
         updatedAt: Value(DateTime.now().toIso8601String()),
       ),
     );
+  }
+
+  // ================================================================
+  // =============== FOLDER TREE REPO ===============================
+  // ================================================================
+
+  FolderSortMode _sortMode = FolderSortMode.name;
+
+  @override
+  FolderSortMode get sortMode => _sortMode;
+
+  @override
+  Future<void> setSortMode(FolderSortMode mode) async {
+    _sortMode = mode;
+    notifyListeners();
+  }
+
+  @override
+  Future<List<FolderNode>> listFolderChildren(String? parentId) async {
+    final q = db.select(db.folders)
+      ..where(
+            (tbl) => parentId == null
+            ? tbl.parentId.isNull()
+            : tbl.parentId.equals(parentId),
+      );
+
+    if (_sortMode == FolderSortMode.name) {
+      q.orderBy([(t) => OrderingTerm.asc(t.name)]);
+    } else {
+      q.orderBy([(t) => OrderingTerm.asc(t.order)]);
+    }
+
+    final rows = await q.get();
+    return rows.map((r) => r.toDomain()).toList();
+  }
+
+  @override
+  FolderNode? folderById(String id) =>
+      throw UnimplementedError('Use async select() instead.');
+
+  @override
+  Future<FolderNode> createFolderNode({
+    required String? parentId,
+    required String name,
+  }) async {
+    // 🔧 parentId가 null일 때는 쿼리 안 날림
+    final parentRow = parentId == null
+        ? null
+        : await (db.select(db.folders)
+      ..where((t) => t.id.equals(parentId!)))
+        .getSingleOrNull();
+
+    final depth = parentRow != null ? parentRow.depth + 1 : 1;
+
+    final newId = 'fo_${DateTime.now().microsecondsSinceEpoch}';
+
+    final row = FoldersCompanion(
+      id: Value(newId),
+      name: Value(name),
+      parentId: Value(parentId),
+      depth: Value(depth),
+      order: const Value(0),
+    );
+
+    await db.into(db.folders).insert(row);
+
+    return FolderNode(
+      id: newId,
+      name: name,
+      parentId: parentId,
+      depth: depth,
+      order: 0,
+    );
+  }
+
+
+  @override
+  Future<void> renameFolderNode({
+    required String id,
+    required String newName,
+  }) async {
+    await (db.update(db.folders)..where((t) => t.id.equals(id))).write(
+      FoldersCompanion(name: Value(newName)),
+    );
+  }
+
+  @override
+  Future<void> deleteFolderNode(String id) async {
+    final hasChildren =
+    await (db.select(db.folders)..where((t) => t.parentId.equals(id)))
+        .get();
+    if (hasChildren.isNotEmpty) throw StateError('subfolders exist');
+
+    final containsItems = await (db.select(db.itemPaths)
+      ..where(
+            (t) =>
+        t.l1Id.equals(id) | t.l2Id.equals(id) | t.l3Id.equals(id),
+      ))
+        .get();
+    if (containsItems.isNotEmpty) throw StateError('referenced by items');
+
+    await (db.delete(db.folders)..where((t) => t.id.equals(id))).go();
+  }
+
+  @override
+  Future<(List<FolderNode>, List<Item>)> searchAll({
+    String? l1,
+    String? l2,
+    String? l3,
+    required String keyword,
+    bool recursive = true,
+  }) async {
+    final kw = '%${keyword.trim()}%';
+
+    final folderRows =
+    await (db.select(db.folders)..where((t) => t.name.like(kw))).get();
+    final folderNodes = folderRows.map((r) => r.toDomain()).toList();
+
+    final join = db.select(db.items).join([
+      innerJoin(
+        db.itemPaths,
+        db.itemPaths.itemId.equalsExp(db.items.id),
+      ),
+    ]);
+
+    if (l1 != null) join.where(db.itemPaths.l1Id.equals(l1));
+    if (l2 != null) join.where(db.itemPaths.l2Id.equals(l2));
+    if (l3 != null) join.where(db.itemPaths.l3Id.equals(l3));
+
+    join.where(
+      db.items.name.like(kw) |
+      db.items.displayName.like(kw) |
+      db.items.sku.like(kw),
+    );
+
+    final itemRows = await join.get();
+    final itemsFound =
+    itemRows.map((r) => r.readTable(db.items).toDomain()).toList();
+
+    return (folderNodes, itemsFound);
+  }
+
+  @override
+  Future<int> moveItemsToPath({
+    required List<String> itemIds,
+    required List<String> pathIds,
+  }) async {
+    int moved = 0;
+    for (final itemId in itemIds) {
+      await _moveSingleItem(itemId, pathIds);
+      moved++;
+    }
+    return moved;
+  }
+
+  Future<void> _moveSingleItem(String itemId, List<String> pathIds) async {
+    final l1 = pathIds.isNotEmpty ? pathIds[0] : null;
+    final l2 = pathIds.length > 1 ? pathIds[1] : null;
+    final l3 = pathIds.length > 2 ? pathIds[2] : null;
+
+    await (db.update(db.itemPaths)..where((t) => t.itemId.equals(itemId)))
+        .write(
+      ItemPathsCompanion(
+        l1Id: Value(l1),
+        l2Id: Value(l2),
+        l3Id: Value(l3),
+      ),
+    );
+  }
+
+  @override
+  Future<void> moveEntityToPath(MoveRequest req) async {
+    if (req.kind == EntityKind.item) {
+      return _moveSingleItem(req.id, req.pathIds);
+    }
+
+    if (req.kind == EntityKind.folder) {
+      final depth = req.pathIds.length + 1;
+      await (db.update(db.folders)..where((t) => t.id.equals(req.id))).write(
+        FoldersCompanion(
+          parentId:
+          Value(req.pathIds.isNotEmpty ? req.pathIds.last : null),
+          depth: Value(depth),
+        ),
+      );
+      return;
+    }
+
+    throw UnsupportedError('Unknown entity kind');
   }
 }

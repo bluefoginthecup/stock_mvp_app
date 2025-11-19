@@ -4,19 +4,26 @@ import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import '../repos/inmem_repo.dart';
+
+import '../repos/repo_interfaces.dart'; // ItemRepo, FolderTreeRepo
 import '../models/item.dart';
 import '../models/folder_node.dart';
 
 class ExportService {
-  final InMemoryRepo repo;
-  ExportService({required this.repo});
+  final ItemRepo itemRepo;
+  final FolderTreeRepo folderRepo;
+
+  ExportService({
+    required this.itemRepo,
+    required this.folderRepo,
+  });
 
   /// ✅ 폴더 + 아이템을 둘 다 JSON으로 내보내기
   Future<void> exportEditedJson() async {
     // 1️⃣ 데이터 수집
-    final List<Item> items = repo.allItems();
-    final List<FolderNode> folders = repo.allFolders();
+    //    - listItems() 를 인자 없이 부르면 전체 아이템 (InMemoryRepo 구현 참고)
+    final List<Item> items = await itemRepo.listItems();
+    final List<FolderNode> folders = await _collectAllFolders();
 
     // 2️⃣ JSON 페이로드 구성
     final itemsPayload = {
@@ -25,13 +32,15 @@ class ExportService {
     };
     final foldersPayload = {
       'version': 1,
-      'folders': folders.map((f) => {
+      'folders': folders
+          .map((f) => {
         'id': f.id,
         'name': f.name,
         if (f.parentId != null) 'parentId': f.parentId,
         if (f.depth != null) 'depth': f.depth,
         if (f.order != null) 'order': f.order,
-      }).toList(),
+      })
+          .toList(),
     };
 
     // 3️⃣ 파일로 저장
@@ -54,5 +63,21 @@ class ExportService {
       subject: '재고 내보내기 $stamp',
       text: '앱에서 편집된 폴더/아이템 데이터입니다.',
     );
+  }
+
+  /// 전체 폴더 수집 (루트부터 재귀적으로)
+  Future<List<FolderNode>> _collectAllFolders() async {
+    final result = <FolderNode>[];
+
+    Future<void> dfs(String? parentId) async {
+      final children = await folderRepo.listFolderChildren(parentId);
+      result.addAll(children);
+      for (final c in children) {
+        await dfs(c.id);
+      }
+    }
+
+    await dfs(null); // 루트부터 시작
+    return result;
   }
 }

@@ -8,6 +8,8 @@ import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
 import '../models/types.dart';
 import '../models/suppliers.dart';
+import '../models/folder_node.dart';
+import 'package:flutter/foundation.dart'; // ChangeNotifier
 
 
 /// 공통 규칙:
@@ -34,6 +36,9 @@ abstract class ItemRepo {
   Future<Item?> getItem(String id);
   Future<void> upsertItem(Item item);
   Future<void> deleteItem(String id);
+  /// 아이템 ID로 경로명(루트~디자인)을 반환
+  /// 예: ["완제품", "사계절", "루앙 그레이"]
+  Future<List<String>> itemPathNames(String itemId);
 
   /// 재고 조정(입출고 공용)
   Future<void> adjustQty({
@@ -177,4 +182,63 @@ abstract class SupplierRepo {
   Future<String> upsert(Supplier s);
   Future<void> softDelete(String id); // 필요 시 실제 삭제로 교체 가능
   Future<void> toggleActive(String id, bool isActive);
+}
+// 맨 아래 부분만 이렇게 정리 👇
+
+// === Common move types (top-level) ===
+enum EntityKind { item, folder }
+enum FolderSortMode { name, manual }
+
+class MoveRequest {
+  final EntityKind kind;      // itemId or folderId
+  final String id;            // itemId or folderId
+  final List<String> pathIds; // [L1], [L1,L2], [L1,L2,L3]
+  const MoveRequest({
+    required this.kind,
+    required this.id,
+    required this.pathIds,
+  });
+}
+
+/// 폴더 트리 + 경로 기반 검색/이동용 Repo
+abstract class FolderTreeRepo extends ChangeNotifier {
+  FolderSortMode get sortMode;
+  /// 정렬 모드 변경 (동기)
+  void setSortMode(FolderSortMode mode);
+
+  /// parentId가 null이면 L1 roots
+  Future<List<FolderNode>> listFolderChildren(String? parentId);
+
+  FolderNode? folderById(String id);
+
+  /// parentId가 null이면 루트 폴더
+  Future<FolderNode> createFolderNode({
+    required String? parentId,
+    required String name,
+  });
+
+  Future<void> renameFolderNode({
+    required String id,
+    required String newName,
+  });
+
+  Future<void> deleteFolderNode(String id);
+
+  /// 폴더/아이템 공통 이동 (기존 moveEntityToPath 그대로)
+  Future<void> moveEntityToPath(MoveRequest req);
+
+  /// 아이템 여러 개를 특정 경로로 이동
+  Future<int> moveItemsToPath({
+    required List<String> itemIds,
+    required List<String> pathIds,
+  });
+
+  /// 검색: 폴더 + 아이템 동시에
+  Future<(List<FolderNode>, List<Item>)> searchAll({
+    String? l1,
+    String? l2,
+    String? l3,
+    required String keyword,
+    bool recursive = true,
+  });
 }

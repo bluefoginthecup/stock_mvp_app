@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../models/item.dart';
 import '../repos/repo_interfaces.dart';
-import '../repos/inmem_repo.dart';
 
 
 /// ─────────────────────────────────────────────────────────────
@@ -104,20 +103,18 @@ abstract class ItemPathProvider {
 }
 
 
-
-/// InMemoryRepo를 ItemPathProvider로 노출하기 위한 간단한 퍼사드
+/// Repo를 ItemPathProvider로 노출하기 위한 간단한 퍼사드
 class RepoItemPathFacade implements ItemPathProvider {
-  final InMemoryRepo _repo;
+  final ItemRepo _repo;   // ✅ 이제 InMemoryRepo 말고 표준 인터페이스에만 의존
+
   RepoItemPathFacade(this._repo);
 
   @override
   Future<List<String>> itemPathNames(String itemId) {
-    // InMemoryRepo에 구현되어 있는 경로명 조회 API 이름에 맞춰 호출하세요.
-    // 예: return _repo.itemPathNames(itemId);
-    // or: return _repo.pathNamesFor(itemId);
     return _repo.itemPathNames(itemId);
   }
 }
+
 
 /// 라벨 프레젠테이션 서비스 (UI에서 비동기 라벨을 쉽게 얻도록)
 class ItemPresentationService {

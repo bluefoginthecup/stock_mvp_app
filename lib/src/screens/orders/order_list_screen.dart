@@ -14,7 +14,6 @@ class OrderListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.read<OrderRepo>();
-    context.watch<InMemoryRepo>(); // 🔔 주문 변경 시 리빌드
 
     return Scaffold(
       appBar: AppBar(title: Text(context.t.order_list_title)),

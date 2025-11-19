@@ -12,8 +12,6 @@ class TxnListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔔 InMemoryRepo를 구독해서 리빌드 트리거
-    context.watch<repos.InMemoryRepo>();
 
     // 📚 데이터 접근은 인터페이스로
     final txRepo = context.read<TxnRepo>();

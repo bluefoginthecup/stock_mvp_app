@@ -18,9 +18,9 @@ class WorkListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final workRepo = context.read<WorkRepo>();
-    final inmem = context.read<InMemoryRepo>();
-    print('[WorkListScreen] using InMemoryRepo instance = ${identityHashCode(inmem)}'); // ✅ 추가
-    final inv = context.read<InventoryService>();             // ✅ 재고/전이 오케스트레이션
+   //  final inmem = context.read<InMemoryRepo>();
+   // print('[WorkListScreen] using InMemoryRepo instance = ${identityHashCode(inmem)}'); // ✅ 추가
+   final inv = context.read<InventoryService>();             // ✅ 재고/전이 오케스트레이션
 
     return Scaffold(
       appBar: AppBar(title: Text(context.t.work_list_title)),
