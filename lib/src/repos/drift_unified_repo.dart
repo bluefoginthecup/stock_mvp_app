@@ -43,7 +43,7 @@ part 'drift_unified_repo.g.dart';
 //     Suppliers,
 //     Lots,
 //   ],
-// )
+// )a
 class DriftUnifiedRepo extends ChangeNotifier
     implements
         ItemRepo,
@@ -53,12 +53,15 @@ class DriftUnifiedRepo extends ChangeNotifier
         WorkRepo,
         PurchaseOrderRepo,
         SupplierRepo,
-        FolderTreeRepo {
+        FolderTreeRepo
+{
 
   /// Drift DB 인스턴스
   final AppDatabase db;
 
   DriftUnifiedRepo(this.db);
+
+
 
   // ================================================================
   // =============== ITEM REPO ======================================
@@ -127,6 +130,59 @@ class DriftUnifiedRepo extends ChangeNotifier
     return rows.map((r) => r.readTable(db.items).toDomain()).toList();
   }
 
+  // 폴더 경로 기반 아이템 조회 (StockBrowser에서 사용)
+  // l1/l2/l3는 item_paths 테이블의 l1Id/l2Id/l3Id와 매칭
+  // recursive=false 이면 "딱 그 깊이"에 있는 아이템만, true면 하위까지 포함
+  Future<List<Item>> listItemsByFolderPath({
+    String? l1,
+    String? l2,
+    String? l3,
+    bool recursive = true,
+  }) async {
+    final join = db.select(db.items).join([
+      innerJoin(
+        db.itemPaths,
+        db.itemPaths.itemId.equalsExp(db.items.id),
+      ),
+    ]);
+
+    // 경로 필터
+    if (l1 != null) {
+      join.where(db.itemPaths.l1Id.equals(l1));
+    }
+    if (l2 != null) {
+      join.where(db.itemPaths.l2Id.equals(l2));
+    }
+    if (l3 != null) {
+      join.where(db.itemPaths.l3Id.equals(l3));
+    }
+
+    // recursive=false 일 때는 "바로 아래"만 가져오도록 deeper 레벨은 null 조건
+    if (!recursive) {
+      if (l3 != null) {
+        // l3까지 지정됐으면 더 내려갈 레벨이 없으니 추가 조건 없음
+      } else if (l2 != null) {
+        // L2까지만 지정 → L3는 null인 것만
+        join.where(db.itemPaths.l3Id.isNull());
+      } else if (l1 != null) {
+        // L1만 지정 → L2/L3 둘 다 null인 것만
+        join.where(
+          db.itemPaths.l2Id.isNull() & db.itemPaths.l3Id.isNull(),
+        );
+      } else {
+        // 루트에서 recursive=false로 부르면, 아예 어떤 폴더도 없는 아이템만
+        join.where(
+          db.itemPaths.l1Id.isNull() &
+          db.itemPaths.l2Id.isNull() &
+          db.itemPaths.l3Id.isNull(),
+        );
+      }
+    }
+
+    final rows = await join.get();
+    return rows.map((r) => r.readTable(db.items).toDomain()).toList();
+  }
+
   @override
   Future<Item?> getItem(String id) async {
     final row = await (db.select(db.items)..where((t) => t.id.equals(id)))
@@ -134,28 +190,416 @@ class DriftUnifiedRepo extends ChangeNotifier
     return row?.toDomain();
   }
 
+
+
   @override
   Future<void> upsertItem(Item item) async {
     await db.into(db.items).insertOnConflictUpdate(item.toCompanion());
     await _updateItemPaths(item);
   }
+  Future<void> upsertItemWithPath(
+      Item item,
+      String? l1,
+      String? l2,
+      String? l3,
+      ) async {
+    await db.transaction(() async {
+      // 1) items 테이블 upsert
+      await db.into(db.items).insertOnConflictUpdate(item.toCompanion());
 
+      // 2) 실제 사용할 경로 확정
+      final effL1 = l1 ?? (item.folder.isNotEmpty ? item.folder : null);
+      final effL2 = l2 ?? item.subfolder;
+      final effL3 = l3 ?? item.subsubfolder;
+
+      // 3) 폴더는 seed에서 생성된다고 가정 → 여기서는 folders 안 건드림
+
+      // 4) item_paths upsert
+      await db.into(db.itemPaths).insertOnConflictUpdate(
+        ItemPathsCompanion(
+          itemId: Value(item.id),
+          l1Id: Value(effL1),
+          l2Id: Value(effL2),
+          l3Id: Value(effL3),
+        ),
+      );
+    });
+  }
   Future<void> _updateItemPaths(Item item) async {
+    // 폴더 정보가 없으면 경로를 비워둔다.
+    if (item.folder.isEmpty) {
+      await db.into(db.itemPaths).insertOnConflictUpdate(
+        ItemPathsCompanion(
+          itemId: Value(item.id),
+          l1Id: const Value(null),
+          l2Id: const Value(null),
+          l3Id: const Value(null),
+        ),
+      );
+      return;
+    }
+
+    final l1Name = item.folder;        // "Finished" / "Raw" / "SemiFinished"
+    final l2Name = item.subfolder;     // 예: "4seasons"
+    final l3Name = item.subsubfolder;  // 예: "rouen_gray"
+
+    // ✅ 시드와 동일한 규칙으로 id 생성
+    final l1Id = l1Name; // 루트는 그냥 이름 = id
+
+    String? l2Id;
+    if (l2Name != null && l2Name.isNotEmpty) {
+      l2Id = '$l1Id-$l2Name'; // Finished-4seasons
+    }
+
+    String? l3Id;
+    if (l3Name != null && l3Name.isNotEmpty) {
+      if (l2Id != null) {
+        l3Id = '$l2Id-$l3Name'; // Finished-4seasons-rouen_gray
+      } else {
+        l3Id = '$l1Id-$l3Name'; // (중간 단계 없이 바로 2단계로 가는 특수 케이스)
+      }
+    }
+
+    // 폴더 테이블에 해당 경로가 있는지 보장
+    await _ensureFolderPath(
+      l1: l1Name,
+      l2: l2Name,
+      l3: l3Name,
+    );
+
+    // item_paths 에는 **폴더 id** (위에서 만든 l1Id/l2Id/l3Id)를 저장
     final row = ItemPathsCompanion(
       itemId: Value(item.id),
-      l1Id: Value(item.folder.isNotEmpty ? item.folder : null),
-      l2Id: Value(item.subfolder),
-      l3Id: Value(item.subsubfolder),
+      l1Id: Value(l1Id),
+      l2Id: Value(l2Id),
+      l3Id: Value(l3Id),
     );
 
     await db.into(db.itemPaths).insertOnConflictUpdate(row);
   }
+
+
 
   @override
   Future<void> deleteItem(String id) async {
     await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
     await (db.delete(db.itemPaths)..where((t) => t.itemId.equals(id))).go();
   }
+
+
+
+  // ================================================================
+  // =============== FOLDER TREE REPO ===============================
+  // ================================================================
+// 📁 폴더 저장 (SeedImporter에서 사용)
+  @override
+  Future<void> upsertFolderNode(FolderNode node) async {
+    // ⚠️ 여기는 app_database.dart에 정의한 `folders` 테이블 컬럼 이름에 맞게 수정해야 함
+    await db.into(db.folders).insertOnConflictUpdate(
+      FoldersCompanion(
+        id: Value(node.id),
+        name: Value(node.name),
+        parentId: Value(node.parentId), // 루트면 null
+        depth: Value(node.depth),
+        // 만약 FolderNode에 path / sortOrder 같은 필드가 있다면 여기서 추가:
+        // path: Value(node.path),
+        // sortOrder: Value(node.sortOrder ?? 0),
+      ),
+    );
+  }
+
+  FolderSortMode _sortMode = FolderSortMode.name;
+
+  @override
+  FolderSortMode get sortMode => _sortMode;
+
+  @override
+  Future<void> setSortMode(FolderSortMode mode) async {
+    _sortMode = mode;
+    notifyListeners();
+  }
+
+  @override
+  Future<List<FolderNode>> listFolderChildren(String? parentId) async {
+    final q = db.select(db.folders)
+      ..where(
+            (tbl) => parentId == null
+            ? tbl.parentId.isNull()
+            : tbl.parentId.equals(parentId),
+      );
+
+    if (_sortMode == FolderSortMode.name) {
+      q.orderBy([(t) => OrderingTerm.asc(t.name)]);
+    } else {
+      q.orderBy([(t) => OrderingTerm.asc(t.order)]);
+    }
+
+    final rows = await q.get();
+    return rows.map((r) => r.toDomain()).toList();
+  }
+  @override
+  FolderNode? folderById(String id) {
+    // 지금은 간단히 placeholder로 둠
+    // 나중에 필요하면 캐시 기반으로 개선 가능
+    return FolderNode(
+      id: id,
+      name: id,
+      parentId: null,
+      depth: 0,
+      order: 0,
+    );
+  }
+
+
+
+  @override
+  Future<FolderNode> createFolderNode({
+    required String? parentId,
+    required String name,
+  }) async {
+    final parentRow = parentId == null
+        ? null
+        : await (db.select(db.folders)
+      ..where((t) => t.id.equals(parentId!)))
+        .getSingleOrNull();
+
+    // 🔧 루트는 depth = 0, 자식은 parent.depth + 1
+    final depth = parentRow != null ? parentRow.depth + 1 : 0;
+
+    final newId = 'fo_${DateTime.now().microsecondsSinceEpoch}';
+
+    final row = FoldersCompanion(
+      id: Value(newId),
+      name: Value(name),
+      parentId: Value(parentId),
+      depth: Value(depth),
+      order: const Value(0),
+    );
+
+    await db.into(db.folders).insert(row);
+
+    return FolderNode(
+      id: newId,
+      name: name,
+      parentId: parentId,
+      depth: depth,
+      order: 0,
+    );
+  }
+
+
+
+  @override
+  Future<void> renameFolderNode({
+    required String id,
+    required String newName,
+  }) async {
+    await (db.update(db.folders)..where((t) => t.id.equals(id))).write(
+      FoldersCompanion(name: Value(newName)),
+    );
+  }
+
+  @override
+  Future<void> deleteFolderNode(String id) async {
+    final hasChildren =
+    await (db.select(db.folders)..where((t) => t.parentId.equals(id)))
+        .get();
+    if (hasChildren.isNotEmpty) throw StateError('subfolders exist');
+
+    final containsItems = await (db.select(db.itemPaths)
+      ..where(
+            (t) =>
+        t.l1Id.equals(id) | t.l2Id.equals(id) | t.l3Id.equals(id),
+      ))
+        .get();
+    if (containsItems.isNotEmpty) throw StateError('referenced by items');
+
+    await (db.delete(db.folders)..where((t) => t.id.equals(id))).go();
+  }
+
+  Future<void> _ensureFolderPath({
+    required String l1,
+    String? l2,
+    String? l3,
+  }) async {
+    final l1Id = l1; // 루트 id
+    final String? l2Id =
+    (l2 != null && l2.isNotEmpty) ? '$l1Id-$l2' : null;
+    final String? l3Id =
+    (l3 != null && l3.isNotEmpty && l2Id != null) ? '$l2Id-$l3' : null;
+
+    // depth 0: 루트
+    await db.into(db.folders).insertOnConflictUpdate(
+      FoldersCompanion(
+        id: Value(l1Id),
+        name: Value(l1),
+        parentId: const Value(null),
+        depth: const Value(0),
+      ),
+    );
+
+    // depth 1: L2
+    if (l2Id != null) {
+      await db.into(db.folders).insertOnConflictUpdate(
+        FoldersCompanion(
+          id: Value(l2Id),
+          name: Value(l2!),      // 사용자에게 보이는 이름은 "4seasons" 그대로
+          parentId: Value(l1Id),
+          depth: const Value(1),
+        ),
+      );
+    }
+
+    // depth 2: L3
+    if (l3Id != null) {
+      await db.into(db.folders).insertOnConflictUpdate(
+        FoldersCompanion(
+          id: Value(l3Id),
+          name: Value(l3!),      // "rouen_gray" 등
+          parentId: Value(l2Id),
+          depth: const Value(2),
+        ),
+      );
+    }
+  }
+
+
+
+  @override
+  Future<(List<FolderNode>, List<Item>)> searchAll({
+    String? l1,
+    String? l2,
+    String? l3,
+    required String keyword,
+    bool recursive = true,
+  }) async {
+    final kw = '%${keyword.trim()}%';
+
+    final folderRows =
+    await (db.select(db.folders)..where((t) => t.name.like(kw))).get();
+    final folderNodes = folderRows.map((r) => r.toDomain()).toList();
+
+    final join = db.select(db.items).join([
+      innerJoin(
+        db.itemPaths,
+        db.itemPaths.itemId.equalsExp(db.items.id),
+      ),
+    ]);
+
+    if (l1 != null) join.where(db.itemPaths.l1Id.equals(l1));
+    if (l2 != null) join.where(db.itemPaths.l2Id.equals(l2));
+    if (l3 != null) join.where(db.itemPaths.l3Id.equals(l3));
+
+    join.where(
+      db.items.name.like(kw) |
+      db.items.displayName.like(kw) |
+      db.items.sku.like(kw),
+    );
+
+    final itemRows = await join.get();
+    final itemsFound =
+    itemRows.map((r) => r.readTable(db.items).toDomain()).toList();
+
+    return (folderNodes, itemsFound);
+  }
+
+  @override
+  Future<int> moveItemsToPath({
+    required List<String> itemIds,
+    required List<String> pathIds,
+  }) async {
+    int moved = 0;
+    for (final itemId in itemIds) {
+      await _moveSingleItem(itemId, pathIds);
+      moved++;
+    }
+    return moved;
+  }
+
+  Future<void> _moveSingleItem(String itemId, List<String> pathIds) async {
+    final l1 = pathIds.isNotEmpty ? pathIds[0] : null;
+    final l2 = pathIds.length > 1 ? pathIds[1] : null;
+    final l3 = pathIds.length > 2 ? pathIds[2] : null;
+
+    await (db.update(db.itemPaths)..where((t) => t.itemId.equals(itemId)))
+        .write(
+      ItemPathsCompanion(
+        l1Id: Value(l1),
+        l2Id: Value(l2),
+        l3Id: Value(l3),
+      ),
+    );
+  }
+  @override
+  Future<void> moveEntityToPath(MoveRequest req) async {
+    if (req.kind == EntityKind.item) {
+      return _moveSingleItem(req.id, req.pathIds);
+    }
+
+    if (req.kind == EntityKind.folder) {
+      final newParentId =
+      req.pathIds.isNotEmpty ? req.pathIds.last : null;
+      final newDepth = req.pathIds.length; // 🔧 핵심
+
+      await (db.update(db.folders)..where((t) => t.id.equals(req.id))).write(
+        FoldersCompanion(
+          parentId: Value(newParentId),
+          depth: Value(newDepth),
+        ),
+      );
+      return;
+    }
+
+    throw UnsupportedError('Unknown entity kind');
+  }
+
+// DriftUnifiedRepo 안에
+
+  @override
+  Future<void> upsertLots(String itemId, List<Lot> lots) async {
+    if (lots.isEmpty) return;
+
+    // 안전하게: lot 안의 itemId가 비어 있으면 인자로 받은 itemId를 채워줄 수도 있음
+    List<Lot> normalized = lots.map((lot) {
+      if (lot.itemId.isNotEmpty && lot.itemId != itemId) {
+        // itemId가 다른 경우는 경고만 찍고 lot.itemId를 신뢰
+        return lot;
+      }
+      if (lot.itemId.isNotEmpty) return lot;
+      // lot.itemId가 비어 있는 경우라면 itemId를 채워서 새 Lot 생성
+      return Lot(
+        itemId: itemId,
+        lotNo: lot.lotNo,
+        receivedQtyRoll: lot.receivedQtyRoll,
+        measuredLengthM: lot.measuredLengthM,
+        usableQtyM: lot.usableQtyM,
+        status: lot.status,
+        receivedAt: lot.receivedAt,
+      );
+    }).toList();
+
+    String _lotId(Lot lot) => '${lot.itemId}__${lot.lotNo}';
+
+    await db.batch((batch) {
+      batch.insertAllOnConflictUpdate(
+        db.lots,
+        normalized.map((lot) {
+          return LotsCompanion(
+            id: Value(_lotId(lot)),
+            itemId: Value(lot.itemId),
+            lotNo: Value(lot.lotNo),
+            receivedQtyRoll: Value(lot.receivedQtyRoll),
+            measuredLengthM: Value(lot.measuredLengthM),
+            usableQtyM: Value(lot.usableQtyM),
+            status: Value(lot.status),
+            receivedAt: Value(lot.receivedAt.toIso8601String()),
+          );
+        }).toList(),
+      );
+    });
+  }
+
+
 
   // ----------------------------------------------------------
   // BOM — finished / semi (sync 미지원 → 예외)
@@ -742,192 +1186,26 @@ class DriftUnifiedRepo extends ChangeNotifier
     );
   }
 
-  // ================================================================
-  // =============== FOLDER TREE REPO ===============================
-  // ================================================================
-
-  FolderSortMode _sortMode = FolderSortMode.name;
-
-  @override
-  FolderSortMode get sortMode => _sortMode;
-
-  @override
-  Future<void> setSortMode(FolderSortMode mode) async {
-    _sortMode = mode;
-    notifyListeners();
-  }
-
-  @override
-  Future<List<FolderNode>> listFolderChildren(String? parentId) async {
-    final q = db.select(db.folders)
-      ..where(
-            (tbl) => parentId == null
-            ? tbl.parentId.isNull()
-            : tbl.parentId.equals(parentId),
-      );
-
-    if (_sortMode == FolderSortMode.name) {
-      q.orderBy([(t) => OrderingTerm.asc(t.name)]);
-    } else {
-      q.orderBy([(t) => OrderingTerm.asc(t.order)]);
-    }
-
-    final rows = await q.get();
-    return rows.map((r) => r.toDomain()).toList();
-  }
-
-  @override
-  FolderNode? folderById(String id) =>
-      throw UnimplementedError('Use async select() instead.');
-
-  @override
-  Future<FolderNode> createFolderNode({
-    required String? parentId,
-    required String name,
-  }) async {
-    // 🔧 parentId가 null일 때는 쿼리 안 날림
-    final parentRow = parentId == null
-        ? null
-        : await (db.select(db.folders)
-      ..where((t) => t.id.equals(parentId!)))
-        .getSingleOrNull();
-
-    final depth = parentRow != null ? parentRow.depth + 1 : 1;
-
-    final newId = 'fo_${DateTime.now().microsecondsSinceEpoch}';
-
-    final row = FoldersCompanion(
-      id: Value(newId),
-      name: Value(name),
-      parentId: Value(parentId),
-      depth: Value(depth),
-      order: const Value(0),
-    );
-
-    await db.into(db.folders).insert(row);
-
-    return FolderNode(
-      id: newId,
-      name: name,
-      parentId: parentId,
-      depth: depth,
-      order: 0,
-    );
-  }
-
-
-  @override
-  Future<void> renameFolderNode({
-    required String id,
-    required String newName,
-  }) async {
-    await (db.update(db.folders)..where((t) => t.id.equals(id))).write(
-      FoldersCompanion(name: Value(newName)),
-    );
-  }
-
-  @override
-  Future<void> deleteFolderNode(String id) async {
-    final hasChildren =
-    await (db.select(db.folders)..where((t) => t.parentId.equals(id)))
+  Future<void> debugPrintAllFolders() async {
+    final rows = await (db.select(db.folders)
+      ..orderBy([(t) => OrderingTerm.asc(t.depth), (t) => OrderingTerm.asc(t.name)]))
         .get();
-    if (hasChildren.isNotEmpty) throw StateError('subfolders exist');
 
-    final containsItems = await (db.select(db.itemPaths)
-      ..where(
-            (t) =>
-        t.l1Id.equals(id) | t.l2Id.equals(id) | t.l3Id.equals(id),
-      ))
-        .get();
-    if (containsItems.isNotEmpty) throw StateError('referenced by items');
-
-    await (db.delete(db.folders)..where((t) => t.id.equals(id))).go();
-  }
-
-  @override
-  Future<(List<FolderNode>, List<Item>)> searchAll({
-    String? l1,
-    String? l2,
-    String? l3,
-    required String keyword,
-    bool recursive = true,
-  }) async {
-    final kw = '%${keyword.trim()}%';
-
-    final folderRows =
-    await (db.select(db.folders)..where((t) => t.name.like(kw))).get();
-    final folderNodes = folderRows.map((r) => r.toDomain()).toList();
-
-    final join = db.select(db.items).join([
-      innerJoin(
-        db.itemPaths,
-        db.itemPaths.itemId.equalsExp(db.items.id),
-      ),
-    ]);
-
-    if (l1 != null) join.where(db.itemPaths.l1Id.equals(l1));
-    if (l2 != null) join.where(db.itemPaths.l2Id.equals(l2));
-    if (l3 != null) join.where(db.itemPaths.l3Id.equals(l3));
-
-    join.where(
-      db.items.name.like(kw) |
-      db.items.displayName.like(kw) |
-      db.items.sku.like(kw),
-    );
-
-    final itemRows = await join.get();
-    final itemsFound =
-    itemRows.map((r) => r.readTable(db.items).toDomain()).toList();
-
-    return (folderNodes, itemsFound);
-  }
-
-  @override
-  Future<int> moveItemsToPath({
-    required List<String> itemIds,
-    required List<String> pathIds,
-  }) async {
-    int moved = 0;
-    for (final itemId in itemIds) {
-      await _moveSingleItem(itemId, pathIds);
-      moved++;
-    }
-    return moved;
-  }
-
-  Future<void> _moveSingleItem(String itemId, List<String> pathIds) async {
-    final l1 = pathIds.isNotEmpty ? pathIds[0] : null;
-    final l2 = pathIds.length > 1 ? pathIds[1] : null;
-    final l3 = pathIds.length > 2 ? pathIds[2] : null;
-
-    await (db.update(db.itemPaths)..where((t) => t.itemId.equals(itemId)))
-        .write(
-      ItemPathsCompanion(
-        l1Id: Value(l1),
-        l2Id: Value(l2),
-        l3Id: Value(l3),
-      ),
-    );
-  }
-
-  @override
-  Future<void> moveEntityToPath(MoveRequest req) async {
-    if (req.kind == EntityKind.item) {
-      return _moveSingleItem(req.id, req.pathIds);
-    }
-
-    if (req.kind == EntityKind.folder) {
-      final depth = req.pathIds.length + 1;
-      await (db.update(db.folders)..where((t) => t.id.equals(req.id))).write(
-        FoldersCompanion(
-          parentId:
-          Value(req.pathIds.isNotEmpty ? req.pathIds.last : null),
-          depth: Value(depth),
-        ),
+    debugPrint('===== FOLDERS TABLE DUMP =====');
+    for (final r in rows) {
+      debugPrint(
+        '[Folder] id=${r.id}, name=${r.name}, parentId=${r.parentId}, depth=${r.depth}, order=${r.order}',
       );
-      return;
     }
 
-    throw UnsupportedError('Unknown entity kind');
+    final roots = await (db.select(db.folders)
+      ..where((t) => t.parentId.isNull())
+      ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+    debugPrint('===== ROOT FOLDERS (parentId IS NULL) =====');
+    for (final r in roots) {
+      debugPrint('[Root] id=${r.id}, name=${r.name}, depth=${r.depth}');
+    }
   }
+
 }

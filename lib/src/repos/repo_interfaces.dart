@@ -60,6 +60,8 @@ abstract class ItemRepo {
   /// itemId → 사람 읽는 아이템명
   Future<String?> nameOf(String itemId);
 
+
+
     // ===== BOM (2단계 분리형) =====
     /// Finished 레시피 조회/저장
     List<BomRow> finishedBomOf(String finishedItemId);
@@ -211,6 +213,7 @@ abstract class FolderTreeRepo extends ChangeNotifier {
 
   FolderNode? folderById(String id);
 
+
   /// parentId가 null이면 루트 폴더
   Future<FolderNode> createFolderNode({
     required String? parentId,
@@ -241,4 +244,5 @@ abstract class FolderTreeRepo extends ChangeNotifier {
     required String keyword,
     bool recursive = true,
   });
+
 }

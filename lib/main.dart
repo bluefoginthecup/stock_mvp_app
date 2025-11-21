@@ -33,6 +33,13 @@ Future<void> main() async {
   // 1) Drift DB 인스턴스
   final db = AppDatabase();
 
+
+  // 🔥 1회용: 폴더 & item_paths 완전 초기화
+  await db.transaction(() async {
+    await db.delete(db.itemPaths).go();
+    await db.delete(db.folders).go();
+  });
+
   // 2) 통합 Drift Repo (Item / Txn / Order / Work / Purchase / Supplier / Paths 모두 포함)
   final unifiedRepo = DriftUnifiedRepo(db);
 
@@ -53,6 +60,7 @@ Future<void> main() async {
   );
 
   print('[main] DriftUnifiedRepo instance = ${identityHashCode(unifiedRepo)}');
+  await unifiedRepo.debugPrintAllFolders();
 
   runApp(
     MultiProvider(

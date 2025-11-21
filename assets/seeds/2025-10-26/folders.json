@@ -1,598 +1,598 @@
 {
   "folders": [
     {
-      "id": "f-finished",
+      "id": "Finished",
       "name": "Finished",
       "parentId": null,
-      "depth": 1,
+      "depth": 0,
       "order": 0
     },
     {
-      "id": "f-finished-4seasons",
+      "id": "Finished-4seasons",
       "name": "4seasons",
-      "parentId": "f-finished",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-dotori_coffee",
-      "name": "dotori_coffee",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-dotori_white",
-      "name": "dotori_white",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-encia_orange",
-      "name": "encia_orange",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-encia_white",
-      "name": "encia_white",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-erica_beige",
-      "name": "erica_beige",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-erica_navy",
-      "name": "erica_navy",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-erica_white",
-      "name": "erica_white",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-iris_blue",
-      "name": "iris_blue",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-lavender_gold",
-      "name": "lavender_gold",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-magritte_beige",
-      "name": "magritte_beige",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-magritte_denim",
-      "name": "magritte_denim",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-magritte_gray",
-      "name": "magritte_gray",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-pedro_blue",
-      "name": "pedro_blue",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-pedro_gray",
-      "name": "pedro_gray",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-pedro_ivory",
-      "name": "pedro_ivory",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-ronze_gray",
-      "name": "ronze_gray",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-rouen_beige",
-      "name": "rouen_beige",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-rouen_gold",
-      "name": "rouen_gold",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-rouen_gray",
-      "name": "rouen_gray",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-rouen_pink",
-      "name": "rouen_pink",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-sobok_gray",
-      "name": "sobok_gray",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-sobok_pink",
-      "name": "sobok_pink",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-sobok_white",
-      "name": "sobok_white",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-tatiana_rose",
-      "name": "tatiana_rose",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-thistles_denim",
-      "name": "thistles_denim",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-thistles_gray",
-      "name": "thistles_gray",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-4seasons-thistles_khaki",
-      "name": "thistles_khaki",
-      "parentId": "f-finished-4seasons",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished",
-      "name": "SemiFinished",
-      "parentId": null,
+      "parentId": "Finished",
       "depth": 1,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-piping",
+      "id": "Finished-4seasons-dotori_coffee",
+      "name": "dotori_coffee",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-dotori_white",
+      "name": "dotori_white",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-encia_orange",
+      "name": "encia_orange",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-encia_white",
+      "name": "encia_white",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-erica_beige",
+      "name": "erica_beige",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-erica_navy",
+      "name": "erica_navy",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-erica_white",
+      "name": "erica_white",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-iris_blue",
+      "name": "iris_blue",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-lavender_gold",
+      "name": "lavender_gold",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-magritte_beige",
+      "name": "magritte_beige",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-magritte_denim",
+      "name": "magritte_denim",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-magritte_gray",
+      "name": "magritte_gray",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-pedro_blue",
+      "name": "pedro_blue",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-pedro_gray",
+      "name": "pedro_gray",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-pedro_ivory",
+      "name": "pedro_ivory",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-ronze_gray",
+      "name": "ronze_gray",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-rouen_beige",
+      "name": "rouen_beige",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-rouen_gold",
+      "name": "rouen_gold",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-rouen_gray",
+      "name": "rouen_gray",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-rouen_pink",
+      "name": "rouen_pink",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-sobok_gray",
+      "name": "sobok_gray",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-sobok_pink",
+      "name": "sobok_pink",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-sobok_white",
+      "name": "sobok_white",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-tatiana_rose",
+      "name": "tatiana_rose",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-thistles_denim",
+      "name": "thistles_denim",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-thistles_gray",
+      "name": "thistles_gray",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-4seasons-thistles_khaki",
+      "name": "thistles_khaki",
+      "parentId": "Finished-4seasons",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished",
+      "name": "SemiFinished",
+      "parentId": null,
+      "depth": 0,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping",
       "name": "Piping",
-      "parentId": "f-SemiFinished",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_black",
-      "name": "cotton_black",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_brown",
-      "name": "cotton_brown",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_gold",
-      "name": "cotton_gold",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_green",
-      "name": "cotton_green",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_ivory",
-      "name": "cotton_ivory",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_lgray",
-      "name": "cotton_lgray",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_navy",
-      "name": "cotton_navy",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_orange",
-      "name": "cotton_orange",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-piping-cotton_white",
-      "name": "cotton_white",
-      "parentId": "f-SemiFinished-piping",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished",
-      "name": "SemiFinished",
-      "parentId": null,
+      "parentId": "SemiFinished",
       "depth": 1,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-back",
+      "id": "SemiFinished-Piping-cotton_black",
+      "name": "cotton_black",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_brown",
+      "name": "cotton_brown",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_gold",
+      "name": "cotton_gold",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_green",
+      "name": "cotton_green",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_ivory",
+      "name": "cotton_ivory",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_lgray",
+      "name": "cotton_lgray",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_navy",
+      "name": "cotton_navy",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_orange",
+      "name": "cotton_orange",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_white",
+      "name": "cotton_white",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished",
+      "name": "SemiFinished",
+      "parentId": null,
+      "depth": 0,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back",
       "name": "Back",
-      "parentId": "f-SemiFinished",
-      "depth": 2,
+      "parentId": "SemiFinished",
+      "depth": 1,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-back-dot_coff",
+      "id": "SemiFinished-Back-dot_coff",
       "name": "dot_coff",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-back-dot_gray",
-      "name": "dot_gray",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-back-dot_ivory",
-      "name": "dot_ivory",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-back-dot_lgreen",
-      "name": "dot_lgreen",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-back-dot_mint",
-      "name": "dot_mint",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-back-dot_navy",
-      "name": "dot_navy",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-back-dot_pink",
-      "name": "dot_pink",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-back-dot_sky",
-      "name": "dot_sky",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-back-dot_white",
-      "name": "dot_white",
-      "parentId": "f-SemiFinished-back",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-SemiFinished-emb",
-      "name": "Emb",
-      "parentId": "f-SemiFinished",
+      "parentId": "SemiFinished-Back",
       "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-dotori_coffee",
+      "id": "SemiFinished-Back-dot_gray",
+      "name": "dot_gray",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back-dot_ivory",
+      "name": "dot_ivory",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back-dot_lgreen",
+      "name": "dot_lgreen",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back-dot_mint",
+      "name": "dot_mint",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back-dot_navy",
+      "name": "dot_navy",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back-dot_pink",
+      "name": "dot_pink",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back-dot_sky",
+      "name": "dot_sky",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back-dot_white",
+      "name": "dot_white",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Emb",
+      "name": "Emb",
+      "parentId": "SemiFinished",
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Emb-dotori_coffee",
       "name": "dotori_coffee",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-dotori_white",
+      "id": "SemiFinished-Emb-dotori_white",
       "name": "dotori_white",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-encia_orange",
+      "id": "SemiFinished-Emb-encia_orange",
       "name": "encia_orange",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-encia_white",
+      "id": "SemiFinished-Emb-encia_white",
       "name": "encia_white",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-erica_beige",
+      "id": "SemiFinished-Emb-erica_beige",
       "name": "erica_beige",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-erica_navy",
+      "id": "SemiFinished-Emb-erica_navy",
       "name": "erica_navy",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-erica_white",
+      "id": "SemiFinished-Emb-erica_white",
       "name": "erica_white",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-iris_blue",
+      "id": "SemiFinished-Emb-iris_blue",
       "name": "iris_blue",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-lavender_gold",
+      "id": "SemiFinished-Emb-lavender_gold",
       "name": "lavender_gold",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-magritte_beige",
+      "id": "SemiFinished-Emb-magritte_beige",
       "name": "magritte_beige",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-magritte_denim",
+      "id": "SemiFinished-Emb-magritte_denim",
       "name": "magritte_denim",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-magritte_gray",
+      "id": "SemiFinished-Emb-magritte_gray",
       "name": "magritte_gray",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-pedro_blue",
+      "id": "SemiFinished-Emb-pedro_blue",
       "name": "pedro_blue",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-pedro_gray",
+      "id": "SemiFinished-Emb-pedro_gray",
       "name": "pedro_gray",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-pedro_ivory",
+      "id": "SemiFinished-Emb-pedro_ivory",
       "name": "pedro_ivory",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-ronze_gray",
+      "id": "SemiFinished-Emb-ronze_gray",
       "name": "ronze_gray",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-rouen_beige",
+      "id": "SemiFinished-Emb-rouen_beige",
       "name": "rouen_beige",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-rouen_gold",
+      "id": "SemiFinished-Emb-rouen_gold",
       "name": "rouen_gold",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-rouen_gray",
+      "id": "SemiFinished-Emb-rouen_gray",
       "name": "rouen_gray",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-rouen_pink",
+      "id": "SemiFinished-Emb-rouen_pink",
       "name": "rouen_pink",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-sobok_gray",
+      "id": "SemiFinished-Emb-sobok_gray",
       "name": "sobok_gray",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-sobok_pink",
+      "id": "SemiFinished-Emb-sobok_pink",
       "name": "sobok_pink",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-sobok_white",
+      "id": "SemiFinished-Emb-sobok_white",
       "name": "sobok_white",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-tatiana_rose",
+      "id": "SemiFinished-Emb-tatiana_rose",
       "name": "tatiana_rose",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-thistles_denim",
+      "id": "SemiFinished-Emb-thistles_denim",
       "name": "thistles_denim",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-thistles_gray",
+      "id": "SemiFinished-Emb-thistles_gray",
       "name": "thistles_gray",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-SemiFinished-emb-thistles_khaki",
+      "id": "SemiFinished-Emb-thistles_khaki",
       "name": "thistles_khaki",
-      "parentId": "f-SemiFinished-emb",
-      "depth": 3,
+      "parentId": "SemiFinished-Emb",
+      "depth": 2,
       "order": 0
     },
     {
-      "id": "f-raw",
+      "id": "Raw",
       "name": "Raw",
       "parentId": null,
+      "depth": 0,
+      "order": 0
+    },
+    {
+      "id": "Raw-fabric",
+      "name": "fabric",
+      "parentId": "Raw",
       "depth": 1,
       "order": 0
     },
     {
-      "id": "f-raw-fabric",
-      "name": "fabric",
-      "parentId": "f-raw",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "f-raw-fabric-top",
+      "id": "Raw-fabric-top",
       "name": "top",
-      "parentId": "f-raw-fabric",
-      "depth": 3,
-      "order": 0
-    },
-    {
-      "id": "f-finished-insert",
-      "name": "솜",
-      "parentId": "f-finished",
+      "parentId": "Raw-fabric",
       "depth": 2,
       "order": 0
     },
     {
-      "id": "f-finished-insert-pillow",
-      "name": "베개솜",
-      "parentId": "f-finished-insert",
-      "depth": 3,
+      "id": "Finished-insert",
+      "name": "솜",
+      "parentId": "Finished",
+      "depth": 1,
       "order": 0
     },
     {
-      "id": "f-finished-insert-pillow",
+      "id": "Finished-insert-pillow",
+      "name": "베개솜",
+      "parentId": "Finished-insert",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-insert-sitcushion",
       "name": "방석솜",
-      "parentId": "f-finished-insert",
-      "depth": 3,
+      "parentId": "Finished-insert",
+      "depth": 2,
       "order": 0
     }
   ]
