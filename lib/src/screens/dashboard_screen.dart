@@ -1,20 +1,107 @@
 // lib/src/screens/dashboard_screen.dart
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:reorderable_grid_view/reorderable_grid_view.dart';
+
 import '../repos/repo_interfaces.dart';
 import '../ui/common/ui.dart';
 import '../screens/stock/stock_browser_screen.dart';
-import '../app/main_tab_controller.dart'; // ✅ 추가
-import '../models/suppliers.dart'; // ✅ 등록 후 되돌아올 때 타입 체크용 (선택)
+import '../app/main_tab_controller.dart';
 import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
 
+enum QuickActionType {
+  orders, stock, txns, works, purchases, language, suppliers, receipts,
+}
 
-
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  // 드래그로 재배치될 순서 (초기값)
+  List<QuickActionType> _order = const [
+    QuickActionType.orders,
+    QuickActionType.stock,
+    QuickActionType.txns,
+    QuickActionType.works,
+    QuickActionType.purchases,
+    QuickActionType.language,
+    QuickActionType.suppliers,
+    QuickActionType.receipts,
+  ];
 
   @override
   Widget build(BuildContext context) {
     final itemRepo = context.read<ItemRepo>();
+
+    // type → 버튼 정의(아이콘/라벨/동작) 매핑
+    _QuickAction _map(QuickActionType t) {
+      switch (t) {
+        case QuickActionType.orders:
+          return _QuickAction(
+            key: const ValueKey('orders'),
+            icon: Icons.assignment,
+            label: context.t.dashboard_orders,
+            onTap: () => context.read<MainTabController>().setIndex(1),
+          );
+        case QuickActionType.stock:
+          return _QuickAction(
+            key: const ValueKey('stock'),
+            icon: Icons.inventory_2,
+            label: context.t.dashboard_stock,
+            onTap: () => context.read<MainTabController>().setIndex(2),
+          );
+        case QuickActionType.txns:
+          return _QuickAction(
+            key: const ValueKey('txns'),
+            icon: Icons.swap_vert,
+            label: context.t.dashboard_txns,
+            onTap: () => context.read<MainTabController>().setIndex(3),
+          );
+        case QuickActionType.works:
+          return _QuickAction(
+            key: const ValueKey('works'),
+            icon: Icons.precision_manufacturing,
+            label: context.t.dashboard_works,
+            onTap: () => context.read<MainTabController>().setIndex(4),
+          );
+        case QuickActionType.purchases:
+          return _QuickAction(
+            key: const ValueKey('purchases'),
+            icon: Icons.local_shipping,
+            label: context.t.dashboard_purchases,
+            onTap: () => context.read<MainTabController>().setIndex(5),
+          );
+        case QuickActionType.language:
+          return _QuickAction(
+            key: const ValueKey('language'),
+            icon: Icons.settings,
+            label: context.t.settings_language_title,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LanguageSettingsScreen()),
+              );
+            },
+          );
+        case QuickActionType.suppliers:
+          return _QuickAction(
+            key: const ValueKey('suppliers'),
+            icon: Icons.business,
+            label: '거래처 목록',
+            onTap: () => Navigator.of(context, rootNavigator: true).pushNamed('/suppliers'),
+          );
+        case QuickActionType.receipts:
+          return _QuickAction(
+            key: const ValueKey('receipts'),
+            icon: Icons.receipt_long,
+            label: '영수증 관리',
+            onTap: () => Navigator.of(context, rootNavigator: true).pushNamed('/receipts'),
+          );
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: Text(context.t.dashboard_title)),
       body: FutureBuilder(
@@ -22,109 +109,125 @@ class DashboardScreen extends StatelessWidget {
         builder: (context, snap) {
           final items = (snap.data ?? []);
           final low = items.where((e) => e.qty <= e.minQty).toList();
-          return ListView(
+
+          // 화면에 그릴 액션들 (현재 순서에 맞춰 구성)
+          final actions = _order.map(_map).toList();
+
+          return Padding(
             padding: const EdgeInsets.all(16),
-            children: [
-              Text(context.t.dashboard_summary,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Wrap(spacing: 12, runSpacing: 12, children: [
-                _StatCard(
-                  title: context.t.dashboard_total_items,
-                  value: items.length.toString(),
-                  onTap: () {
-                    // ✅ 전체품목: 재고 탭으로 이동
-                    context.read<MainTabController>().setIndex(2);
-                  },
-                ),
-                _StatCard(
-                  title: context.t.dashboard_below_threshold,
-                  value: low.length.toString(),
-                  onTap: () {
-                    // ✅ 임계치 이하만 보는 전용 화면 push (탭 내부 네비 그대로 사용)
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                        const StockBrowserScreen(showLowStockOnly: true),
-                      ),
-                    );
-                  },
-                ),
-              ]),
-              const SizedBox(height: 24),
-
-              // ✅ 나머지 버튼들은 그대로 pushNamed 써도 OK (또는 탭 전환으로 바꿔도 됨)
-              ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(1),
-                icon: const Icon(Icons.assignment),
-                label: Text(context.t.dashboard_orders),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(2),
-                icon: const Icon(Icons.inventory_2),
-                label: Text(context.t.dashboard_stock),
-              ),
-
-
-              // 필요 시 기존 라우트 유지
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(3),
-                icon: const Icon(Icons.swap_vert),
-                label: Text(context.t.dashboard_txns),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(4),
-                icon: const Icon(Icons.precision_manufacturing),
-                label: Text(context.t.dashboard_works),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(5),
-                icon: const Icon(Icons.local_shipping),
-                label: Text(context.t.dashboard_purchases),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const LanguageSettingsScreen(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── 요약 카드 섹션 ─────────────────────────────────────
+                Text(context.t.dashboard_summary,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _StatCard(
+                      title: context.t.dashboard_total_items,
+                      value: items.length.toString(),
+                      onTap: () => context.read<MainTabController>().setIndex(2),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.settings),
-                label: Text(context.t.settings_language_title),
-              ),
+                    _StatCard(
+                      title: context.t.dashboard_below_threshold,
+                      value: low.length.toString(),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const StockBrowserScreen(showLowStockOnly: true),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
 
-              const SizedBox(height: 8),
-           ElevatedButton.icon(
-             onPressed: () => Navigator.of(context, rootNavigator: true).pushNamed('/suppliers'),
-             icon: const Icon(Icons.business),
-             label: const Text('거래처 목록'),
-           ),
-           const SizedBox(height: 8),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.receipt_long),
-                label: const Text('영수증 관리'),
-                onPressed: () {
-                  Navigator.of(context, rootNavigator: true).pushNamed('/receipts');
-                },
-              ),
+                const SizedBox(height: 24),
+                Text('빠른 실행', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 12),
 
+                // ── 중앙 정사각형 2×4 + 드래그 재정렬 ────────────────────
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      // 레이아웃 상수
+                      const rows = 4;
+                      const crossAxisCount = 2;
+                      const crossSpacing = 12.0;
+                      const mainSpacing = 12.0;
+                      const horizontalPagePadding = 16.0;
 
+                      final screenWidth = MediaQuery.of(context).size.width;
+                      final availableHeight = constraints.maxHeight;
 
-            ],
+                      // 4행을 정확히 채우는 타일 높이
+                      final maxRowHeight =
+                          (availableHeight - mainSpacing * (rows - 1)) / rows;
+
+                      // 그리드 최대 폭 제한(버튼이 가로로 너무 넓어지지 않도록)
+                      final maxGridWidthByScreen = screenWidth - horizontalPagePadding * 2;
+                      const maxPreferredGridWidth = 480.0;
+                      final tentativeGridWidth = maxGridWidthByScreen < maxPreferredGridWidth
+                          ? maxGridWidthByScreen
+                          : maxPreferredGridWidth;
+
+                      // 2열 + 간격에서의 타일 폭
+                      final maxColWidth =
+                          (tentativeGridWidth - crossSpacing) / crossAxisCount;
+
+                      // 정사각형 타일 한 변 길이
+                      final tileSize =
+                      maxRowHeight < maxColWidth ? maxRowHeight : maxColWidth;
+
+                      // 실제 그리드 컨테이너 폭
+                      final gridContentWidth = tileSize * 2 + crossSpacing;
+
+                      return Center(
+                        child: SizedBox(
+                          width: gridContentWidth,
+                          child: ReorderableGridView.count(
+                            // 스크롤 없이 영역 내에서만 드래그
+                            physics: const NeverScrollableScrollPhysics(),
+                            shrinkWrap: true,
+                            crossAxisCount: crossAxisCount,
+                            mainAxisSpacing: mainSpacing,
+                            crossAxisSpacing: crossSpacing,
+                            childAspectRatio: 1.0, // 정사각형
+                            // 드래그 시작 제스처(기본: long-press)
+                            dragWidgetBuilder: (index, child) => child,
+                            onReorder: (oldIndex, newIndex) {
+                              setState(() {
+                                // 표준 리스트 재정렬 로직
+                                if (oldIndex < newIndex) newIndex -= 1;
+                                final moved = _order.removeAt(oldIndex);
+                                _order.insert(newIndex, moved);
+                              });
+                            },
+                            children: [
+                              for (final a in actions)
+                                _QuickTile(
+                                  key: a.key, // 반드시 고유 Key!
+                                  action: a,
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
     );
   }
 }
-
 
 class _StatCard extends StatelessWidget {
   final String title;
@@ -155,3 +258,62 @@ class _StatCard extends StatelessWidget {
   }
 }
 
+class _QuickAction {
+  final Key key;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _QuickAction({
+    required this.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+}
+
+class _QuickTile extends StatelessWidget {
+  final _QuickAction action;
+  const _QuickTile({super.key, required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      key: action.key, // ← Reorderable용 고유 Key
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: action.onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Theme.of(context).dividerColor),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(action.icon, size: 28),
+                  const SizedBox(height: 8),
+                  Text(
+                    action.label,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  // 힌트: 길게 눌러서 순서 변경
+                  Text('↕ 길게 눌러 이동', style: Theme.of(context).textTheme.labelSmall),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
