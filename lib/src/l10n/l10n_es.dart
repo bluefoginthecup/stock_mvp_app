@@ -41,6 +41,12 @@ class L10nEs extends L10n {
   String get common_delete => 'Eliminar';
 
   @override
+  String get common_delete_forever => '¿Seguro que deseas eliminarlo permanentemente? Esta acción no se puede deshacer.';
+
+  @override
+  String get common_delete_title => 'El pedido se eliminará (ocultará). Ya no aparecerá en la lista.';
+
+  @override
   String get common_ok => 'Aceptar';
 
   @override

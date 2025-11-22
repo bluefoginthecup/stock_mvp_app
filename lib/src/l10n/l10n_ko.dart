@@ -41,6 +41,12 @@ class L10nKo extends L10n {
   String get common_delete => '삭제';
 
   @override
+  String get common_delete_forever => '정말 완전 삭제할까요? 이 작업은 되돌릴 수 없습니다.';
+
+  @override
+  String get common_delete_title => '주문을 삭제(숨김)합니다. 목록에서 보이지 않게 됩니다.';
+
+  @override
   String get common_ok => '확인';
 
   @override

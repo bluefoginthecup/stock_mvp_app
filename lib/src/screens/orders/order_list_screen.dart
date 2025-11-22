@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -32,6 +32,47 @@ class _OrderListScreenState extends State<OrderListScreen> {
     });
     // await 해서 당겨서 새로고침 인디케이터가 자연스럽게 사라지도록
     await _future;
+  }
+
+  Future<void> _deleteOrder(Order o, {required bool hard}) async {
+    final t = context.t;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: Text(hard ? t.common_delete_forever : t.common_delete_title),
+        content: Text(
+          hard
+              ? '정말 완전 삭제할까요? 이 작업은 되돌릴 수 없습니다.'
+              : '주문을 삭제(숨김)합니다. 목록에서 보이지 않게 됩니다.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dctx, false), child: Text(t.common_cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(dctx, true),
+            child: Text(hard ? t.common_delete_forever : t.common_delete),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      if (hard) {
+        await _repo.hardDeleteOrder(o.id);
+      } else {
+        await _repo.softDeleteOrder(o.id);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(hard ? '완전 삭제되었습니다.' : '삭제(숨김)되었습니다.')),
+      );
+      await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('삭제 실패: $e')),
+      );
+    }
   }
 
   @override
@@ -97,7 +138,6 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   subtitle: Text(
                     '${o.date.toIso8601String().substring(0, 10)} • ${o.status.name}',
                   ),
-                  trailing: const Icon(Icons.chevron_right),
                   onTap: () async {
                     await Navigator.push(
                       context,
@@ -107,6 +147,26 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     );
                     await _reload(); // 상세에서 변경되었을 수 있으니 리프레시
                   },
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (v) {
+                      switch (v) {
+                        case 'soft':
+                          _deleteOrder(o,hard: false);
+                          break;
+                        case 'hard':
+                          _deleteOrder(o,hard: true);
+                          break;
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'soft', child: Text('삭제(숨김)')),
+                      PopupMenuItem(
+                        value: 'hard',
+                        child: Text('완전 삭제'),
+                      ),
+                    ],
+                    icon: const Icon(Icons.more_vert),
+                  ),
                 );
               },
             );

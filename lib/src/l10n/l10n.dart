@@ -157,6 +157,18 @@ abstract class L10n {
   /// **'삭제'**
   String get common_delete;
 
+  /// No description provided for @common_delete_forever.
+  ///
+  /// In ko, this message translates to:
+  /// **'정말 완전 삭제할까요? 이 작업은 되돌릴 수 없습니다.'**
+  String get common_delete_forever;
+
+  /// No description provided for @common_delete_title.
+  ///
+  /// In ko, this message translates to:
+  /// **'주문을 삭제(숨김)합니다. 목록에서 보이지 않게 됩니다.'**
+  String get common_delete_title;
+
   /// No description provided for @common_ok.
   ///
   /// In ko, this message translates to:

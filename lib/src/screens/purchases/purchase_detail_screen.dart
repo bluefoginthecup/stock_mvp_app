@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../repos/repo_interfaces.dart';
@@ -6,7 +5,6 @@ import '../../models/purchase_order.dart';
 import '../../models/purchase_line.dart';
 import '../../ui/common/ui.dart';
 import 'widgets/purchase_print_action.dart';
-import '../../repos/inmem_repo.dart';        // 아이템명 보강용 (원치 않으면 제거 가능)
 import '../../services/inventory_service.dart';
 import 'purchase_order_full_edit_screen.dart';
 import 'purchase_line_full_edit_screen.dart';
@@ -28,6 +26,7 @@ class PurchaseDetailScreen extends StatefulWidget {
 class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   PurchaseOrder? _po;
   List<PurchaseLine> _lines = const [];
+  Map<String, String> _itemNameById = const {}; // ✅ 아이템명 캐시
 
   @override
   void initState() {
@@ -36,28 +35,47 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   Future<void> _reload() async {
+    // 헤더/라인 로드
     final po = await widget.repo.getPurchaseOrderById(widget.orderId);
     final lines = await widget.repo.getLines(widget.orderId);
+
+    // 아이템명 보강 (ItemRepo는 비동기)
+    final itemRepo = context.read<ItemRepo>();
+    final nameMap = <String, String>{};
+    await Future.wait(lines.map((ln) async {
+      final it = await itemRepo.getItem(ln.itemId);
+      if (it != null) {
+        nameMap[ln.itemId] = (it.displayName ?? it.name);
+      }
+    }));
+
     if (!mounted) return;
     setState(() {
       _po = po;
       _lines = lines;
+      _itemNameById = nameMap;
     });
   }
 
   String _statusLabel(PurchaseOrderStatus s) {
     switch (s) {
-      case PurchaseOrderStatus.draft:    return '임시저장';
-      case PurchaseOrderStatus.ordered:  return '발주완료';
-      case PurchaseOrderStatus.received: return '입고완료';
-      case PurchaseOrderStatus.canceled: return '발주취소';
+      case PurchaseOrderStatus.draft:
+        return '임시저장';
+      case PurchaseOrderStatus.ordered:
+        return '발주완료';
+      case PurchaseOrderStatus.received:
+        return '입고완료';
+      case PurchaseOrderStatus.canceled:
+        return '발주취소';
     }
   }
 
   PurchaseOrderStatus _next(PurchaseOrderStatus s) {
     switch (s) {
-      case PurchaseOrderStatus.draft:   return PurchaseOrderStatus.ordered;
-      case PurchaseOrderStatus.ordered: return PurchaseOrderStatus.received;
+      case PurchaseOrderStatus.draft:
+        return PurchaseOrderStatus.ordered;
+      case PurchaseOrderStatus.ordered:
+        return PurchaseOrderStatus.received;
       case PurchaseOrderStatus.received:
       case PurchaseOrderStatus.canceled:
         return s;
@@ -120,11 +138,17 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
   }
 
+  String _titleForLine(PurchaseLine ln) {
+    final baseName = (ln.name.trim().isNotEmpty)
+        ? ln.name
+        : (_itemNameById[ln.itemId] ?? ln.itemId);
+    return '$baseName × ${ln.qty} ${ln.unit}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final po = _po;
     final t = context.t;
-    final itemRepo = context.read<InMemoryRepo>(); // 아이템명 보강용
 
     return Scaffold(
       appBar: AppBar(
@@ -149,7 +173,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 헤더 카드(조회용)
+            // 헤더 카드
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -158,7 +182,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   children: [
                     Row(
                       children: [
-                        Text('헤더', style: Theme.of(context).textTheme.titleMedium),
+                        Text('헤더',
+                            style: Theme.of(context).textTheme.titleMedium),
                         const SizedBox(width: 8),
                         Chip(label: Text(_statusLabel(po.status))),
                       ],
@@ -171,7 +196,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       Text('적요: ${po.memo}'),
                     ],
                     const SizedBox(height: 8),
-                    Text('발주ID: ${po.id}', style: Theme.of(context).textTheme.bodySmall),
+                    Text('발주ID: ${po.id}',
+                        style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -188,14 +214,15 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 separatorBuilder: (_, __) => const Divider(height: 0),
                 itemBuilder: (ctx, i) {
                   final ln = _lines[i];
-                  final titleText = (ln.name.trim().isNotEmpty)
-                      ? '${ln.name} × ${ln.qty} ${ln.unit}'
-                      : '${(itemRepo.getItemById(ln.itemId)?.displayName ?? ln.itemId)} × ${ln.qty} ${ln.unit}';
-                  final subtitle = (ln.colorNo ?? '').isEmpty ? null : '색상번호: ${ln.colorNo}';
+                  final titleText = _titleForLine(ln);
+                  final subtitle = (ln.colorNo ?? '').isEmpty
+                      ? null
+                      : '색상번호: ${ln.colorNo}';
 
                   return ListTile(
                     title: Text(titleText),
-                    subtitle: subtitle == null ? null : Text(subtitle),
+                    subtitle:
+                    subtitle == null ? null : Text(subtitle),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _openLineFull(ln),
                   );
@@ -212,14 +239,16 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 final next = _next(po.status);
                 if (next == po.status) return;
 
-                if (po.status == PurchaseOrderStatus.draft && next == PurchaseOrderStatus.ordered) {
+                if (po.status == PurchaseOrderStatus.draft &&
+                    next == PurchaseOrderStatus.ordered) {
                   await context.read<InventoryService>().orderPurchase(po.id);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('발주완료: 예정 입고 기록 생성됨')),
                   );
                   await _reload();
-                } else if (po.status == PurchaseOrderStatus.ordered && next == PurchaseOrderStatus.received) {
+                } else if (po.status == PurchaseOrderStatus.ordered &&
+                    next == PurchaseOrderStatus.received) {
                   await context.read<InventoryService>().receivePurchase(po.id);
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -239,9 +268,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 await _reload();
               },
               labelForAdvance: switch (po.status) {
-                PurchaseOrderStatus.draft   => t.purchase_action_order,
+                PurchaseOrderStatus.draft => t.purchase_action_order,
                 PurchaseOrderStatus.ordered => t.purchase_action_receive,
-                _                           => t.purchase_already_received,
+                _ => t.purchase_already_received,
               },
               cancelLabel: t.common_cancel,
             ),

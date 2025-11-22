@@ -21,6 +21,9 @@
   "btn_save": "Save",
   "common_cancel": "Cancel",
   "common_delete": "Delete",
+  "common_delete_forever": "Are you sure you want to permanently delete this? This action cannot be undone.",
+  "common_delete_title": "The order will be deleted (hidden). It will no longer appear in the list.",
+
   "common_ok": "OK",
   "common_error": "error",
   "common_retry": "retry",

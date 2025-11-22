@@ -23,6 +23,9 @@
   "btn_save": "Guardar",
   "common_cancel": "Cancelar",
   "common_delete": "Eliminar",
+  "common_delete_forever": "¿Seguro que deseas eliminarlo permanentemente? Esta acción no se puede deshacer.",
+  "common_delete_title": "El pedido se eliminará (ocultará). Ya no aparecerá en la lista.",
+
   "common_ok": "Aceptar",
   "common_retry": "reintento",
   "common_error": "error",
