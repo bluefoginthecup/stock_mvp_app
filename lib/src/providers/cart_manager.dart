@@ -1,26 +1,22 @@
+// lib/src/providers/cart_manager.dart
 import 'package:flutter/foundation.dart';
+
 import '../models/cart_item.dart';
-import '../repos/inmem_repo.dart';
-import '../models/purchase_order.dart';
-import '../models/purchase_line.dart';
 import '../models/item.dart';
+import '../models/purchase_line.dart';
+import '../models/purchase_order.dart';
+import '../repos/repo_interfaces.dart'; // ✅ 인터페이스만 참조
 
 enum CartMode { groupBySupplier, flat }
-
 
 class CartManager extends ChangeNotifier {
   final List<CartItem> _items = [];
 
   List<CartItem> get items => List.unmodifiable(_items);
-
   int get count => _items.length;
 
-
-  // ✅ mode 게터/세터
   CartMode _mode = CartMode.groupBySupplier;
-
   CartMode get mode => _mode;
-
   void setMode(CartMode m) {
     if (_mode == m) return;
     _mode = m;
@@ -33,40 +29,49 @@ class CartManager extends ChangeNotifier {
   }
 
   void addFromItem(Item i, {double qty = 1}) {
-    final colorNo = (i.attrs?['color_no'] ?? '').toString().trim(); // ✅ 단일 경로
-
-    _items.add(CartItem(
-      itemId: i.id,
-      name: i.displayName ?? i.name,
-      unit: i.unit,
-      qty: qty,
-      supplierName: i.supplierName?.trim() ?? '',
-      colorNo: colorNo, // ✅ 그대로 저장
-    ));
+    final colorNo = (i.attrs?['color_no'] ?? '').toString().trim();
+    _items.add(
+      CartItem(
+        itemId: i.id,
+        name: i.displayName ?? i.name,
+        unit: i.unit,
+        qty: qty,
+        supplierName: i.supplierName?.trim() ?? '',
+        colorNo: colorNo,
+      ),
+    );
     notifyListeners();
   }
 
+  /// UNDO 복구 등에 사용
+  void insert(int index, CartItem item) {
+    if (index < 0 || index > _items.length) {
+      _items.add(item);
+    } else {
+      _items.insert(index, item);
+    }
+    notifyListeners();
+  }
 
-// ✅ cart_sheet.dart에서 호출
   void removeAt(int index) {
     if (index < 0 || index >= _items.length) return;
     _items.removeAt(index);
     notifyListeners();
   }
 
-  // ✅ 새로 추가: 수량 변경
   void updateQty(int index, double qty) {
+    if (index < 0 || index >= _items.length) return;
     if (qty <= 0) return;
     _items[index] = _items[index].copyWith(qty: qty);
     notifyListeners();
   }
 
   void updateSupplier(int idx, String s) {
+    if (idx < 0 || idx >= _items.length) return;
     _items[idx] = _items[idx].copyWith(supplierName: s.trim());
     notifyListeners();
   }
 
-  // ✅ 새로 추가: 공급처 일괄 지정
   void setAllSupplier(String supplier) {
     final s = supplier.trim();
     for (var i = 0; i < _items.length; i++) {
@@ -75,74 +80,70 @@ class CartManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ 새로 추가: 요약
-  int get supplierCount =>
-      _items
-          .map((e) => e.supplierName.trim())
-          .toSet()
-          .length;
+  int get supplierCount => _items.map((e) => e.supplierName.trim()).toSet().length;
+  double get totalQty => _items.fold(0.0, (acc, e) => acc + e.qty);
 
-  double get totalQty =>
-      _items.fold(0.0, (acc, e) => acc + (e.qty));
-
-  Future<List<String>> createPurchaseOrdersFromCart(InMemoryRepo repo) async {
+  /// ✅ 표준 인터페이스에 정확히 맞춤
+  /// - PO 생성: createPurchaseOrder(po) → String (생성된 id)
+  /// - 라인 저장: upsertLines(orderId, lines)
+  /// - color_no 보강: itemRepo.getItem(itemId)
+  Future<List<String>> createPurchaseOrdersFromCart({
+    required PurchaseOrderRepo poRepo,
+    required ItemRepo itemRepo,
+  }) async {
     // 1) 공급처별 그룹핑
     final grouped = <String, List<CartItem>>{};
     for (final c in _items) {
-      final k = c.supplierName
-          .trim()
-          .isEmpty ? '(미지정)' : c.supplierName.trim();
-      (grouped[k] ??= []).add(c);
+      final key = c.supplierName.trim().isEmpty ? '(미지정)' : c.supplierName.trim();
+      (grouped[key] ??= []).add(c);
     }
 
-    // 2) PO 생성 및 라인 생성
+    // 2) 생성 루프
     final created = <String>[];
 
     for (final entry in grouped.entries) {
       final supplier = entry.key == '(미지정)' ? '' : entry.key;
 
-      final poId = 'po_${DateTime
-          .now()
-          .microsecondsSinceEpoch}_${created.length}';
+      // id는 구현에 따라 내부에서 생성될 수도 있으므로, 모델에 임시 id를 넣어도 되고 비워도 됨.
       final po = PurchaseOrder(
-        id: poId,
+        id: 'po_${DateTime.now().microsecondsSinceEpoch}_${created.length}',
         supplierName: supplier,
         eta: DateTime.now().add(const Duration(days: 2)),
         status: PurchaseOrderStatus.draft,
       );
-      await repo.createPurchaseOrder(po);
 
-      // ✅ 각 CartItem 단위로 color_no 계산하여 PurchaseLine 만들기
+      // 표준: 생성 후 실제 저장된 id 반환
+      final savedId = await poRepo.createPurchaseOrder(po);
+
+      // 라인 구성
       final lines = <PurchaseLine>[];
       for (var i = 0; i < entry.value.length; i++) {
         final c = entry.value[i];
-        final it = repo.getItemById(c.itemId);
 
-        final colorNo = (c.colorNo
-            ?.trim()
-            .isNotEmpty == true)
+        final it = await itemRepo.getItem(c.itemId);
+        final colorNo = (c.colorNo?.trim().isNotEmpty == true)
             ? c.colorNo!.trim()
             : (it?.attrs?['color_no'] ?? '').toString().trim();
 
-        lines.add(PurchaseLine(
-          id: 'pol_${poId}_$i',
-          // ✅ 라인 id는 poId 기준으로 안정적으로
-          orderId: poId,
-          itemId: c.itemId,
-          name: c.name,
-          unit: c.unit,
-          qty: c.qty,
-          colorNo: colorNo, // ✅ color_no 정확히 주입
-        ));
+        lines.add(
+          PurchaseLine(
+            id: 'pol_${savedId}_$i',
+            orderId: savedId,
+            itemId: c.itemId,
+            name: c.name,
+            unit: c.unit,
+            qty: c.qty,
+            colorNo: colorNo,
+          ),
+        );
       }
 
-      await repo.upsertLines(poId, lines);
-      created.add(poId);
+      await poRepo.upsertLines(savedId, lines);
+      created.add(savedId);
     }
 
-    // 3) 장바구니 비우기
+    // 3) 정리
     clear();
-
     return created;
   }
 }

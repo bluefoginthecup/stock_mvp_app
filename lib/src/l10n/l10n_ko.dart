@@ -53,6 +53,9 @@ class L10nKo extends L10n {
   String get common_continue => '계속';
 
   @override
+  String get common_retry => '다시 시도해보세요';
+
+  @override
   String get dashboard_below_threshold => '임계치 이하';
 
   @override

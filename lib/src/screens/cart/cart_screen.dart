@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
+
 import '../../providers/cart_manager.dart';
-import '../../repos/inmem_repo.dart';
+import '../../repos/repo_interfaces.dart'; // ✅ 인터페이스로 주입
 import '../../screens/orders/order_from_cart.dart';
 
 class CartScreen extends StatelessWidget {
@@ -11,7 +12,8 @@ class CartScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartManager>();
-    final repo = context.read<InMemoryRepo>();
+    final poRepo = context.read<PurchaseOrderRepo>(); // ✅ InMemoryRepo → PurchaseOrderRepo
+    final itemRepo = context.read<ItemRepo>();
 
     Future<void> _editQty(BuildContext ctx, int index, double current) async {
       final c = TextEditingController(text: current.toStringAsFixed(0));
@@ -88,10 +90,15 @@ class CartScreen extends StatelessWidget {
 
     Future<void> _createPOs(BuildContext ctx) async {
       try {
-        final ids = await cart.createPurchaseOrdersFromCart(repo);
+        // ✅ 인자 타입을 PurchaseOrderRepo로 변경
+        final ids = await cart.createPurchaseOrdersFromCart(
+          poRepo: poRepo,
+          itemRepo: itemRepo,
+        );
         if (ctx.mounted) {
           ScaffoldMessenger.of(ctx).showSnackBar(
-            SnackBar(content: Text('발주서 ${ids.length}건 생성 완료!'),
+            SnackBar(
+              content: Text('발주서 ${ids.length}건 생성 완료!'),
               action: SnackBarAction(
                 label: '목록 보기',
                 onPressed: () {
@@ -170,24 +177,9 @@ class CartScreen extends StatelessWidget {
                   action: SnackBarAction(
                     label: '실행취소',
                     onPressed: () {
-                      // Undo: 같은 위치에 복구
-                      final items = List.of(cart.items);
-                      items.insert(i, removed);
-                      // CartManager는 외부에서 _items 접근 못하므로 간단 복구용:
-                      // → 임시로 clear/addFromItem 재적재 (수량/공급처 유지)
-                      final snapshot = [removed, ...cart.items.skip(i)];
-                      final before = cart.items.take(i).toList();
-                      cart.clear();
-                      for (final e in [...before, ...snapshot]) {
-                        // addFromItem은 Item이 필요하지만 CartItem만 있음.
-                        // -> 별도 util이 없으므로 CartItem을 그대로 재주입하는 간단 메서드가 있으면 가장 좋음.
-                        // 없으면 아래처럼 임시 재구성:
-                        // CART 복구 헬퍼가 없다면, CartManager에 addRaw(CartItem c) 같은 걸 추가하는 게 깔끔합니다.
-                      }
-                      // 📌 권장: CartManager에 아래 메서드 하나 더 추가하고 여기서 사용하세요.
-                      //   void addRaw(CartItem c) { _items.add(c); notifyListeners(); }
-                      // 그러면 위 복구는:
-                      // cart.addRaw(removed); ... 등으로 간단히 처리 가능.
+                      // 필요 시 CartManager에 addRaw(CartItem) 같은 복구용 메서드 추가 권장
+                      // 지금은 간단히 다시 추가:
+                      cart.insert(i, removed);
                     },
                   ),
                 ),
@@ -249,14 +241,12 @@ class CartScreen extends StatelessWidget {
                 label: const Text('발주서 생성'),
                 onPressed: () => _createPOs(context),
               ),
-
-              const SizedBox(height: 8),
-
-              // 추가: 주문 생성(재고보충)
+              const SizedBox(width: 8),
+              // 내부 주문 생성(재고보충)
               ElevatedButton.icon(
                 onPressed: () async => await onCreateInternalOrderPressed(context),
                 icon: const Icon(Icons.shopping_bag),
-                label: const Text('주문 생성'), //
+                label: const Text('주문 생성'),
               ),
             ],
           ),

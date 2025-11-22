@@ -23,6 +23,7 @@
   "common_delete": "Delete",
   "common_ok": "OK",
   "common_error": "error",
+  "common_retry": "retry",
   "dashboard_below_threshold": "Below threshold",
   "dashboard_goto_details": "Go to details / filters",
   "dashboard_orders": "Order Management",

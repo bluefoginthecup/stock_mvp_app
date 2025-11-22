@@ -53,6 +53,9 @@ class L10nEn extends L10n {
   String get common_continue => '계속';
 
   @override
+  String get common_retry => 'retry';
+
+  @override
   String get dashboard_below_threshold => 'Below threshold';
 
   @override

@@ -1,30 +1,55 @@
-import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 
 import 'package:stockapp_mvp/src/repos/repo_interfaces.dart';
-import 'package:stockapp_mvp/src/repos/inmem_repo.dart' as repos; // ✅ 추가 (중요)
-
 import 'widgets/txn_row.dart';
 import '../../ui/common/ui.dart';
 
-class TxnListScreen extends StatelessWidget {
+class TxnListScreen extends StatefulWidget {
   const TxnListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<TxnListScreen> createState() => _TxnListScreenState();
+}
 
-    // 📚 데이터 접근은 인터페이스로
-    final txRepo = context.read<TxnRepo>();
+class _TxnListScreenState extends State<TxnListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 프레임 이후에 최초 스냅샷 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TxnRepo>().listTxns();
+    });
+  }
+
+  Future<void> _refresh() async {
+    await context.read<TxnRepo>().listTxns();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // notifyListeners()를 구독하려면 read가 아니라 watch
+    final txRepo = context.watch<TxnRepo>();
     final list = txRepo.snapshotTxnsDesc();
 
     return Scaffold(
       appBar: AppBar(title: Text(context.t.dashboard_txns)),
-      body: list.isEmpty
-          ? Center(child: Text(context.t.txns_empty))
-          : ListView.separated(
-        itemCount: list.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (_, i) => TxnRow(t: list[i]),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: list.isEmpty
+            ? ListView( // RefreshIndicator가 child가 스크롤 가능해야 함
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.5,
+              child: Center(child: Text(context.t.txns_empty)),
+            ),
+          ],
+        )
+            : ListView.separated(
+          itemCount: list.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (_, i) => TxnRow(t: list[i]),
+        ),
       ),
     );
   }

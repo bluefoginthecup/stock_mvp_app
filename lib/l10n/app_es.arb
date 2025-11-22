@@ -24,6 +24,8 @@
   "common_cancel": "Cancelar",
   "common_delete": "Eliminar",
   "common_ok": "Aceptar",
+  "common_retry": "reintento",
+  "common_error": "error",
   "dashboard_below_threshold": "Por debajo del umbral",
   "dashboard_goto_details": "Ir a detalles / filtros",
   "dashboard_orders": "Gestión de pedidos",

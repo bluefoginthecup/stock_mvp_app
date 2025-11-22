@@ -737,7 +737,14 @@ class DriftUnifiedRepo extends ChangeNotifier
       );
     });
     _stockCache[itemId] = (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
+    await _refreshTxnSnapshot(); // 👈 추가
 
+  }
+
+  Stream<List<Txn>> watchTxns() {
+    final q = db.select(db.txns)
+      ..orderBy([(t) => OrderingTerm.desc(t.ts)]);
+    return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
   }
 
   @override
@@ -846,6 +853,7 @@ class DriftUnifiedRepo extends ChangeNotifier
       ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
         .get();
     _txnSnapshot = rows.map((r) => r.toDomain()).toList();
+    notifyListeners();
     return _txnSnapshot;
   }
 
@@ -858,6 +866,7 @@ class DriftUnifiedRepo extends ChangeNotifier
       ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
         .get();
     _txnSnapshot = rows.map((r) => r.toDomain()).toList();
+    notifyListeners();
   }
 
   @override

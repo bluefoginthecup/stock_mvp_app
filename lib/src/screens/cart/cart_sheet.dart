@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/cart_manager.dart';
-import '../../repos/inmem_repo.dart';
+import '../../repos/repo_interfaces.dart';
+
 
 class CartSheet extends StatelessWidget {
   const CartSheet({super.key});
@@ -68,8 +69,13 @@ class CartSheet extends StatelessWidget {
                     icon: const Icon(Icons.playlist_add_check),
                     label: const Text('발주서 만들기'),
                     onPressed: () async {
-                      final repo = context.read<InMemoryRepo>();
-                      final ids = await context.read<CartManager>().createPurchaseOrdersFromCart(repo);
+                      final poRepo = context.read<PurchaseOrderRepo>();
+                      final itemRepo = context.read<ItemRepo>();
+                      final ids = await cart.createPurchaseOrdersFromCart(
+                        poRepo: poRepo,
+                        itemRepo: itemRepo,
+                      );
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('발주 초안 ${ids.length}건 생성')),
                       );

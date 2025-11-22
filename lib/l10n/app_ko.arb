@@ -24,6 +24,8 @@
   "common_error": "에러",
   "common_warning": "경고",
   "common_continue": "계속",
+
+  "common_retry": "다시 시도해보세요",
   "dashboard_below_threshold": "임계치 이하",
   "dashboard_goto_details": "상세 보기 / 필터로 이동",
   "dashboard_orders": "주문 관리",

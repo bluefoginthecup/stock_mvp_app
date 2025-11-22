@@ -181,6 +181,12 @@ abstract class L10n {
   /// **'계속'**
   String get common_continue;
 
+  /// No description provided for @common_retry.
+  ///
+  /// In ko, this message translates to:
+  /// **'다시 시도해보세요'**
+  String get common_retry;
+
   /// No description provided for @dashboard_below_threshold.
   ///
   /// In ko, this message translates to:
