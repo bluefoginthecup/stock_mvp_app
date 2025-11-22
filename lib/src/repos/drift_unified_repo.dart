@@ -983,29 +983,34 @@ class DriftUnifiedRepo extends ChangeNotifier
   // ================================================================
   // =============== ORDER REPO =====================================
   // ================================================================
-
   @override
-  Future<List<Order>> listOrders() async {
-    final rows = await (db.select(db.orders)
-      ..where((t) => t.isDeleted.equals(false))
-      ..orderBy([(t) => OrderingTerm.desc(t.date)]))
-        .get();
+  Future<List<Order>> listOrders({bool includeDeleted = false}) async {
+    final q = db.select(db.orders);
+
+    if (!includeDeleted) {
+      q.where((t) => t.isDeleted.equals(false));
+    }
+    q.orderBy([(t) => OrderingTerm.desc(t.date)]);
+
+    final rows = await q.get();
 
     final list = <Order>[];
-
     for (final o in rows) {
       final lineRows = await (db.select(db.orderLines)
         ..where((l) => l.orderId.equals(o.id)))
           .get();
+
       list.add(
         o.toDomain(
           lineRows.map((r) => r.toDomain()).toList(),
         ),
       );
     }
-
     return list;
   }
+
+
+
 
   @override
   Future<Order?> getOrder(String id) async {
@@ -1055,12 +1060,14 @@ class DriftUnifiedRepo extends ChangeNotifier
     return row?.customer;
   }
 
+  // ✅ soft delete: isDeleted=true, updatedAt=now ISO8601
   @override
   Future<void> softDeleteOrder(String orderId) async {
+    final nowIso = DateTime.now().toIso8601String();
     await (db.update(db.orders)..where((t) => t.id.equals(orderId))).write(
       OrdersCompanion(
         isDeleted: const Value(true),
-        updatedAt: Value(DateTime.now().toIso8601String()),
+        updatedAt: Value(nowIso),
       ),
     );
   }
@@ -1074,6 +1081,25 @@ class DriftUnifiedRepo extends ChangeNotifier
       await (db.delete(db.orders)..where((t) => t.id.equals(orderId))).go();
     });
   }
+
+// ✅ restore: isDeleted=false, updatedAt=now ISO8601
+    @override
+    Future<void> restoreOrder(String orderId) async {
+      final nowIso = DateTime.now().toIso8601String();
+      await (db.update(db.orders)..where((t) => t.id.equals(orderId))).write(
+        OrdersCompanion(
+          isDeleted: const Value(false),
+          updatedAt: Value(nowIso),
+        ),
+      );
+
+
+    // 통합 휴지통 레지스트리 쓰는 경우 함께 정리
+    // await (db.delete(db.deletedRegistry)
+    //        ..where((t) => t.kind.equals('order') & t.entityId.equals(orderId)))
+    //      .go();
+  }
+
 
   // ================================================================
   // =============== WORK REPO ======================================
@@ -1184,16 +1210,17 @@ class DriftUnifiedRepo extends ChangeNotifier
         .getSingleOrNull();
     return row?.toDomain();
   }
-
   @override
   Future<void> softDeletePurchaseOrder(String id) async {
+    final nowIso = DateTime.now().toIso8601String();
     await (db.update(db.purchaseOrders)..where((t) => t.id.equals(id))).write(
       PurchaseOrdersCompanion(
         isDeleted: const Value(true),
-        updatedAt: Value(DateTime.now().toIso8601String()),
+        updatedAt: Value(nowIso),
       ),
     );
   }
+
 
   @override
   Future<void> hardDeletePurchaseOrder(String id) async {
@@ -1203,6 +1230,17 @@ class DriftUnifiedRepo extends ChangeNotifier
           .go();
       await (db.delete(db.purchaseOrders)..where((t) => t.id.equals(id))).go();
     });
+  }
+
+  @override
+  Future<void> restorePurchaseOrder(String id) async {
+    final nowIso = DateTime.now().toIso8601String();
+    await (db.update(db.purchaseOrders)..where((t) => t.id.equals(id))).write(
+      PurchaseOrdersCompanion(
+        isDeleted: const Value(false),
+        updatedAt: Value(nowIso),
+      ),
+    );
   }
 
   @override

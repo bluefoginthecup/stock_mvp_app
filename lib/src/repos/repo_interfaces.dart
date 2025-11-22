@@ -76,12 +76,13 @@ abstract class ItemRepo {
 }
 
 abstract class OrderRepo {
-  Future<List<Order>> listOrders();
+  Future<List<Order>> listOrders({bool includeDeleted = false});
   Future<Order?> getOrder(String id);
   Future<void> upsertOrder(Order order);
 
   /// orderId → 사람 읽는 주문자명
   Future<String?> customerNameOf(String orderId);
+
 
   // 🧹 삭제 정책
   /// 기본: 소프트 삭제(isDeleted=true). 목록/검색에서 숨김.
@@ -89,6 +90,9 @@ abstract class OrderRepo {
 
   /// 관리용: 하드 삭제. 연계 데이터 처리는 상위 서비스에서 보장.
   Future<void> hardDeleteOrder(String orderId);
+
+  /// 복구: soft delete 해제
+  Future<void> restoreOrder(String orderId);
 }
 
 abstract class TxnRepo {
@@ -169,6 +173,9 @@ abstract class PurchaseOrderRepo {
   Future<PurchaseOrder?> getPurchaseOrderById(String id);
   Future<void> softDeletePurchaseOrder(String id);
   Future<void> hardDeletePurchaseOrder(String id);
+  /// 복구: soft delete 해제
+  Future<void> restorePurchaseOrder(String id);
+
 
   // Lines
   Future<void> upsertLines(String orderId, List<PurchaseLine> lines);
@@ -201,6 +208,34 @@ class MoveRequest {
     required this.pathIds,
   });
 }
+
+enum TrashEntityKind { order, purchase /*, item, txn, work, supplier, folder */ }
+
+class TrashEntry {
+    final TrashEntityKind kind;
+    final String entityId;
+    final String title;
+    final DateTime deletedAt;
+    final String? metaJson;
+    const TrashEntry({
+      required this.kind,
+      required this.entityId,
+      required this.title,
+      required this.deletedAt,
+      this.metaJson,
+    });
+  }
+
+abstract class TrashRepo {
+    Future<List<TrashEntry>> list({
+      TrashEntityKind? kind,
+      String? keyword,
+      int limit = 50,
+    });
+    Future<void> restore(TrashEntityKind kind, String entityId);
+    Future<void> hardDelete(TrashEntityKind kind, String entityId);
+    Future<int> purgeOlderThan(Duration keep);
+  }
 
 /// 폴더 트리 + 경로 기반 검색/이동용 Repo
 abstract class FolderTreeRepo extends ChangeNotifier {

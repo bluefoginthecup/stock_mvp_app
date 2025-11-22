@@ -1043,11 +1043,12 @@ class InMemoryRepo extends ChangeNotifier
   }
 
   // ============================== OrderRepo ===============================
+
   @override
-  Future<List<Order>> listOrders() async {
-    final list = _orders.values.where((o) => o.isDeleted != true).toList();
-    list.sort((a, b) => b.date.compareTo(a.date));
-    return list;
+  Future<List<Order>> listOrders({bool includeDeleted = false}) async {
+    // 예: _orders: Map<String, Order>
+    final all = _orders.values.toList();
+    return includeDeleted ? all : all.where((o) => !o.isDeleted).toList();
   }
 
   @override
@@ -1083,6 +1084,28 @@ class InMemoryRepo extends ChangeNotifier
     _orders.remove(orderId);
     notifyListeners();
   }
+
+  @override
+  Future<void> restoreOrder(String orderId) async {
+    final cur = _orders[orderId];
+    if (cur == null) return;
+    _orders[orderId] = cur.copyWith(isDeleted: false, deletedAt: null, updatedAt: DateTime.now());
+  }
+
+
+  @override
+  Future<void> restorePurchaseOrder(String id) async {
+    final cur = _po[id];
+    if (cur == null) return;
+
+    _po[id] = cur.copyWith(
+      isDeleted: false,
+      updatedAt: DateTime.now(),
+      // deletedAt: null ← Order에는 있지 PurchaseOrder에는 없음
+    );
+  }
+
+
 
 //===== items, folders 내보내기  ========
 
