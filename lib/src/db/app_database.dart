@@ -418,6 +418,7 @@ extension ItemRowMapping on ItemRow {
       conversionMode: conversionMode,
       stockHints: hints,
       supplierName: supplierName,
+      isFavorite: isFavorite,
     );
   }
 }
@@ -453,6 +454,7 @@ extension ItemToCompanion on Item {
       conversionMode: Value(conversionMode),
       stockHintsJson: Value(stockHintsJson),
       supplierName: Value(supplierName),
+      isFavorite: Value(isFavorite ?? false),
     );
   }
 }

@@ -59,10 +59,12 @@ abstract class ItemRepo {
     });
   /// itemId → 사람 읽는 아이템명
   Future<String?> nameOf(String itemId);
+  ///즐겨찾기
+  Future<void> setFavorite({required String itemId, required bool value});
 
 
 
-    // ===== BOM (2단계 분리형) =====
+  // ===== BOM (2단계 분리형) =====
     /// Finished 레시피 조회/저장
     List<BomRow> finishedBomOf(String finishedItemId);
     Future<void> upsertFinishedBom(String finishedItemId, List<BomRow> rows);

@@ -1847,5 +1847,15 @@ class InMemoryRepo extends ChangeNotifier
       _suppliers[id] = s.copyWith(isActive: isActive, updatedAt: DateTime.now());
     }
   }
+  // InMemoryRepo 내부
+  @override
+  Future<void> setFavorite({required String itemId, required bool value}) async {
+    final it = await getItem(itemId);
+    if (it == null) return;
+    // Item 모델에 copyWith가 있다고 가정
+    final updated = it.copyWith(isFavorite: value);
+    await upsertItem(updated);
+  }
+
 }
 

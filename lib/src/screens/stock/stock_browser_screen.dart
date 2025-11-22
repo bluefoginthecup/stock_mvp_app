@@ -429,6 +429,38 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               );
             },
             onTogglePick: () => sel.toggle(it.id),
+            onToggleFavorite: () async {
+                 final repo = context.read<ItemRepo>();
+                 final next = !(it.isFavorite == true);
+
+                 // 🔎 시작 로그
+                 debugPrint('[Browser] ⭐ toggle start: id=${it.id}, was=${it.isFavorite}, next=$next');
+                 try {
+                   // 정석: 인터페이스 메서드 호출
+                   await repo.setFavorite(itemId: it.id, value: next);
+                   debugPrint('[Browser] ⭐ setFavorite OK (saved=$next)');
+
+                   // 저장 직후 재조회로 실제 반영 확인
+                   final fresh = await repo.getItem(it.id);
+                   debugPrint('[Browser] ⭐ re-read → isFavorite=${fresh?.isFavorite}');
+                 } catch (e, st) {
+                   debugPrint('[Browser][ERR] setFavorite failed: $e\n$st');
+                 }
+
+
+                 // DB에서 직접 다시 읽어 확인
+                 final db = context.read<AppDatabase>();
+                 final rawRow = await (db.select(db.items)
+                   ..where((t) => t.id.equals(it.id)))
+                     .getSingle();
+
+                 debugPrint('[Browser] ⭐ DB reread → isFavorite=${rawRow.isFavorite}');
+
+
+                 if (!context.mounted) return;
+                 setState(() {}); // 리스트 즉시 갱신
+               },
+
           );
         },
         childCount: items.length,

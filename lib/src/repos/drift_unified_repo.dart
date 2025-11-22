@@ -330,12 +330,22 @@ class DriftUnifiedRepo extends ChangeNotifier
 
   }
 
-  /// 아이템 즐겨찾기 추가
-  Future<void> toggleFavorite(String itemId, bool value) async {
-    await (db.update(db.items)
-      ..where((t) => t.id.equals(itemId)))
-        .write(ItemsCompanion(isFavorite: Value(value)));
-  }
+  /// ItemRepo 인터페이스 구현: 즐겨찾기 저장
+    @override
+    Future<void> setFavorite({required String itemId, required bool value}) async {
+        await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+              ItemsCompanion(isFavorite: Value(value)),
+            );
+        // (선택) 캐시 최신화
+        final fresh = await getItem(itemId);
+        if (fresh != null) _cacheItem(fresh);
+      }
+
+    /// (선택) 기존 헬퍼 유지하고 싶으면 인터페이스로 위임
+    Future<void> toggleFavorite(String itemId, bool value) =>
+            setFavorite(itemId: itemId, value: value);
+
+
 
   @override
   Stream<List<Item>> watchItems({String? keyword}) {
