@@ -23,71 +23,108 @@ class ShortageService {
   final BomService bom;
   ShortageService({required this.repo, required this.bom});
 
-    int _stockI(String id) => repo.stockOf(id);
+  int _stockI(String id) => repo.stockOf(id);
 
-    // ── unit 판정: 아이템별 길이기반인지? ──────────────────────────────
-    bool _isLengthUnit(String? u) {
-        if (u == null) return false;
-        final s = u.trim().toUpperCase();
-        // 필요시 여기에 더 추가: 'FT','IN','YARD','YD','CM','MM' 등
-        const lengthUnits = {'M','CM','MM','METER','METERS','YD','YARD','IN','FT'};
-        return lengthUnits.contains(s);
-      }
-    String _unitOutOf(String id) {
-        final dyn = repo as dynamic;
-        try {
-          if (dyn.hintUnitOut is Function) {
-            final u = dyn.hintUnitOut(id);
-            if (u is String && u.trim().isNotEmpty) return u;
-          }
-        } catch (_) {}
-        // hintUnitOut이 없으면 Item.unit을 쓰도록 repo에서 노출돼 있다고 가정
-        try {
-          if (dyn.getItem is Function) {
-            final it = dyn.getItem(id);
-            if (it is Future) {
-              // 동기 접근이 아니면 그냥 빈 문자열 반환
-              return '';
-            } else if (it != null && it.unit is String) {
-              return (it.unit as String);
-            }
-          }
-        } catch (_) {}
-        return '';
-      }
+  // ── unit 판정: 아이템별 길이기반인지? ──────────────────────────────
+  bool _isLengthUnit(String? u) {
+    if (u == null) return false;
+    final s = u.trim().toUpperCase();
+    const lengthUnits = {'M','CM','MM','METER','METERS','YD','YARD','IN','FT'};
+    return lengthUnits.contains(s);
+  }
 
-    // ── 가용치 폴백: 개수/미터 각각 ────────────────────────────────────
-    double _stockQtyOrHint(String id) {
-        final st = repo.stockOf(id).toDouble();
-        if (st > 0) return st;
-        final dyn = repo as dynamic;
-        try {
-          if (dyn.hintQtyOut is Function) {
-            final v = dyn.hintQtyOut(id);
-            if (v is num && v > 0) return v.toDouble();
-          }
-        } catch (_) {}
-        return 0;
+  String _unitOutOf(String id) {
+    final dyn = repo as dynamic;
+
+    // 🔍 unitOut 조회 로그
+    print('[ShortageService] _unitOutOf($id) 호출');
+
+    try {
+      if (dyn.hintUnitOut is Function) {
+        final u = dyn.hintUnitOut(id);
+        print('[ShortageService]  hintUnitOut($id) => $u');
+        if (u is String && u.trim().isNotEmpty) return u;
       }
-    double _stockMetersOrHint(String id) {
-        final dyn = repo as dynamic;
-        try {
-          if (dyn.hintUsableMeters is Function) {
-            final v = dyn.hintUsableMeters(id);
-            if (v is num && v > 0) return v.toDouble();
-          }
-        } catch (_) {}
-        return 0;
+    } catch (e, st) {
+      print('[ShortageService]  hintUnitOut($id) 에러: $e\n$st');
+    }
+
+    try {
+      if (dyn.getItem is Function) {
+        final it = dyn.getItem(id);
+        print('[ShortageService]  dyn.getItem($id) => ${it.runtimeType}');
+        if (it is Future) {
+          // DriftUnifiedRepo 처럼 비동기면 여기서 바로 리턴 ''
+          return '';
+        } else if (it != null && it.unit is String) {
+          return (it.unit as String);
+        }
       }
-    double _availableByItemUnit(String id) {
-        final u = _unitOutOf(id);
-        return _isLengthUnit(u) ? _stockMetersOrHint(id) : _stockQtyOrHint(id);
+    } catch (e, st) {
+      print('[ShortageService]  dyn.getItem($id) 에러: $e\n$st');
+    }
+    return '';
+  }
+
+  // ── 가용치 폴백: 개수/미터 각각 ────────────────────────────────────
+  double _stockQtyOrHint(String id) {
+    final st = repo.stockOf(id).toDouble();
+    if (st > 0) {
+      print('[ShortageService] _stockQtyOrHint($id) => stockOf=$st');
+      return st;
+    }
+    final dyn = repo as dynamic;
+    try {
+      if (dyn.hintQtyOut is Function) {
+        final v = dyn.hintQtyOut(id);
+        print('[ShortageService] hintQtyOut($id) => $v');
+        if (v is num && v > 0) return v.toDouble();
       }
+    } catch (e, st) {
+      print('[ShortageService] hintQtyOut($id) 에러: $e\n$st');
+    }
+    print('[ShortageService] _stockQtyOrHint($id) => 0 (no stock/hint)');
+    return 0;
+  }
+
+  double _stockMetersOrHint(String id) {
+    final dyn = repo as dynamic;
+    try {
+      if (dyn.hintUsableMeters is Function) {
+        final v = dyn.hintUsableMeters(id);
+        print('[ShortageService] hintUsableMeters($id) => $v');
+        if (v is num && v > 0) return v.toDouble();
+      }
+    } catch (e, st) {
+      print('[ShortageService] hintUsableMeters($id) 에러: $e\n$st');
+    }
+    print('[ShortageService] _stockMetersOrHint($id) => 0');
+    return 0;
+  }
+
+  double _availableByItemUnit(String id) {
+    final u = _unitOutOf(id);
+    final isLen = _isLengthUnit(u);
+    final v = isLen ? _stockMetersOrHint(id) : _stockQtyOrHint(id);
+    print('[ShortageService] _availableByItemUnit($id): unitOut="$u" '
+        '=> isLen=$isLen, available=$v');
+    return v;
+  }
+
   Shortage2L compute({required String finishedId, required int orderQty}) {
+    // 🔍 1) compute 진입 로그
+    print('======== [ShortageService] compute START ========');
+    print('[ShortageService] finishedId=$finishedId, orderQty=$orderQty');
+
     // 완제품도 단위 기준으로 계산(대부분 EA겠지만, 안전하게 단위 확인)
-        final finStock = _availableByItemUnit(finishedId);
-        final finShort = ((orderQty - finStock).clamp(0, 1 << 30)).toDouble();
+    final finStock = _availableByItemUnit(finishedId);
+    final finShort = ((orderQty - finStock).clamp(0, 1 << 30)).toDouble();
+
+    print('[ShortageService] finStock=$finStock, finShort=$finShort');
+
     if (finShort == 0) {
+      print('[ShortageService] finShort == 0 → 부족 없음, 바로 리턴');
+      print('======== [ShortageService] compute END (no shortage) ========');
       return const Shortage2L(
         finishedShortage: 0,
         semiNeed: {},
@@ -99,7 +136,22 @@ class ShortageService {
       );
     }
 
-    final ex = bom.explode2Levels(finishedId: finishedId, finishedShortage: finShort);
+    // 🔍 2) BOM explode 들어가기 직전
+    print('[ShortageService] bom.explode2Levels 호출 '
+        '(finishedId=$finishedId, finishedShortage=$finShort)');
+
+    final ex = bom.explode2Levels(
+      finishedId: finishedId,
+      finishedShortage: finShort,
+    );
+
+    // 🔍 3) BOM explode 결과 요약
+    print('[ShortageService] explode2Levels 결과: '
+        'semiNeed=${ex.semiNeed.length}, '
+        'finishedRaw=${ex.finishedRaw.length}, '
+        'rawFromSemi=${ex.rawFromSemi.length}, '
+        'finishedSub=${ex.finishedSub.length}, '
+        'subFromSemi=${ex.subFromSemi.length}');
 
     Map<String, double> _merge(Map<String, double> a, Map<String, double> b) {
       final r = <String, double>{}..addAll(a);
@@ -111,11 +163,12 @@ class ShortageService {
     final subNeed = _merge(ex.finishedSub, ex.subFromSemi);
 
     // 아이템별 단위에 따라 자동 판정하여 부족 계산
-        Map<String, double> _lackByItemUnit(Map<String, double> need) {
-          final m = <String, double>{};
+    Map<String, double> _lackByItemUnit(Map<String, double> need) {
+      final m = <String, double>{};
       need.forEach((id, n) {
         final st = _availableByItemUnit(id);
         final lack = n - st;
+        print('[ShortageService] lackByItemUnit: id=$id need=$n stock=$st lack=$lack');
         if (lack > 0) m[id] = lack;
       });
       return m;
@@ -125,10 +178,11 @@ class ShortageService {
     ex.semiNeed.forEach((id, n) {
       final st = _availableByItemUnit(id);
       final lack = n - st;
+      print('[ShortageService] semiShort: id=$id need=$n stock=$st lack=$lack');
       if (lack > 0) semiShort[id] = lack;
     });
 
-    return Shortage2L(
+    final result = Shortage2L(
       finishedShortage: finShort,
       semiNeed: ex.semiNeed,
       semiShortage: semiShort,
@@ -137,5 +191,15 @@ class ShortageService {
       subNeed: subNeed,
       subShortage: _lackByItemUnit(subNeed),
     );
+
+    // 🔍 4) 최종 결과 요약
+    print('[ShortageService] RESULT: '
+        'finishedShortage=${result.finishedShortage}, '
+        'semiShortage=${result.semiShortage.length}, '
+        'rawShortage=${result.rawShortage.length}, '
+        'subShortage=${result.subShortage.length}');
+    print('======== [ShortageService] compute END ========');
+
+    return result;
   }
 }

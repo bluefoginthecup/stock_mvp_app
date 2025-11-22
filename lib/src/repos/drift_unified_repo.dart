@@ -27,23 +27,6 @@ part 'drift_unified_repo.g.dart';
 ///  - 앱의 모든 데이터(재고/주문/생산/발주/거래처/레시피)를 Drift 하나로 통합 관리
 /// ============================================================================
 
-// ⛔ 이제 DriftAccessor + DatabaseAccessor 안 씀
-// @DriftAccessor(
-//   tables: [
-//     Items,
-//     Folders,
-//     ItemPaths,
-//     Txns,
-//     BomRows,
-//     Orders,
-//     OrderLines,
-//     Works,
-//     PurchaseOrders,
-//     PurchaseLines,
-//     Suppliers,
-//     Lots,
-//   ],
-// )a
 class DriftUnifiedRepo extends ChangeNotifier
     implements
         ItemRepo,
@@ -53,13 +36,49 @@ class DriftUnifiedRepo extends ChangeNotifier
         WorkRepo,
         PurchaseOrderRepo,
         SupplierRepo,
-        FolderTreeRepo
-{
+        FolderTreeRepo {
 
-  /// Drift DB 인스턴스
   final AppDatabase db;
 
   DriftUnifiedRepo(this.db);
+
+  // ====== 📦 캐시 ======
+  // Item 전체(단위/힌트 포함) & 재고 수량(int) 동기 접근용
+  final Map<String, Item> _itemsById = {};
+  final Map<String, int> _stockCache = {};
+
+  // 캐시에 넣기 (seed/import, list/get, upsert 이후에 호출)
+  void _cacheItem(Item it) {
+    _itemsById[it.id] = it;
+    _stockCache[it.id] = it.qty; // 최신 qty로 동기 캐시
+  }
+  void _cacheItems(Iterable<Item> list) {
+    for (final it in list) {
+      _cacheItem(it);
+    }
+  }
+
+  Item? _cachedItemOrNull(String id) => _itemsById[id];
+
+  // ─── BOM 캐시(동기 finishedBomOf / semiBomOf 지원) ───
+  final Map<String, List<BomRow>> _bomFinishedCache = {};
+  final Map<String, List<BomRow>> _bomSemiCache = {};
+
+  void _cacheBomRows(String parentId, List<BomRow> rows) {
+    // parentId 기준으로 root별로 분류해서 저장
+    final finished = <BomRow>[];
+    final semi = <BomRow>[];
+    for (final r in rows) {
+      if (r.root == BomRoot.finished) finished.add(r);
+      else if (r.root == BomRoot.semi) semi.add(r);
+    }
+    if (finished.isNotEmpty || _bomFinishedCache.containsKey(parentId)) {
+      _bomFinishedCache[parentId] = finished;
+    }
+    if (semi.isNotEmpty || _bomSemiCache.containsKey(parentId)) {
+      _bomSemiCache[parentId] = semi;
+    }
+  }
 
 
 
@@ -79,9 +98,11 @@ class DriftUnifiedRepo extends ChangeNotifier
       final like = '%${keyword.trim()}%';
       q.where((tbl) => tbl.name.like(like) | tbl.displayName.like(like));
     }
-
     final rows = await q.get();
-    return rows.map((r) => r.toDomain()).toList();
+    final list = rows.map((r) => r.toDomain()).toList();
+    _cacheItems(list);                 // ✅ 캐시에 저장
+    return list;
+
   }
 
   @override
@@ -96,7 +117,9 @@ class DriftUnifiedRepo extends ChangeNotifier
       t.id.like(kw)))
         .get();
 
-    return rows.map((e) => e.toDomain()).toList();
+    final list = rows.map((e) => e.toDomain()).toList();
+    _cacheItems(list);          // ← 추가
+    return list;
   }
 
   @override
@@ -126,8 +149,12 @@ class DriftUnifiedRepo extends ChangeNotifier
       db.items.sku.like(kw),
     );
 
+
     final rows = await joinQuery.get();
-    return rows.map((r) => r.readTable(db.items).toDomain()).toList();
+    final list = rows.map((r) => r.readTable(db.items).toDomain()).toList();
+    _cacheItems(list);          // ← 추가
+    return list;
+
   }
 
   // 폴더 경로 기반 아이템 조회 (StockBrowser에서 사용)
@@ -180,15 +207,22 @@ class DriftUnifiedRepo extends ChangeNotifier
     }
 
     final rows = await join.get();
-    return rows.map((r) => r.readTable(db.items).toDomain()).toList();
+    final list = rows.map((r) => r.readTable(db.items).toDomain()).toList();
+    _cacheItems(list);          // ← 추가
+    return list;
+
+
   }
 
   @override
   Future<Item?> getItem(String id) async {
     final row = await (db.select(db.items)..where((t) => t.id.equals(id)))
         .getSingleOrNull();
-    return row?.toDomain();
+    final it = row?.toDomain();
+    if (it != null) _cacheItem(it);  // ✅ 캐시 갱신
+    return it;
   }
+
 
 
 
@@ -196,6 +230,10 @@ class DriftUnifiedRepo extends ChangeNotifier
   Future<void> upsertItem(Item item) async {
     await db.into(db.items).insertOnConflictUpdate(item.toCompanion());
     await _updateItemPaths(item);
+    // DB write 이후
+    final fresh = await getItem(item.id);  // 새로 읽어 domain으로
+    if (fresh != null) _cacheItem(fresh);  // ✅ 캐시 갱신
+
   }
   Future<void> upsertItemWithPath(
       Item item,
@@ -223,6 +261,10 @@ class DriftUnifiedRepo extends ChangeNotifier
           l3Id: Value(effL3),
         ),
       );
+      // DB write 이후
+      final fresh = await getItem(item.id);  // 새로 읽어 domain으로
+      if (fresh != null) _cacheItem(fresh);  // ✅ 캐시 갱신
+
     });
   }
   Future<void> _updateItemPaths(Item item) async {
@@ -284,6 +326,9 @@ class DriftUnifiedRepo extends ChangeNotifier
   Future<void> deleteItem(String id) async {
     await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
     await (db.delete(db.itemPaths)..where((t) => t.itemId.equals(id))).go();
+    _itemsById.remove(id);
+    _stockCache.remove(id);
+
   }
 
 
@@ -496,11 +541,13 @@ class DriftUnifiedRepo extends ChangeNotifier
       db.items.sku.like(kw),
     );
 
+
     final itemRows = await join.get();
     final itemsFound =
     itemRows.map((r) => r.readTable(db.items).toDomain()).toList();
-
+    _cacheItems(itemsFound);    // ← 추가
     return (folderNodes, itemsFound);
+
   }
 
   @override
@@ -605,12 +652,17 @@ class DriftUnifiedRepo extends ChangeNotifier
   // BOM — finished / semi (sync 미지원 → 예외)
   // ----------------------------------------------------------
   @override
-  List<BomRow> finishedBomOf(String finishedItemId) =>
-      throw UnimplementedError('Use listBom() instead.');
+  List<BomRow> finishedBomOf(String finishedItemId) {
+    // 캐시에 없으면 빈 리스트(보수적) 반환
+    return _bomFinishedCache[finishedItemId] ?? const <BomRow>[];
+  }
 
   @override
-  List<BomRow> semiBomOf(String semiItemId) =>
-      throw UnimplementedError('Use listBom() instead.');
+  List<BomRow> semiBomOf(String semiItemId) {
+    return _bomSemiCache[semiItemId] ?? const <BomRow>[];
+  }
+
+
 
   @override
   Future<void> upsertFinishedBom(String finishedItemId, List<BomRow> rows) async {
@@ -621,14 +673,11 @@ class DriftUnifiedRepo extends ChangeNotifier
 
     for (final r in rows) {
       await db.into(db.bomRows).insertOnConflictUpdate(
-        r
-            .copyWith(
-          root: BomRoot.finished,
-          parentItemId: finishedItemId,
-        )
-            .toCompanion(),
+        r.copyWith(root: BomRoot.finished, parentItemId: finishedItemId).toCompanion(),
       );
     }
+    // ✅ 캐시 갱신
+    _bomFinishedCache[finishedItemId] = rows;
   }
 
   @override
@@ -640,15 +689,14 @@ class DriftUnifiedRepo extends ChangeNotifier
 
     for (final r in rows) {
       await db.into(db.bomRows).insertOnConflictUpdate(
-        r
-            .copyWith(
-          root: BomRoot.semi,
-          parentItemId: semiItemId,
-        )
-            .toCompanion(),
+        r.copyWith(root: BomRoot.semi, parentItemId: semiItemId).toCompanion(),
       );
     }
+    // ✅ 캐시 갱신
+    _bomSemiCache[semiItemId] = rows;
   }
+
+
 
   @override
   Future<void> adjustQty({
@@ -688,6 +736,8 @@ class DriftUnifiedRepo extends ChangeNotifier
         ).toCompanion(),
       );
     });
+    _stockCache[itemId] = (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
+
   }
 
   @override
@@ -705,6 +755,8 @@ class DriftUnifiedRepo extends ChangeNotifier
         conversionRate != null ? Value(conversionRate) : const Value.absent(),
       ),
     );
+    final fresh = await getItem(itemId);
+    if (fresh != null) _cacheItem(fresh);
   }
 
   @override
@@ -741,10 +793,45 @@ class DriftUnifiedRepo extends ChangeNotifier
         .getSingleOrNull();
     return row?.name;
   }
+// 출고 단위 힌트: unitOut 우선, 없으면 unit
+  String? hintUnitOut(String id) {
+    final it = _cachedItemOrNull(id);
+    if (it == null) return null;
+    final uo = it.unitOut.trim();
+    if (uo.isNotEmpty) return uo;
+    final u = it.unit.trim();
+    return u.isNotEmpty ? u : null;
+  }
+
+// EA(개수) 폴백 힌트: stockHints.qty
+  double? hintQtyOut(String id) {
+    final it = _cachedItemOrNull(id);
+    final h = it?.stockHints;
+    if (h == null) return null;
+    final v = h.qty;
+    if (v != null && v > 0) return v.toDouble();
+    return null;
+  }
+
+// M(길이) 폴백 힌트: stockHints.usableQtyM
+  double? hintUsableMeters(String id) {
+    final it = _cachedItemOrNull(id);
+    final h = it?.stockHints;
+    if (h == null) return null;
+    final v = h.usableQtyM;
+    if (v != null && v > 0) return v.toDouble();
+    return null;
+  }
+
 
   @override
-  int stockOf(String itemId) =>
-      throw UnimplementedError('Use getItem() instead.');
+  int stockOf(String itemId) {
+    // 동기 캐시에서 즉시 반환
+    final v = _stockCache[itemId];
+    return v ?? 0; // 캐시에 없으면 0 (보수적으로)
+  }
+
+
 
   // ================================================================
   // =============== TXN REPO =======================================
@@ -825,8 +912,9 @@ class DriftUnifiedRepo extends ChangeNotifier
         ItemsCompanion(qty: Value(newQty)),
       );
     });
-
+    _stockCache[itemId] = (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
     await _refreshTxnSnapshot();
+
   }
 
   @override
@@ -853,14 +941,17 @@ class DriftUnifiedRepo extends ChangeNotifier
   // =============== BOM REPO =======================================
   // ================================================================
 
+
   @override
   Future<List<BomRow>> listBom(String parentItemId) async {
-    final rows =
-    await (db.select(db.bomRows)
+    final rows = await (db.select(db.bomRows)
       ..where((t) => t.parentItemId.equals(parentItemId)))
         .get();
-    return rows.map((r) => r.toDomain()).toList();
+    final list = rows.map((r) => r.toDomain()).toList();
+    _cacheBomRows(parentItemId, list);   // ← 캐시에 저장
+    return list;
   }
+
 
   @override
   Future<void> upsertBomRow(BomRow row) async {
