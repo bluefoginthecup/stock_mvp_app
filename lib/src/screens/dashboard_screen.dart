@@ -20,17 +20,22 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // 드래그로 재배치될 순서 (초기값)
-  List<QuickActionType> _order = const [
-    QuickActionType.orders,
-    QuickActionType.stock,
-    QuickActionType.txns,
-    QuickActionType.works,
-    QuickActionType.purchases,
-    QuickActionType.language,
-    QuickActionType.suppliers,
-    QuickActionType.receipts,
-  ];
+  late List<QuickActionType> _order;
+  @override
+  void initState() {
+    super.initState();
+    _order = [
+      QuickActionType.orders,
+      QuickActionType.stock,
+      QuickActionType.txns,
+      QuickActionType.works,
+      QuickActionType.purchases,
+      QuickActionType.language,
+      QuickActionType.suppliers,
+      QuickActionType.receipts,
+    ];
+  }
+
 
   @override
   Widget build(BuildContext context) {
