@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/order.dart';
+import '../../ui/common/ui.dart';
 
 class TrashScreen extends StatefulWidget {
   const TrashScreen({super.key});
@@ -11,16 +12,15 @@ class TrashScreen extends StatefulWidget {
 }
 
 class _TrashScreenState extends State<TrashScreen> {
-  String _query = '';
+  String _q = '';
 
   Future<List<Order>> _load(BuildContext context) async {
     final repo = context.read<OrderRepo>();
     final all = await repo.listOrders(includeDeleted: true);
-    // 휴지된 것만
-    final del = all.where((o) => o.isDeleted).toList();
-    if (_query.isEmpty) return del;
-    final q = _query.toLowerCase();
-    return del.where((o) =>
+    final deleted = all.where((o) => o.isDeleted).toList();
+    if (_q.isEmpty) return deleted;
+    final q = _q.toLowerCase();
+    return deleted.where((o) =>
     o.customer.toLowerCase().contains(q) ||
         (o.memo ?? '').toLowerCase().contains(q) ||
         o.id.toLowerCase().contains(q)
@@ -28,12 +28,9 @@ class _TrashScreenState extends State<TrashScreen> {
   }
 
   Future<void> _restore(BuildContext ctx, Order o) async {
-    final repo = ctx.read<OrderRepo>();
-    await repo.restoreOrder(o.id);
+    await ctx.read<OrderRepo>().restoreOrder(o.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      const SnackBar(content: Text('복구되었습니다')),
-    );
+    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('복구되었습니다')));
     setState(() {});
   }
 
@@ -51,19 +48,16 @@ class _TrashScreenState extends State<TrashScreen> {
     );
     if (ok != true) return;
 
-    final repo = ctx.read<OrderRepo>();
-    await repo.hardDeleteOrder(o.id);
+    await ctx.read<OrderRepo>().hardDeleteOrder(o.id);
     if (!mounted) return;
-    ScaffoldMessenger.of(ctx).showSnackBar(
-      const SnackBar(content: Text('완전 삭제되었습니다')),
-    );
+    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('완전 삭제되었습니다')));
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('휴지통 • 주문')),
+      appBar: AppBar(title: const Text('통합 휴지통')),
       body: Column(
         children: [
           Padding(
@@ -71,9 +65,20 @@ class _TrashScreenState extends State<TrashScreen> {
             child: TextField(
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
-                hintText: '고객명/메모/ID 검색',
+                hintText: '고객/메모/ID 검색',
               ),
-              onChanged: (v) => setState(() => _query = v.trim()),
+              onChanged: (v) => setState(() => _q = v.trim()),
+            ),
+          ),
+          // --- 섹션: 주문 ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+            child: Row(
+              children: [
+                const Icon(Icons.assignment, size: 18),
+                const SizedBox(width: 8),
+                Text('주문', style: Theme.of(context).textTheme.titleSmall),
+              ],
             ),
           ),
           Expanded(
@@ -92,22 +97,16 @@ class _TrashScreenState extends State<TrashScreen> {
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final o = items[i];
-                    final totalQty = o.lines.fold<int>(0, (a, b) => a + b.qty);
+                    final qty = o.lines.fold<int>(0, (a, b) => a + b.qty);
                     final dateStr = o.date.toIso8601String().substring(0, 10);
                     return ListTile(
                       leading: const Icon(Icons.receipt_long),
-                      title: Text('${o.customer} (${totalQty}ea)'),
+                      title: Text('${o.customer} (${qty}ea)'),
                       subtitle: Text('$dateStr • ${o.status.name} • ${o.id}'),
                       trailing: PopupMenuButton<String>(
                         onSelected: (v) {
-                          switch (v) {
-                            case 'restore':
-                              _restore(context, o);
-                              break;
-                            case 'hard':
-                              _hardDelete(context, o);
-                              break;
-                          }
+                          if (v == 'restore') _restore(context, o);
+                          if (v == 'hard') _hardDelete(context, o);
                         },
                         itemBuilder: (_) => const [
                           PopupMenuItem(value: 'restore', child: Text('복구')),
@@ -121,6 +120,7 @@ class _TrashScreenState extends State<TrashScreen> {
               },
             ),
           ),
+          // --- 여기 아래로 추후 발주/아이템 섹션 추가 예정 ---
         ],
       ),
     );

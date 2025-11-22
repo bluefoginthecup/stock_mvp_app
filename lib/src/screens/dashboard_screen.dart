@@ -1,5 +1,4 @@
 // lib/src/screens/dashboard_screen.dart
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 
@@ -10,10 +9,11 @@ import '../app/main_tab_controller.dart';
 import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'package:stockapp_mvp/src/db/quick_actions_order_dao.dart';
+import 'trash/trash_screen.dart';
 
 
 enum QuickActionType {
-  orders, stock, txns, works, purchases, language, suppliers, receipts,
+  orders, stock, txns, works, purchases, language, suppliers, receipts,trash,
 }
 
 class DashboardScreen extends StatefulWidget {
@@ -48,6 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       QuickActionType.language,
       QuickActionType.suppliers,
       QuickActionType.receipts,
+      QuickActionType.trash,
     ];
 
     // 2) DB에서 저장된 순서 로드 (화면 뜬 뒤)
@@ -55,25 +56,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _loadOrderFromDb();
     });
   }
+  Future<void> _loadOrderFromDb() async {
+    try {
+      final db  = context.read<AppDatabase>();
+      final dao = QuickActionsOrderDao(db);
+      final ids = await dao.loadOrder();
 
-    Future<void> _loadOrderFromDb() async {
-        try {
-          final db = context.read<AppDatabase>(); // AppDatabase를 Provider로 주입했다고 가정
-          final dao = QuickActionsOrderDao(db);
-          final ids = await dao.loadOrder();
-          if (ids.isNotEmpty) {
-            setState(() {
-              _order = ids.map(_typeOf).toList();
-              _orderLoaded = true;
-            });
-          } else {
-            setState(() => _orderLoaded = true);
-          }
-        } catch (_) {
-          // 로드 실패 시 기본 순서로 진행
-          setState(() => _orderLoaded = true);
-        }
-      }
+      // 1) 기본 목록(항상 최신)
+      final defaults = <QuickActionType>[
+        QuickActionType.orders,
+        QuickActionType.stock,
+        QuickActionType.txns,
+        QuickActionType.works,
+        QuickActionType.purchases,
+        QuickActionType.language,
+        QuickActionType.suppliers,
+        QuickActionType.receipts,
+        QuickActionType.trash, // 새로 추가된 액션 포함
+      ];
+
+      // 2) 저장된 목록을 enum으로 변환(알 수 없는 값/구버전 값은 걸러냄)
+      final saved = ids
+          .map(_typeOf)
+          .where((t) => defaults.contains(t))
+          .toList();
+
+      // 3) 기본 중에서 저장에 없는 항목(=신규 추가된 액션들) 뒤에 붙이기
+      final missing = defaults.where((t) => !saved.contains(t));
+
+      final merged = [...saved, ...missing];
+
+      setState(() {
+        _order = merged;
+        _orderLoaded = true;
+      });
+
+      // 4) 머지된 최신 순서를 DB에 다시 저장(다음부터는 바로 보이도록)
+      await _persistOrderToDb();
+
+    } catch (e) {
+      // 실패 시 기본값으로라도 진행
+      setState(() => _orderLoaded = true);
+    }
+
+  }
+
 
     Future<void> _persistOrderToDb() async {
         try {
@@ -151,6 +178,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: '영수증 관리',
             onTap: () => Navigator.of(context, rootNavigator: true).pushNamed('/receipts'),
           );
+        case QuickActionType.trash:
+          return _QuickAction(
+            key: const ValueKey('trash'),
+            icon: Icons.delete_outline,
+            label: '통합 휴지통',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TrashScreen()),
+              );
+            },
+          );
+
       }
     }
 
@@ -199,7 +238,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
 
                 const SizedBox(height: 24),
-                Text('빠른 실행', style: Theme.of(context).textTheme.titleMedium),
+                Text('빠른 실행 (${_order.length})', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
 
                 // ── 중앙 정사각형 2×4 + 드래그 재정렬 ────────────────────
@@ -241,10 +280,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       return Center(
                         child: SizedBox(
                           width: gridContentWidth,
-                          child: ReorderableGridView.count(
-                            // 스크롤 없이 영역 내에서만 드래그
-                            physics: const NeverScrollableScrollPhysics(),
-                            shrinkWrap: true,
+
+                             child: SizedBox(
+                               height: availableHeight, // 화면 남은 높이 만큼 고정
+                               child: ReorderableGridView.count(
+                             physics: actions.length > 8
+                                     ? const BouncingScrollPhysics()
+                                   : const NeverScrollableScrollPhysics(),
+                           shrinkWrap: false,
                             crossAxisCount: crossAxisCount,
                             mainAxisSpacing: mainSpacing,
                             crossAxisSpacing: crossSpacing,
@@ -268,6 +311,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                             ],
                           ),
+                        ),
                         ),
                       );
                     },
@@ -331,42 +375,42 @@ class _QuickTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      key: action.key, // ← Reorderable용 고유 Key
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: action.onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Theme.of(context).dividerColor),
-          ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(action.icon, size: 28),
-                  const SizedBox(height: 8),
-                  Text(
-                    action.label,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  // 힌트: 길게 눌러서 순서 변경
-                  Text('↕ 길게 눌러 이동', style: Theme.of(context).textTheme.labelSmall),
-                ],
+    final shape = RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Theme.of(context).dividerColor),
+        );
+
+        return Material(
+          // 카드 느낌으로 살짝 떠 있게
+          elevation: 3, // ← 입체감
+          shadowColor: Colors.black26,
+
+          color: scheme.surface,
+          shape: shape,
+          child: InkWell(
+            onTap: action.onTap,
+            customBorder: shape,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(action.icon, size: 28),
+                    const SizedBox(height: 8),
+                    Text(
+                      action.label,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    // 안내 텍스트 제거됨 ✅
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
-    );
+        );
   }
 }

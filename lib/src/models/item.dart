@@ -1,4 +1,5 @@
 class Item {
+  final bool isFavorite;
   final String id;
   final String name;
   final String? displayName;
@@ -31,6 +32,7 @@ class Item {
   final String? supplierName;
 
   Item({
+    this.isFavorite = false,   // 기본값 false
     required this.id,
     required this.name,
     this.displayName,
@@ -59,6 +61,7 @@ class Item {
         conversionMode = conversionMode ?? 'fixed'; // 기본값: 고정환산
 
   Item copyWith({
+    bool? isFavorite,
     String? name,
     String? displayName,
     String? sku,
