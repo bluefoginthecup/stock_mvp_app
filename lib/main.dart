@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:firebase_core/firebase_core.dart'; // ✅ 추가
+
 import 'src/app.dart';
-// ⛔ inmem, repo_views, sqlite_item_repo 더 이상 직접 안 씀
-// import 'src/repos/inmem_repo.dart';
-// import 'src/repos/repo_views.dart';
-// import 'src/repos/sqlite_item_repo.dart';
 
 import 'src/repos/repo_interfaces.dart';
 import 'src/services/inventory_service.dart';
@@ -21,24 +19,23 @@ import 'src/models/purchase_order.dart';
 import 'src/app/main_tab_controller.dart';
 import 'src/screens/stock/widgets/item_selection_controller.dart';
 
+// ✅ 추가: Auth & Gate
+import 'src/services/auth_service.dart';
+import 'src/screens/auth/launch_gate.dart';
+
 // Drift + SQLite
 import 'src/db/app_database.dart';
 import 'src/repos/drift_unified_repo.dart';  // ✅ 새 통합 Repo
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   // ⬇⬇⬇ 요 줄 추가 (Provider 경고 끄기)
   Provider.debugCheckInvalidValueType = null;
 
   // 1) Drift DB 인스턴스
   final db = AppDatabase();
-
-
-  // 🔥 1회용: 폴더 & item_paths 완전 초기화
-  await db.transaction(() async {
-    await db.delete(db.itemPaths).go();
-    await db.delete(db.folders).go();
-  });
 
   // 2) 통합 Drift Repo (Item / Txn / Order / Work / Purchase / Supplier / Paths 모두 포함)
   final unifiedRepo = DriftUnifiedRepo(db);
@@ -65,6 +62,8 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        // ✅ AuthService 전역 주입
+        Provider(create: (_) => AuthService()),
         Provider(create: (_) => const Uuid()),
 
         // DB 인스턴스
@@ -91,9 +90,6 @@ Future<void> main() async {
           create: (_) => ItemSelectionController(),
         ),
 
-        // (원래 있던 DriftUnifiedRepo ChangeNotifierProvider가
-        //  이미 위에 있으니까, 혹시 중복으로 또 있으면 하나만 남기기)
-
         // ✅ 발주 목록 스트림
         StreamProvider<List<PurchaseOrder>>(
           create: (ctx) =>
@@ -117,9 +113,10 @@ Future<void> main() async {
           ),
         ),
       ],
-      child: const StockApp(),
+      // ⛳️ 여기만 바뀜: 로그인 게이트로 감싼 뒤, 로그인 완료되면 StockApp 진입
+      child: LaunchGate(
+        signedInBuilder: (_) => const StockApp(),
+      ),
     ),
   );
-
 }
-
