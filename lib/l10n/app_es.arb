@@ -21,10 +21,19 @@
   "btn_add": "Agregar",
   "btn_apply": "Aplicar",
   "btn_save": "Guardar",
+
   "common_cancel": "Cancelar",
   "common_delete": "Eliminar",
-  "common_delete_forever": "¿Seguro que deseas eliminarlo permanentemente? Esta acción no se puede deshacer.",
-  "common_delete_title": "El pedido se eliminará (ocultará). Ya no aparecerá en la lista.",
+  "common_delete_forever": "Eliminar permanentemente",
+  "common_delete_title": "¿Deseas eliminar este pedido?",
+  "confirm_delete_forever_body": "¿Seguro que quieres eliminarlo permanentemente? Esta acción no se puede deshacer.",
+  "confirm_delete_soft_body": "El pedido será ocultado y no aparecerá en la lista.",
+  "menu_delete_hide": "Ocultar (eliminación suave)",
+  "menu_delete_forever": "Eliminar permanentemente",
+  "toast_order_deleted_forever": "Eliminado permanentemente.",
+  "toast_order_hidden": "Pedido ocultado.",
+  "toast_order_delete_failed": "Error al eliminar: {error}",
+
 
   "common_ok": "Aceptar",
   "common_retry": "reintento",

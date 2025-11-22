@@ -41,10 +41,33 @@ class L10nEs extends L10n {
   String get common_delete => 'Eliminar';
 
   @override
-  String get common_delete_forever => '¿Seguro que deseas eliminarlo permanentemente? Esta acción no se puede deshacer.';
+  String get common_delete_forever => 'Eliminar permanentemente';
 
   @override
-  String get common_delete_title => 'El pedido se eliminará (ocultará). Ya no aparecerá en la lista.';
+  String get common_delete_title => '¿Deseas eliminar este pedido?';
+
+  @override
+  String get confirm_delete_forever_body => '¿Seguro que quieres eliminarlo permanentemente? Esta acción no se puede deshacer.';
+
+  @override
+  String get confirm_delete_soft_body => 'El pedido será ocultado y no aparecerá en la lista.';
+
+  @override
+  String get menu_delete_hide => 'Ocultar (eliminación suave)';
+
+  @override
+  String get menu_delete_forever => 'Eliminar permanentemente';
+
+  @override
+  String get toast_order_deleted_forever => 'Eliminado permanentemente.';
+
+  @override
+  String get toast_order_hidden => 'Pedido ocultado.';
+
+  @override
+  String toast_order_delete_failed(Object error) {
+    return 'Error al eliminar: $error';
+  }
 
   @override
   String get common_ok => 'Aceptar';

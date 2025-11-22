@@ -1,4 +1,3 @@
-
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -30,30 +29,38 @@ class _OrderListScreenState extends State<OrderListScreen> {
     setState(() {
       _future = _repo.listOrders();
     });
-    // await 해서 당겨서 새로고침 인디케이터가 자연스럽게 사라지도록
     await _future;
   }
 
   Future<void> _deleteOrder(Order o, {required bool hard}) async {
     final t = context.t;
-    final ok = await showDialog<bool>(
+
+    // ❗ showDialog는 null을 반환할 수 있으므로 bool? 로 받기
+    final bool? ok = await showDialog<bool>(
       context: context,
-      builder: (dctx) => AlertDialog(
-        title: Text(hard ? t.common_delete_forever : t.common_delete_title),
-        content: Text(
-          hard
-              ? '정말 완전 삭제할까요? 이 작업은 되돌릴 수 없습니다.'
-              : '주문을 삭제(숨김)합니다. 목록에서 보이지 않게 됩니다.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(dctx, false), child: Text(t.common_cancel)),
-          TextButton(
-            onPressed: () => Navigator.pop(dctx, true),
-            child: Text(hard ? t.common_delete_forever : t.common_delete),
+      builder: (dctx) {
+        return AlertDialog(
+          // 타이틀: 하드/소프트에 따라 다른 질문형 제목
+          title: Text(hard ? t.common_delete_forever : t.common_delete_title),
+          // 본문: 하드/소프트 각각의 설명 (l10n으로 통일)
+          content: Text(
+            hard ? t.confirm_delete_forever_body : t.confirm_delete_soft_body,
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dctx, false),
+              child: Text(t.common_cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dctx, true),
+              // 액션 라벨은 짧고 명확하게: Delete / Permanently delete
+              child: Text(hard ? t.common_delete_forever : t.common_delete),
+            ),
+          ],
+        );
+      },
     );
+
     if (ok != true) return;
 
     try {
@@ -64,21 +71,27 @@ class _OrderListScreenState extends State<OrderListScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(hard ? '완전 삭제되었습니다.' : '삭제(숨김)되었습니다.')),
+        SnackBar(
+          content: Text(
+            hard ? t.toast_order_deleted_forever : t.toast_order_hidden,
+          ),
+        ),
       );
       await _reload();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: $e')),
+        SnackBar(content: Text(t.toast_order_delete_failed('$e'))),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = context.t;
+
     return Scaffold(
-      appBar: AppBar(title: Text(context.t.order_list_title)),
+      appBar: AppBar(title: Text(t.order_list_title)),
       body: RefreshIndicator(
         onRefresh: _reload,
         child: FutureBuilder<List<Order>>(
@@ -94,7 +107,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(context.t.common_error,
+                      Text(t.common_error,
                           style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 8),
                       Text('${snap.error}',
@@ -103,7 +116,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                       const SizedBox(height: 12),
                       OutlinedButton(
                         onPressed: _reload,
-                        child: Text(context.t.common_retry),
+                        child: Text(t.common_retry),
                       ),
                     ],
                   ),
@@ -119,7 +132,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                 children: [
                   SizedBox(
                     height: MediaQuery.of(context).size.height * 0.6,
-                    child: Center(child: Text(context.t.order_list_empty_hint)),
+                    child: Center(child: Text(t.order_list_empty_hint)),
                   )
                 ],
               );
@@ -130,8 +143,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (_, i) {
                 final o = orders[i];
-                final totalQty =
-                    o.lines?.fold<int>(0, (a, b) => a + (b.qty)) ?? 0;
+                final totalQty = o.lines?.fold<int>(0, (a, b) => a + (b.qty)) ?? 0;
 
                 return ListTile(
                   title: Text('${o.customer} (${totalQty}ea)'),
@@ -151,18 +163,21 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     onSelected: (v) {
                       switch (v) {
                         case 'soft':
-                          _deleteOrder(o,hard: false);
+                          _deleteOrder(o, hard: false);
                           break;
                         case 'hard':
-                          _deleteOrder(o,hard: true);
+                          _deleteOrder(o, hard: true);
                           break;
                       }
                     },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'soft', child: Text('삭제(숨김)')),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: 'soft',
+                        child: Text(t.menu_delete_hide), // ← l10n
+                      ),
                       PopupMenuItem(
                         value: 'hard',
-                        child: Text('완전 삭제'),
+                        child: Text(t.menu_delete_forever), // ← l10n
                       ),
                     ],
                     icon: const Icon(Icons.more_vert),

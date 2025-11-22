@@ -35,16 +35,39 @@ class L10nKo extends L10n {
   String get btn_save => '저장';
 
   @override
-  String get common_cancel => 'Cancel';
+  String get common_cancel => '취소';
 
   @override
   String get common_delete => '삭제';
 
   @override
-  String get common_delete_forever => '정말 완전 삭제할까요? 이 작업은 되돌릴 수 없습니다.';
+  String get common_delete_forever => '영구 삭제';
 
   @override
-  String get common_delete_title => '주문을 삭제(숨김)합니다. 목록에서 보이지 않게 됩니다.';
+  String get common_delete_title => '주문을 삭제할까요?';
+
+  @override
+  String get confirm_delete_forever_body => '정말 완전 삭제할까요? 이 작업은 되돌릴 수 없습니다.';
+
+  @override
+  String get confirm_delete_soft_body => '주문을 삭제(숨김)합니다. 목록에서 보이지 않게 됩니다.';
+
+  @override
+  String get menu_delete_hide => '삭제(숨김)';
+
+  @override
+  String get menu_delete_forever => '완전 삭제';
+
+  @override
+  String get toast_order_deleted_forever => '완전 삭제되었습니다.';
+
+  @override
+  String get toast_order_hidden => '삭제(숨김)되었습니다.';
+
+  @override
+  String toast_order_delete_failed(Object error) {
+    return '삭제 실패: $error';
+  }
 
   @override
   String get common_ok => '확인';

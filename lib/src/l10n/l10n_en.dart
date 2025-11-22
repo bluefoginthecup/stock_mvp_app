@@ -41,10 +41,33 @@ class L10nEn extends L10n {
   String get common_delete => 'Delete';
 
   @override
-  String get common_delete_forever => 'Are you sure you want to permanently delete this? This action cannot be undone.';
+  String get common_delete_forever => 'Permanently delete';
 
   @override
-  String get common_delete_title => 'The order will be deleted (hidden). It will no longer appear in the list.';
+  String get common_delete_title => 'Delete this order?';
+
+  @override
+  String get confirm_delete_forever_body => 'This will permanently delete it. This action cannot be undone.';
+
+  @override
+  String get confirm_delete_soft_body => 'This will hide the order. It won\'t appear in the list.';
+
+  @override
+  String get menu_delete_hide => 'Hide (soft delete)';
+
+  @override
+  String get menu_delete_forever => 'Permanently delete';
+
+  @override
+  String get toast_order_deleted_forever => 'Permanently deleted.';
+
+  @override
+  String get toast_order_hidden => 'Hidden (soft-deleted).';
+
+  @override
+  String toast_order_delete_failed(Object error) {
+    return 'Delete failed: $error';
+  }
 
   @override
   String get common_ok => 'OK';

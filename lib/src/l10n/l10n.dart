@@ -148,7 +148,7 @@ abstract class L10n {
   /// No description provided for @common_cancel.
   ///
   /// In ko, this message translates to:
-  /// **'Cancel'**
+  /// **'취소'**
   String get common_cancel;
 
   /// No description provided for @common_delete.
@@ -160,14 +160,56 @@ abstract class L10n {
   /// No description provided for @common_delete_forever.
   ///
   /// In ko, this message translates to:
-  /// **'정말 완전 삭제할까요? 이 작업은 되돌릴 수 없습니다.'**
+  /// **'영구 삭제'**
   String get common_delete_forever;
 
   /// No description provided for @common_delete_title.
   ///
   /// In ko, this message translates to:
-  /// **'주문을 삭제(숨김)합니다. 목록에서 보이지 않게 됩니다.'**
+  /// **'주문을 삭제할까요?'**
   String get common_delete_title;
+
+  /// No description provided for @confirm_delete_forever_body.
+  ///
+  /// In ko, this message translates to:
+  /// **'정말 완전 삭제할까요? 이 작업은 되돌릴 수 없습니다.'**
+  String get confirm_delete_forever_body;
+
+  /// No description provided for @confirm_delete_soft_body.
+  ///
+  /// In ko, this message translates to:
+  /// **'주문을 삭제(숨김)합니다. 목록에서 보이지 않게 됩니다.'**
+  String get confirm_delete_soft_body;
+
+  /// No description provided for @menu_delete_hide.
+  ///
+  /// In ko, this message translates to:
+  /// **'삭제(숨김)'**
+  String get menu_delete_hide;
+
+  /// No description provided for @menu_delete_forever.
+  ///
+  /// In ko, this message translates to:
+  /// **'완전 삭제'**
+  String get menu_delete_forever;
+
+  /// No description provided for @toast_order_deleted_forever.
+  ///
+  /// In ko, this message translates to:
+  /// **'완전 삭제되었습니다.'**
+  String get toast_order_deleted_forever;
+
+  /// No description provided for @toast_order_hidden.
+  ///
+  /// In ko, this message translates to:
+  /// **'삭제(숨김)되었습니다.'**
+  String get toast_order_hidden;
+
+  /// No description provided for @toast_order_delete_failed.
+  ///
+  /// In ko, this message translates to:
+  /// **'삭제 실패: {error}'**
+  String toast_order_delete_failed(Object error);
 
   /// No description provided for @common_ok.
   ///
