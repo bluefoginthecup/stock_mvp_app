@@ -296,6 +296,15 @@ class Lots extends Table {
 /// =======================
 ///  AppDatabase
 /// =======================
+// ➊ 빠른실행 순서 저장 테이블
+class QuickActionOrders extends Table {
+    // 액션 ID (enum을 문자열로 저장: 'orders','stock',...)
+    TextColumn get action => text()();
+    // 현재 순서 (0부터 시작)
+    IntColumn get orderIndex => integer()();
+    @override
+    Set<Column> get primaryKey => {action};
+  }
 
 @DriftDatabase(
   tables: [
@@ -311,6 +320,7 @@ class Lots extends Table {
     PurchaseLines,
     Suppliers,
     Lots,
+    QuickActionOrders, // ➋ 등록
   ],
 )
 class AppDatabase extends _$AppDatabase {

@@ -8,6 +8,9 @@ import '../ui/common/ui.dart';
 import '../screens/stock/stock_browser_screen.dart';
 import '../app/main_tab_controller.dart';
 import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
+import 'package:stockapp_mvp/src/db/app_database.dart';
+import 'package:stockapp_mvp/src/db/quick_actions_order_dao.dart';
+
 
 enum QuickActionType {
   orders, stock, txns, works, purchases, language, suppliers, receipts,
@@ -18,12 +21,24 @@ class DashboardScreen extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
-
 class _DashboardScreenState extends State<DashboardScreen> {
   late List<QuickActionType> _order;
+
+  bool _orderLoaded = false;
+
+  // enum ↔ string
+  String _idOf(QuickActionType t) => t.name;
+  QuickActionType _typeOf(String id) =>
+      QuickActionType.values.firstWhere(
+            (e) => e.name == id,
+        orElse: () => QuickActionType.orders,
+      );
+
   @override
   void initState() {
     super.initState();
+
+    // 1) 기본 순서 초기화
     _order = [
       QuickActionType.orders,
       QuickActionType.stock,
@@ -34,9 +49,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
       QuickActionType.suppliers,
       QuickActionType.receipts,
     ];
+
+    // 2) DB에서 저장된 순서 로드 (화면 뜬 뒤)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadOrderFromDb();
+    });
   }
 
+    Future<void> _loadOrderFromDb() async {
+        try {
+          final db = context.read<AppDatabase>(); // AppDatabase를 Provider로 주입했다고 가정
+          final dao = QuickActionsOrderDao(db);
+          final ids = await dao.loadOrder();
+          if (ids.isNotEmpty) {
+            setState(() {
+              _order = ids.map(_typeOf).toList();
+              _orderLoaded = true;
+            });
+          } else {
+            setState(() => _orderLoaded = true);
+          }
+        } catch (_) {
+          // 로드 실패 시 기본 순서로 진행
+          setState(() => _orderLoaded = true);
+        }
+      }
 
+    Future<void> _persistOrderToDb() async {
+        try {
+          final db = context.read<AppDatabase>();
+          final dao = QuickActionsOrderDao(db);
+          await dao.saveOrder(_order.map(_idOf).toList());
+        } catch (_) {
+          // 저장 실패는 조용히 무시(로그 필요시 추가)
+        }
+      }
   @override
   Widget build(BuildContext context) {
     final itemRepo = context.read<ItemRepo>();
@@ -204,13 +251,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             childAspectRatio: 1.0, // 정사각형
                             // 드래그 시작 제스처(기본: long-press)
                             dragWidgetBuilder: (index, child) => child,
-                            onReorder: (oldIndex, newIndex) {
+
+                            onReorder: (oldIndex, newIndex) async {
                               setState(() {
-                                // 표준 리스트 재정렬 로직
-                                if (oldIndex < newIndex) newIndex -= 1;
                                 final moved = _order.removeAt(oldIndex);
                                 _order.insert(newIndex, moved);
                               });
+                              // 변경 즉시 DB 반영
+                              await _persistOrderToDb();
                             },
                             children: [
                               for (final a in actions)
