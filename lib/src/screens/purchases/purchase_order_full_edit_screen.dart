@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../../models/purchase_order.dart';
 import '../../repos/repo_interfaces.dart';

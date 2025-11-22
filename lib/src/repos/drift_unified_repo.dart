@@ -330,6 +330,29 @@ class DriftUnifiedRepo extends ChangeNotifier
 
   }
 
+  /// 아이템 즐겨찾기 추가
+  Future<void> toggleFavorite(String itemId, bool value) async {
+    await (db.update(db.items)
+      ..where((t) => t.id.equals(itemId)))
+        .write(ItemsCompanion(isFavorite: Value(value)));
+  }
+
+  @override
+  Stream<List<Item>> watchItems({String? keyword}) {
+    final q = db.select(db.items);
+    if (keyword != null && keyword.isNotEmpty) {
+      // name/sku LIKE 검색 예시
+      final like = '%${keyword.replaceAll('%', r'\%')}%';
+      q.where((t) => t.name.like(like) | t.sku.like(like));
+    }
+    // 생성된 확장 메서드 r.toDomain() 사용
+        return q.watch().map((rows) {
+          final list = rows.map((r) => r.toDomain()).toList();
+          _cacheItems(list); // 선택: 캐시 최신화
+          return list;
+        });
+  }
+
 
 
   // ================================================================

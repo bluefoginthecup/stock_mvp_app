@@ -8,7 +8,6 @@ import 'package:stockapp_mvp/src/screens/txns/txn_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/works/work_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_detail_screen.dart';
-import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
 
 import 'package:stockapp_mvp/src/repos/inmem_repo.dart';
 import 'main_tab_controller.dart';

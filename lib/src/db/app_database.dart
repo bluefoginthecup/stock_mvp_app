@@ -64,6 +64,11 @@ class Items extends Table {
   // 거래처
   TextColumn get supplierName => text().nullable()();
 
+  //즐겨찾기
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+
+
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -304,6 +309,7 @@ class QuickActionOrders extends Table {
     IntColumn get orderIndex => integer()();
     @override
     Set<Column> get primaryKey => {action};
+
   }
 
 @DriftDatabase(
@@ -327,7 +333,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -340,6 +346,10 @@ class AppDatabase extends _$AppDatabase {
             if (from < 2) {
               await m.addColumn(orders, orders.deletedAt);
               // await m.addColumn(purchaseOrders, purchaseOrders.deletedAt); // 발주에도 적용 시
+            }
+            // ⭐ v2 → v3: Items.isFavorite 추가
+            if (from < 3) {
+              await m.addColumn(items, items.isFavorite);
             }
     },
   );

@@ -13,7 +13,6 @@ import '../../ui/common/search_field.dart';
 import '../../ui/common/path_picker.dart';
 import '../../ui/common/entity_actions.dart';
 import 'stock_item_detail_screen.dart';
-import '../../utils/item_presentation.dart';
 import '../../services/export_service.dart';
 import '../../ui/common/qty_set_sheet.dart';
 import '../../repos/repo_interfaces.dart'; // ✅ ItemRepo, FolderTreeRepo, MoveRequest, FolderSortMode, EntityKind
@@ -70,6 +69,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   String? _l3Id;
   final _searchC = TextEditingController();
   bool _lowOnly = false;
+  bool _showFavoriteOnly = false;
 
   // ───────────────────────── 삭제 에러 메시지 매핑 ─────────────────────────
   String _friendlyDeleteError(Object e) {
@@ -129,6 +129,19 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   List<Item> _applyLowStockFilter(List<Item> items) {
     return items.where((it) => it.minQty > 0 && it.qty <= it.minQty).toList();
   }
+
+  // ✅ 공통 필터: 임계치 + 즐겨찾기
+    List<Item> _applyFilters(List<Item> items) {
+        var filtered = items;
+        if (_lowOnly) {
+          filtered = filtered.where((it) => it.minQty > 0 && it.qty <= it.minQty).toList();
+        }
+        if (_showFavoriteOnly) {
+          // isFavorite 없을 수도 있으니 == true 로 안전하게
+          filtered = filtered.where((it) => it.isFavorite == true).toList();
+        }
+        return filtered;
+      }
 
   Future<void> _createFolder() async {
     final repo = context.read<FolderTreeRepo>();
@@ -229,11 +242,13 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   }
 
   // ───────────────────────── Data loader ─────────────────────────
-  Future<Object?> _loadData(
+
+  Future<(List<FolderNode>, List<Item>)> _loadData(
       FolderTreeRepo folderRepo,
       ItemRepo itemRepo, {
         required bool hasKeyword,
         required bool lowOnly,
+        required bool favOnly,
         required int depth,
         required String? l1,
         required String? l2,
@@ -242,7 +257,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       }) async {
     // 🔍 검색 모드: 폴더 + 아이템 동시 검색
     if (hasKeyword) {
-      return folderRepo.searchAll(
+      return await folderRepo.searchAll(
         l1: l1,
         l2: l2,
         l3: l3,
@@ -251,27 +266,28 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       );
     }
 
-    // 🔻 임계치 필터
-    if (lowOnly) {
-      if (depth == 0) {
-        final items = await itemRepo.listItems(); // 전체 아이템
-        return _applyLowStockFilter(items);
-      } else {
-        final folders = await folderRepo.listFolderChildren(_selectedId);
-        final items = await (itemRepo as dynamic).listItemsByFolderPath(
-          l1: l1,
-          l2: l2,
-          l3: l3,
-          recursive: true,
-        ) as List<Item>;
-        return [folders, items];
-      }
-    }
+    // 🔻 임계치 또는 즐겨찾기 ON이면: 루트에서도 "아이템 모드"
+        if (lowOnly || favOnly) {
+          if (depth == 0) {
+            final items = await itemRepo.listItems(); // 전체 아이템
+            return (<FolderNode>[], items);
+          } else {
+            final folders = await folderRepo.listFolderChildren(_selectedId);
+            final items = await (itemRepo as dynamic).listItemsByFolderPath(
+              l1: l1,
+              l2: l2,
+              l3: l3,
+              recursive: true,
+            ) as List<Item>;
+            return (folders, items);
+          }
+        }
 
     // 일반 모드
     if (depth == 0) {
       // L1 루트 목록
-      return folderRepo.listFolderChildren(null);
+      final folders = await folderRepo.listFolderChildren(null);
+      return (folders, <Item>[]);
     } else {
       final folders = await folderRepo.listFolderChildren(_selectedId);
       final items = await (itemRepo as dynamic).listItemsByFolderPath(
@@ -280,7 +296,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         l3: l3,
         recursive: false,
       ) as List<Item>;
-      return [folders, items];
+      return (folders, items);
     }
   }
 
@@ -544,18 +560,26 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       onSelected: (v) => setState(() => _lowOnly = v),
                       avatar: const Icon(Icons.warning_amber_rounded, size: 18),
                     ),
+                    FilterChip(
+                      label: Text("즐겨찾기"),
+                      selected: _showFavoriteOnly,
+                      onSelected: (v) => setState(() => _showFavoriteOnly = v),
+                    )
+
                   ],
                 ),
               ),
               const Divider(height: 1),
               // ───────────────────────── Content ─────────────────────────
-              Expanded(
-                child: FutureBuilder<Object?>(
-                  future: _loadData(
+
+        Expanded(
+         child: FutureBuilder<(List<FolderNode>, List<Item>)>(
+           future: _loadData(
                     folderRepo,
                     itemRepo,
                     hasKeyword: hasKeyword,
                     lowOnly: _lowOnly,
+                    favOnly: _showFavoriteOnly,
                     depth: depth,
                     l1: _l1Id,
                     l2: _l2Id,
@@ -570,24 +594,21 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       return Center(child: Text('오류: ${snap.error}'));
                     }
 
+                    final (folders, items) = snap.data!;
                     List<Item> currentItems = [];
                     final slivers = <Widget>[];
 
-                    if (depth == 0 && _lowOnly && !hasKeyword) {
-                      final items = (snap.data as List<Item>);
-                      if (items.isEmpty) {
-                        return const Center(
-                            child: Text('임계치 이하 아이템이 없습니다.'));
-                      }
-                      currentItems = items;
-                      slivers.add(_buildItemSliver(items));
-                      slivers.add(const SliverToBoxAdapter(
-                          child: SizedBox(height: 80)));
-                    } else if (hasKeyword) {
-                      final (folders, items) =
-                      snap.data as (List<FolderNode>, List<Item>);
-                      final filtered =
-                      _lowOnly ? _applyLowStockFilter(items) : items;
+                    // 루트 & 검색 없음 & (임계치 or 즐겨찾기) ON → 전체 아이템에서 필터 적용
+                                        if (depth == 0 && !hasKeyword && (_lowOnly || _showFavoriteOnly)) {
+                                          final filtered = _applyFilters(items);
+                                          if (filtered.isEmpty) {
+                                            return const Center(child: Text('조건에 맞는 아이템이 없습니다.'));
+                                          }
+                                          currentItems = filtered;
+                                          slivers.add(_buildItemSliver(filtered));
+                                          slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 80)));
+                                        } else if (hasKeyword) {
+                                          final filtered = _applyFilters(items);
 
                       if (folders.isEmpty && filtered.isEmpty) {
                         return const Center(child: Text('검색 결과가 없습니다.'));
@@ -609,7 +630,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       slivers.add(const SliverToBoxAdapter(
                           child: SizedBox(height: 80)));
                     } else if (depth == 0) {
-                      final folders = snap.data as List<FolderNode>;
                       if (folders.isEmpty) {
                         return const Center(
                             child: Text('하위 폴더가 없습니다.  버튼으로 추가하세요.'));
@@ -618,11 +638,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       slivers.add(const SliverToBoxAdapter(
                           child: SizedBox(height: 80)));
                     } else {
-                      final result = snap.data as List<Object>;
-                      final folders = result[0] as List<FolderNode>;
-                      final items = result[1] as List<Item>;
-                      final filtered =
-                      _lowOnly ? _applyLowStockFilter(items) : items;
+                      final filtered = _applyFilters(items);
 
                       if (folders.isEmpty && filtered.isEmpty) {
                         return const Center(
