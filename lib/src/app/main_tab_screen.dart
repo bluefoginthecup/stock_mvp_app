@@ -29,7 +29,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
   final _txnKey      = GlobalKey<NavigatorState>();
   final _workKey     = GlobalKey<NavigatorState>();
   final _purchaseKey = GlobalKey<NavigatorState>();
-  final _settingsKey = GlobalKey<NavigatorState>(); // ✅ 추가
 
 
   // 현재 탭의 navigator 키 얻기
@@ -41,7 +40,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
       case 3: return _txnKey;
       case 4: return _workKey;
       case 5: return _purchaseKey;
-      case 6: return _settingsKey; // ✅ 추가
 
       default: return _dashKey;
     }
@@ -51,8 +49,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
   Widget build(BuildContext context) {
     final ctrl = context.watch<MainTabController>();
 
-    // destinations 갯수(=7)에 맞게 index를 안전화
-    final idx = (ctrl.index < 0 || ctrl.index > 6) ? 0 : ctrl.index;
+    // destinations 갯수(=6)에 맞게 index를 안전화
+    final idx = (ctrl.index < 0 || ctrl.index > 5) ? 0 : ctrl.index;
 
     return WillPopScope(
       // 내부 스택이 남아있으면 pop만 하고 앱은 안나가도록
@@ -74,7 +72,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
             _buildTxnsNav(),
             _buildWorksNav(),
             _buildPurchasesNav(context),
-            _buildSettingsNav(), // ✅ 추가
           ],
         ),
         bottomNavigationBar: NavigationBar(
@@ -87,7 +84,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
             NavigationDestination(icon: Icon(Icons.swap_vert),     label: '입출고기록'),
             NavigationDestination(icon: Icon(Icons.handyman),      label: '작업'),
             NavigationDestination(icon: Icon(Icons.local_shipping),label: '발주'),
-            NavigationDestination(icon: Icon(Icons.language),       label: '언어설정'), // ✅ 추가 (언어)
 
           ],
         ),
@@ -166,15 +162,6 @@ class _MainTabScreenState extends State<MainTabScreen> {
           settings: settings,
         );
       },
-    );
-  }
-  Widget _buildSettingsNav() { // ✅ 추가
-    return Navigator(
-      key: _settingsKey,
-      onGenerateRoute: (settings) => MaterialPageRoute(
-        builder: (_) => const LanguageSettingsScreen(), //
-        settings: settings,
-      ),
     );
   }
 }

@@ -20,7 +20,6 @@ import '../models/types.dart';
 // 표준 repo 인터페이스
 import 'repo_interfaces.dart';
 
-part 'drift_unified_repo.g.dart';
 
 /// ============================================================================
 ///  DriftUnifiedRepo
@@ -1068,6 +1067,7 @@ class DriftUnifiedRepo extends ChangeNotifier
       OrdersCompanion(
         isDeleted: const Value(true),
         updatedAt: Value(nowIso),
+        deletedAt: Value(nowIso),
       ),
     );
   }
@@ -1090,6 +1090,8 @@ class DriftUnifiedRepo extends ChangeNotifier
         OrdersCompanion(
           isDeleted: const Value(false),
           updatedAt: Value(nowIso),
+          deletedAt: const Value<String?>(null), // ⬅️ 복구 시 삭제일자 제거
+
         ),
       );
 

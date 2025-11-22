@@ -168,6 +168,8 @@ class Orders extends Table {
   BoolColumn get isDeleted =>
       boolean().withDefault(const Constant(false))();
   TextColumn get updatedAt => text().nullable()(); // ISO8601
+  TextColumn get deletedAt => text().nullable()(); // ISO8601
+
 
   @override
   Set<Column> get primaryKey => {id};
@@ -315,7 +317,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -324,6 +326,11 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (m, from, to) async {
       // 나중에 schemaVersion 올릴 때 여기서 ALTER TABLE 등 처리
+      // v1 → v2: Orders.deletedAt 추가 (+ 필요시 PurchaseOrders.deletedAt)
+            if (from < 2) {
+              await m.addColumn(orders, orders.deletedAt);
+              // await m.addColumn(purchaseOrders, purchaseOrders.deletedAt); // 발주에도 적용 시
+            }
     },
   );
 }
@@ -536,6 +543,8 @@ extension OrderRowMappingExt on OrderRow {
     lines: lines,
     isDeleted: isDeleted,
     updatedAt: updatedAt != null ? DateTime.parse(updatedAt!) : null,
+    deletedAt: deletedAt != null ? DateTime.parse(deletedAt!) : null,
+
   );
 }
 
@@ -555,6 +564,20 @@ extension OrderLineToCompanion on OrderLine {
     qty: Value(qty),
   );
 }
+
+extension OrderToCompanion on Order {
+  OrdersCompanion toCompanion() => OrdersCompanion(
+    id: Value(id),
+    date: Value(date.toIso8601String()),
+    customer: Value(customer),
+    memo: Value(memo),
+    status: Value(status.name),
+    isDeleted: Value(isDeleted),
+    updatedAt: Value(updatedAt?.toIso8601String()),
+    deletedAt: Value(deletedAt?.toIso8601String()),
+  );
+}
+
 
 /// =======================
 ///  Row ↔ Work

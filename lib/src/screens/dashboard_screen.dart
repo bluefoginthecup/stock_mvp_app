@@ -5,6 +5,8 @@ import '../ui/common/ui.dart';
 import '../screens/stock/stock_browser_screen.dart';
 import '../app/main_tab_controller.dart'; // ✅ 추가
 import '../models/suppliers.dart'; // ✅ 등록 후 되돌아올 때 타입 체크용 (선택)
+import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
+
 
 
 class DashboardScreen extends StatelessWidget {
@@ -87,7 +89,13 @@ class DashboardScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               ElevatedButton.icon(
-                onPressed: () => context.read<MainTabController>().setIndex(6),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const LanguageSettingsScreen(),
+                    ),
+                  );
+                },
                 icon: const Icon(Icons.settings),
                 label: Text(context.t.settings_language_title),
               ),

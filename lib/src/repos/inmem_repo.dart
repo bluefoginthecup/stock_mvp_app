@@ -1070,7 +1070,10 @@ class InMemoryRepo extends ChangeNotifier
   Future<void> softDeleteOrder(String orderId) async {
     final o = _orders[orderId];
     if (o == null) return;
-    _orders[orderId] = o.copyWith(isDeleted: true, updatedAt: DateTime.now());
+    _orders[orderId] = o.copyWith(
+        isDeleted: true,
+        updatedAt: DateTime.now(),
+        deletedAt: DateTime.now());
     notifyListeners();
   }
 
@@ -1089,7 +1092,10 @@ class InMemoryRepo extends ChangeNotifier
   Future<void> restoreOrder(String orderId) async {
     final cur = _orders[orderId];
     if (cur == null) return;
-    _orders[orderId] = cur.copyWith(isDeleted: false, deletedAt: null, updatedAt: DateTime.now());
+    _orders[orderId] = cur.copyWith(
+        isDeleted: false,
+        deletedAt: null,
+        updatedAt: DateTime.now());
   }
 
 
