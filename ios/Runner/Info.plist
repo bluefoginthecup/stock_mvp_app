@@ -2,6 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -49,5 +50,19 @@
     <string>카메라를 사용해 영수증을 촬영합니다.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>사진에서 영수증 이미지를 선택합니다.</string>
+    <key>GIDClientID</key>
+    <string>101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j</string>
+        </array>
+      </dict>
+    </array>
+
 </dict>
 </plist>
