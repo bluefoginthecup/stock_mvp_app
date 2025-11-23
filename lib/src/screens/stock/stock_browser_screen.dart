@@ -600,7 +600,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       ),
                     ),
                     FilterChip(
-                      label: const Text('필터:임계치'),
+                      label: Text('필터:임계치'),
                       selected: _lowOnly,
                       onSelected: (v) => setState(() => _lowOnly = v),
                       avatar: const Icon(Icons.warning_amber_rounded, size: 18),
@@ -617,184 +617,190 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               const Divider(height: 1),
               // ───────────────────────── Content ─────────────────────────
 
-        Expanded(
-         child: FutureBuilder<(List<FolderNode>, List<Item>)>(
-           future: _loadData(
-                    folderRepo,
-                    itemRepo,
-                    hasKeyword: hasKeyword,
-                    lowOnly: _lowOnly,
-                    favOnly: _showFavoriteOnly,
-                    depth: depth,
-                    l1: _l1Id,
-                    l2: _l2Id,
-                    l3: _l3Id,
-                    keyword: _searchC.text,
+              Expanded(
+                child: StreamBuilder<List<Item>>(
+                  // ① 카운트 계산용 "전체 스트림"(현재 경로/검색만 반영, low/fav는 미적용)
+                  stream: context.read<ItemRepo>().watchItems(
+                    l1: _selectedDepth == 0 ? null : _l1Id,
+                    l2: _selectedDepth <= 1 ? null : _l2Id,
+                    l3: _selectedDepth <= 2 ? null : _l3Id,
+                    keyword: _searchC.text.trim().isNotEmpty ? _searchC.text : null,
+                    // 루트에서 임계치/즐겨찾기 ON이면 재귀로 하위까지 전체 범위 조회
+                    recursive: _searchC.text.trim().isNotEmpty || (_selectedDepth == 0 && (_lowOnly || _showFavoriteOnly)),
+                    lowOnly: false,
+                    favoritesOnly: false,
                   ),
-                  builder: (ctx, snap) {
-                    if (snap.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snap.hasError) {
-                      return Center(child: Text('오류: ${snap.error}'));
-                    }
+                  builder: (ctx, allSnap) {
+                    // 카운트 계산용 전체 리스트
+                    final allItems = allSnap.data ?? const <Item>[];
+                    final lowCount = allItems.where((e) => e.minQty > 0 && e.qty <= e.minQty).length;
+                    final favCount = allItems.where((e) => e.isFavorite == true).length;
 
-                    final (folders, items) = snap.data!;
-                    List<Item> currentItems = [];
-                    final slivers = <Widget>[];
+                    // ② 실제 렌더링용 "필터 적용 스트림"
+                    return StreamBuilder<List<Item>>(
+                      stream: context.read<ItemRepo>().watchItems(
+                        l1: _selectedDepth == 0 ? null : _l1Id,
+                        l2: _selectedDepth <= 1 ? null : _l2Id,
+                        l3: _selectedDepth <= 2 ? null : _l3Id,
+                        keyword: _searchC.text.trim().isNotEmpty ? _searchC.text : null,
+                        recursive: _searchC.text.trim().isNotEmpty || (_selectedDepth == 0 && (_lowOnly || _showFavoriteOnly)),
+                        lowOnly: _lowOnly,
+                        favoritesOnly: _showFavoriteOnly,
+                      ),
+                      builder: (ctx, snap) {
+                        if (snap.connectionState == ConnectionState.waiting && !(snap.hasData)) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snap.hasError) {
+                          return Center(child: Text('오류: ${snap.error}'));
+                        }
 
-                    // 루트 & 검색 없음 & (임계치 or 즐겨찾기) ON → 전체 아이템에서 필터 적용
-                                        if (depth == 0 && !hasKeyword && (_lowOnly || _showFavoriteOnly)) {
-                                          final filtered = _applyFilters(items);
-                                          if (filtered.isEmpty) {
-                                            return const Center(child: Text('조건에 맞는 아이템이 없습니다.'));
+                        final items = _applyFilters(snap.data ?? const <Item>[]); // 안전망(서버+클라 이중 필터)
+                        final sel = context.watch<ItemSelectionController>();
+
+                        // ── 폴더는 기존처럼 Future로(변화 빈도 낮음)
+                        return FutureBuilder<List<FolderNode>>(
+                          future: context.read<FolderTreeRepo>().listFolderChildren(_selectedId),
+                          builder: (ctx, folderSnap) {
+                            // 상단의 필터칩 라벨을 카운트로 갱신하기 위해 setState가 필요 없음.
+                            // 단, 칩 라벨 텍스트만 업데이트하려면 위의 Row에서 label을 아래처럼 바꿔줘.
+                            // (코드 아래 참고)
+                            if (folderSnap.connectionState == ConnectionState.waiting && !(folderSnap.hasData)) {
+                              return const Center(child: CircularProgressIndicator());
+                            }
+                            if (folderSnap.hasError) {
+                              return Center(child: Text('오류: ${folderSnap.error}'));
+                            }
+
+                            final folders = folderSnap.data ?? const <FolderNode>[];
+                            final slivers = <Widget>[];
+                            List<Item> currentItems = items;
+
+                            // 기존 분기 유지(검색/루트/하위)
+                            final hasKeyword = _searchC.text.trim().isNotEmpty;
+                            final depth = _selectedDepth;
+
+                            if (depth == 0 && !hasKeyword && (_lowOnly || _showFavoriteOnly)) {
+                              // 루트 + 필터 ON → 전체 아이템만 노출
+                              if (items.isEmpty) {
+                                return const Center(child: Text('조건에 맞는 아이템이 없습니다.'));
+                              }
+                              slivers.add(_buildItemSliver(items));
+                              slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 80)));
+                            } else if (hasKeyword) {
+                              if (folders.isEmpty && items.isEmpty) {
+                                return const Center(child: Text('검색 결과가 없습니다.'));
+                              }
+                              if (folders.isNotEmpty) {
+                                slivers.addAll([
+                                  _sliverHeader('📁 폴더'),
+                                  _buildFolderSliver(folders),
+                                ]);
+                              }
+                              if (items.isNotEmpty) {
+                                currentItems = items;
+                                slivers.addAll([
+                                  _sliverHeader('📦 아이템'),
+                                  _buildItemSliver(items),
+                                ]);
+                              }
+                              slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 80)));
+                            } else if (depth == 0) {
+                              if (folders.isEmpty) {
+                                return const Center(child: Text('하위 폴더가 없습니다.  버튼으로 추가하세요.'));
+                              }
+                              slivers.add(_buildFolderSliver(folders));
+                              slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 80)));
+                            } else {
+                              if (folders.isEmpty && items.isEmpty) {
+                                return const Center(child: Text('하위 폴더나 아이템이 없습니다.  버튼으로 추가하세요.'));
+                              }
+                              if (folders.isNotEmpty) {
+                                slivers.add(_buildFolderSliver(folders));
+                              }
+                              if (items.isNotEmpty) {
+                                currentItems = items;
+                                slivers.add(_buildItemSliver(items));
+                              }
+                              slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 80)));
+                            }
+
+                            // 선택 바 유지
+                            final sliversWithSelectBar = <Widget>[
+                              if (sel.selectionMode)
+                                SliverPersistentHeader(
+                                  pinned: true,
+                                  delegate: _SelectBarHeader(
+                                    height: _kSelectBarHeight,
+                                    child: StockMultiSelectBar(
+                                      selectedCount: sel.selected.length,
+                                      totalCount: currentItems.length,
+                                      onAddToCart: () async {
+                                        final qty = await _askQty(context);
+                                        if (qty == null) return;
+
+                                        final byId = { for (final it in currentItems) it.id: it };
+                                        final cart = context.read<CartManager>();
+                                        for (final id in sel.selected) {
+                                          final it = byId[id];
+                                          if (it != null) {
+                                            cart.addFromItem(it, qty: qty);
                                           }
-                                          currentItems = filtered;
-                                          slivers.add(_buildItemSliver(filtered));
-                                          slivers.add(const SliverToBoxAdapter(child: SizedBox(height: 80)));
-                                        } else if (hasKeyword) {
-                                          final filtered = _applyFilters(items);
-
-                      if (folders.isEmpty && filtered.isEmpty) {
-                        return const Center(child: Text('검색 결과가 없습니다.'));
-                      }
-
-                      if (folders.isNotEmpty) {
-                        slivers.addAll([
-                          _sliverHeader('📁 폴더'),
-                          _buildFolderSliver(folders),
-                        ]);
-                      }
-                      if (filtered.isNotEmpty) {
-                        currentItems = filtered;
-                        slivers.addAll([
-                          _sliverHeader('📦 아이템'),
-                          _buildItemSliver(filtered),
-                        ]);
-                      }
-                      slivers.add(const SliverToBoxAdapter(
-                          child: SizedBox(height: 80)));
-                    } else if (depth == 0) {
-                      if (folders.isEmpty) {
-                        return const Center(
-                            child: Text('하위 폴더가 없습니다.  버튼으로 추가하세요.'));
-                      }
-                      slivers.add(_buildFolderSliver(folders));
-                      slivers.add(const SliverToBoxAdapter(
-                          child: SizedBox(height: 80)));
-                    } else {
-                      final filtered = _applyFilters(items);
-
-                      if (folders.isEmpty && filtered.isEmpty) {
-                        return const Center(
-                          child:
-                          Text('하위 폴더나 아이템이 없습니다.  버튼으로 추가하세요.'),
-                        );
-                      }
-
-                      if (folders.isNotEmpty) {
-                        slivers.add(_buildFolderSliver(folders));
-                      }
-                      if (filtered.isNotEmpty) {
-                        currentItems = filtered;
-                        slivers.add(_buildItemSliver(filtered));
-                      }
-                      slivers.add(const SliverToBoxAdapter(
-                          child: SizedBox(height: 80)));
-                    }
-
-                    final sliversWithSelectBar = <Widget>[
-                      if (sel.selectionMode)
-                        SliverPersistentHeader(
-                          pinned: true,
-                          delegate: _SelectBarHeader(
-                            height: _kSelectBarHeight,
-                            child: StockMultiSelectBar(
-                              selectedCount: sel.selected.length,
-                              totalCount: currentItems.length,
-                              onAddToCart: () async {
-                                final qty = await _askQty(context);
-                                if (qty == null) return;
-
-                                final byId = {
-                                  for (final it in currentItems) it.id: it
-                                };
-                                final cart = context.read<CartManager>();
-
-                                for (final id in sel.selected) {
-                                  final it = byId[id];
-                                  if (it != null) {
-                                    cart.addFromItem(it, qty: qty);
-                                  }
-                                }
-
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    behavior: SnackBarBehavior.floating,
-                                    margin: const EdgeInsets.all(12),
-                                    content: Text(
-                                      '장바구니에 ${sel.selected.length}개 담았어요 (×${qty.toStringAsFixed(0)})',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                    action: SnackBarAction(
-                                      label: '보기',
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (_) =>
-                                              const CartScreen()),
+                                        }
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            behavior: SnackBarBehavior.floating,
+                                            margin: const EdgeInsets.all(12),
+                                            content: Text('장바구니에 ${sel.selected.length}개 담았어요 (×${qty.toStringAsFixed(0)})'),
+                                            action: SnackBarAction(
+                                              label: '보기',
+                                              onPressed: () {
+                                                Navigator.push(context, MaterialPageRoute(builder: (_) => const CartScreen()));
+                                              },
+                                            ),
+                                          ),
                                         );
+                                        sel.exit();
                                       },
+                                      onMove: () async {
+                                        final dest = await showPathPicker(
+                                          context,
+                                          childrenProvider: folderChildrenProvider(context.read<FolderTreeRepo>()),
+                                          title: '아이템 이동..',
+                                          maxDepth: 3,
+                                        );
+                                        if (dest == null || dest.isEmpty || !context.mounted) return;
+                                        final moved = await context.read<FolderTreeRepo>().moveItemsToPath(
+                                          itemIds: sel.selected.toList(),
+                                          pathIds: dest,
+                                        );
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('아이템 $moved개 이동')));
+                                        sel.clear();
+                                      },
+                                      onSelectAll: () => sel.selectAll(currentItems.map((e) => e.id)),
+                                      onClear: sel.exit,
                                     ),
                                   ),
-                                );
+                                ),
+                              ...slivers,
+                            ];
 
-                                sel.exit();
-                              },
-                              onMove: () async {
-                                final sel =
-                                context.read<ItemSelectionController>();
-                                final repo = context.read<FolderTreeRepo>();
-
-                                final dest = await showPathPicker(
-                                  context,
-                                  childrenProvider:
-                                  folderChildrenProvider(repo),
-                                  title: '아이템 이동..',
-                                  maxDepth: 3,
-                                );
-
-                                if (dest == null ||
-                                    dest.isEmpty ||
-                                    !context.mounted) return;
-
-                                final moved = await repo.moveItemsToPath(
-                                  itemIds: sel.selected.toList(),
-                                  pathIds: dest,
-                                );
-
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text('아이템 $moved개 이동')),
-                                );
-                                sel.clear();
-                              },
-                              onSelectAll: () => sel.selectAll(
-                                  currentItems.map((e) => e.id)),
-                              onClear: sel.exit,
-                            ),
-                          ),
-                        ),
-                      ...slivers,
-                    ];
-
-                    return CustomScrollView(slivers: sliversWithSelectBar);
+                            // 🔁 필터칩 라벨을 업데이트: 상단 Row의 FilterChip 라벨을 setState 없이도 allItems 기반으로 그려주려면,
+                            // 그 Row를 이 전체 StreamBuilder 바깥에 두고, label만 Stateful로 바꾸는 대신 아래처럼 rebuild 시점에
+                            // 보여줄 텍스트를 계산해서 넘겨도 됨. 하지만 간단히 하려면 Row 쪽 label을 아래처럼 바꿔줘.
+                            // (아래 참고 ③ 라벨 교체 코드)
+                            // 여기선 목록 본문만 반환.
+                            return CustomScrollView(slivers: sliversWithSelectBar);
+                          },
+                        );
+                      },
+                    );
                   },
                 ),
               ),
+
             ],
           ),
           floatingActionButton: Builder(builder: (_) {

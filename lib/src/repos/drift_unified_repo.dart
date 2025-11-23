@@ -379,20 +379,88 @@ class DriftUnifiedRepo extends ChangeNotifier
 
 
 
-  Stream<List<Item>> watchItems({String? keyword}) {
-    final q = db.select(db.items);
+  @override
+  Stream<List<Item>> watchItems({
+    String? l1,
+    String? l2,
+    String? l3,
+    String? keyword,
+    bool recursive = false,
+    bool lowOnly = false,
+    bool favoritesOnly = false,
+  }) {
+    final i = db.items;
+    final q = db.select(i);
+
+    // ── 경로 필터 (반드시 람다로!) ─────────────────────────────
+    if (l1 != null && l1.isNotEmpty) {
+      q.where((t) => t.folder.equals(l1));
+
+      if (l2 != null && l2.isNotEmpty) {
+        q.where((t) => t.subfolder.equals(l2));
+
+        if (l3 != null && l3.isNotEmpty) {
+          q.where((t) => t.subsubfolder.equals(l3)); // L3 고정
+        } else {
+          if (!recursive) {
+            // L2 바로 아래만
+            q.where((t) => t.subsubfolder.isNull());
+          }
+        }
+      } else {
+        if (!recursive) {
+          // L1 바로 아래만
+          q.where((t) => t.subfolder.isNull());
+        }
+      }
+    }
+    // (l1 == null이면 전체 범위)
+
+    // ── 검색 (LIKE도 람다 안에서 결합) ────────────────────────
     if (keyword != null && keyword.isNotEmpty) {
-      // name/sku LIKE 검색 예시
-      final like = '%${keyword.replaceAll('%', r'\%')}%';
+      final like = '%${keyword.replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
       q.where((t) => t.name.like(like) | t.sku.like(like));
     }
-    // 생성된 확장 메서드 r.toDomain() 사용
-        return q.watch().map((rows) {
-          final list = rows.map((r) => r.toDomain()).toList();
-          _cacheItems(list); // 선택: 캐시 최신화
-          return list;
-        });
+
+    // ── 임계치 / 즐겨찾기 ─────────────────────────────────────
+    if (lowOnly) {
+      q.where((t) => t.minQty.isBiggerThanValue(0) & t.qty.isSmallerOrEqual(t.minQty));
+    }
+    if (favoritesOnly) {
+      q.where((t) => t.isFavorite.equals(true));
+    }
+
+    // ── 정렬 (제너레이터 형태) ───────────────────────────────
+    q.orderBy([(t) => OrderingTerm.asc(t.name)]);
+
+    // ── 스트림 변환 ──────────────────────────────────────────
+    return q.watch().map((rows) {
+      final list = rows.map((r) => r.toDomain()).toList();
+      _cacheItems(list); // (기존 캐시 유지)
+      return list;
+    });
   }
+// 필요한 경우에만 추가
+  Stream<({int low, int fav})> watchCounts({
+    String? l1,
+    String? l2,
+    String? l3,
+    String? keyword,
+    bool recursive = false,
+  }) {
+    return watchItems(
+      l1: l1, l2: l2, l3: l3,
+      keyword: keyword,
+      recursive: recursive,
+      lowOnly: false,
+      favoritesOnly: false,
+    ).map((all) {
+      final low = all.where((e) => e.minQty > 0 && e.qty <= e.minQty).length;
+      final fav = all.where((e) => e.isFavorite == true).length;
+      return (low: low, fav: fav);
+    });
+  }
+
 
 
 

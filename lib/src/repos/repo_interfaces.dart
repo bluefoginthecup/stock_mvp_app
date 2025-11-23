@@ -21,6 +21,7 @@ abstract class ItemRepo {
   /// 폴더 경로/키워드 기반의 기본 조회
   Future<List<Item>> listItems({String? folder, String? keyword});
 
+
   /// 전역 단순 검색(경로 무시)
   Future<List<Item>> searchItemsGlobal(String keyword);
 
@@ -72,6 +73,16 @@ abstract class ItemRepo {
   Future<void> setFavorite({required String itemId, required bool value});
 
 
+  /// 실시간 목록(폴더/검색/필터/재귀)
+  Stream<List<Item>> watchItems({
+    String? l1,
+    String? l2,
+    String? l3,
+    String? keyword,
+    bool recursive = false,
+    bool lowOnly = false,
+    bool favoritesOnly = false,
+  });
 
   // ===== BOM (2단계 분리형) =====
     /// Finished 레시피 조회/저장
