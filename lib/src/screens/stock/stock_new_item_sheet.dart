@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
+
 import '../../models/item.dart';
 import '../../ui/common/ui.dart';
-import '../../repos/inmem_repo.dart'; // ← 추가
-import 'package:provider/provider.dart'; // ← 추가
-
-
+import '../../repos/repo_interfaces.dart'; // ItemRepo, FolderTreeRepo
 
 class StockNewItemSheet extends StatefulWidget {
   const StockNewItemSheet({super.key, required this.pathIds});
@@ -24,6 +23,15 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
   final _qtyC = TextEditingController(text: '0');
   final _uuid = const Uuid();
 
+  @override
+  void dispose() {
+    _nameC.dispose();
+    _skuC.dispose();
+    _unitC.dispose();
+    _minC.dispose();
+    _qtyC.dispose();
+    super.dispose();
+  }
 
   Future<void> _save() async {
     if (_nameC.text.trim().isEmpty) {
@@ -32,50 +40,58 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       return;
     }
 
-    // pathIds -> folder/subfolder 이름 변환
-    final repo = context.read<InMemoryRepo>();
+    // pathIds -> folder/subfolder 이름 변환 (FolderTreeRepo 사용, 비동기)
+    final folders = context.read<FolderTreeRepo>();
+
     String? l1Name;
     String? l2Name;
     String? l3Name;
+
     if (widget.pathIds.isNotEmpty) {
-      final l1 = repo.folderById(widget.pathIds[0]);
+      final l1 = await folders.folderById(widget.pathIds[0]);
       l1Name = l1?.name;
     }
     if (widget.pathIds.length >= 2) {
-      final l2 = repo.folderById(widget.pathIds[1]);
+      final l2 = await folders.folderById(widget.pathIds[1]);
       l2Name = l2?.name;
     }
+    if (widget.pathIds.length >= 3) {
+      final l3 = await folders.folderById(widget.pathIds[2]);
+      l3Name = l3?.name;
+    }
 
-        if (widget.pathIds.length >= 3) {
-          final l3 = repo.folderById(widget.pathIds[2]);
-          l3Name = l3?.name;
-        }
-
-    // 필요하면 소문자 정규화(기존 시드가 'finished', 'raw'처럼 소문자였음)
+    // 필요하면 소문자 정규화
     String? normalize(String? s) => s?.toLowerCase();
 
     final item = Item(
       id: _uuid.v4(),
       name: _nameC.text.trim(),
+      displayName: null, // 필요시 name과 동일하게 세팅 가능
       sku: _skuC.text.trim(),
       unit: _unitC.text.trim().isEmpty ? 'EA' : _unitC.text.trim(),
       qty: int.tryParse(_qtyC.text) ?? 0,
       minQty: int.tryParse(_minC.text) ?? 0,
 
-      // ✅ 필수 필드 채우기
+      // 경로 필드
       folder: normalize(l1Name) ?? 'uncategorized',
-      // 선택 필드(모델에 있으면): 중분류
       subfolder: normalize(l2Name),
-        // ✅ 3뎁스도 같이 기록
-              subsubfolder: normalize(l3Name),
-          // ✅ path 필드가 있다면 함께 저장 (모델에 path가 존재할 때)
+      subsubfolder: normalize(l3Name),
 
+      // 그 외 선택 필드들은 기본값 유지
+      kind: null,
+      attrs: null,
+      unitIn: null,
+      unitOut: null,
+      conversionRate: null,
+      conversionMode: 'fixed',
+      stockHints: null,
+      supplierName: null,
+      isFavorite: false,
     );
 
     if (!mounted) return;
     Navigator.pop<Item>(context, item);
   }
-
 
   @override
   Widget build(BuildContext context) {

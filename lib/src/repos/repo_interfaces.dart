@@ -24,6 +24,13 @@ abstract class ItemRepo {
   /// 전역 단순 검색(경로 무시)
   Future<List<Item>> searchItemsGlobal(String keyword);
 
+
+  /// 단건 조회 (UI 시트/상세에서 사용)
+  Future<Item?> getItemById(String id);
+
+  /// 메타 업데이트 (이름/표시이름/단위/속성/공급처 등)
+  Future<void> updateItemMeta(Item item);
+
   /// 경로 기반 검색 표준화
   Future<List<Item>> searchItemsByPath({
     String? l1,
@@ -34,6 +41,8 @@ abstract class ItemRepo {
   });
 
   Future<Item?> getItem(String id);
+
+
   Future<void> upsertItem(Item item);
   Future<void> deleteItem(String id);
   /// 아이템 ID로 경로명(루트~디자인)을 반환
@@ -116,8 +125,26 @@ abstract class TxnRepo {
     String? note,
   });
 
+// ✅ 출고(OUT) 추가
+    Future<void> addOutPlanned({
+      required String itemId,
+      required int qty,
+      required String refType,
+      required String refId,
+      String? note,
+      String? memo,
+    });
 
-  // ✅ 추가: 동기 스냅샷 (정렬까지 된 최신 리스트)
+  Future<void> addOutActual({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note,
+    String? memo,
+  });
+
+// ✅ 추가: 동기 스냅샷 (정렬까지 된 최신 리스트)
   List<Txn> snapshotTxnsDesc();
 
   // 🧹 삭제 정책
@@ -239,6 +266,8 @@ abstract class TrashRepo {
     Future<int> purgeOlderThan(Duration keep);
   }
 
+
+
 /// 폴더 트리 + 경로 기반 검색/이동용 Repo
 abstract class FolderTreeRepo extends ChangeNotifier {
   FolderSortMode get sortMode;
@@ -248,7 +277,7 @@ abstract class FolderTreeRepo extends ChangeNotifier {
   /// parentId가 null이면 L1 roots
   Future<List<FolderNode>> listFolderChildren(String? parentId);
 
-  FolderNode? folderById(String id);
+  Future<FolderNode?> folderById(String id);
 
 
   /// parentId가 null이면 루트 폴더

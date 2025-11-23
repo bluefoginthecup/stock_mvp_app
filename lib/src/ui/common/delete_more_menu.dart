@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../services/inventory_service.dart';
 import '../../repos/repo_interfaces.dart';
-import '../../repos/inmem_repo.dart';
+// import '../../repos/inmem_repo.dart'; // ❌ 제거
 
 import '../../models/order.dart';
 import '../../models/work.dart';
@@ -53,11 +53,11 @@ class DeleteMoreMenu<T> extends StatelessWidget {
     if (!confirmed) return;
 
     // ✅ 필요한 의존성/레포를 "지금" 캡처
-    final inv          = context.read<InventoryService>();
-    final orderRepo    = context.read<OrderRepo>();
-    final workRepo     = context.read<WorkRepo>();
-    final poRepo       = context.read<PurchaseOrderRepo>(); // ✅ 변경: PurchaseRepo → PurchaseOrderRepo
-    final inmem        = context.read<InMemoryRepo>(); // Txn 복원용
+    final inv       = context.read<InventoryService>();
+    final orderRepo = context.read<OrderRepo>();
+    final workRepo  = context.read<WorkRepo>();
+    final poRepo    = context.read<PurchaseOrderRepo>();
+    final txnRepo   = context.read<TxnRepo>(); // ✅ InMemoryRepo 대신 TxnRepo 사용
 
     if (entity is Order) {
       final id = (entity as Order).id;
@@ -99,14 +99,13 @@ class DeleteMoreMenu<T> extends StatelessWidget {
       final id = (entity as PurchaseOrder).id;
       final snap = await poRepo.getPurchaseOrderById(id);
 
-      // NOTE: InventoryService 내부 메서드명이 deletePurchase 인 상태라면 유지
-      // (이미 PurchaseOrderRepo로 교체해 두었다면 내부에서 soft/hard 처리)
+      // InventoryService 안에서 발주 삭제 처리(soft/hard) 수행
       await inv.deletePurchase(id, hard: hard);
 
       if (!hard) {
         showUndoSnackBar(context, message: undoMsg, onUndo: () async {
           if (snap != null) {
-            await poRepo.updatePurchaseOrder(snap.copyWith(isDeleted: false)); // ✅ 변경
+            await poRepo.updatePurchaseOrder(snap.copyWith(isDeleted: false));
           }
         });
       } else {
@@ -119,11 +118,27 @@ class DeleteMoreMenu<T> extends StatelessWidget {
     } else if (entity is Txn) {
       final t = entity as Txn;
 
-      await inv.deleteTxn(t.id); // 혹은 txnRepo를 직접 써도 됨
+      await inv.deleteTxn(t.id); // 삭제(및 필요 시 재고 롤백) 처리
 
-      // Txn은 하드삭제만. Undo로 "기록 복원" 제공
-      showUndoSnackBar(context, message: undoMsg, onUndo: () {
-        inmem.restoreTxnForUndo(t);
+      // ✅ Undo: InMemoryRepo.restoreTxnForUndo(t) 대신 TxnRepo로 원상 복구
+      //  - 어떤 종류(planned/actual)였는지 모르겠다면 실제 반영되는 addInActual로 복원하는 것이 실무적으로 안전
+      showUndoSnackBar(context, message: undoMsg, onUndo: () async {
+        try {
+          final refId = (t.refId.isEmpty) ? 'undo:${t.id}' : t.refId; // 빈 문자열 방어만
+          await txnRepo.addInActual(
+            itemId: t.itemId,      // String
+            qty: t.qty,            // int
+            refType: t.refType.name,    // RefType(enum) ✅
+            refId: refId,          // String
+            note: t.note,          // String?
+            // ts: t.ts,  // 필요하면 전달
+          );
+        } catch (_) {
+          // 실패 시 사용자에게 간단 안내(침묵 실패 방지)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('기록 복원에 실패했어요')),
+          );
+        }
       });
       onChanged?.call();
     }

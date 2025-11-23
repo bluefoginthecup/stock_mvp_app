@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/item.dart';
-import '../../repos/inmem_repo.dart';
+import '../../repos/repo_interfaces.dart';
 
 class StockItemFullEditScreen extends StatefulWidget {
   final String itemId;
@@ -37,65 +37,33 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
   String conversionMode = 'fixed'; // fixed | lot
   late TextEditingController supplierC;
 
-  Item? it;
+
+    late Future<Item?> _itemFuture;
+    Item? _loaded; // 로드된 원본 아이템 보관(저장 시 기반)
 
   @override
   void initState() {
     super.initState();
-    final repo = context.read<InMemoryRepo>();
-    it = repo.getItemById(widget.itemId);
-    if (it == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.pop(context);
-      });
-      // 더미 초기화
-      nameC = TextEditingController();
-      displayNameC = TextEditingController();
-      skuC = TextEditingController();
-      unitC = TextEditingController();
-      folderC = TextEditingController();
-      subfolderC = TextEditingController();
-      subsubfolderC = TextEditingController();
-      minQtyC = TextEditingController();
-      qtyC = TextEditingController();
-      kindC = TextEditingController();
-      attrsC = TextEditingController();
-      unitInC = TextEditingController();
-      unitOutC = TextEditingController();
-      conversionRateC = TextEditingController();
-      if (it != null) {
-        supplierC = TextEditingController(text: it!.supplierName ?? '');
-      } else {
+    // 1) 컨트롤러는 빈 값으로 먼저 생성(디스포즈 안전)
+        nameC = TextEditingController();
+        displayNameC = TextEditingController();
+        skuC = TextEditingController();
+        unitC = TextEditingController();
+        folderC = TextEditingController();
+        subfolderC = TextEditingController();
+        subsubfolderC = TextEditingController();
+        minQtyC = TextEditingController();
+        qtyC = TextEditingController();
+        kindC = TextEditingController();
+        attrsC = TextEditingController();
+        unitInC = TextEditingController();
+        unitOutC = TextEditingController();
+        conversionRateC = TextEditingController();
         supplierC = TextEditingController();
-      }
-      return;
-    }
 
-    final i = it!;
-    nameC = TextEditingController(text: i.name);
-    displayNameC = TextEditingController(text: i.displayName ?? '');
-    skuC = TextEditingController(text: i.sku);
-
-    unitC = TextEditingController(text: i.unit);
-    folderC = TextEditingController(text: i.folder);
-    subfolderC = TextEditingController(text: i.subfolder ?? '');
-    subsubfolderC = TextEditingController(text: i.subsubfolder ?? '');
-
-    minQtyC = TextEditingController(text: i.minQty.toString());
-    qtyC = TextEditingController(text: i.qty.toString());
-
-    kindC = TextEditingController(text: i.kind ?? '');
-    attrsC = TextEditingController(
-      text: (i.attrs == null || i.attrs!.isEmpty)
-          ? ''
-          : const JsonEncoder.withIndent('  ').convert(i.attrs),
-    );
-
-    unitInC = TextEditingController(text: i.unitIn);
-    unitOutC = TextEditingController(text: i.unitOut);
-    conversionRateC = TextEditingController(text: i.conversionRate.toString());
-    conversionMode = i.conversionMode;
-    supplierC = TextEditingController(text: i.supplierName ?? '');
+        // 2) 아이템은 비동기로 로드
+        final repo = context.read<ItemRepo>();
+        _itemFuture = repo.getItemById(widget.itemId);
   }
 
   @override
@@ -130,10 +98,10 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     }
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final repo = context.read<InMemoryRepo>();
-    final i = it!;
+    final repo = context.read<ItemRepo>();
+    final i = _loaded!;
     final parsedAttrs = _parseAttrs(attrsC.text);
 
     // 수치 파싱
@@ -145,36 +113,31 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     // 운영정책에 따라 숨기거나 readOnly로 두는 게 안전.
     // 원한다면 아래 line 제거하고 Adjust 플로우만 쓰세요.
     final wantUpdateQtyHere = false;
+    // ✅ Item 전체를 만들어 updateItemMeta에 전달
+        final updated = Item(
+          id: i.id,
+          name: i.name,
+          displayName: displayNameC.text.trim().isEmpty ? i.displayName : displayNameC.text.trim(),
+          sku: i.sku,
+          unit: unitC.text.trim().isEmpty ? i.unit : unitC.text.trim(),
+          folder: folderC.text.trim().isEmpty ? i.folder : folderC.text.trim(),
+          subfolder: subfolderC.text.trim().isEmpty ? i.subfolder : subfolderC.text.trim(),
+          subsubfolder: subsubfolderC.text.trim().isEmpty ? i.subsubfolder : subsubfolderC.text.trim(),
+          minQty: minQty ?? i.minQty,
+          qty: i.qty, // 여기선 건드리지 않음 (Adjust 권장)
+          kind: kindC.text.trim().isEmpty ? i.kind : kindC.text.trim(),
+          attrs: parsedAttrs ?? i.attrs,
+          unitIn: unitInC.text.trim().isEmpty ? i.unitIn : unitInC.text.trim(),
+          unitOut: unitOutC.text.trim().isEmpty ? i.unitOut : unitOutC.text.trim(),
+          conversionRate: convRate ?? i.conversionRate,
+          conversionMode: conversionMode,
+          stockHints: i.stockHints,
+          supplierName: supplierC.text.trim().isEmpty ? i.supplierName : supplierC.text.trim(),
+          isFavorite: i.isFavorite,
+        );
 
-    repo.updateItemMeta(
-      id: i.id,
+        await repo.updateItemMeta(updated);
 
-      // 표기/분류
-      displayName: displayNameC.text.trim().isEmpty ? null : displayNameC.text.trim(),
-      minQty: minQty,
-      unit: unitC.text.trim().isEmpty ? null : unitC.text.trim(),
-      folder: folderC.text.trim().isEmpty ? null : folderC.text.trim(),
-      subfolder: subfolderC.text.trim().isEmpty ? null : subfolderC.text.trim(),
-      subsubfolder: subsubfolderC.text.trim().isEmpty ? null : subsubfolderC.text.trim(),
-      kind: kindC.text.trim().isEmpty ? null : kindC.text.trim(),
-      attrs: parsedAttrs, // mergeAttrs=true 기본 → 기존 키 유지되며 덮어쓰기
-
-      // 공급처
-      supplierName: supplierC.text.trim().isEmpty ? null : supplierC.text.trim(),
-      // 환산
-      unitIn: unitInC.text.trim().isEmpty ? null : unitInC.text.trim(),
-      unitOut: unitOutC.text.trim().isEmpty ? null : unitOutC.text.trim(),
-      conversionRate: convRate,
-      conversionMode: conversionMode,
-
-      // qty는 여기서 건드리지 않음(이력 보존 위해)
-      // 만약 정말 여기서 갱신하고 싶다면 InMemoryRepo.updateItemMeta에 qty: 전달하도록 확장
-    );
-
-    if (wantUpdateQtyHere && qty != null) {
-      // 정말 여기서 qty까지 바꾸려면 InMemoryRepo.updateItemMeta에 qty 파라미터 추가 필요
-      // repo.updateItemMeta(id: i.id, qty: qty);
-    }
 
     Navigator.pop(context, true);
   }
@@ -184,26 +147,61 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (it == null) return const SizedBox.shrink();
     final text = Theme.of(context).textTheme;
+        return FutureBuilder<Item?>(
+          future: _itemFuture,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            }
+            final item = snap.data;
+            if (item == null) {
+              // 없는 아이템이면 뒤로
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) Navigator.pop(context);
+              });
+              return const SizedBox.shrink();
+            }
+            // 최초 로드시에만 컨트롤러 텍스트 채우기 (사용자가 수정한 값 덮어쓰기 방지)
+            if (_loaded == null) {
+              _loaded = item;
+              nameC.text = item.name;
+              displayNameC.text = item.displayName ?? '';
+              skuC.text = item.sku;
+              unitC.text = item.unit;
+              folderC.text = item.folder;
+              subfolderC.text = item.subfolder ?? '';
+              subsubfolderC.text = item.subsubfolder ?? '';
+              minQtyC.text = item.minQty.toString();
+              qtyC.text = item.qty.toString();
+              kindC.text = item.kind ?? '';
+              attrsC.text = (item.attrs == null || item.attrs!.isEmpty)
+                  ? ''
+                  : const JsonEncoder.withIndent('  ').convert(item.attrs);
+              unitInC.text = item.unitIn ?? '';
+              unitOutC.text = item.unitOut ?? '';
+              conversionRateC.text = (item.conversionRate ?? 0).toString();
+              conversionMode = item.conversionMode;
+              supplierC.text = item.supplierName ?? '';
+            }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('모든 필드 편집'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: _save,
-            tooltip: '저장',
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('모든 필드 편집'),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.save),
+                    onPressed: _save,
+                    tooltip: '저장',
+                  ),
+                ],
+              ),
+              body: SafeArea(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
               Text('식별/표시', style: text.titleSmall),
               const SizedBox(height: 8),
               TextFormField(controller: nameC, decoration: _dec('name'), readOnly: true),
@@ -303,10 +301,12 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
                 icon: const Icon(Icons.save),
                 label: const Text('저장'),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
+                    ],
+                                    ),
+                                ),
+                            ),
+                        );
+                  },
+                );
   }
 }

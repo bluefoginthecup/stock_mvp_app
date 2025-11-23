@@ -16,6 +16,8 @@ import '../models/purchase_line.dart';
 import '../models/suppliers.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
+import 'package:uuid/uuid.dart';
+
 
 // 표준 repo 인터페이스
 import 'repo_interfaces.dart';
@@ -38,8 +40,10 @@ class DriftUnifiedRepo extends ChangeNotifier
         FolderTreeRepo {
 
   final AppDatabase db;
-
+  final _uuid = const Uuid();
   DriftUnifiedRepo(this.db);
+
+
 
   // ====== 📦 캐시 ======
   // Item 전체(단위/힌트 포함) & 재고 수량(int) 동기 접근용
@@ -222,36 +226,49 @@ class DriftUnifiedRepo extends ChangeNotifier
     return it;
   }
 
-
-
+// DriftUnifiedRepo 안
 
   @override
   Future<void> upsertItem(Item item) async {
-    await db.into(db.items).insertOnConflictUpdate(item.toCompanion());
-    await _updateItemPaths(item);
-    // DB write 이후
-    final fresh = await getItem(item.id);  // 새로 읽어 domain으로
-    if (fresh != null) _cacheItem(fresh);  // ✅ 캐시 갱신
-
-  }
-  Future<void> upsertItemWithPath(
-      Item item,
-      String? l1,
-      String? l2,
-      String? l3,
-      ) async {
     await db.transaction(() async {
-      // 1) items 테이블 upsert
-      await db.into(db.items).insertOnConflictUpdate(item.toCompanion());
+      // 1) 기존 행 조회
+      final old = await (db.select(db.items)..where((t) => t.id.equals(item.id)))
+          .getSingleOrNull();
 
-      // 2) 실제 사용할 경로 확정
+      // 2) 즐겨찾기 값 결정: (신규값 ?? 기존값 ?? false)
+      final fav = item.isFavorite ?? (old?.isFavorite ?? false);
+
+      // 3) upsert 시에 isFavorite을 '명시적으로' fav로 고정
+      await db.into(db.items).insertOnConflictUpdate(
+        item.toCompanion().copyWith(
+          isFavorite: Value(fav),
+        ),
+      );
+
+      await _updateItemPaths(item);
+    });
+
+    // 캐시 갱신
+    final fresh = await getItem(item.id);
+    if (fresh != null) _cacheItem(fresh);
+  }
+
+  Future<void> upsertItemWithPath(Item item, String? l1, String? l2, String? l3) async {
+    await db.transaction(() async {
+      final old = await (db.select(db.items)..where((t) => t.id.equals(item.id)))
+          .getSingleOrNull();
+      final fav = item.isFavorite ?? (old?.isFavorite ?? false);
+
+      await db.into(db.items).insertOnConflictUpdate(
+        item.toCompanion().copyWith(isFavorite: Value(fav)),
+      );
+
+      // 경로 계산/보장
       final effL1 = l1 ?? (item.folder.isNotEmpty ? item.folder : null);
       final effL2 = l2 ?? item.subfolder;
       final effL3 = l3 ?? item.subsubfolder;
+      await _ensureFolderPath(l1: effL1 ?? '', l2: effL2, l3: effL3);
 
-      // 3) 폴더는 seed에서 생성된다고 가정 → 여기서는 folders 안 건드림
-
-      // 4) item_paths upsert
       await db.into(db.itemPaths).insertOnConflictUpdate(
         ItemPathsCompanion(
           itemId: Value(item.id),
@@ -260,12 +277,14 @@ class DriftUnifiedRepo extends ChangeNotifier
           l3Id: Value(effL3),
         ),
       );
-      // DB write 이후
-      final fresh = await getItem(item.id);  // 새로 읽어 domain으로
-      if (fresh != null) _cacheItem(fresh);  // ✅ 캐시 갱신
-
     });
+
+    final fresh = await getItem(item.id);
+    if (fresh != null) _cacheItem(fresh);
   }
+
+
+
   Future<void> _updateItemPaths(Item item) async {
     // 폴더 정보가 없으면 경로를 비워둔다.
     if (item.folder.isEmpty) {
@@ -320,6 +339,21 @@ class DriftUnifiedRepo extends ChangeNotifier
   }
 
 
+    // ============ ItemRepo 확장 구현 ============
+    @override
+    Future<Item?> getItemById(String id) async {
+        final row = await (db.select(db.items)..where((t) => t.id.equals(id))).getSingleOrNull();
+        if (row == null) return null;
+        // 필요하면 join해서 paths/attrs decode 등 포함
+        return row.toDomain(); // 당신의 기존 매핑 확장 메서드 사용
+      }
+
+    @override
+    Future<void> updateItemMeta(Item item) async {
+        // 도메인 -> Drift companion 매핑 사용
+        final comp = item.toCompanion();
+        await (db.update(db.items)..where((t) => t.id.equals(item.id))).write(comp);
+      }
 
   @override
   Future<void> deleteItem(String id) async {
@@ -414,18 +448,15 @@ class DriftUnifiedRepo extends ChangeNotifier
     final rows = await q.get();
     return rows.map((r) => r.toDomain()).toList();
   }
+
+
   @override
-  FolderNode? folderById(String id) {
-    // 지금은 간단히 placeholder로 둠
-    // 나중에 필요하면 캐시 기반으로 개선 가능
-    return FolderNode(
-      id: id,
-      name: id,
-      parentId: null,
-      depth: 0,
-      order: 0,
-    );
+  Future<FolderNode?> folderById(String id) async {
+    final row = await (
+        db.select(db.folders)..where((t) => t.id.equals(id))).getSingleOrNull();
+    return row?.toDomain();
   }
+
 
 
 
@@ -888,18 +919,8 @@ class DriftUnifiedRepo extends ChangeNotifier
     notifyListeners();
     return _txnSnapshot;
   }
-
-  @override
-  List<Txn> snapshotTxnsDesc() => _txnSnapshot;
-
-  Future<void> _refreshTxnSnapshot() async {
-    final rows =
-    await (db.select(db.txns)
-      ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
-        .get();
-    _txnSnapshot = rows.map((r) => r.toDomain()).toList();
-    notifyListeners();
-  }
+// ===================== TxnRepo 구현 =====================
+// ===================== TxnRepo 구현 =====================
 
   @override
   Future<void> addInPlanned({
@@ -931,21 +952,24 @@ class DriftUnifiedRepo extends ChangeNotifier
     required String refId,
     String? note,
   }) async {
+    final rt = RefTypeX.fromString(refType);
+
     await db.transaction(() async {
+      // 1) 트랜잭션 기록
       await db.into(db.txns).insert(
         Txn.in_(
           id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
           itemId: itemId,
           qty: qty,
-          refType: RefTypeX.fromString(refType),
+          refType: rt,
           refId: refId,
           status: TxnStatus.actual,
           note: note,
         ).toCompanion(),
       );
 
-      final row =
-      await (db.select(db.items)..where((t) => t.id.equals(itemId)))
+      // 2) 재고 증가
+      final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
           .getSingleOrNull();
       final newQty = (row?.qty ?? 0) + qty;
 
@@ -953,9 +977,81 @@ class DriftUnifiedRepo extends ChangeNotifier
         ItemsCompanion(qty: Value(newQty)),
       );
     });
+
     _stockCache[itemId] = (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
     await _refreshTxnSnapshot();
+  }
 
+  @override
+  Future<void> addOutPlanned({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note,
+  }) async {
+    await db.into(db.txns).insert(
+      Txn.out_(
+        id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
+        itemId: itemId,
+        qty: qty,
+        refType: RefTypeX.fromString(refType),
+        refId: refId,
+        status: TxnStatus.planned,
+        note: note,
+      ).toCompanion(),
+    );
+    await _refreshTxnSnapshot();
+  }
+
+  @override
+  Future<void> addOutActual({
+    required String itemId,
+    required int qty,
+    required String refType,
+    required String refId,
+    String? note,
+  }) async {
+    final rt = RefTypeX.fromString(refType);
+
+    await db.transaction(() async {
+      // 1) 트랜잭션 기록
+      await db.into(db.txns).insert(
+        Txn.out_(
+          id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
+          itemId: itemId,
+          qty: qty,
+          refType: rt,
+          refId: refId,
+          status: TxnStatus.actual,
+          note: note,
+        ).toCompanion(),
+      );
+
+      // 2) 재고 감소
+      final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
+          .getSingleOrNull();
+      final newQty = (row?.qty ?? 0) - qty;
+
+      await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+        ItemsCompanion(qty: Value(newQty)),
+      );
+    });
+
+    _stockCache[itemId] = (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
+    await _refreshTxnSnapshot();
+  }
+
+  @override
+  List<Txn> snapshotTxnsDesc() => _txnSnapshot;
+
+  Future<void> _refreshTxnSnapshot() async {
+    final rows =
+    await (db.select(db.txns)
+      ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
+        .get();
+    _txnSnapshot = rows.map((r) => r.toDomain()).toList();
+    notifyListeners();
   }
 
   @override

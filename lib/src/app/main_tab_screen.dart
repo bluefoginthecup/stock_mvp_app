@@ -9,7 +9,7 @@ import 'package:stockapp_mvp/src/screens/works/work_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_detail_screen.dart';
 
-import 'package:stockapp_mvp/src/repos/inmem_repo.dart';
+import 'package:stockapp_mvp/src/repos/repo_interfaces.dart';
 import 'main_tab_controller.dart';
 
 
@@ -150,7 +150,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
       onGenerateRoute: (settings) {
         if (settings.name == '/detail') {
           final String poId = settings.arguments as String;
-          final repo = context.read<InMemoryRepo>(); // PurchaseDetailScreen이 요구
+          final repo = context.read<PurchaseOrderRepo>(); // PurchaseDetailScreen이 요구
           return MaterialPageRoute(
             builder: (_) => PurchaseDetailScreen(repo: repo, orderId: poId),
             settings: settings,

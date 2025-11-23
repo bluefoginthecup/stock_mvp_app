@@ -169,7 +169,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       return;
     }
 
-    final chain = _buildPathChain(folderRepo, _selectedId!);
+    final chain = await _buildPathChain(folderRepo, _selectedId!);
     final created = await showModalBottomSheet<Item>(
       context: context,
       isScrollControlled: true,
@@ -177,28 +177,40 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     );
     if (created == null) return;
 
-    // InMemoryRepo에 있는 시그니처와 맞춰서 호출
-    await (itemRepo as dynamic).createItemUnderPath(
-      pathIds: chain,
-      item: created,
-    );
+
+    // 표준: 새 Item은 이미 folder/subfolder/subsubfolder가 채워져 옴 → upsertItem만 호출
+    await itemRepo.upsertItem(created);
     if (mounted) setState(() {});
   }
 
-  List<String> _buildPathChain(FolderTreeRepo repo, String selectedId) {
-    final chain = <String>[];
-    var cur = repo.folderById(selectedId);
-    while (cur != null) {
-      chain.insert(0, cur.id);
-      cur = (cur.parentId != null) ? repo.folderById(cur.parentId!) : null;
-    }
-    return chain;
-  }
+  Future<List<String>> _buildPathChain(FolderTreeRepo repo, String selectedId) async {
+        final chain = <String>[];
+        String? curId = selectedId;
+        while (curId != null) {
+          final cur = await repo.folderById(curId);
+          if (cur == null) break;
+          chain.insert(0, cur.id);
+          curId = cur.parentId;
+        }
+        return chain;
+      }
+
+  Widget _folderName(String id) {
+        final repo = context.read<FolderTreeRepo>();
+        return FutureBuilder<FolderNode?>(
+          future: repo.folderById(id),
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const SizedBox(width: 48, height: 16, child: LinearProgressIndicator());
+            }
+            final node = snap.data;
+            return Text(node?.name ?? '(삭제됨)');
+          },
+        );
+      }
+
 
   Widget _breadcrumb() {
-    final repo = context.read<FolderTreeRepo>();
-    String nameOf(String? id) =>
-        id == null ? '' : (repo.folderById(id)?.name ?? '(삭제됨)');
     final segs = <Widget>[
       TextButton(
         onPressed: () => setState(() {
@@ -218,7 +230,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             _l2Id = null;
             _l3Id = null;
           }),
-          child: Text(nameOf(_l1Id)),
+          child: _folderName(_l1Id!),
         ),
       ]);
     }
@@ -227,12 +239,12 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         const Text(' > '),
         TextButton(
           onPressed: () => setState(() => _l3Id = null),
-          child: Text(nameOf(_l2Id)),
+          child: _folderName(_l2Id!),
         ),
       ]);
     }
     if (_l3Id != null) {
-      segs.addAll([const Text(' > '), Text(nameOf(_l3Id))]);
+      segs.addAll([const Text(' > '), _folderName(_l3Id!)]);
     }
 
     return SingleChildScrollView(
@@ -240,6 +252,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       child: Row(children: segs),
     );
   }
+
 
   // ───────────────────────── Data loader ─────────────────────────
 

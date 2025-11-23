@@ -7,7 +7,7 @@ import '../models/folder_node.dart';
 import '../models/bom.dart';
 import '../models/lot.dart'; // ✅ Practical-MIN: Lot 모델
 import '../repos/repo_interfaces.dart';
-import '../repos/inmem_repo.dart'; // ✅ 폴더/lot/path 백필용 (InMemoryRepo)
+import '../repos/drift_unified_repo.dart'; // ✅ 폴더/lot/path 백필용 (InMemoryRepo)
 
 class UnifiedSeedImporter {
   /// 아이템 저장용 (지금은 SqliteItemRepo)
@@ -21,7 +21,7 @@ class UnifiedSeedImporter {
   /// - upsertFolderNode / createFolderNodeWithId / listFolderChildren
   /// - backfillPathsFromLegacy(createFolders:false)
   /// - upsertLots
-  final InMemoryRepo? inmem;
+  final DriftUnifiedRepo? drift;
 
   final bool verbose;
 
@@ -32,7 +32,7 @@ class UnifiedSeedImporter {
   UnifiedSeedImporter({
     required this.itemRepo,
     this.bomRepo,
-    this.inmem,
+    this.drift,
     this.verbose = false,
   });
 
@@ -76,8 +76,8 @@ class UnifiedSeedImporter {
     );
 
     // 디버그 편의 로그
-    // - 폴더 트리는 inmem(있으면) 우선
-    final dynFolders = (inmem ?? itemRepo) as dynamic;
+    // - 폴더 트리는 drift(있으면) 우선
+    final dynFolders = (drift ?? itemRepo) as dynamic;
     try {
       if (dynFolders.listFolderChildren is Function) {
         final roots = await dynFolders.listFolderChildren(null);
@@ -157,7 +157,6 @@ class UnifiedSeedImporter {
       try {
         bool handledByTree = false;
 
-        // 1) 트리 지원 repo(InMemoryRepo 스타일)인 경우에만 시도
         try {
           final dyn = itemRepo as dynamic;
 
@@ -230,7 +229,7 @@ class UnifiedSeedImporter {
       _log('BOM upsert done: ok=$bomOk fail=$bomFail');
     }
 
-    // ✅ LOTS upsert (→ InMemoryRepo 우선)
+    // ✅ LOTS upsert (→ driftoryRepo 우선)
     _persistLotsIfSupported(lotsMap);
 
     // UI 갱신(ChangeNotifier 기반 Repo)
@@ -383,8 +382,6 @@ class UnifiedSeedImporter {
   // ===== Persist helpers =====
 
   Future<void> _clearAllIfSupported() async {
-    // 필요하면 itemRepo와 inmem 둘 다 지우는 것도 가능하지만,
-    // 지금은 itemRepo만 대상으로 동작 유지
     try {
       final dynItem = itemRepo as dynamic;
       if (dynItem.clearAll is Function) {
@@ -392,10 +389,10 @@ class UnifiedSeedImporter {
         await dynItem.clearAll();
       }
 
-      if (inmem != null) {
-        final dynMem = inmem as dynamic;
+      if (drift != null) {
+        final dynMem = drift as dynamic;
         if (dynMem.clearAll is Function) {
-          _log('Clearing inmem...');
+          _log('Clearing drift...');
           await dynMem.clearAll();
         }
       }
@@ -405,8 +402,8 @@ class UnifiedSeedImporter {
   void _persistFoldersIfSupported(List<FolderNode> folders) {
     () async {
       try {
-        // 폴더 트리는 inmem(있으면) 우선, 없으면 itemRepo에 시도
-        final dyn = (inmem ?? itemRepo) as dynamic;
+        // 폴더 트리는 drift(있으면) 우선, 없으면 itemRepo에 시도
+        final dyn = (drift ?? itemRepo) as dynamic;
 
         // depth, order 기준으로 부모 먼저
         folders.sort((a, b) {
@@ -498,8 +495,7 @@ class UnifiedSeedImporter {
   void _persistLotsIfSupported(Map<String, List<Lot>> byItem) {
     if (byItem.isEmpty) return;
     try {
-      // Lots는 InMemoryRepo(inmem) 우선
-      final dyn = (inmem ?? itemRepo) as dynamic;
+      final dyn = (drift ?? itemRepo) as dynamic;
       if (dyn.upsertLots is! Function) {
         _log(
             'Lots persistence not supported by repo (no upsertLots). Skipped.');
