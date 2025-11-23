@@ -84,6 +84,15 @@ abstract class ItemRepo {
     bool favoritesOnly = false,
   });
 
+  /// 아이템을 통합휴지통으로(소프트 삭제)
+  Future<void> moveItemToTrash(String itemId, {String? reason});
+
+  /// 휴지통에서 복원
+  Future<void> restoreItemFromTrash(String itemId);
+
+  /// 휴지통에서 영구 삭제
+  Future<void> purgeItem(String itemId);
+
   // ===== BOM (2단계 분리형) =====
     /// Finished 레시피 조회/저장
     List<BomRow> finishedBomOf(String finishedItemId);
@@ -250,7 +259,7 @@ class MoveRequest {
   });
 }
 
-enum TrashEntityKind { order, purchase /*, item, txn, work, supplier, folder */ }
+enum TrashEntityKind { order, purchase, item /* txn, work, supplier, folder */ }
 
 class TrashEntry {
     final TrashEntityKind kind;
@@ -276,6 +285,8 @@ abstract class TrashRepo {
     Future<void> restore(TrashEntityKind kind, String entityId);
     Future<void> hardDelete(TrashEntityKind kind, String entityId);
     Future<int> purgeOlderThan(Duration keep);
+
+
   }
 
 
