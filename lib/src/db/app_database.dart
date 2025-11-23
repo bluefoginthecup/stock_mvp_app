@@ -454,7 +454,7 @@ extension ItemToCompanion on Item {
       conversionMode: Value(conversionMode),
       stockHintsJson: Value(stockHintsJson),
       supplierName: Value(supplierName),
-      isFavorite: Value(isFavorite ?? false),
+      isFavorite: Value(isFavorite),
     );
   }
 }
@@ -595,7 +595,7 @@ extension OrderToCompanion on Order {
     memo: Value(memo),
     status: Value(status.name),
     isDeleted: Value(isDeleted),
-    updatedAt: Value(updatedAt?.toIso8601String()),
+    updatedAt: Value(updatedAt.toIso8601String()),
     deletedAt: Value(deletedAt?.toIso8601String()),
   );
 }

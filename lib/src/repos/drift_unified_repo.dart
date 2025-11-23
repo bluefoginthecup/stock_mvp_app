@@ -234,11 +234,9 @@ class DriftUnifiedRepo extends ChangeNotifier
   Future<void> upsertItem(Item item) async {
     await db.transaction(() async {
       // 1) 기존 행 조회
-      final old = await (db.select(db.items)..where((t) => t.id.equals(item.id)))
-          .getSingleOrNull();
 
       // 2) 즐겨찾기 값 결정: (신규값 ?? 기존값 ?? false)
-      final fav = item.isFavorite ?? (old?.isFavorite ?? false);
+      final fav = item.isFavorite;
 
       // 3) upsert 시에 isFavorite을 '명시적으로' fav로 고정
       await db.into(db.items).insertOnConflictUpdate(
@@ -257,9 +255,7 @@ class DriftUnifiedRepo extends ChangeNotifier
 
   Future<void> upsertItemWithPath(Item item, String? l1, String? l2, String? l3) async {
     await db.transaction(() async {
-      final old = await (db.select(db.items)..where((t) => t.id.equals(item.id)))
-          .getSingleOrNull();
-      final fav = item.isFavorite ?? (old?.isFavorite ?? false);
+      final fav = item.isFavorite;
 
       await db.into(db.items).insertOnConflictUpdate(
         item.toCompanion().copyWith(isFavorite: Value(fav)),
@@ -383,7 +379,6 @@ class DriftUnifiedRepo extends ChangeNotifier
 
 
 
-  @override
   Stream<List<Item>> watchItems({String? keyword}) {
     final q = db.select(db.items);
     if (keyword != null && keyword.isNotEmpty) {
@@ -405,7 +400,6 @@ class DriftUnifiedRepo extends ChangeNotifier
   // =============== FOLDER TREE REPO ===============================
   // ================================================================
 // 📁 폴더 저장 (SeedImporter에서 사용)
-  @override
   Future<void> upsertFolderNode(FolderNode node) async {
     // ⚠️ 여기는 app_database.dart에 정의한 `folders` 테이블 컬럼 이름에 맞게 수정해야 함
     await db.into(db.folders).insertOnConflictUpdate(
@@ -470,7 +464,7 @@ class DriftUnifiedRepo extends ChangeNotifier
     final parentRow = parentId == null
         ? null
         : await (db.select(db.folders)
-      ..where((t) => t.id.equals(parentId!)))
+      ..where((t) => t.id.equals(parentId)))
         .getSingleOrNull();
 
     // 🔧 루트는 depth = 0, 자식은 parent.depth + 1
@@ -667,7 +661,6 @@ class DriftUnifiedRepo extends ChangeNotifier
 
 // DriftUnifiedRepo 안에
 
-  @override
   Future<void> upsertLots(String itemId, List<Lot> lots) async {
     if (lots.isEmpty) return;
 
@@ -780,7 +773,7 @@ class DriftUnifiedRepo extends ChangeNotifier
       if (row == null) return;
 
       await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
-        ItemsCompanion(qty: Value((row.qty ?? 0) + delta)),
+        ItemsCompanion(qty: Value((row.qty) + delta)),
       );
 
       await db.into(db.txns).insert(
@@ -1156,6 +1149,42 @@ class DriftUnifiedRepo extends ChangeNotifier
     }
     return list;
   }
+  @override
+  Stream<List<Order>> watchOrders({bool includeDeleted = false}) {
+    final o = db.orders;      // 테이블
+    final l = db.orderLines;  // 테이블
+
+    final joined = db.select(o).join([
+      leftOuterJoin(l, l.orderId.equalsExp(o.id)),
+    ]);
+
+    if (!includeDeleted) {
+      joined.where(o.isDeleted.equals(false));
+    }
+    joined.orderBy([OrderingTerm.desc(o.date)]);
+
+    return joined.watch().map((rows) {
+      // orderId로 그룹핑: (OrderRow, List<OrderLineRow>)
+      final map = <String, (OrderRow, List<OrderLineRow>)>{};
+
+      for (final r in rows) {
+        final header = r.readTable(o);             // 타입: OrderRow (생성명에 따라 다름)
+        final line   = r.readTableOrNull(l);       // 타입: OrderLineRow? (nullable)
+
+        final entry = map.putIfAbsent(header.id, () => (header, <OrderLineRow>[]));
+        if (line != null) {
+          entry.$2.add(line);                      // null 체크 후 추가
+        }
+      }
+
+      // 도메인으로 변환: OrderRow.toDomain(List<OrderLine>) 확장 사용
+      return map.values.map((tuple) {
+        final header = tuple.$1;                   // OrderRow
+        final lines  = tuple.$2.map((e) => e.toDomain()).toList(); // OrderLineRow -> OrderLine
+        return header.toDomain(lines);             // OrderRow -> Order
+      }).toList();
+    });
+  }
 
 
 
@@ -1185,7 +1214,7 @@ class DriftUnifiedRepo extends ChangeNotifier
           status: Value(order.status.name),
           isDeleted: Value(order.isDeleted),
           updatedAt: Value(order.updatedAt != null
-              ? order.updatedAt!.toIso8601String()
+              ? order.updatedAt.toIso8601String()
               : null),
         ),
       );

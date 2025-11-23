@@ -88,6 +88,7 @@ abstract class ItemRepo {
 
 abstract class OrderRepo {
   Future<List<Order>> listOrders({bool includeDeleted = false});
+  Stream<List<Order>> watchOrders({bool includeDeleted = false});
   Future<Order?> getOrder(String id);
   Future<void> upsertOrder(Order order);
 
