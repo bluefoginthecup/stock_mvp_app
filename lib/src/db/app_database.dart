@@ -67,6 +67,10 @@ class Items extends Table {
   //즐겨찾기
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
 
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get deletedAt => text().nullable()(); // ISO8601
+
+
 
 
   @override
@@ -133,6 +137,11 @@ class Txns extends Table {
   TextColumn get memo => text().nullable()();
   TextColumn get sourceKey => text().nullable()();
 
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get deletedAt => text().nullable()(); // ISO8601
+
+
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -189,6 +198,10 @@ class OrderLines extends Table {
       text().references(Items, #id, onDelete: KeyAction.restrict)();
   IntColumn get qty => integer()(); // >0
 
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get deletedAt => text().nullable()(); // ISO8601
+
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -210,9 +223,13 @@ class Works extends Table {
   TextColumn get status => text()(); // WorkStatus.name
   TextColumn get createdAt => text()(); // ISO8601
   TextColumn get updatedAt => text().nullable()(); // ISO8601
+  TextColumn get sourceKey => text().nullable()();
+
   BoolColumn get isDeleted =>
       boolean().withDefault(const Constant(false))();
-  TextColumn get sourceKey => text().nullable()();
+  TextColumn get deletedAt => text().nullable()(); // ISO8601
+
+
 
   @override
   Set<Column> get primaryKey => {id};
@@ -233,6 +250,9 @@ class PurchaseOrders extends Table {
   BoolColumn get isDeleted =>
       boolean().withDefault(const Constant(false))();
   TextColumn get memo => text().nullable()();
+  TextColumn get deletedAt => text().nullable()(); // ISO8601
+
+
 
   @override
   Set<Column> get primaryKey => {id};
@@ -251,6 +271,12 @@ class PurchaseLines extends Table {
   TextColumn get note => text().nullable()();
   TextColumn get memo => text().nullable()();
   TextColumn get colorNo => text().nullable()();
+
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get deletedAt => text().nullable()(); // ISO8601
+
+
+
 
   @override
   Set<Column> get primaryKey => {id};
@@ -333,26 +359,63 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
-      await m.createAll();
-    },
-    onUpgrade: (m, from, to) async {
-      // 나중에 schemaVersion 올릴 때 여기서 ALTER TABLE 등 처리
-      // v1 → v2: Orders.deletedAt 추가 (+ 필요시 PurchaseOrders.deletedAt)
-            if (from < 2) {
-              await m.addColumn(orders, orders.deletedAt);
-              // await m.addColumn(purchaseOrders, purchaseOrders.deletedAt); // 발주에도 적용 시
-            }
-            // ⭐ v2 → v3: Items.isFavorite 추가
-            if (from < 3) {
-              await m.addColumn(items, items.isFavorite);
-            }
-    },
+  onCreate: (m) async {
+  await m.createAll();
+  },
+  onUpgrade: (m, from, to) async {  // v1 → v2: Orders.deletedAt(Text) 추가
+          if (from < 2) {
+            await m.alterTable(TableMigration(
+              orders,
+              newColumns: [orders.deletedAt],
+            ));
+          }
+
+          // v2 → v3: Items.isFavorite 추가
+          if (from < 3) {
+            await m.alterTable(TableMigration(
+              items,
+              newColumns: [items.isFavorite],
+            ));
+          }
+
+          // v3 → v4: 통합휴지통 컬럼 일괄 추가
+          if (from < 4) {
+            await m.alterTable(TableMigration(
+              items,
+              newColumns: [items.isDeleted, items.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              txns,
+              newColumns: [txns.isDeleted, txns.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              orders,
+              newColumns: [orders.isDeleted], // deletedAt은 v2에서 이미 추가됨
+            ));
+            await m.alterTable(TableMigration(
+              orderLines,
+              newColumns: [orderLines.isDeleted, orderLines.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              works,
+              newColumns: [works.isDeleted, works.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              purchaseOrders,
+              newColumns: [purchaseOrders.isDeleted, purchaseOrders.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              purchaseLines,
+              newColumns: [purchaseLines.isDeleted, purchaseLines.deletedAt],
+            ));
+          }
+  }
   );
+
 }
 
 /// 실제 SQLite 파일을 여는 부분

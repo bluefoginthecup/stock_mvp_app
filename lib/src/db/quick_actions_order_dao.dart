@@ -22,9 +22,22 @@ class QuickActionsOrderDao extends DatabaseAccessor<AppDatabase>
       await delete(quickActionOrders).go(); // 전체 초기화
       for (var i = 0; i < actionIds.length; i++) {
         await into(quickActionOrders).insertOnConflictUpdate(
-          QuickActionOrder(action: actionIds[i], orderIndex: i),
+          QuickActionOrdersCompanion( // ✅ Companion 사용
+            action: Value(actionIds[i]),
+            orderIndex: Value(i),
+          ),
         );
       }
     });
+  }
+
+  /// (선택) 개별 upsert
+  Future<void> upsert(String action, int index) async {
+    await into(quickActionOrders).insertOnConflictUpdate(
+      QuickActionOrdersCompanion(
+        action: Value(action),
+        orderIndex: Value(index),
+      ),
+    );
   }
 }

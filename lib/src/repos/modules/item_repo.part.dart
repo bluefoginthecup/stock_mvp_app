@@ -331,4 +331,34 @@ int stockOf(String itemId) {
   final v = _stockCache[itemId];
   return v ?? 0;
 }
+
+  @override
+  Future<void> moveItemToTrash(String id, {String? reason}) async {
+    await (db.update(db.items)..where((t) => t.id.equals(id))).write(
+      ItemsCompanion(
+        isDeleted: const Value(true),
+        // deletedAt을 TextColumn(ISO8601)로 통일했으니 문자열 저장
+        deletedAt: Value(DateTime.now().toIso8601String()),
+      ),
+    );
+    notifyListeners();
+  }
+
+  @override
+  Future<void> restoreItemFromTrash(String id) async {
+    await (db.update(db.items)..where((t) => t.id.equals(id))).write(
+      const ItemsCompanion(
+        isDeleted: Value(false),
+        deletedAt: Value(null),
+      ),
+    );
+    notifyListeners();
+  }
+
+  @override
+  Future<void> purgeItem(String id) async {
+    // 자식 테이블(FK) 정리 필요 시 여기서 먼저 처리하거나 FK를 CASCADE로
+    await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
+    notifyListeners();
+  }
 }
