@@ -19,10 +19,13 @@ class _OrderListScreenState extends State<OrderListScreen> {
 
   OrderRepo get _repo => context.read<OrderRepo>();
 
+
   @override
   void initState() {
     super.initState();
     _future = _repo.listOrders();
+    final b = context.read<OrderRepo>();
+    print('[OrderList]  OrderRepo instance: ${identityHashCode(b)} ${b.runtimeType}');
   }
 
   Future<void> _reload() async {

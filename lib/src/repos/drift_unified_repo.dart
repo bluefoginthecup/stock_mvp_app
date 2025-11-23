@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';        // 👈 ChangeNotifier
 import 'package:drift/drift.dart';
+import 'dart:async';
+
 
 // DB
 import '../db/app_database.dart';
@@ -778,7 +780,7 @@ class DriftUnifiedRepo extends ChangeNotifier
       if (row == null) return;
 
       await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
-        ItemsCompanion(qty: Value(row.qty + delta)),
+        ItemsCompanion(qty: Value((row.qty ?? 0) + delta)),
       );
 
       await db.into(db.txns).insert(
@@ -902,24 +904,30 @@ class DriftUnifiedRepo extends ChangeNotifier
   }
 
 
-
-  // ================================================================
-  // =============== TXN REPO =======================================
-  // ================================================================
+// ================================================================
+// =============== TXN REPO =======================================
+// ================================================================
 
   List<Txn> _txnSnapshot = [];
+  StreamSubscription? _txnSub;
+
 
   @override
   Future<List<Txn>> listTxns() async {
-    final rows =
-    await (db.select(db.txns)
-      ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
-        .get();
-    _txnSnapshot = rows.map((r) => r.toDomain()).toList();
-    notifyListeners();
+    // ✅ 최초 1회만 구독 시작 (중복 구독 방지)
+    if (_txnSub == null) {
+      _txnSub = (db.select(db.txns)
+        ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
+          .watch()
+          .listen((rows) {
+        _txnSnapshot = rows.map((r) => r.toDomain()).toList();
+        notifyListeners();
+      });
+    } else {
+    }
     return _txnSnapshot;
   }
-// ===================== TxnRepo 구현 =====================
+
 // ===================== TxnRepo 구현 =====================
 
   @override
@@ -953,7 +961,6 @@ class DriftUnifiedRepo extends ChangeNotifier
     String? note,
   }) async {
     final rt = RefTypeX.fromString(refType);
-
     await db.transaction(() async {
       // 1) 트랜잭션 기록
       await db.into(db.txns).insert(
@@ -971,14 +978,15 @@ class DriftUnifiedRepo extends ChangeNotifier
       // 2) 재고 증가
       final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
           .getSingleOrNull();
-      final newQty = (row?.qty ?? 0) + qty;
-
+      final before = row?.qty ?? 0;
+      final after = before + qty;
       await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
-        ItemsCompanion(qty: Value(newQty)),
+        ItemsCompanion(qty: Value(after)),
       );
     });
 
-    _stockCache[itemId] = (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
+    _stockCache[itemId] =
+        (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
     await _refreshTxnSnapshot();
   }
 
@@ -989,6 +997,7 @@ class DriftUnifiedRepo extends ChangeNotifier
     required String refType,
     required String refId,
     String? note,
+    String? memo,
   }) async {
     await db.into(db.txns).insert(
       Txn.out_(
@@ -999,6 +1008,7 @@ class DriftUnifiedRepo extends ChangeNotifier
         refId: refId,
         status: TxnStatus.planned,
         note: note,
+        memo: memo,
       ).toCompanion(),
     );
     await _refreshTxnSnapshot();
@@ -1011,9 +1021,9 @@ class DriftUnifiedRepo extends ChangeNotifier
     required String refType,
     required String refId,
     String? note,
+    String? memo,
   }) async {
     final rt = RefTypeX.fromString(refType);
-
     await db.transaction(() async {
       // 1) 트랜잭션 기록
       await db.into(db.txns).insert(
@@ -1025,20 +1035,22 @@ class DriftUnifiedRepo extends ChangeNotifier
           refId: refId,
           status: TxnStatus.actual,
           note: note,
+          memo: memo,
         ).toCompanion(),
       );
 
       // 2) 재고 감소
       final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
           .getSingleOrNull();
-      final newQty = (row?.qty ?? 0) - qty;
-
+      final before = row?.qty ?? 0;
+      final after = before - qty;
       await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
-        ItemsCompanion(qty: Value(newQty)),
+        ItemsCompanion(qty: Value(after)),
       );
     });
 
-    _stockCache[itemId] = (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
+    _stockCache[itemId] =
+        (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;
     await _refreshTxnSnapshot();
   }
 
@@ -1046,12 +1058,19 @@ class DriftUnifiedRepo extends ChangeNotifier
   List<Txn> snapshotTxnsDesc() => _txnSnapshot;
 
   Future<void> _refreshTxnSnapshot() async {
-    final rows =
-    await (db.select(db.txns)
+    // ✅ 수동 새로고침 시에도 강제 재조회
+    final rows = await (db.select(db.txns)
       ..orderBy([(t) => OrderingTerm.desc(t.ts)]))
         .get();
     _txnSnapshot = rows.map((r) => r.toDomain()).toList();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _txnSub?.cancel();
+    _txnSub = null;
+    super.dispose();
   }
 
   @override
@@ -1073,6 +1092,7 @@ class DriftUnifiedRepo extends ChangeNotifier
 
     await _refreshTxnSnapshot();
   }
+
 
   // ================================================================
   // =============== BOM REPO =======================================

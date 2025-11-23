@@ -16,6 +16,10 @@ class _TrashScreenState extends State<TrashScreen> {
 
   Future<List<Order>> _load(BuildContext context) async {
     final repo = context.read<OrderRepo>();
+
+    final a = context.read<OrderRepo>();
+    print('[TrashScreen] OrderRepo instance: ${identityHashCode(a)} ${a.runtimeType}');
+
     final all = await repo.listOrders(includeDeleted: true);
     final deleted = all.where((o) => o.isDeleted).toList();
     if (_q.isEmpty) return deleted;
@@ -31,7 +35,7 @@ class _TrashScreenState extends State<TrashScreen> {
     await ctx.read<OrderRepo>().restoreOrder(o.id);
     if (!mounted) return;
     ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('복구되었습니다')));
-    setState(() {});
+    Navigator.pop(ctx, true);
   }
 
   Future<void> _hardDelete(BuildContext ctx, Order o) async {

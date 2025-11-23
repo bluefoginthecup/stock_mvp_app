@@ -23,6 +23,7 @@ import 'src/services/auth_service.dart';
 // Drift + SQLite
 import 'src/db/app_database.dart';
 import 'src/repos/drift_unified_repo.dart';  // ✅ 새 통합 Repo
+import 'src/models/txn.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,7 +69,14 @@ Future<void> main() async {
         Provider<SupplierRepo>.value(value: unifiedRepo),
         Provider<FolderTreeRepo>.value(value: unifiedRepo),
 
-        ChangeNotifierProvider(create: (_) => CartManager()),
+        // ✅ txns도 실시간 구독 (UI에서 context.watch<List<Txn>>()로 바로 사용)
+        StreamProvider<List<Txn>>(
+          create: (ctx) => unifiedRepo.watchTxns(),
+          initialData: const [],
+        ),
+
+
+  ChangeNotifierProvider(create: (_) => CartManager()),
         ChangeNotifierProvider(create: (_) => MainTabController()),
         ChangeNotifierProvider(create: (_) => ItemSelectionController()),
 

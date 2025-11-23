@@ -183,11 +183,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
             key: const ValueKey('trash'),
             icon: Icons.delete_outline,
             label: '통합 휴지통',
-            onTap: () {
-              Navigator.of(context).push(
+            onTap: () async {
+              final changed = await Navigator.push(
+                context,
                 MaterialPageRoute(builder: (_) => const TrashScreen()),
               );
+
+              if (changed == true) {
+                // 여기서 전체 데이터가 바뀌었으니,
+                // OrderListScreen도 다음번에 열릴 때 최신 데이터로 보이도록 하면 됨.
+                setState(() {});  // Dashboard 자체만 재빌드되면 충분함
+              }
             },
+
           );
 
       }
