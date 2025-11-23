@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../repos/repo_interfaces.dart'; // TrashRepo, TrashEntry
+import '../../models/trash_entry.dart';
 
 class TrashScreen extends StatefulWidget {
   const TrashScreen({super.key});

@@ -10,6 +10,7 @@ import '../models/types.dart';
 import '../models/suppliers.dart';
 import '../models/folder_node.dart';
 import 'package:flutter/foundation.dart'; // ChangeNotifier
+import '../models/trash_entry.dart';
 
 
 /// 공통 규칙:
@@ -259,35 +260,12 @@ class MoveRequest {
   });
 }
 
-enum TrashEntityKind { order, purchase, item /* txn, work, supplier, folder */ }
-
-class TrashEntry {
-    final TrashEntityKind kind;
-    final String entityId;
-    final String title;
-    final DateTime deletedAt;
-    final String? metaJson;
-    const TrashEntry({
-      required this.kind,
-      required this.entityId,
-      required this.title,
-      required this.deletedAt,
-      this.metaJson,
-    });
-  }
-
 abstract class TrashRepo {
-    Future<List<TrashEntry>> list({
-      TrashEntityKind? kind,
-      String? keyword,
-      int limit = 50,
-    });
-    Future<void> restore(TrashEntityKind kind, String entityId);
-    Future<void> hardDelete(TrashEntityKind kind, String entityId);
-    Future<int> purgeOlderThan(Duration keep);
+  Future<List<TrashEntry>> listTrash();
+  Future<void> restore(String entityType, String id);
+  Future<void> hardDelete(String entityType, String id);
+}
 
-
-  }
 
 
 

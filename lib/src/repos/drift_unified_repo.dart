@@ -21,6 +21,7 @@ import 'package:uuid/uuid.dart';
 
 // 표준 repo 인터페이스
 import 'repo_interfaces.dart';
+import '../models/trash_entry.dart'; // ← 이 줄 추가 (alias 없이)
 
 // ── 여기서부터 모듈 분리
 part 'modules/item_repo.part.dart';
@@ -32,6 +33,8 @@ part 'modules/work_repo.part.dart';
 part 'modules/purchase_repo.part.dart';
 part 'modules/supplier_repo.part.dart';
 part 'modules/lot_repo.part.dart';
+part 'modules/trash_repo.part.dart';
+
 
 /// ============================================================================
 ///  DriftUnifiedRepo
@@ -103,7 +106,8 @@ class DriftUnifiedRepo extends _RepoCore
         WorkRepoMixin,
         PurchaseRepoMixin,
         SupplierRepoMixin,
-        LotRepoMixin
+        LotRepoMixin,
+        TrashRepoMixin
     implements
         ItemRepo,
         TxnRepo,
@@ -112,7 +116,8 @@ class DriftUnifiedRepo extends _RepoCore
         WorkRepo,
         PurchaseOrderRepo,
         SupplierRepo,
-        FolderTreeRepo {
+        FolderTreeRepo,
+        TrashRepo{
 
   final _uuid = const Uuid();
   DriftUnifiedRepo(AppDatabase db) : super(db);

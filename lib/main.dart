@@ -22,7 +22,7 @@ import 'src/services/auth_service.dart';
 
 // Drift + SQLite
 import 'src/db/app_database.dart';
-import 'src/repos/drift_unified_repo.dart';  // ✅ 새 통합 Repo
+import 'src/repos/drift_unified_repo.dart';
 import 'src/models/txn.dart';
 
 Future<void> main() async {
@@ -68,6 +68,9 @@ Future<void> main() async {
         Provider<PurchaseOrderRepo>.value(value: unifiedRepo),
         Provider<SupplierRepo>.value(value: unifiedRepo),
         Provider<FolderTreeRepo>.value(value: unifiedRepo),
+        // ✅ 통합 휴지통(TrashScreen)이 쓰는 Repo 노출
+        Provider<TrashRepo>.value(value: unifiedRepo),
+
 
         // ✅ txns도 실시간 구독 (UI에서 context.watch<List<Txn>>()로 바로 사용)
         StreamProvider<List<Txn>>(
