@@ -511,14 +511,29 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               IconButton(
                 icon: const Icon(Icons.bug_report),
                 onPressed: () async {
-                  final db = context.read<AppDatabase>(); // drift database
-                  final row = await (db.select(db.items)
-                    ..where((t) => t.id.equals('it_F_rouen_gray_cc_50')))
-                      .getSingle();
+                  final db = context.read<AppDatabase>();
 
-                  debugPrint('DEBUG ITEM ROW → $row');
+                  // 현재 선택 폴더 상태 찍기
+                  debugPrint('[PATH DEBUG] selected => l1=$_l1Id l2=$_l2Id l3=$_l3Id');
+
+                  // 문제 아이템 ID로 교체
+                  const probeId = 'it_F_dotori_coffee_sb_50'; // 실제 아이디로 변경하세요
+
+                  // items 테이블 경로 확인
+                  final row = await (db.select(db.items)
+                    ..where((t) => t.id.equals(probeId)))
+                      .getSingleOrNull();
+                  debugPrint('[PATH DEBUG] items => folder=${row?.folder}, sub=${row?.subfolder}, subsub=${row?.subsubfolder}');
+
+                  // item_paths 테이블 경로 확인
+                  final p = db.itemPaths;
+                  final rowP = await (db.select(p)
+                    ..where((t) => t.itemId.equals(probeId)))
+                      .getSingleOrNull();
+                  debugPrint('[PATH DEBUG] item_paths => l1=${rowP?.l1Id}, l2=${rowP?.l2Id}, l3=${rowP?.l3Id}');
                 },
               ),
+
               IconButton(
                 icon: const Icon(Icons.ios_share),
                 tooltip: 'JSON 내보내기',

@@ -378,7 +378,6 @@ class DriftUnifiedRepo extends ChangeNotifier
             setFavorite(itemId: itemId, value: value);
 
 
-
   @override
   Stream<List<Item>> watchItems({
     String? l1,
@@ -390,56 +389,56 @@ class DriftUnifiedRepo extends ChangeNotifier
     bool favoritesOnly = false,
   }) {
     final i = db.items;
-    final q = db.select(i);
+    final p = db.itemPaths;
 
-    // ── 경로 필터 (반드시 람다로!) ─────────────────────────────
+    final join = db.select(i).join([
+      leftOuterJoin(p, p.itemId.equalsExp(i.id)),
+    ]);
+
+    // ── 경로 필터: item_paths의 l1Id/l2Id/l3Id(=폴더 ID)로만 매칭 ──
     if (l1 != null && l1.isNotEmpty) {
-      q.where((t) => t.folder.equals(l1));
+      join.where(p.l1Id.equals(l1));
 
       if (l2 != null && l2.isNotEmpty) {
-        q.where((t) => t.subfolder.equals(l2));
+        join.where(p.l2Id.equals(l2));
 
         if (l3 != null && l3.isNotEmpty) {
-          q.where((t) => t.subsubfolder.equals(l3)); // L3 고정
-        } else {
-          if (!recursive) {
-            // L2 바로 아래만
-            q.where((t) => t.subsubfolder.isNull());
-          }
+          join.where(p.l3Id.equals(l3));        // 정확히 이 L3 폴더
+        } else if (!recursive) {
+          join.where(p.l3Id.isNull());          // L2의 “직속” 아이템만
         }
-      } else {
-        if (!recursive) {
-          // L1 바로 아래만
-          q.where((t) => t.subfolder.isNull());
-        }
+      } else if (!recursive) {
+        join.where(p.l2Id.isNull());            // L1의 “직속” 아이템만
       }
     }
-    // (l1 == null이면 전체 범위)
+    // (l1 == null이면 전체 범위. recursive 의미 없음)
 
-    // ── 검색 (LIKE도 람다 안에서 결합) ────────────────────────
+    // ── 검색 (이름/표시명/SKU) ──
     if (keyword != null && keyword.isNotEmpty) {
       final like = '%${keyword.replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
-      q.where((t) => t.name.like(like) | t.sku.like(like));
+      join.where(i.name.like(like) | i.displayName.like(like) | i.sku.like(like));
     }
 
-    // ── 임계치 / 즐겨찾기 ─────────────────────────────────────
+    // ── 임계치 / 즐겨찾기 ──
     if (lowOnly) {
-      q.where((t) => t.minQty.isBiggerThanValue(0) & t.qty.isSmallerOrEqual(t.minQty));
+      join.where(i.minQty.isBiggerThanValue(0) & i.qty.isSmallerOrEqual(i.minQty));
     }
     if (favoritesOnly) {
-      q.where((t) => t.isFavorite.equals(true));
+      join.where(i.isFavorite.equals(true));
     }
 
-    // ── 정렬 (제너레이터 형태) ───────────────────────────────
-    q.orderBy([(t) => OrderingTerm.asc(t.name)]);
+    // ── 정렬 ──
+    join.orderBy([OrderingTerm.asc(i.name)]);
 
-    // ── 스트림 변환 ──────────────────────────────────────────
-    return q.watch().map((rows) {
-      final list = rows.map((r) => r.toDomain()).toList();
-      _cacheItems(list); // (기존 캐시 유지)
+
+    // ── 스트림 변환 ──
+    return join.watch().map((rows) {
+      final list = rows.map((r) => r.readTable(i).toDomain()).toList();
+      _cacheItems(list); // 선택
       return list;
     });
   }
+
 // 필요한 경우에만 추가
   Stream<({int low, int fav})> watchCounts({
     String? l1,
