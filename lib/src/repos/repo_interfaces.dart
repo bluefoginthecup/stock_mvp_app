@@ -94,6 +94,7 @@ abstract class ItemRepo {
   /// 휴지통에서 영구 삭제
   Future<void> purgeItem(String itemId);
 
+
   // ===== BOM (2단계 분리형) =====
     /// Finished 레시피 조회/저장
     List<BomRow> finishedBomOf(String finishedItemId);

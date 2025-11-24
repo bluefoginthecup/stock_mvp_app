@@ -149,6 +149,33 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
             if (!context.mounted) return;
             (context as Element).markNeedsBuild();
           },
+            // 신규: 이동 및 휴지통 핸들러 추가
+                      onRequestMove: () async {
+                        final dest = await showPathPicker(
+                          context,
+                          childrenProvider: folderChildrenProvider(
+                            context.read<FolderTreeRepo>(),
+                          ),
+                          title: '아이템 이동..',
+                          maxDepth: 3,
+                        );
+                        if (dest == null || dest.isEmpty) return;
+                        final moved = await context
+                            .read<FolderTreeRepo>()
+                            .moveItemsToPath(itemIds: [it.id], pathIds: dest);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('아이템 $moved개 이동')),
+                        );
+                      },
+                      onRequestTrash: () async {
+                        final repo = context.read<ItemRepo>();
+                        await repo.moveItemToTrash(it.id);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('"${it.displayName ?? it.name}" 삭제됨')),
+                        );
+                      },
         );
       },
       childCount: items.length,

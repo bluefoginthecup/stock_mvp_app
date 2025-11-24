@@ -3,7 +3,12 @@ part of '../drift_unified_repo.dart';
 mixin ItemRepoMixin on _RepoCore {
 @override
 Future<List<Item>> listItems({String? folder, String? keyword}) async {
+
   final q = db.select(db.items);
+
+  // 휴지통(소프트삭제) 제외
+    q.where((t) => t.isDeleted.equals(false));
+
 
   if (folder != null && folder.isNotEmpty) {
     q.where((tbl) => tbl.folder.equals(folder));
@@ -23,6 +28,8 @@ Future<List<Item>> listItems({String? folder, String? keyword}) async {
 Future<List<Item>> searchItemsGlobal(String keyword) async {
   final kw = '%${keyword.trim()}%';
   final rows = await (db.select(db.items)
+      // 휴지통 제외
+    ..where((t) => t.isDeleted.equals(false))
     ..where((t) => t.name.like(kw) | t.displayName.like(kw) | t.sku.like(kw) | t.id.like(kw)))
       .get();
   final list = rows.map((e) => e.toDomain()).toList();
@@ -42,6 +49,10 @@ Future<List<Item>> searchItemsByPath({
   final joinQuery = db.select(db.items).join([
     innerJoin(db.itemPaths, db.itemPaths.itemId.equalsExp(db.items.id)),
   ]);
+
+  // 휴지통 제외
+  joinQuery.where(db.items.isDeleted.equals(false));
+
 
   if (l1 != null) joinQuery.where(db.itemPaths.l1Id.equals(l1));
   if (l2 != null) joinQuery.where(db.itemPaths.l2Id.equals(l2));
@@ -68,6 +79,8 @@ Future<List<Item>> listItemsByFolderPath({
   final join = db.select(db.items).join([
     innerJoin(db.itemPaths, db.itemPaths.itemId.equalsExp(db.items.id)),
   ]);
+  // 휴지통 제외
+    join.where(db.items.isDeleted.equals(false));
 
   if (l1 != null) join.where(db.itemPaths.l1Id.equals(l1));
   if (l2 != null) join.where(db.itemPaths.l2Id.equals(l2));
@@ -215,10 +228,15 @@ Stream<List<Item>> watchItems({
   bool recursive = false,
   bool lowOnly = false,
   bool favoritesOnly = false,
+
 }) {
   final i = db.items;
   final p = db.itemPaths;
   final join = db.select(i).join([leftOuterJoin(p, p.itemId.equalsExp(i.id))]);
+
+  // 휴지통 제외
+  join.where(i.isDeleted.equals(false));
+
 
   if (l1 != null && l1.isNotEmpty) {
     join.where(p.l1Id.equals(l1));

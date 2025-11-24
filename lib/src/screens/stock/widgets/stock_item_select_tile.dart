@@ -105,7 +105,6 @@ class StockItemSelectTile extends StatelessWidget {
             ],
             icon: const Icon(Icons.more_vert),
           ),
-          const Icon(Icons.chevron_right),
         ],
       ),
       onTap: selectionMode ? onTogglePick : onTap,
