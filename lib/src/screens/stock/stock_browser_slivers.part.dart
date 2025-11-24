@@ -172,9 +172,17 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
                         final repo = context.read<ItemRepo>();
                         await repo.moveItemToTrash(it.id);
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('"${it.displayName ?? it.name}" 삭제됨')),
-                        );
+                        showGoSnack(
+                                context,
+                                message: '"${it.displayName ?? it.name}"을 휴지통으로 이동했습니다.',
+                                actionText: '휴지통 열기',
+                                onAction: (ctx) {
+                                Navigator.push(
+                                      ctx,
+                                      MaterialPageRoute(builder: (_) => const TrashScreen()),
+                                    );
+                            },
+                          );
                       },
         );
       },

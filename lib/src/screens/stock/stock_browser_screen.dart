@@ -25,11 +25,13 @@ import 'widgets/stock_multi_select_bar.dart';
 import '../../providers/cart_manager.dart';
 import '../../screens/cart/cart_screen.dart';
 import '../../db/app_database.dart';
+import '../../screens/trash/trash_screen.dart';
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';
 part 'stock_browser_slivers.part.dart';
 part 'stock_browser_helpers.part.dart';
+
 
 
 // ============================================================================
