@@ -26,12 +26,15 @@ import '../../screens/cart/cart_screen.dart';
 import '../../db/app_database.dart';
 import '../../screens/trash/trash_screen.dart';
 import 'widgets/new_item_result.dart';
+import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
+
 
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';
 part 'stock_browser_slivers.part.dart';
 part 'stock_browser_helpers.part.dart';
+
 
 
 
@@ -92,9 +95,15 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         final sel = context.watch<ItemSelectionController>();
         return Scaffold(
           appBar: buildAppBar(context, folderRepo, itemRepo),
-          body: buildBrowserContent(context, sel, folderRepo, itemRepo),
-          floatingActionButton: buildFloatingButton(context, _selectedDepth),
-        );
+            body: Stack(
+                          children: [
+                            buildBrowserContent(context, sel, folderRepo, itemRepo),
+                        DraggableFab(
+                              storageKey: 'fab_offset_stock',
+                              child: buildFloatingButton(context, _selectedDepth),
+                        ),
+                  ],
+                ),  );
       }),
     );
   }
