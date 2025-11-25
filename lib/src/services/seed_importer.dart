@@ -660,7 +660,6 @@ class UnifiedSeedImporter {
         return 'Finished';
       case 'semifinished':
       case 'semi_finished':
-      case 'semi-finished':
         return 'SemiFinished';
       case 'raw':
         return 'Raw';

@@ -1,5 +1,5 @@
 // lib/src/screens/stock/stock_browser_helpers.part.dart
-part of stock_browser;
+part of 'stock_browser_screen.dart';
 
 // ───────────────────────── 공통 필터 로직 ─────────────────────────
 List<Item> _applyFilters(List<Item> items,

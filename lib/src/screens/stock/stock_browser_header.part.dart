@@ -1,5 +1,5 @@
 // lib/src/screens/stock/stock_browser_header.part.dart
-part of stock_browser;
+part of 'stock_browser_screen.dart';
 
 ///  장바구니 담기 고정 바 시작 ///
 const double _kSelectBarHeight = 36.0;

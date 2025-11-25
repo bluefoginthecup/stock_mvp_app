@@ -119,7 +119,6 @@ Future<void> upsertItem(Item item) async {
     await db.into(db.items).insertOnConflictUpdate(
       item.toCompanion().copyWith(isFavorite: Value(fav)),
     );
-    await _updateItemPaths(item);
   });
   final fresh = await getItem(item.id);
   if (fresh != null) _cacheItem(fresh);
@@ -127,28 +126,63 @@ Future<void> upsertItem(Item item) async {
 
 Future<void> upsertItemWithPath(Item item, String? l1, String? l2, String? l3) async {
   await db.transaction(() async {
-    final fav = item.isFavorite;
-    await db.into(db.items).insertOnConflictUpdate(
-      item.toCompanion().copyWith(isFavorite: Value(fav)),
+        // 1) 경로는 오직 인자로 받은 ID만 사용 (UI 플레이스홀더/문자열 경로 무시)
+        final effL1 = (l1 != null && l1.isNotEmpty) ? l1 : null;
+        final effL2 = (l2 != null && l2.isNotEmpty) ? l2 : null;
+        final effL3 = (l3 != null && l3.isNotEmpty) ? l3 : null;
+
+        // L1은 반드시 존재해야 한다(루트 자동 생성 금지)
+        if (effL1 == null) {
+          throw StateError('upsertItemWithPath: l1 (root folder id) is required.');
+        }
+
+        // 2) 폴더 존재 검증 (필요 시 더 엄격히: 없으면 throw)
+        final l1Node = await (db.select(db.folders)..where((t) => t.id.equals(effL1))).getSingleOrNull();
+        if (l1Node == null || l1Node.parentId != null) {
+          throw StateError('Invalid root folder id: $effL1');
+        }
+        FolderRow? l2Node, l3Node;
+        if (effL2 != null) {
+          l2Node = await (db.select(db.folders)..where((t) => t.id.equals(effL2))).getSingleOrNull();
+          if (l2Node == null || l2Node.parentId != l1Node.id) {
+            throw StateError('Invalid L2 folder id: $effL2 (parent mismatch)');
+          }
+        }
+        if (effL3 != null) {
+          l3Node = await (db.select(db.folders)..where((t) => t.id.equals(effL3))).getSingleOrNull();
+          if (l3Node == null || l2Node == null || l3Node.parentId != l2Node.id) {
+            throw StateError('Invalid L3 folder id: $effL3 (parent mismatch)');
+          }
+        }
+
+    // 3) items 테이블의 메타는 "이름"으로 저장 (표시/검색용)
+     //    item_paths에는 "ID" 저장 (정합성 원천)
+
+    final base = item.toCompanion();
+        final comp = base.copyWith(
+          isFavorite: Value(item.isFavorite),
+            folder: Value(l1Node!.name),    // ← 이름으로 교체
+            subfolder: Value(l2Node?.name),
+            subsubfolder: Value(l3Node?.name),
+
+
     );
+        await db.into(db.items).insertOnConflictUpdate(comp);
 
-    final effL1 = l1 ?? (item.folder.isNotEmpty ? item.folder : null);
-    final effL2 = l2 ?? item.subfolder;
-    final effL3 = l3 ?? item.subsubfolder;
-    await _ensureFolderPath(l1: effL1 ?? '', l2: effL2, l3: effL3);
+        // 4) item_paths 싱크
+        await db.into(db.itemPaths).insertOnConflictUpdate(
+          ItemPathsCompanion(
+            itemId: Value(item.id),
+            l1Id: Value(effL1),
+            l2Id: Value(effL2),
+            l3Id: Value(effL3),
+          ),
+        );
+      });
 
-    await db.into(db.itemPaths).insertOnConflictUpdate(
-      ItemPathsCompanion(
-        itemId: Value(item.id),
-        l1Id: Value(effL1),
-        l2Id: Value(effL2),
-        l3Id: Value(effL3),
-      ),
-    );
-  });
-
-  final fresh = await getItem(item.id);
-  if (fresh != null) _cacheItem(fresh);
+    // 5) 캐시 리프레시
+    final fresh = await getItem(item.id);
+    if (fresh != null) _cacheItem(fresh);
 }
 
 Future<void> _updateItemPaths(Item item) async {

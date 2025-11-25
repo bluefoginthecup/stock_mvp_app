@@ -3,7 +3,6 @@ library stock_browser;
 
 
 import 'dart:async';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../ui/common/ui.dart';
 
@@ -26,6 +25,8 @@ import '../../providers/cart_manager.dart';
 import '../../screens/cart/cart_screen.dart';
 import '../../db/app_database.dart';
 import '../../screens/trash/trash_screen.dart';
+import 'widgets/new_item_result.dart';
+
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';

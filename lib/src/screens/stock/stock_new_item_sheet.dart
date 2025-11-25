@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import 'package:provider/provider.dart';
 
 import '../../models/item.dart';
 import '../../ui/common/ui.dart';
-import '../../repos/repo_interfaces.dart'; // ItemRepo, FolderTreeRepo
+import 'widgets/new_item_result.dart';
 
 class StockNewItemSheet extends StatefulWidget {
   const StockNewItemSheet({super.key, required this.pathIds});
@@ -14,6 +13,9 @@ class StockNewItemSheet extends StatefulWidget {
   @override
   State<StockNewItemSheet> createState() => _StockNewItemSheetState();
 }
+
+
+
 
 class _StockNewItemSheetState extends State<StockNewItemSheet> {
   final _nameC = TextEditingController();
@@ -40,29 +42,6 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       return;
     }
 
-    // pathIds -> folder/subfolder 이름 변환 (FolderTreeRepo 사용, 비동기)
-    final folders = context.read<FolderTreeRepo>();
-
-    String? l1Name;
-    String? l2Name;
-    String? l3Name;
-
-    if (widget.pathIds.isNotEmpty) {
-      final l1 = await folders.folderById(widget.pathIds[0]);
-      l1Name = l1?.name;
-    }
-    if (widget.pathIds.length >= 2) {
-      final l2 = await folders.folderById(widget.pathIds[1]);
-      l2Name = l2?.name;
-    }
-    if (widget.pathIds.length >= 3) {
-      final l3 = await folders.folderById(widget.pathIds[2]);
-      l3Name = l3?.name;
-    }
-
-    // 필요하면 소문자 정규화
-    String? normalize(String? s) => s?.toLowerCase();
-
     final item = Item(
       id: _uuid.v4(),
       name: _nameC.text.trim(),
@@ -73,9 +52,9 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       minQty: int.tryParse(_minC.text) ?? 0,
 
       // 경로 필드
-      folder: normalize(l1Name) ?? 'uncategorized',
-      subfolder: normalize(l2Name),
-      subsubfolder: normalize(l3Name),
+      folder: 'uncategorized',
+      subfolder: null,
+      subsubfolder: null,
 
       // 그 외 선택 필드들은 기본값 유지
       kind: null,
@@ -88,9 +67,10 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       supplierName: null,
       isFavorite: false,
     );
-
     if (!mounted) return;
-    Navigator.pop<Item>(context, item);
+        // 아이템 + 최종 pathIds(ID 체인)를 함께 반환
+        Navigator.pop<NewItemResult>(context, NewItemResult(item, List<String>.from(widget.pathIds)));
+
   }
 
   @override

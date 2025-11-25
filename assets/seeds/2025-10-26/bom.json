@@ -1,6 +1,6 @@
 [
   {
-    "root": "finished",
+    "root": "Finished",
     "parentId": "it_F_rouen_gray_sb_50",
     "componentItemId": "it_SF_rouen_gray_sb_50",
     "kind": "SemiFinished",
@@ -8,7 +8,7 @@
     "wastePct": 0
   },
   {
-    "root": "finished",
+    "root": "Finished",
     "parentId": "it_F_rouen_gray_sb_50",
     "componentItemId": "it_SF_dot_gray_sb_50",
     "kind": "SemiFinished",
@@ -16,7 +16,7 @@
     "wastePct": 0
   },
   {
-    "root": "finished",
+    "root": "Finished",
     "parentId": "it_F_rouen_gray_sb_50",
     "componentItemId": "it_SF_cotton_white_piping",
     "kind": "SemiFinished",

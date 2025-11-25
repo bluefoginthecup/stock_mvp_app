@@ -1,5 +1,5 @@
 // lib/src/screens/stock/stock_browser_slivers.part.dart
-part of stock_browser;
+part of 'stock_browser_screen.dart';
 
 // ───────────────────────── Sliver builders ─────────────────────────
 SliverList _buildFolderSliver(
