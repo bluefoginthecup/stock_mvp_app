@@ -7,6 +7,10 @@ import 'screens/stock/stock_browser_screen.dart';
 import 'screens/txns/txn_list_screen.dart';
 import 'screens/works/work_list_screen.dart';
 import 'screens/purchases/purchase_list_screen.dart';
+import 'screens/trash/trash_screen.dart';
+import 'screens/cart/cart_screen.dart';
+
+
 
 // 다국어 앱 셋팅
 import '/src/l10n/l10n.dart';
@@ -82,6 +86,8 @@ class StockApp extends StatelessWidget {
             final poRepo = context.read<PurchaseOrderRepo>();
             return PurchaseDetailScreen(orderId: orderId, repo: poRepo);
           },
+          '/trash': (_) => const TrashScreen(),     // ← 여기서만 TrashScreen을 import
+          '/cart' : (_) => const CartScreen(),
           '/suppliers/new': (context) => const SupplierFormScreen(),
           '/suppliers/edit': (context) {
             final id = ModalRoute

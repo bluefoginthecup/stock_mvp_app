@@ -6,6 +6,7 @@ import '../../repos/repo_interfaces.dart';
 import '../../ui/common/ui.dart';
 import 'order_form_screen.dart';
 import 'order_detail_screen.dart';
+import '../../ui/common/draggable_fab.dart';
 
 class OrderListScreen extends StatefulWidget {
   const OrderListScreen({super.key});
@@ -31,7 +32,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
     final t = context.t;
     return Scaffold(
       appBar: AppBar(title: Text(t.order_list_title)),
-      body: StreamBuilder<List<Order>>(                   // ✅ 변경
+      body: Stack(children: [StreamBuilder<List<Order>>(                   // ✅ 변경
         stream: _repo.watchOrders(),                     // ✅ 변경
         builder: (context, snap) {
           if (!snap.hasData) {
@@ -88,19 +89,30 @@ class _OrderListScreenState extends State<OrderListScreen> {
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'fab-orders',
-        onPressed: () async {
-          final id = const Uuid().v4();
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => OrderFormScreen(orderId: id, createIfMissing: true),
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+    ),
+              // ⬇⬇ 드래그 가능한 FAB
+              DraggableFab(
+                storageKey: 'fab_offset_order_list', // 화면 고유 키
+                child: FloatingActionButton(
+                  heroTag: 'fab-orders',
+                  onPressed: () async {
+                    final id = const Uuid().v4();
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => OrderFormScreen(
+                          orderId: id,
+                          createIfMissing: true,
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.add),
+                ),
+              ),
+            ],
+          ),
+
     );
   }
 }

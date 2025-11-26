@@ -1,6 +1,6 @@
 part of '../drift_unified_repo.dart';
 
-mixin PurchaseRepoMixin on _RepoCore{
+mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
 @override
 Future<String> createPurchaseOrder(PurchaseOrder po) async {
   await db.into(db.purchaseOrders).insertOnConflictUpdate(po.toCompanion());

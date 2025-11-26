@@ -83,9 +83,9 @@ class PurchaseOrderPrintView extends StatelessWidget {
     const hSection = TextStyle(fontSize: 16, fontWeight: FontWeight.w700);
     const body = TextStyle(fontSize: 12);
 
-    final supplier = (order.supplierName?.trim().isEmpty ?? true)
+    final supplier = (order.supplierName.trim().isEmpty ?? true)
         ? '(공급처 미지정)'
-        : order.supplierName!.trim();
+        : order.supplierName.trim();
 
     final sumAmount = lines.fold<double>(0, (p, e) => p + e.amount);
     final supply = sumAmount;
@@ -307,8 +307,8 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
   Widget build(BuildContext context) {
     final dateStr = DateFormat('yyyy.MM.dd(E)', 'ko_KR')
         .format(order.createdAt ?? DateTime.now());
-    final supplier = (order.supplierName?.trim().isEmpty ?? true)
-        ? '(공급처 미지정)' : order.supplierName!.trim();
+    final supplier = (order.supplierName.trim().isEmpty ?? true)
+        ? '(공급처 미지정)' : order.supplierName.trim();
 
     final sumAmount = lines.fold<double>(0, (p, e) => p + e.amount);
     final supply = sumAmount;

@@ -73,6 +73,7 @@ abstract class ItemRepo {
   ///즐겨찾기
   Future<void> setFavorite({required String itemId, required bool value});
 
+  Future<void> setFavoritesBulk({required List<String> ids, required bool value});
 
   /// 실시간 목록(폴더/검색/필터/재귀)
   Stream<List<Item>> watchItems({
@@ -87,6 +88,9 @@ abstract class ItemRepo {
 
   /// 아이템을 통합휴지통으로(소프트 삭제)
   Future<void> moveItemToTrash(String itemId, {String? reason});
+
+  Future<void> moveItemsToTrash(List<String> ids, {String? reason}); // ✅ 추가
+
 
   /// 휴지통에서 복원
   Future<void> restoreItemFromTrash(String itemId);

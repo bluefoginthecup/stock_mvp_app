@@ -47,3 +47,18 @@ Future<double?> _askQty(BuildContext context) async {
     ),
   );
 }
+
+// FolderNode → PathNode 매핑 헬퍼
+typedef _ChildrenProvider = Future<List<PathNode>> Function(String? parentId);
+
+_ChildrenProvider pathChildrenFromFolderRepo(FolderTreeRepo repo) {
+    return (String? parentId) async {
+      final folders = await repo.listFolderChildren(parentId);
+      return folders
+          .map((f) =>
+              // ⚠️ 당신의 PathNode 생성자에 맞게 'name'/'label' 필드명만 필요 시 바꾸세요.
+              PathNode(f.id, f.name))
+          .toList();
+    };
+  }
+

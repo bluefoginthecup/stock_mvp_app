@@ -1,6 +1,6 @@
 part of '../drift_unified_repo.dart';
 
-mixin FolderRepoMixin on _RepoCore{
+mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
 
 @override
 FolderSortMode get sortMode => _sortMode;

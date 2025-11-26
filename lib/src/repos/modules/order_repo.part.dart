@@ -1,6 +1,6 @@
 part of '../drift_unified_repo.dart';
 
-mixin OrderRepoMixin on _RepoCore{
+mixin OrderRepoMixin on _RepoCore implements OrderRepo{
 @override
 Future<List<Order>> listOrders({bool includeDeleted = false}) async {
   final q = db.select(db.orders);
@@ -67,7 +67,7 @@ Future<void> upsertOrder(Order order) async {
         memo: Value(order.memo),
         status: Value(order.status.name),
         isDeleted: Value(order.isDeleted),
-        updatedAt: Value(order.updatedAt != null ? order.updatedAt!.toIso8601String() : null),
+        updatedAt: Value(order.updatedAt != null ? order.updatedAt.toIso8601String() : null),
       ),
     );
 

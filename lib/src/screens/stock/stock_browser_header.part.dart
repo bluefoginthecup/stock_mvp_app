@@ -59,10 +59,7 @@ PreferredSizeWidget buildAppBar(
         icon: const Icon(Icons.shopping_cart),
         tooltip: '장바구니 보기',
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CartScreen()),
-          );
+          Navigator.of(context).pushNamed('/cart');
         },
       ),
       Builder(builder: (_) {

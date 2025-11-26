@@ -1,6 +1,6 @@
 part of '../drift_unified_repo.dart';
 
-mixin SupplierRepoMixin on _RepoCore{
+mixin SupplierRepoMixin on _RepoCore implements SupplierRepo{
 @override
 Future<List<Supplier>> list({String? q, bool onlyActive = true}) async {
   final query = db.select(db.suppliers);

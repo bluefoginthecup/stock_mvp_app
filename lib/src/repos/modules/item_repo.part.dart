@@ -1,6 +1,6 @@
 part of '../drift_unified_repo.dart';
 
-mixin ItemRepoMixin on _RepoCore {
+mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 @override
 Future<List<Item>> listItems({String? folder, String? keyword}) async {
 
@@ -161,7 +161,7 @@ Future<void> upsertItemWithPath(Item item, String? l1, String? l2, String? l3) a
     final base = item.toCompanion();
         final comp = base.copyWith(
           isFavorite: Value(item.isFavorite),
-            folder: Value(l1Node!.name),    // ← 이름으로 교체
+            folder: Value(l1Node.name),    // ← 이름으로 교체
             subfolder: Value(l2Node?.name),
             subsubfolder: Value(l3Node?.name),
 
@@ -248,6 +248,18 @@ Future<void> setFavorite({required String itemId, required bool value}) async {
   );
   final fresh = await getItem(itemId);
   if (fresh != null) _cacheItem(fresh);
+}
+
+@override
+Future<void> setFavoritesBulk({required List<String> ids, required bool value}) async {
+  if (ids.isEmpty) return;
+  await db.transaction(() async {
+    for (final id in ids) {
+      await (db.update(db.items)..where((t) => t.id.equals(id)))
+          .write(ItemsCompanion(isFavorite: Value(value)));
+    }
+  });
+  notifyListeners();
 }
 
 Future<void> toggleFavorite(String itemId, bool value) =>
@@ -393,6 +405,24 @@ int stockOf(String itemId) {
         deletedAt: Value(DateTime.now().toIso8601String()),
       ),
     );
+    notifyListeners();
+  }
+  @override
+  Future<void> moveItemsToTrash(List<String> ids, {String? reason}) async {
+    if (ids.isEmpty) return;
+
+    await db.transaction(() async {
+      final now = DateTime.now().toIso8601String();
+      for (final id in ids) {
+        await (db.update(db.items)..where((t) => t.id.equals(id))).write(
+          ItemsCompanion(
+            isDeleted: const Value(true),
+            deletedAt: Value(now),
+          ),
+        );
+      }
+    });
+
     notifyListeners();
   }
 

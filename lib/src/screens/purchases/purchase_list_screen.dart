@@ -58,7 +58,7 @@ class PurchaseListScreen extends StatelessWidget {
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: ListTile(
-                  title: Text('발주: ${p.supplierName?.trim().isEmpty == true ? '(미지정)' : p.supplierName!}'),
+                  title: Text('발주: ${p.supplierName?.trim().isEmpty == true ? '(미지정)' : p.supplierName}'),
                   subtitle: Text('상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () {

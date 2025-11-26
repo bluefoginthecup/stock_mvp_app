@@ -3,7 +3,7 @@ part of '../drift_unified_repo.dart';
 
 // ⚠️ 여기서는 절대 implements 쓰지 마세요.
 // on 절에는 'DriftUnifiedRepo'만 둡니다. (본체의 db/캐시 필드 접근용)
-mixin BomRepoMixin on _RepoCore{
+mixin BomRepoMixin on _RepoCore implements BomRepo{
   @override
   Future<List<BomRow>> listBom(String parentItemId) async {
     final rows = await (db.select(db.bomRows)

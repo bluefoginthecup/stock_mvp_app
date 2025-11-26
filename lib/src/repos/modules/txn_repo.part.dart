@@ -1,6 +1,6 @@
 part of '../drift_unified_repo.dart';
 
-mixin TxnRepoMixin on _RepoCore{
+mixin TxnRepoMixin on _RepoCore implements TxnRepo{
 
 @override
 Future<List<Txn>> listTxns() async {

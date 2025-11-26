@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+
 class StockMultiSelectBar extends StatelessWidget {
   final int selectedCount;
   final int totalCount;
@@ -7,6 +8,11 @@ class StockMultiSelectBar extends StatelessWidget {
   final VoidCallback onSelectAll;
   final VoidCallback onClear;
   final VoidCallback onMove;
+  final VoidCallback onTrash;                // 🗑️ 추가
+  final bool allSelectedAreFavorite;         // ⭐ 추가
+  final VoidCallback onToggleFavoriteAll;    // ⭐ 추가
+
+
 
   const StockMultiSelectBar({
     super.key,
@@ -16,7 +22,11 @@ class StockMultiSelectBar extends StatelessWidget {
     required this.onSelectAll,
     required this.onClear,
     required this.onMove,
-  });
+  required this.onTrash,
+      required this.allSelectedAreFavorite,
+      required this.onToggleFavoriteAll,
+
+});
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +72,36 @@ class StockMultiSelectBar extends StatelessWidget {
 
 
               const SizedBox(width: 8),
+
+          // ⭐ 즐겨찾기(일괄 토글)
+                        TextButton.icon(
+                              style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                    onPressed: selectedCount == 0 ? null : onToggleFavoriteAll,
+                    icon: Icon(allSelectedAreFavorite ? Icons.star : Icons.star_border, size: 18),
+                    label: Text(allSelectedAreFavorite ? '즐겨찾기 해제' : '즐겨찾기'),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // 🗑️ 휴지통(일괄)
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      minimumSize: const Size(0, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor: Colors.redAccent,
+                    ),
+                    onPressed: selectedCount == 0 ? null : onTrash,
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('휴지통'),
+                  ),
+                  const SizedBox(width: 8),
+
 
           // 이동 버튼
                         TextButton.icon(

@@ -1,6 +1,6 @@
 part of '../drift_unified_repo.dart';
 
-mixin WorkRepoMixin on _RepoCore{
+mixin WorkRepoMixin on _RepoCore implements WorkRepo{
 @override
 Future<String> createWork(Work w) async {
   await db.into(db.works).insert(w.toCompanion());

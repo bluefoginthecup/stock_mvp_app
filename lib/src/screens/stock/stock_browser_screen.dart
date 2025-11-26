@@ -1,11 +1,9 @@
 // lib/src/screens/stock/stock_browser_screen.dart
 library stock_browser;
 
-
 import 'dart:async';
 import 'package:provider/provider.dart';
 import '../../ui/common/ui.dart';
-
 import '../../models/folder_node.dart';
 import '../../models/item.dart';
 import 'sheet_new_folder.dart';
@@ -17,26 +15,18 @@ import 'stock_item_detail_screen.dart';
 import '../../services/export_service.dart';
 import '../../ui/common/qty_set_sheet.dart';
 import '../../repos/repo_interfaces.dart';
-
 import 'widgets/item_selection_controller.dart';
 import 'widgets/stock_item_select_tile.dart';
 import 'widgets/stock_multi_select_bar.dart';
 import '../../providers/cart_manager.dart';
-import '../../screens/cart/cart_screen.dart';
 import '../../db/app_database.dart';
-import '../../screens/trash/trash_screen.dart';
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
-
-
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';
 part 'stock_browser_slivers.part.dart';
 part 'stock_browser_helpers.part.dart';
-
-
-
 
 // ============================================================================
 //  Explorer-style Stock browser: L1 (roots) -> L2 -> L3 -> Items
@@ -83,6 +73,26 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     });
   }
 
+  // 🛒 CartManager 헬퍼
+  void _addItemsToCart(dynamic cart, List<Item> items) {
+    for (final it in items) {
+      if (cart.addItemFromItem is Function) {
+        cart.addItemFromItem(it);
+      } else if (cart.addItem is Function) {
+        cart.addItem(it.id, 1);
+      } else if (cart.addLine is Function) {
+        cart.addLine({
+          'itemId': it.id,
+          'name': it.displayName ?? it.name,
+          'qty': 1,
+          'unit': it.unit,
+        });
+      } else {
+        debugPrint('[CartManager] No known add method.');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     context.watch<FolderTreeRepo>();
@@ -91,32 +101,38 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
     return ChangeNotifierProvider(
       create: (_) => ItemSelectionController(),
-      child: Builder(builder: (context) {
-        final sel = context.watch<ItemSelectionController>();
-        return Scaffold(
-          appBar: buildAppBar(context, folderRepo, itemRepo),
+      child: Builder(
+        builder: (context) {
+          final sel = context.watch<ItemSelectionController>();
+          return Scaffold(
+            appBar: buildAppBar(context, folderRepo, itemRepo),
             body: Stack(
-                          children: [
-                            buildBrowserContent(context, sel, folderRepo, itemRepo),
-                        DraggableFab(
-                              storageKey: 'fab_offset_stock',
-                              child: buildFloatingButton(context, _selectedDepth),
-                        ),
-                  ],
-                ),  );
-      }),
+              children: [
+                buildBrowserContent(context, sel, folderRepo, itemRepo),
+                DraggableFab(
+                  storageKey: 'fab_offset_stock',
+                  child: buildFloatingButton(context, _selectedDepth),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
-  // ───────────────────────── Browser 본문 (분리된 함수) ─────────────────────────
-  Widget buildBrowserContent(BuildContext context, ItemSelectionController sel,
-      FolderTreeRepo folderRepo, ItemRepo itemRepo) {
+  // ───────────────────────── Browser 본문 ─────────────────────────
+  Widget buildBrowserContent(
+      BuildContext context,
+      ItemSelectionController sel,
+      FolderTreeRepo folderRepo,
+      ItemRepo itemRepo,
+      ) {
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(12),
           child: buildBreadcrumb(context, this, setState),
-
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -148,7 +164,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 avatar: const Icon(Icons.warning_amber_rounded, size: 18),
               ),
               FilterChip(
-                label: const Text("즐겨찾기"),
+                label: const Text('즐겨찾기'),
                 selected: _showFavoriteOnly,
                 onSelected: (v) => setState(() => _showFavoriteOnly = v),
               ),
@@ -162,8 +178,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               l1: _selectedDepth == 0 ? null : _l1Id,
               l2: _selectedDepth <= 1 ? null : _l2Id,
               l3: _selectedDepth <= 2 ? null : _l3Id,
-              keyword:
-              _searchC.text.trim().isNotEmpty ? _searchC.text : null,
+              keyword: _searchC.text.trim().isNotEmpty ? _searchC.text : null,
               recursive: _searchC.text.trim().isNotEmpty ||
                   (_selectedDepth == 0 && (_lowOnly || _showFavoriteOnly)),
               lowOnly: _lowOnly,
@@ -171,22 +186,24 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             ),
             builder: (ctx, snap) {
               if (snap.connectionState == ConnectionState.waiting &&
-                  !(snap.hasData)) {
+                  !snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snap.hasError) {
                 return Center(child: Text('오류: ${snap.error}'));
               }
 
-              final items =
-              _applyFilters(snap.data ?? const <Item>[],
-                  lowOnly: _lowOnly,
-                  showFavoriteOnly: _showFavoriteOnly);
+              final items = _applyFilters(
+                snap.data ?? const <Item>[],
+                lowOnly: _lowOnly,
+                showFavoriteOnly: _showFavoriteOnly,
+              );
+
               return FutureBuilder<List<FolderNode>>(
                 future: folderRepo.listFolderChildren(_selectedId),
                 builder: (ctx, folderSnap) {
                   if (folderSnap.connectionState == ConnectionState.waiting &&
-                      !(folderSnap.hasData)) {
+                      !folderSnap.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   if (folderSnap.hasError) {
@@ -197,7 +214,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   final hasKeyword = _searchC.text.trim().isNotEmpty;
                   final depth = _selectedDepth;
 
-                  // 단순히 기존 분기 구조 유지
                   final slivers = <Widget>[];
                   if (depth == 0 && !hasKeyword && (_lowOnly || _showFavoriteOnly)) {
                     if (items.isEmpty) {
@@ -207,27 +223,176 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   } else if (hasKeyword) {
                     if (folders.isNotEmpty) {
                       slivers.add(_sliverHeader('📁 폴더'));
-                      slivers.add(_buildFolderSliver(context, folders, setState,
-                              (n) => _tryDeleteFolder(context, n, () => setState(() {}))));
+                      slivers.add(
+                        _buildFolderSliver(
+                          context,
+                          folders,
+                          setState,
+                              (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                        ),
+                      );
                     }
                     if (items.isNotEmpty) {
                       slivers.add(_sliverHeader('📦 아이템'));
                       slivers.add(_buildItemSliver(context, items));
                     }
                   } else if (depth == 0) {
-                    slivers.add(_buildFolderSliver(context, folders, setState,
-                            (n) => _tryDeleteFolder(context, n, () => setState(() {}))));
+                    slivers.add(
+                      _buildFolderSliver(
+                        context,
+                        folders,
+                        setState,
+                            (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                      ),
+                    );
                   } else {
                     if (folders.isNotEmpty) {
-                      slivers.add(_buildFolderSliver(context, folders, setState,
-                              (n) => _tryDeleteFolder(context, n, () => setState(() {}))));
+                      slivers.add(
+                        _buildFolderSliver(
+                          context,
+                          folders,
+                          setState,
+                              (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                        ),
+                      );
                     }
                     if (items.isNotEmpty) {
                       slivers.add(_buildItemSliver(context, items));
                     }
                   }
 
-                  return CustomScrollView(slivers: slivers);
+                  // 리스트 + 멀티선택바
+                  return Stack(
+                    children: [
+                      CustomScrollView(slivers: slivers),
+                      if (sel.selectionMode)
+                        Align(
+                          alignment: Alignment.bottomCenter,
+                          child: StockMultiSelectBar(
+                            selectedCount: sel.selected.length,
+                            totalCount: items.length,
+                            onSelectAll: () =>
+                                sel.selectAll(items.map((e) => e.id).toList()),
+                            onClear: sel.exit,
+                            onMove: sel.selected.isEmpty
+                                ? () {}
+                                : () async {
+                              final dest = await showPathPicker(
+                                context,
+                                childrenProvider: pathChildrenFromFolderRepo(
+                                    context.read<FolderTreeRepo>()),
+                                title: '아이템 이동..',
+                                maxDepth: 3,
+                              );
+                              if (dest == null || dest.isEmpty) return;
+                              final moved = await context
+                                  .read<FolderTreeRepo>()
+                                  .moveItemsToPath(
+                                itemIds: sel.selected.toList(),
+                                pathIds: dest,
+                              );
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('아이템 $moved개 이동')),
+                              );
+                              sel.exit();
+                            },
+                            onAddToCart: () async {
+                              if (sel.selected.isEmpty) return;
+                              final picked = items
+                                  .where((it) => sel.selected.contains(it.id))
+                                  .toList();
+                              final cart = context.read<CartManager>();
+                              _addItemsToCart(cart, picked);
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content:
+                                  Text('${picked.length}개를 장바구니에 담았습니다.'),
+                                  action: SnackBarAction(
+                                    label: '보기',
+                                    onPressed: () =>
+                                        Navigator.of(context).pushNamed('/cart'),
+                                  ),
+                                ),
+                              );
+                            },
+                            onTrash: () async {
+                              if (sel.selected.isEmpty) return;
+                              final ok = await showDeleteConfirm(
+                                context,
+                                message:
+                                '선택한 ${sel.selected.length}개를 휴지통으로 보낼까요?',
+                              );
+                              if (ok != true) return;
+                              try {
+                                final repo = context.read<ItemRepo>();
+                                await repo.moveItemsToTrash(sel.selected.toList());
+                                if (!context.mounted) return;
+                                showGoSnack(
+                                  context,
+                                  message: '${sel.selected.length}개를 휴지통으로 이동했습니다.',
+                                  actionText: '휴지통 열기',
+                                  onAction: (_) =>
+                                      Navigator.of(context).pushNamed('/trash'),
+                                );
+                                sel.exit();
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('이동 실패: $e')),
+                                );
+                              }
+                            },
+                            allSelectedAreFavorite: (() {
+                              final picked = items
+                                  .where((it) => sel.selected.contains(it.id))
+                                  .toList();
+                              return picked.isNotEmpty &&
+                                  picked.every((it) => it.isFavorite == true);
+                            })(),
+                            onToggleFavoriteAll: () async {
+                              final picked = items
+                                  .where((it) => sel.selected.contains(it.id))
+                                  .toList();
+                              if (picked.isEmpty) return;
+                              final repo = context.read<ItemRepo>();
+                              final ids = picked.map((e) => e.id).toList();
+                              final allFav =
+                              picked.every((it) => it.isFavorite == true);
+                              final next = !allFav;
+                              try {
+                                final dyn = repo as dynamic;
+                                if (dyn.setFavoritesBulk is Function) {
+                                  await dyn.setFavoritesBulk(
+                                      ids: ids, value: next);
+                                } else {
+                                  for (final id in ids) {
+                                    await repo.setFavorite(
+                                        itemId: id, value: next);
+                                  }
+                                }
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      next
+                                          ? '선택한 ${ids.length}개 즐겨찾기 추가'
+                                          : '선택한 ${ids.length}개 즐겨찾기 해제',
+                                    ),
+                                  ),
+                                );
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('처리 실패: $e')),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                    ],
+                  );
                 },
               );
             },
@@ -236,13 +401,13 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       ],
     );
   }
-// ───────────────────────── FloatingActionButton 빌더 ─────────────────────────
+
+  // ───────────────────────── FloatingActionButton 빌더 ─────────────────────────
   Widget buildFloatingButton(BuildContext context, int depth) {
     final folderRepo = context.read<FolderTreeRepo>();
     final itemRepo = context.read<ItemRepo>();
     final selectedId =
         context.findAncestorStateOfType<_StockBrowserScreenState>()?._selectedId;
-
     final isLeaf = depth >= 3;
 
     return FloatingActionButton(
@@ -260,8 +425,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.create_new_folder),
-                  title:
-                  Text(isLeaf ? '새 폴더 (소분류에서는 불가)' : '새 폴더'),
+                  title: Text(isLeaf ? '새 폴더 (소분류에서는 불가)' : '새 폴더'),
                   enabled: !isLeaf,
                   onTap: isLeaf
                       ? null
@@ -282,5 +446,4 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       child: const Icon(Icons.add),
     );
   }
-
 }

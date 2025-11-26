@@ -184,7 +184,7 @@ class TxnRow extends StatelessWidget {
                   if (customer != null) Text('주문자 $customer'),
                   if (t.refType == RefType.purchase && t.refId != null)
                     InkWell(
-                      onTap: () => _goPurchaseDetail(context, t.refId!),
+                      onTap: () => _goPurchaseDetail(context, t.refId),
                       child: Text(
                         '발주번호 ${shortId(t.refId)}',
                         style: const TextStyle(
