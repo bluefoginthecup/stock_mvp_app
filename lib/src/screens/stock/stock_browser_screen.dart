@@ -76,8 +76,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   // 🛒 CartManager 헬퍼
   void _addItemsToCart(dynamic cart, List<Item> items) {
     for (final it in items) {
-      if (cart.addItemFromItem is Function) {
-        cart.addItemFromItem(it);
+      if (cart.addFromItem is Function) {
+        cart.addFromItem(it);
       } else if (cart.addItem is Function) {
         cart.addItem(it.id, 1);
       } else if (cart.addLine is Function) {
@@ -95,9 +95,9 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
   @override
   Widget build(BuildContext context) {
-    context.watch<FolderTreeRepo>();
     final folderRepo = context.read<FolderTreeRepo>();
     final itemRepo = context.read<ItemRepo>();
+
 
     return ChangeNotifierProvider(
       create: (_) => ItemSelectionController(),
@@ -311,8 +311,12 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                                   Text('${picked.length}개를 장바구니에 담았습니다.'),
                                   action: SnackBarAction(
                                     label: '보기',
-                                    onPressed: () =>
-                                        Navigator.of(context, rootNavigator: true).pushNamed('/cart'),
+                                      onPressed: () {
+                                        debugPrint('[CartButton] pushNamed(/cart) 호출됨 context=$context');
+                                        Navigator.of(context, rootNavigator: true)
+                                            .pushNamed('/cart')
+                                            .then((_) => debugPrint('[CartButton] /cart 닫힘'));
+                                      }
                                   ),
                                 ),
                               );
@@ -438,9 +442,15 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
         if (act == 'folder') {
           await _createFolder(context, folderRepo, selectedId);
+          if (!mounted) return;
+          setState(() {}); // ✅ 생성 직후 목록 갱신 트리거
+
         }
         if (act == 'item') {
           await _createItem(context, selectedId, folderRepo, itemRepo);
+          if (!mounted) return;
+          setState(() {}); // ✅ 생성 직후 목록 갱신 트리거
+
         }
       },
       child: const Icon(Icons.add),

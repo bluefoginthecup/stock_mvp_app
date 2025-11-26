@@ -66,7 +66,9 @@ class StockApp extends StatelessWidget {
         // 나머지 라우트는 그대로 유지
         routes: {
           '/orders': (_) => const OrderListScreen(),
-          '/stock': (_) => const StockBrowserScreen(),
+          '/stock': (_){
+            debugPrint('[Route] /stock 빌더 호출됨 ⚠️');
+            return const StockBrowserScreen();},
           '/txns': (_) => const TxnListScreen(),
           '/works': (_) => const WorkListScreen(),
           '/purchases': (_) => const PurchaseListScreen(),
@@ -88,7 +90,9 @@ class StockApp extends StatelessWidget {
             return PurchaseDetailScreen(orderId: orderId, repo: poRepo);
           },
           '/trash': (_) => const TrashScreen(),     // ← 여기서만 TrashScreen을 import
-          '/cart' : (_) => const CartScreen(),
+          '/cart' : (_){
+          debugPrint('[Route] /cart 빌더 호출됨 ✅');
+          return const CartScreen();},
           '/settings': (_) => const SettingsScreen(),
           '/suppliers/new': (context) => const SupplierFormScreen(),
           '/suppliers/edit': (context) {
