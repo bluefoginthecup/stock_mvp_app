@@ -9,6 +9,7 @@ import 'screens/works/work_list_screen.dart';
 import 'screens/purchases/purchase_list_screen.dart';
 import 'screens/trash/trash_screen.dart';
 import 'screens/cart/cart_screen.dart';
+import '/src/screens/settings/settings_screen.dart';
 
 
 
@@ -88,6 +89,7 @@ class StockApp extends StatelessWidget {
           },
           '/trash': (_) => const TrashScreen(),     // ← 여기서만 TrashScreen을 import
           '/cart' : (_) => const CartScreen(),
+          '/settings': (_) => const SettingsScreen(),
           '/suppliers/new': (context) => const SupplierFormScreen(),
           '/suppliers/edit': (context) {
             final id = ModalRoute
@@ -99,6 +101,7 @@ class StockApp extends StatelessWidget {
           '/suppliers': (_) => const SupplierListScreen(),
           '/receipts': (_) => const ReceiptsHomeScreen(),
           '/receipts/new': (_) => const ReceiptCreateScreen(),
+
         },
 
       // ⚠️ home을 쓰면 initialRoute는 무시되므로 제거해도 됩니다.

@@ -9,7 +9,6 @@ import 'src/repos/repo_interfaces.dart';
 import 'src/services/inventory_service.dart';
 import 'src/utils/item_presentation.dart';
 import 'src/ui/nav/item_detail_opener.dart';
-import 'src/services/seed_importer.dart';
 import 'src/providers/cart_manager.dart';
 import 'src/models/purchase_order.dart';
 
@@ -38,19 +37,25 @@ Future<void> main() async {
   // 2) 통합 Drift Repo (Item / Txn / Order / Work / Purchase / Supplier / Paths 모두 포함)
   final unifiedRepo = DriftUnifiedRepo(db);
 
-  // 초기 시드 (필요 시)
-  final importer = UnifiedSeedImporter(
-    itemRepo: unifiedRepo,
-    bomRepo: unifiedRepo,
-    verbose: true,
-  );
-  await importer.importUnifiedFromAssets(
-    itemsAssetPath: 'assets/seeds/2025-10-26/items.json',
-    foldersAssetPath: 'assets/seeds/2025-10-26/folders.json',
-    bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
-    lotsAssetPath: 'assets/seeds/2025-10-26/lots.json',
-    clearBefore: true,
-  );
+
+
+    // ⚠️ 자동 시드 임포트 비활성화: 설정 화면에서 버튼으로만 실행
+    // (개발 중 임시로 쓰고 싶다면 아래 가드 플래그/디버그 모드로 감싸세요)
+    // if (kDebugMode && kEnableDevAutoSeed) {
+    //   final importer = UnifiedSeedImporter(
+    //     itemRepo: unifiedRepo,
+    //     bomRepo: unifiedRepo,
+    //     verbose: true,
+    //   );
+    //   await importer.importUnifiedFromAssets(
+    //     itemsAssetPath: 'assets/seeds/2025-10-26/items.json',
+    //     foldersAssetPath: 'assets/seeds/2025-10-26/folders.json',
+    //     bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
+    //     lotsAssetPath: 'assets/seeds/2025-10-26/lots.json',
+    //     clearBefore: true,
+    //   );
+    // }
+
 
   runApp(
     MultiProvider(

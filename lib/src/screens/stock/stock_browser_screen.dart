@@ -312,7 +312,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                                   action: SnackBarAction(
                                     label: '보기',
                                     onPressed: () =>
-                                        Navigator.of(context).pushNamed('/cart'),
+                                        Navigator.of(context, rootNavigator: true).pushNamed('/cart'),
                                   ),
                                 ),
                               );

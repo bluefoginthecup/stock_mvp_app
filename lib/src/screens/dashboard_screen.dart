@@ -6,14 +6,13 @@ import '../repos/repo_interfaces.dart';
 import '../ui/common/ui.dart';
 import '../screens/stock/stock_browser_screen.dart';
 import '../app/main_tab_controller.dart';
-import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'package:stockapp_mvp/src/db/quick_actions_order_dao.dart';
 import 'trash/trash_screen.dart';
 
 
 enum QuickActionType {
-  orders, stock, txns, works, purchases, language, suppliers, receipts,trash,
+  orders, stock, txns, works, purchases, settings, suppliers, receipts,trash,
 }
 
 class DashboardScreen extends StatefulWidget {
@@ -45,7 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       QuickActionType.txns,
       QuickActionType.works,
       QuickActionType.purchases,
-      QuickActionType.language,
+      QuickActionType.settings,
       QuickActionType.suppliers,
       QuickActionType.receipts,
       QuickActionType.trash,
@@ -61,6 +60,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final db  = context.read<AppDatabase>();
       final dao = QuickActionsOrderDao(db);
       final ids = await dao.loadOrder();
+      if (!mounted) return; // ✅ 위젯이 이미 dispose되었으면 중단
 
       // 1) 기본 목록(항상 최신)
       final defaults = <QuickActionType>[
@@ -69,16 +69,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         QuickActionType.txns,
         QuickActionType.works,
         QuickActionType.purchases,
-        QuickActionType.language,
+        QuickActionType.settings,
         QuickActionType.suppliers,
         QuickActionType.receipts,
         QuickActionType.trash, // 새로 추가된 액션 포함
       ];
 
       // 2) 저장된 목록을 enum으로 변환(알 수 없는 값/구버전 값은 걸러냄)
-      final saved = ids
-          .map(_typeOf)
-          .where((t) => defaults.contains(t))
+    //    ※ 과거 'language'를 'settings'로 매핑하여 순서 유지
+    final normalizedIds = ids.map((id) => id == 'language' ? 'settings' : id).toList();
+          final saved = normalizedIds
+              .map(_typeOf)
+              .where((t) => defaults.contains(t))
           .toList();
 
       // 3) 기본 중에서 저장에 없는 항목(=신규 추가된 액션들) 뒤에 붙이기
@@ -86,16 +88,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       final merged = [...saved, ...missing];
 
+      if (!mounted) return;
       setState(() {
         _order = merged;
         _orderLoaded = true;
       });
 
       // 4) 머지된 최신 순서를 DB에 다시 저장(다음부터는 바로 보이도록)
+      if (!mounted) return;
       await _persistOrderToDb();
 
     } catch (e) {
       // 실패 시 기본값으로라도 진행
+      if (!mounted) return;
       setState(() => _orderLoaded = true);
     }
 
@@ -104,6 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     Future<void> _persistOrderToDb() async {
         try {
+          if (!mounted) return;
           final db = context.read<AppDatabase>();
           final dao = QuickActionsOrderDao(db);
           await dao.saveOrder(_order.map(_idOf).toList());
@@ -153,17 +159,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: context.t.dashboard_purchases,
             onTap: () => context.read<MainTabController>().setIndex(5),
           );
-        case QuickActionType.language:
-          return _QuickAction(
-            key: const ValueKey('language'),
-            icon: Icons.settings,
-            label: context.t.settings_language_title,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LanguageSettingsScreen()),
-              );
-            },
-          );
+      case QuickActionType.settings:
+                return _QuickAction(
+                  key: const ValueKey('settings'),
+                  icon: Icons.settings,
+                  // TODO: i18n 키가 있으면 사용하세요(e.g., context.t.settings_title)
+                  label: '설정',
+                  onTap: () => Navigator.of(context, rootNavigator: true).pushNamed('/settings'),
+                );
         case QuickActionType.suppliers:
           return _QuickAction(
             key: const ValueKey('suppliers'),
@@ -249,82 +252,63 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('빠른 실행 (${_order.length})', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
 
-                // ── 중앙 정사각형 2×4 + 드래그 재정렬 ────────────────────
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      // 레이아웃 상수
-                      const rows = 4;
-                      const crossAxisCount = 2;
+                      const crossAxisCount = 4;          // ✅ 4열
                       const crossSpacing = 12.0;
                       const mainSpacing = 12.0;
                       const horizontalPagePadding = 16.0;
 
+                      // ✅ 실제 필요한 행 수(= 높이 계산용)
+                      final rowsForLayout =
+                      (actions.length / crossAxisCount).ceil().clamp(1, 4); // 최대 4행 등으로 제한 가능
+
                       final screenWidth = MediaQuery.of(context).size.width;
                       final availableHeight = constraints.maxHeight;
 
-                      // 4행을 정확히 채우는 타일 높이
+                      //  rowsForLayout을 사용해 “한 행 높이” 계산
                       final maxRowHeight =
-                          (availableHeight - mainSpacing * (rows - 1)) / rows;
+                          (availableHeight - mainSpacing * (rowsForLayout - 1)) / rowsForLayout;
 
-                      // 그리드 최대 폭 제한(버튼이 가로로 너무 넓어지지 않도록)
                       final maxGridWidthByScreen = screenWidth - horizontalPagePadding * 2;
                       const maxPreferredGridWidth = 480.0;
                       final tentativeGridWidth = maxGridWidthByScreen < maxPreferredGridWidth
                           ? maxGridWidthByScreen
                           : maxPreferredGridWidth;
 
-                      // 2열 + 간격에서의 타일 폭
                       final maxColWidth =
                           (tentativeGridWidth - crossSpacing) / crossAxisCount;
 
-                      // 정사각형 타일 한 변 길이
-                      final tileSize =
-                      maxRowHeight < maxColWidth ? maxRowHeight : maxColWidth;
+                      // 정사각형 셀 크기
+                      final tileSize = maxRowHeight < maxColWidth ? maxRowHeight : maxColWidth;
 
-                      // 실제 그리드 컨테이너 폭
-                      final gridContentWidth = tileSize * 2 + crossSpacing;
+                      final gridContentWidth = tileSize * crossAxisCount + crossSpacing * (crossAxisCount - 1);
 
                       return Center(
                         child: SizedBox(
                           width: gridContentWidth,
-
-                             child: SizedBox(
-                               height: availableHeight, // 화면 남은 높이 만큼 고정
-                               child: ReorderableGridView.count(
-                             physics: actions.length > 8
-                                     ? const BouncingScrollPhysics()
-                                   : const NeverScrollableScrollPhysics(),
-                           shrinkWrap: false,
+                          height: availableHeight,
+                          child: ReorderableGridView.count(
+                            physics: actions.length > (crossAxisCount * rowsForLayout)
+                                ? const BouncingScrollPhysics()
+                                : const NeverScrollableScrollPhysics(),
                             crossAxisCount: crossAxisCount,
                             mainAxisSpacing: mainSpacing,
                             crossAxisSpacing: crossSpacing,
-                            childAspectRatio: 1.0, // 정사각형
-                            // 드래그 시작 제스처(기본: long-press)
+                            childAspectRatio: 1.0,
                             dragWidgetBuilder: (index, child) => child,
-
-                            onReorder: (oldIndex, newIndex) async {
-                              setState(() {
-                                final moved = _order.removeAt(oldIndex);
-                                _order.insert(newIndex, moved);
-                              });
-                              // 변경 즉시 DB 반영
-                              await _persistOrderToDb();
-                            },
+                            onReorder: (oldIndex, newIndex) async { /* ... */ },
                             children: [
-                              for (final a in actions)
-                                _QuickTile(
-                                  key: a.key, // 반드시 고유 Key!
-                                  action: a,
-                                ),
+                              for (final a in actions) _QuickTile(key: a.key, action: a),
                             ],
                           ),
-                        ),
                         ),
                       );
                     },
                   ),
-                ),
+                )
+
               ],
             ),
           );
@@ -401,21 +385,23 @@ class _QuickTile extends StatelessWidget {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(action.icon, size: 28),
-                    const SizedBox(height: 8),
-                    Text(
-                      action.label,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    // 안내 텍스트 제거됨 ✅
-                  ],
-                ),
+                  child: FittedBox(               // ✅ 추가: 넘치면 축소
+                                   fit: BoxFit.scaleDown,
+                                   child: Column(
+                                     mainAxisSize: MainAxisSize.min,
+                                     children: [
+                                       Icon(action.icon, size: 28),
+                                   const SizedBox(height: 8),
+                                   Text(
+                                         action.label,
+                                         textAlign: TextAlign.center,
+                                         style: Theme.of(context).textTheme.bodyMedium,
+                                     maxLines: 2,
+                                     overflow: TextOverflow.ellipsis,
+                                   ),
+                               ],
+                             ),
+                         ),
               ),
             ),
           ),

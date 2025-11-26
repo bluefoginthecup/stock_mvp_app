@@ -8,6 +8,8 @@ import '../models/bom.dart';
 import '../models/lot.dart'; // ✅ Practical-MIN: Lot 모델
 import '../repos/repo_interfaces.dart';
 import '../repos/drift_unified_repo.dart'; // ✅ 폴더/lot/path 백필용 (InMemoryRepo)
+import 'package:flutter/widgets.dart';            // ⬅️ BuildContext
+import 'package:provider/provider.dart';          // ⬅️ context.read()
 
 class UnifiedSeedImporter {
   /// 아이템 저장용 (지금은 SqliteItemRepo)
@@ -753,4 +755,47 @@ class UnifiedSeedImporter {
     return path;
   }
 
+  /// ------------------------------------------------------------------------
+  /// ✅ 편의용: Settings 화면 등에서 간단히 호출할 수 있는 정적 실행기
+  /// - Provider에서 필요한 Repo들을 안전하게 읽어와서 importer를 구성
+  /// - 기본 에셋 경로를 제공 (필요 시 파라미터로 덮어쓰기)
+  static Future<void> run(
+      BuildContext context, {
+        String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
+        String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
+        String? bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
+        String? lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
+        bool clearBefore = false,
+        bool verbose = false,
+      }) async {
+    // 필수
+    final itemRepo = context.read<ItemRepo>();
+
+    // 선택(없어도 동작)
+    BomRepo? bomRepo;
+    try { bomRepo = context.read<BomRepo>(); } catch (_) {}
+
+    DriftUnifiedRepo? drift;
+    try { drift = context.read<DriftUnifiedRepo>(); } catch (_) {}
+
+    final importer = UnifiedSeedImporter(
+      itemRepo: itemRepo,
+      bomRepo: bomRepo,
+      drift: drift,
+      verbose: verbose,
+    );
+
+    await importer.importUnifiedFromAssets(
+      itemsAssetPath: itemsAssetPath,
+      foldersAssetPath: foldersAssetPath,
+      bomAssetPath: bomAssetPath,
+      lotsAssetPath: lotsAssetPath,
+      clearBefore: clearBefore,
+    );
+  }
+/// ------------------------------------------------------------------------
+
+
+
 }
+

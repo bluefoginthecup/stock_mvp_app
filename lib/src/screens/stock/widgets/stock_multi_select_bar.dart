@@ -42,92 +42,85 @@ class StockMultiSelectBar extends StatelessWidget {
               Expanded(
                 child: Text(
                   '선택됨 $selectedCount / $totalCount',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium, // 🔹 글씨 크기도 살짝 줄이기
                 ),
               ),
-
-              // 🔹 텍스트 버튼 공통 스타일
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 6), // 좌우만 살짝 여유
-                  minimumSize: const Size(0, 32), // 기본 40~48dp → 줄이기
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap, // 터치영역 최소화
-                  visualDensity: VisualDensity.compact, // 내부 간격 줄이기
-                ),
-                onPressed: onSelectAll,
-                icon: const Icon(Icons.select_all, size: 18),
-                label: const Text('전체'),
-              ),
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  minimumSize: const Size(0, 32),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-                onPressed: onClear,
-                icon: const Icon(Icons.clear_all, size: 18),
-                label: const Text('해제'),
-              ),
-
-
-              const SizedBox(width: 8),
-
-          // ⭐ 즐겨찾기(일괄 토글)
-                        TextButton.icon(
-                              style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+// 전체 선택
+                        Tooltip(
+                              message: '전체 선택',
+                              child: IconButton(
+                                onPressed: onSelectAll,
+                                icon: const Icon(Icons.select_all),
+                            iconSize: 20,
+                            padding: const EdgeInsets.all(6),
                           visualDensity: VisualDensity.compact,
-                        ),
-                    onPressed: selectedCount == 0 ? null : onToggleFavoriteAll,
-                    icon: Icon(allSelectedAreFavorite ? Icons.star : Icons.star_border, size: 18),
-                    label: Text(allSelectedAreFavorite ? '즐겨찾기 해제' : '즐겨찾기'),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // 🗑️ 휴지통(일괄)
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      foregroundColor: Colors.redAccent,
+                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                     ),
-                    onPressed: selectedCount == 0 ? null : onTrash,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('휴지통'),
                   ),
-                  const SizedBox(width: 8),
-
-
-          // 이동 버튼
-                        TextButton.icon(
-                              style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                    onPressed: selectedCount == 0 ? null : onMove,
-                    icon: const Icon(Icons.drive_file_move, size: 18),
-                    label: const Text('이동'),
+                  // 선택 해제
+                  Tooltip(
+                    message: '선택 해제',
+                    child: IconButton(
+                      onPressed: onClear,
+                      icon: const Icon(Icons.clear_all),
+                      iconSize: 20,
+                      padding: const EdgeInsets.all(6),
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
                   ),
-                  const SizedBox(width: 8),
+    // ⭐ 즐겨찾기(일괄 토글)
+                  Tooltip(
+                    message: allSelectedAreFavorite ? '즐겨찾기 해제' : '즐겨찾기',
+                    child: IconButton(
+                      onPressed: selectedCount == 0 ? null : onToggleFavoriteAll,
+                      icon: Icon(allSelectedAreFavorite ? Icons.star : Icons.star_border),
+                      iconSize: 20,
+                      padding: const EdgeInsets.all(6),
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
+                  ),
 
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  minimumSize: const Size(0, 34),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
-                ),
-                onPressed: selectedCount == 0 ? null : onAddToCart,
-                icon: const Icon(Icons.add_shopping_cart, size: 18),
-                label: const Text('담기'),
-              ),
+    // 🗑️ 휴지통(일괄)
+                  Tooltip(
+                    message: '휴지통으로 이동',
+                    child: IconButton(
+                      onPressed: selectedCount == 0 ? null : onTrash,
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.redAccent,
+                      iconSize: 20,
+                      padding: const EdgeInsets.all(6),
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
+                  ),
+    // 이동
+                  Tooltip(
+                    message: '이동',
+                    child: IconButton(
+                      onPressed: selectedCount == 0 ? null : onMove,
+                      icon: const Icon(Icons.drive_file_move),
+                      iconSize: 20,
+                      padding: const EdgeInsets.all(6),
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    ),
+                  ),
+
+
+    // 담기(강조) — 아이콘만, Material 3이면 filled 변형 사용 가능
+                  Tooltip(
+                    message: '담기',
+                    child: IconButton.filled(
+                      onPressed: selectedCount == 0 ? null : onAddToCart,
+                      icon: const Icon(Icons.add_shopping_cart),
+                      iconSize: 20,
+                      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                    ),
+                  ),
             ],
           ),
         ),
