@@ -164,13 +164,107 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
     ),
   );
 }
-
-
+// ───────────────────────── Compact Section Header (재추가) ─────────────────────────
 SliverToBoxAdapter _sliverHeader(String text) {
   return SliverToBoxAdapter(
     child: Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 1,
+      ),
     ),
   );
 }
+
+// ───────────────────────── Breadcrumb (로컬 구현) ─────────────────────────
+Widget _breadcrumbRow(
+    BuildContext context,
+    _StockBrowserScreenState s,
+    void Function(void Function()) setState,
+    ) {
+  final segs = <Widget>[
+    TextButton(
+      onPressed: () => setState(() {
+        s._l1Id = null;
+        s._l2Id = null;
+        s._l3Id = null;
+      }),
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+        minimumSize: const Size(0, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      child: const Text('대분류', style: TextStyle(fontSize: 13)),
+    ),
+  ];
+
+  if (s._l1Id != null) {
+    segs.addAll([
+      const Text(' > ', style: TextStyle(fontSize: 13)),
+      TextButton(
+        onPressed: () => setState(() {
+          s._l2Id = null;
+          s._l3Id = null;
+        }),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+          minimumSize: const Size(0, 32),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: folderName(context, s._l1Id!),
+      ),
+    ]);
+  }
+  if (s._l2Id != null) {
+    segs.addAll([
+      const Text(' > ', style: TextStyle(fontSize: 13)),
+      TextButton(
+        onPressed: () => setState(() => s._l3Id = null),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+          minimumSize: const Size(0, 32),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: folderName(context, s._l2Id!),
+      ),
+    ]);
+  }
+  if (s._l3Id != null) {
+    segs.addAll([
+      const Text(' > ', style: TextStyle(fontSize: 13)),
+      folderName(context, s._l3Id!),
+    ]);
+  }
+
+  return Row(children: segs);
+}
+
+SliverToBoxAdapter _sliverBreadcrumb(
+    BuildContext context,
+    void Function(void Function()) setState,
+    ) {
+  final s = context.findAncestorStateOfType<_StockBrowserScreenState>()!;
+  return SliverToBoxAdapter(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: _breadcrumbRow(context, s, setState), // 로컬 함수 사용
+          ),
+        ),
+        const Divider(height: 1),
+      ],
+    ),
+  );
+}
+
+

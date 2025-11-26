@@ -60,17 +60,7 @@ class StockMultiSelectBar extends StatelessWidget {
                     ),
                   ),
                   // 선택 해제
-                  Tooltip(
-                    message: '선택 해제',
-                    child: IconButton(
-                      onPressed: onClear,
-                      icon: const Icon(Icons.clear_all),
-                      iconSize: 20,
-                      padding: const EdgeInsets.all(6),
-                      visualDensity: VisualDensity.compact,
-                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                    ),
-                  ),
+
     // ⭐ 즐겨찾기(일괄 토글)
                   Tooltip(
                     message: allSelectedAreFavorite ? '즐겨찾기 해제' : '즐겨찾기',

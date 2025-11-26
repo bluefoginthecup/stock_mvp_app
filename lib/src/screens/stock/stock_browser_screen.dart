@@ -167,10 +167,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       ) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: buildBreadcrumb(context, this, setState),
-        ),
+
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           child: AppSearchField(
@@ -252,6 +249,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   final depth = _selectedDepth;
 
                   final slivers = <Widget>[];
+                  slivers.add(_sliverBreadcrumb(context, setState));
                   if (depth == 0 && !hasKeyword && (_lowOnly || _showFavoriteOnly)) {
                     if (items.isEmpty) {
                       return const Center(child: Text('조건에 맞는 아이템이 없습니다.'));
@@ -270,9 +268,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       );
                     }
                     if (items.isNotEmpty) {
-                      slivers.add(_sliverHeader('📦 아이템'));
-                      slivers.add(_buildItemSliver(context, items));
-                    }
+                         slivers.add(_buildItemSliver(context, items));
+                   }
                   } else if (depth == 0) {
                     slivers.add(
                       _buildFolderSliver(
@@ -293,9 +290,9 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                         ),
                       );
                     }
-                    if (items.isNotEmpty) {
-                      slivers.add(_buildItemSliver(context, items));
-                    }
+                   if (items.isNotEmpty) {
+                     slivers.add(_buildItemSliver(context, items));
+                   }
                   }
 
                   // 리스트 + 멀티선택바
