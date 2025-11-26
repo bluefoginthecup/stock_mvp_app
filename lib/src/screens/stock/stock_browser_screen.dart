@@ -93,33 +93,70 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final folderRepo = context.read<FolderTreeRepo>();
-    final itemRepo = context.read<ItemRepo>();
+    @override
+    Widget build(BuildContext context) {
+      final folderRepo = context.read<FolderTreeRepo>();
+      final itemRepo = context.read<ItemRepo>();
 
+      // ✅ 화면 전반 간격 압축 테마
+      final base = Theme.of(context);
+      final compact = base.copyWith(
+        visualDensity: VisualDensity.compact,                       // 대부분 위젯 간격 ↓
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,    // 탭 타겟 축소
+        appBarTheme: base.appBarTheme.copyWith(
+          toolbarHeight: 44,                                        // AppBar 높이 ↓ (필요 시 조절)
+          titleSpacing: 8,
+        ),
+        inputDecorationTheme: base.inputDecorationTheme.copyWith(
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        ),
+        chipTheme: base.chipTheme.copyWith(
+          padding: EdgeInsets.zero,
+          labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        ),
+        listTileTheme: base.listTileTheme.copyWith(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+        bottomNavigationBarTheme: base.bottomNavigationBarTheme.copyWith(
+          selectedLabelStyle: const TextStyle(fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontSize: 10),
+        ),
+        iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(32, 32),                         // 기본 48→32
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      );
 
-    return ChangeNotifierProvider(
-      create: (_) => ItemSelectionController(),
-      child: Builder(
-        builder: (context) {
-          final sel = context.watch<ItemSelectionController>();
-          return Scaffold(
-            appBar: buildAppBar(context, folderRepo, itemRepo),
-            body: Stack(
-              children: [
-                buildBrowserContent(context, sel, folderRepo, itemRepo),
-                DraggableFab(
-                  storageKey: 'fab_offset_stock',
-                  child: buildFloatingButton(context, _selectedDepth),
+      return ChangeNotifierProvider(
+        create: (_) => ItemSelectionController(),
+        child: Builder(
+          builder: (context) {
+            final sel = context.watch<ItemSelectionController>();
+            return Theme(                                  // ✅ 여기서 감싼다
+              data: compact,
+              child: Scaffold(
+                appBar: buildAppBar(context, folderRepo, itemRepo),
+                body: Stack(
+                  children: [
+                    buildBrowserContent(context, sel, folderRepo, itemRepo),
+                    DraggableFab(
+                      storageKey: 'fab_offset_stock',
+                      child: buildFloatingButton(context, _selectedDepth),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
+              ),
+            );
+          },
+        ),
+      );
+    }
 
   // ───────────────────────── Browser 본문 ─────────────────────────
   Widget buildBrowserContent(

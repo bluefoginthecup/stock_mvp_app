@@ -23,9 +23,31 @@ Widget _buildFolderTile(
     Future<void> Function(FolderNode n) onDelete,
     ) {
   return ListTile(
-    leading: const Icon(Icons.folder),
-    title: Text(n.name),
-    trailing: const Icon(Icons.chevron_right),
+    dense: true,   // ← 아이템 타일과 통일
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+
+    leading: const Icon(
+      Icons.folder,
+      size: 22, // ← 아이템 아이콘(Inventory)와 비슷하게 줄이기
+    ),
+
+    // 🔥 폴더 글자 크게 + 아이템과 통일
+    title: Text(
+      n.name,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+      ),
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+    ),
+
+    trailing: const Icon(
+      Icons.chevron_right,
+      size: 18, // ← 컴팩트 UI에 맞게 축소
+      color: Colors.black45,
+    ),
+
     onTap: () {
       setState(() {
         final s = context.findAncestorStateOfType<_StockBrowserScreenState>()!;
@@ -90,7 +112,6 @@ Widget _buildFolderTile(
     },
   );
 }
-
 SliverList _buildItemSliver(BuildContext context, List<Item> items) {
   return SliverList(
     delegate: SliverChildBuilderDelegate(
@@ -116,6 +137,7 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
             }
           },
           onLongPress: () async {
+            // 롱프레스 → 수량 조정(기존 로직 유지)
             final itemRepo = context.read<ItemRepo>();
             await runQtySetFlow(
               context,
@@ -136,57 +158,13 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
             );
           },
           onTogglePick: () => sel.toggle(it.id),
-          onToggleFavorite: () async {
-            final repo = context.read<ItemRepo>();
-            final next = !(it.isFavorite == true);
-            try {
-              await repo.setFavorite(itemId: it.id, value: next);
-              final fresh = await repo.getItem(it.id);
-              debugPrint('[⭐ Favorite updated] ${fresh?.isFavorite}');
-            } catch (e, st) {
-              debugPrint('[ERR] setFavorite failed: $e\n$st');
-            }
-            if (!context.mounted) return;
-            (context as Element).markNeedsBuild();
-          },
-            // 신규: 이동 및 휴지통 핸들러 추가
-                      onRequestMove: () async {
-                        final dest = await showPathPicker(
-                          context,
-                          childrenProvider: folderChildrenProvider(
-                            context.read<FolderTreeRepo>(),
-                          ),
-                          title: '아이템 이동..',
-                          maxDepth: 3,
-                        );
-                        if (dest == null || dest.isEmpty) return;
-                        final moved = await context
-                            .read<FolderTreeRepo>()
-                            .moveItemsToPath(itemIds: [it.id], pathIds: dest);
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('아이템 $moved개 이동')),
-                        );
-                      },
-                      onRequestTrash: () async {
-                        final repo = context.read<ItemRepo>();
-                        await repo.moveItemToTrash(it.id);
-                        if (!context.mounted) return;
-                        showGoSnack(
-                                context,
-                                message: '"${it.displayName ?? it.name}"을 휴지통으로 이동했습니다.',
-                                actionText: '휴지통 열기',
-                                onAction: (ctx) {
-                                  Navigator.of(context).pushNamed('/trash');
-                            },
-                          );
-                      },
         );
       },
       childCount: items.length,
     ),
   );
 }
+
 
 SliverToBoxAdapter _sliverHeader(String text) {
   return SliverToBoxAdapter(
