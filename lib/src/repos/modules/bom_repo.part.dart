@@ -17,6 +17,27 @@ mixin BomRepoMixin on _RepoCore implements BomRepo{
   @override
   Future<void> upsertBomRow(BomRow row) async {
     await db.into(db.bomRows).insertOnConflictUpdate(row.toCompanion());
+
+        // 🔧 캐시도 함께 갱신 (finished/semi만)
+        final parent = row.parentItemId;
+        List<BomRow> _up(List<BomRow> curr) {
+          final i = curr.indexWhere(
+            (e) => e.componentItemId == row.componentItemId && e.kind == row.kind,
+          );
+          if (i >= 0) {
+            final next = [...curr];
+            next[i] = row;
+            return next;
+          }
+          return [...curr, row];
+        }
+        if (row.root == BomRoot.finished) {
+          final curr = _bomFinishedCache[parent] ?? const <BomRow>[];
+          _bomFinishedCache[parent] = _up(curr);
+        } else if (row.root == BomRoot.semi) {
+          final curr = _bomSemiCache[parent] ?? const <BomRow>[];
+          _bomSemiCache[parent] = _up(curr);
+        }
   }
 
   @override
@@ -30,7 +51,23 @@ mixin BomRepoMixin on _RepoCore implements BomRepo{
       ..where((t) => t.componentItemId.equals(parts[2]))
       ..where((t) => t.kind.equals(parts[3])))
         .go();
-  }
+    // 🔧 캐시에서도 제거 (finished/semi만)
+        final rootStr = parts[0]; // e.g. BomRoot.finished.name
+        final parent  = parts[1];
+        final comp    = parts[2];
+        final kindStr = parts[3]; // e.g. BomKind.raw.name
+        void _remove(List<BomRow>? list) {
+          if (list == null) return;
+          list.removeWhere(
+            (r) => r.componentItemId == comp && r.kind.name == kindStr,
+          );
+        }
+        if (rootStr == BomRoot.finished.name) {
+          _remove(_bomFinishedCache[parent]);
+        } else if (rootStr == BomRoot.semi.name) {
+          _remove(_bomSemiCache[parent]);
+        }
+}
 
   // 캐시 기반 동기 조회
   @override

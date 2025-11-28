@@ -90,6 +90,22 @@ abstract class _RepoCore extends ChangeNotifier {
     super.dispose();
   }
 
+  //----bom 스냅샷------
+  Future<void> refreshBomSnapshot() async {
+    final rows = await db.select(db.bomRows).get();
+    _bomFinishedCache.clear();
+    _bomSemiCache.clear();
+    for (final r in rows) {
+      final d = r.toDomain();
+      if (d.root == BomRoot.finished) {
+        (_bomFinishedCache[d.parentItemId] ??= <BomRow>[]).add(d);
+      } else if (d.root == BomRoot.semi) {
+        (_bomSemiCache[d.parentItemId] ??= <BomRow>[]).add(d);
+      }
+    }
+  }
+
+
   // ─── 다른 모듈에서 참조하는 공용 메서드: 인터페이스(추상)만 노출 ───
   Future<void> _ensureFolderPath({required String l1, String? l2, String? l3});
   Future<Item?> getItem(String id);

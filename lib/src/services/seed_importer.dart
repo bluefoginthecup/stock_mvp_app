@@ -11,6 +11,11 @@ import '../repos/drift_unified_repo.dart'; // ✅ 폴더/lot/path 백필용 (InM
 import 'package:flutter/widgets.dart';            // ⬅️ BuildContext
 import 'package:provider/provider.dart';          // ⬅️ context.read()
 
+
+
+// ✅ 추가: 파트 구분용 enum
+enum SeedPart { folders, items, bom, lots }
+
 class UnifiedSeedImporter {
   /// 아이템 저장용 (지금은 SqliteItemRepo)
   final ItemRepo itemRepo;
@@ -229,6 +234,13 @@ class UnifiedSeedImporter {
         }
       }
       _log('BOM upsert done: ok=$bomOk fail=$bomFail');
+      try {
+       final dyn = drift ?? itemRepo;
+       if ((dyn as dynamic).refreshBomSnapshot is Function) {
+         await (dyn as dynamic).refreshBomSnapshot();
+         _log('BOM snapshot refreshed.');
+       }
+     } catch (_) {}
     }
 
     // ✅ LOTS upsert (→ driftoryRepo 우선)
@@ -795,6 +807,292 @@ class UnifiedSeedImporter {
   }
 /// ------------------------------------------------------------------------
 
+// ────────────────────────────────────────────────────────────────
+// UnifiedSeedImporter 클래스 내부에 아래 메서드들을 "추가"하세요
+// ────────────────────────────────────────────────────────────────
+
+  /// ───────────────── 폴더만 임포트 ─────────────────
+  Future<void> importOnlyFoldersFromAssets({
+  required String foldersAssetPath,
+  bool clearBefore = false, // 선택: 폴더만 비우는 기능이 repo에 있으면 활용
+  }) async {
+  _log('Loading folders asset...');
+  final foldersJson = await rootBundle.loadString(foldersAssetPath);
+
+  dynamic foldersPayload;
+  try {
+  foldersPayload = jsonDecode(foldersJson);
+  _log('folders.json decoded.');
+  } catch (e) {
+  _log('❌ folders decode failed: $e');
+  rethrow;
+  }
+
+  final folders = _parseFoldersV1(foldersPayload, tag: 'folders.json');
+  _log('Parsed folders: ${folders.length}');
+
+  if (clearBefore) {
+  try {
+  final dyn = (drift ?? itemRepo) as dynamic;
+  if (dyn.clearFolders is Function) {
+  _log('Clearing folders...');
+  await dyn.clearFolders();
+  }
+  } catch (_) {}
+  }
+
+  _persistFoldersIfSupported(folders);
+
+  // 트리 리빌드/리프레시
+  try {
+  final dyn = (drift ?? itemRepo) as dynamic;
+  if (dyn.reloadTree is Function) await dyn.reloadTree();
+  if (dyn.notifyListeners is Function) dyn.notifyListeners();
+  } catch (_) {}
+  }
+
+  /// ───────────────── 아이템만 임포트 ─────────────────
+  Future<void> importOnlyItemsFromAssets({
+  required String itemsAssetPath,
+  bool clearBefore = false,
+  }) async {
+  _log('Loading items asset...');
+  final itemsJson = await rootBundle.loadString(itemsAssetPath);
+
+  dynamic itemsPayload;
+  try {
+  itemsPayload = jsonDecode(itemsJson);
+  _log('items.json decoded.');
+  } catch (e) {
+  _log('❌ items decode failed: $e');
+  rethrow;
+  }
+
+  final items = _parseItemsV1(itemsPayload, tag: 'items.json');
+  _log('Parsed items: ${items.length}');
+
+  if (clearBefore) {
+  await _clearAllIfSupported(); // 아이템만 비우는 API가 없으면 전체 클리어
+  }
+
+  var ok = 0, fail = 0;
+  for (final it in items) {
+  try {
+  bool handledByTree = false;
+  try {
+  final dyn = itemRepo as dynamic;
+  final hasPathIdsByNames = dyn.pathIdsByNames is Function;
+  final hasCreateItemUnderPath = dyn.createItemUnderPath is Function;
+
+  if (hasPathIdsByNames && hasCreateItemUnderPath) {
+  final l1 = (it.folder ?? '').toString();
+  final l2 = (it.subfolder ?? '').toString();
+  final l3 = (it.subsubfolder ?? '').toString();
+
+  if (l1.isNotEmpty) {
+  final ids = await dyn.pathIdsByNames(
+  l1Name: l1,
+  l2Name: l2.isEmpty ? null : l2,
+  l3Name: l3.isEmpty ? null : l3,
+  createIfMissing: true,
+  ) as List?;
+  final pathIds = (ids ?? const []).whereType<String>().toList(growable: false);
+  if (pathIds.isNotEmpty) {
+  await dyn.createItemUnderPath(pathIds: pathIds, item: it);
+  handledByTree = true;
+  }
+  }
+  }
+  } catch (_) {}
+
+  if (!handledByTree) {
+  await itemRepo.upsertItem(it);
+  }
+  ok++;
+  } catch (e) {
+  fail++;
+  _log('❌ upsertItem failed id=${it.id}: $e');
+  }
+  }
+  _log('Items upsert: ok=$ok fail=$fail');
+
+  // UI 갱신
+  try {
+  final dyn = itemRepo as dynamic;
+  if (dyn.listItems is Function) await dyn.listItems();
+  if (dyn.notifyListeners is Function) dyn.notifyListeners();
+  } catch (_) {}
+  }
+
+  /// ───────────────── BOM만 임포트 ─────────────────
+  Future<void> importOnlyBomFromAssets({
+  required String bomAssetPath,
+  bool clearBefore = false,
+  }) async {
+  if (bomRepo == null) {
+  _log('⚠️ bomRepo == null → BOM 저장 생략');
+  return;
+  }
+
+  _log('Loading bom asset...');
+  final bomJson = await rootBundle.loadString(bomAssetPath);
+
+  dynamic bomPayload;
+  try {
+  bomPayload = bomJson.trim().isEmpty ? const [] : jsonDecode(bomJson);
+  _log('bom.json decoded.');
+  } catch (e) {
+  _log('❌ bom decode failed: $e');
+  rethrow;
+  }
+
+  final rows = _parseBomV1(bomPayload, tag: 'bom.json');
+  _log('Parsed bom rows: ${rows.length}');
+
+  if (clearBefore) {
+  try {
+  final dyn = (drift ?? bomRepo) as dynamic;
+  if (dyn.clearBom is Function) {
+  _log('Clearing BOM...');
+  await dyn.clearBom();
+  }
+  } catch (_) {}
+  }
+
+  var ok = 0, fail = 0;
+  for (final r in rows) {
+  try {
+  await bomRepo!.upsertBomRow(r);
+  ok++;
+  } catch (e) {
+  fail++;
+  _log('❌ upsertBomRow failed parent=${r.parentItemId}, comp=${r.componentItemId}: $e');
+  }
+  }
+  _log('BOM upsert: ok=$ok fail=$fail');
+
+  // BOM 스냅샷/인덱스 리프레시
+  try {
+  final dyn = (drift ?? itemRepo) as dynamic;
+  if ((dyn as dynamic).refreshBomSnapshot is Function) {
+  await (dyn as dynamic).refreshBomSnapshot();
+  _log('BOM snapshot refreshed.');
+  } else if ((bomRepo as dynamic).reloadBomIndex is Function) {
+  await (bomRepo as dynamic).reloadBomIndex();
+  _log('BOM index reloaded.');
+  }
+  } catch (_) {}
+  }
+
+  /// ───────────────── LOTS만 임포트 ─────────────────
+  Future<void> importOnlyLotsFromAssets({
+  required String lotsAssetPath,
+  bool clearBefore = false,
+  }) async {
+  _log('Loading lots asset...');
+  final lotsJson = await rootBundle.loadString(lotsAssetPath);
+
+  dynamic lotsPayload;
+  try {
+  lotsPayload = lotsJson.trim().isEmpty ? const [] : jsonDecode(lotsJson);
+  _log('lots.json decoded.');
+  } catch (e) {
+  _log('❌ lots decode failed: $e');
+  rethrow;
+  }
+
+  final byItem = _parseLotsV1(lotsPayload, tag: 'lots.json');
+  _log('Parsed lots map: items=${byItem.length}');
+
+  if (clearBefore) {
+  try {
+  final dyn = (drift ?? itemRepo) as dynamic;
+  if (dyn.clearLots is Function) {
+  _log('Clearing lots...');
+  await dyn.clearLots();
+  }
+  } catch (_) {}
+  }
+
+  _persistLotsIfSupported(byItem);
+
+  // 트랜잭션/스냅샷 갱신
+  try {
+  final dyn = (drift ?? itemRepo) as dynamic;
+  if (dyn.listTxns is Function) await dyn.listTxns();
+  if (dyn.notifyListeners is Function) dyn.notifyListeners();
+  } catch (_) {}
+  }
+
+  /// ───────────────── 파트별 실행기(에셋 경로 받음) ─────────────────
+  Future<void> importPartFromAssets({
+  required SeedPart part,
+  String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
+  String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
+  String bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
+  String lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
+  bool clearBefore = false,
+  }) async {
+  switch (part) {
+  case SeedPart.folders:
+  return importOnlyFoldersFromAssets(
+  foldersAssetPath: foldersAssetPath,
+  clearBefore: clearBefore,
+  );
+  case SeedPart.items:
+  return importOnlyItemsFromAssets(
+  itemsAssetPath: itemsAssetPath,
+  clearBefore: clearBefore,
+  );
+  case SeedPart.bom:
+  return importOnlyBomFromAssets(
+  bomAssetPath: bomAssetPath,
+  clearBefore: clearBefore,
+  );
+  case SeedPart.lots:
+  return importOnlyLotsFromAssets(
+  lotsAssetPath: lotsAssetPath,
+  clearBefore: clearBefore,
+  );
+  }
+  }
+
+  /// ------------------------------------------------------------------------
+  /// ✅ 정적 헬퍼: 화면에서 간단히 파트별 실행
+  static Future<void> runPart(
+  BuildContext context, {
+  required SeedPart part,
+  String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
+  String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
+  String bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
+  String lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
+  bool clearBefore = false,
+  bool verbose = false,
+  }) async {
+  final itemRepo = context.read<ItemRepo>();
+
+  BomRepo? bomRepo;
+  try { bomRepo = context.read<BomRepo>(); } catch (_) {}
+
+  DriftUnifiedRepo? drift;
+  try { drift = context.read<DriftUnifiedRepo>(); } catch (_) {}
+
+  final importer = UnifiedSeedImporter(
+  itemRepo: itemRepo,
+  bomRepo: bomRepo,
+  drift: drift,
+  verbose: verbose,
+  );
+
+  await importer.importPartFromAssets(
+  part: part,
+  itemsAssetPath: itemsAssetPath,
+  foldersAssetPath: foldersAssetPath,
+  bomAssetPath: bomAssetPath,
+  lotsAssetPath: lotsAssetPath,
+  clearBefore: clearBefore,
+  );
+  }
 
 
 }
