@@ -37,6 +37,9 @@ Future<void> main() async {
   // 2) 통합 Drift Repo (Item / Txn / Order / Work / Purchase / Supplier / Paths 모두 포함)
   final unifiedRepo = DriftUnifiedRepo(db);
 
+  // ✅ Provider가 트리에 올라가든 말든, 캐시만 미리 채워두면 됨
+// (notifyListeners가 너무 빨리 호출돼도 문제 없음)
+  Future.microtask(() => unifiedRepo.refreshBomSnapshot());
 
 
     // ⚠️ 자동 시드 임포트 비활성화: 설정 화면에서 버튼으로만 실행

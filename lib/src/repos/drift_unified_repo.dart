@@ -103,6 +103,7 @@ abstract class _RepoCore extends ChangeNotifier {
         (_bomSemiCache[d.parentItemId] ??= <BomRow>[]).add(d);
       }
     }
+    notifyListeners();
   }
 
 
