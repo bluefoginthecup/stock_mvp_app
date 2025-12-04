@@ -1,0 +1,3407 @@
+{
+  "version": 1,
+  "bom": [
+    {
+      "parentId": "it-finished-rouen_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "40쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50쿠션커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50기본형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "45날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-rouen_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-rouen_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_navy_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_navy_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-erica_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-erica_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-dotori_coffee_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-dotori_coffee_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-encia_orange_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-encia_orange_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_white_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_white_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-sobok_pink_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-sobok_pink_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-lavender_gold_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-lavender_gold_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-iris_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-iris_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-tatiana_rose_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-tatiana_rose_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-ronze_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-ronze_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-magritte_beige_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-magritte_beige_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_denim_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_denim_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-thistles_khaki_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-thistles_khaki_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_ivory_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_ivory_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_gray_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_gray_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_45",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    },
+    {
+      "parentId": "it-finished-pedro_blue_50",
+      "kind": "Semi",
+      "componentItemId": "it-semi-pedro_blue_emb_45",
+      "qtyPer": 1,
+      "wastePct": 0,
+      "unit": "Ea",
+      "note": "50날개형 방석커버 레시피"
+    }
+  ]
+}
