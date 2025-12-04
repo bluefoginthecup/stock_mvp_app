@@ -183,6 +183,10 @@ class Orders extends Table {
       boolean().withDefault(const Constant(false))();
   TextColumn get updatedAt => text().nullable()(); // ISO8601
   TextColumn get deletedAt => text().nullable()(); // ISO8601
+  // ✅ 신규
+  TextColumn get shippedAt => text().nullable()();  // 실제 출고(완료)일
+  TextColumn get dueDate  => text().nullable()();   // 납기(출고 예정)일
+
 
 
   @override
@@ -229,6 +233,8 @@ class Works extends Table {
       boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
 
+  TextColumn get startedAt => text().nullable()();   // 작업 시작(ISO8601)
+  TextColumn get finishedAt => text().nullable()();  // 작업 완료(ISO8601)
 
 
   @override
@@ -251,6 +257,9 @@ class PurchaseOrders extends Table {
       boolean().withDefault(const Constant(false))();
   TextColumn get memo => text().nullable()();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
+  // 🔥 신규 컬럼 2개 (주문 연동/입고일)
+  TextColumn get orderId => text().nullable()();     // 주문 연동 발주면 채움
+  TextColumn get receivedAt => text().nullable()();  // 실제 입고 완료일 (ISO8601 string)
 
 
 
@@ -355,68 +364,100 @@ class QuickActionOrders extends Table {
     QuickActionOrders, // ➋ 등록
   ],
 )
+
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5; // ⬅️ 4에서 5로 올림
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-  onCreate: (m) async {
-  await m.createAll();
-  },
-  onUpgrade: (m, from, to) async {  // v1 → v2: Orders.deletedAt(Text) 추가
-          if (from < 2) {
-            await m.alterTable(TableMigration(
-              orders,
-              newColumns: [orders.deletedAt],
-            ));
-          }
+    onCreate: (m) async {
+      await m.createAll();
+    },
+    onUpgrade: (m, from, to) async {
+      // v1 → v2: Orders.deletedAt 추가
+      if (from < 2) {
+        await m.alterTable(TableMigration(
+          orders,
+          newColumns: [orders.deletedAt],
+        ));
+      }
 
-          // v2 → v3: Items.isFavorite 추가
-          if (from < 3) {
-            await m.alterTable(TableMigration(
-              items,
-              newColumns: [items.isFavorite],
-            ));
-          }
+      // v2 → v3: Items.isFavorite 추가
+      if (from < 3) {
+        await m.alterTable(TableMigration(
+          items,
+          newColumns: [items.isFavorite],
+        ));
+      }
 
-          // v3 → v4: 통합휴지통 컬럼 일괄 추가
-          if (from < 4) {
-            await m.alterTable(TableMigration(
-              items,
-              newColumns: [items.isDeleted, items.deletedAt],
-            ));
-            await m.alterTable(TableMigration(
-              txns,
-              newColumns: [txns.isDeleted, txns.deletedAt],
-            ));
-            await m.alterTable(TableMigration(
-              orders,
-              newColumns: [orders.isDeleted], // deletedAt은 v2에서 이미 추가됨
-            ));
-            await m.alterTable(TableMigration(
-              orderLines,
-              newColumns: [orderLines.isDeleted, orderLines.deletedAt],
-            ));
-            await m.alterTable(TableMigration(
-              works,
-              newColumns: [works.isDeleted, works.deletedAt],
-            ));
-            await m.alterTable(TableMigration(
-              purchaseOrders,
-              newColumns: [purchaseOrders.isDeleted, purchaseOrders.deletedAt],
-            ));
-            await m.alterTable(TableMigration(
-              purchaseLines,
-              newColumns: [purchaseLines.isDeleted, purchaseLines.deletedAt],
-            ));
-          }
-  }
+      // v3 → v4: 통합휴지통 컬럼 일괄 추가
+      if (from < 4) {
+        await m.alterTable(TableMigration(
+          items,
+          newColumns: [items.isDeleted, items.deletedAt],
+        ));
+        await m.alterTable(TableMigration(
+          txns,
+          newColumns: [txns.isDeleted, txns.deletedAt],
+        ));
+        await m.alterTable(TableMigration(
+          orders,
+          newColumns: [orders.isDeleted],
+        ));
+        await m.alterTable(TableMigration(
+          orderLines,
+          newColumns: [orderLines.isDeleted, orderLines.deletedAt],
+        ));
+        await m.alterTable(TableMigration(
+          works,
+          newColumns: [works.isDeleted, works.deletedAt],
+        ));
+        await m.alterTable(TableMigration(
+          purchaseOrders,
+          newColumns: [purchaseOrders.isDeleted, purchaseOrders.deletedAt],
+        ));
+        await m.alterTable(TableMigration(
+          purchaseLines,
+          newColumns: [purchaseLines.isDeleted, purchaseLines.deletedAt],
+        ));
+      }
+
+      // 🔥 v4 → v5: 타임라인용 신규 컬럼 추가
+      if (from < 5) {
+        // 1) 발주: 주문 연동/입고완료일
+        await m.alterTable(TableMigration(
+          purchaseOrders,
+          newColumns: [
+            purchaseOrders.orderId,      // nullable
+            purchaseOrders.receivedAt,   // nullable
+          ],
+        ));
+
+        // 2) 작업: 시작/완료일
+        await m.alterTable(TableMigration(
+          works,
+          newColumns: [
+            works.startedAt,             // nullable
+            works.finishedAt,            // nullable
+          ],
+        ));
+
+        // 3) 주문: 출고(완료)일 / 납기일
+        await m.alterTable(TableMigration(
+          orders,
+          newColumns: [
+            orders.shippedAt,            // nullable
+            orders.dueDate,              // nullable
+          ],
+        ));
+      }
+    },
   );
-
 }
+
 
 /// 실제 SQLite 파일을 여는 부분
 LazyDatabase _openConnection() {

@@ -19,6 +19,7 @@ import '../models/lot.dart';
 import '../models/types.dart';
 import 'package:uuid/uuid.dart';
 
+
 // 표준 repo 인터페이스
 import 'repo_interfaces.dart';
 import '../models/trash_entry.dart'; // ← 이 줄 추가 (alias 없이)
@@ -34,6 +35,7 @@ part 'modules/purchase_repo.part.dart';
 part 'modules/supplier_repo.part.dart';
 part 'modules/lot_repo.part.dart';
 part 'modules/trash_repo.part.dart';
+
 
 
 /// ============================================================================
@@ -138,4 +140,28 @@ class DriftUnifiedRepo extends _RepoCore
 
   final _uuid = const Uuid();
   DriftUnifiedRepo(AppDatabase db) : super(db);
+
+  @override
+  Future<List<PurchaseOrder>> listPurchaseOrdersByOrderId(String orderId) async {
+    final rows = await (db.select(db.purchaseOrders)
+      ..where((t) => t.orderId.equals(orderId) & t.isDeleted.equals(false))
+      ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc)]))
+        .get();
+
+    return rows.map((r) => r.toDomain()).toList();
+  }
+
+  @override
+  Future<List<Work>> listWorksByOrderId(String orderId) async {
+    final rows = await (db.select(db.works)
+      ..where((t) => t.orderId.equals(orderId) & t.isDeleted.equals(false))
+      ..orderBy([
+            (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.asc),
+        // 보조 정렬(있으면): (t) => OrderingTerm(expression: t.itemId)
+      ]))
+        .get();
+
+    return rows.map((r) => r.toDomain()).toList();
+  }
+
 }

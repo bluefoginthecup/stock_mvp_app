@@ -2575,9 +2575,31 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderRow> {
   late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
       'deleted_at', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _shippedAtMeta =
+      const VerificationMeta('shippedAt');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, date, customer, memo, status, isDeleted, updatedAt, deletedAt];
+  late final GeneratedColumn<String> shippedAt = GeneratedColumn<String>(
+      'shipped_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _dueDateMeta =
+      const VerificationMeta('dueDate');
+  @override
+  late final GeneratedColumn<String> dueDate = GeneratedColumn<String>(
+      'due_date', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        date,
+        customer,
+        memo,
+        status,
+        isDeleted,
+        updatedAt,
+        deletedAt,
+        shippedAt,
+        dueDate
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2627,6 +2649,14 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderRow> {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
     }
+    if (data.containsKey('shipped_at')) {
+      context.handle(_shippedAtMeta,
+          shippedAt.isAcceptableOrUnknown(data['shipped_at']!, _shippedAtMeta));
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(_dueDateMeta,
+          dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta));
+    }
     return context;
   }
 
@@ -2652,6 +2682,10 @@ class $OrdersTable extends Orders with TableInfo<$OrdersTable, OrderRow> {
           .read(DriftSqlType.string, data['${effectivePrefix}updated_at']),
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
+      shippedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}shipped_at']),
+      dueDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}due_date']),
     );
   }
 
@@ -2670,6 +2704,8 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
   final bool isDeleted;
   final String? updatedAt;
   final String? deletedAt;
+  final String? shippedAt;
+  final String? dueDate;
   const OrderRow(
       {required this.id,
       required this.date,
@@ -2678,7 +2714,9 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
       required this.status,
       required this.isDeleted,
       this.updatedAt,
-      this.deletedAt});
+      this.deletedAt,
+      this.shippedAt,
+      this.dueDate});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2695,6 +2733,12 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
     }
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    if (!nullToAbsent || shippedAt != null) {
+      map['shipped_at'] = Variable<String>(shippedAt);
+    }
+    if (!nullToAbsent || dueDate != null) {
+      map['due_date'] = Variable<String>(dueDate);
     }
     return map;
   }
@@ -2713,6 +2757,12 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      shippedAt: shippedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shippedAt),
+      dueDate: dueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDate),
     );
   }
 
@@ -2728,6 +2778,8 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       updatedAt: serializer.fromJson<String?>(json['updatedAt']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+      shippedAt: serializer.fromJson<String?>(json['shippedAt']),
+      dueDate: serializer.fromJson<String?>(json['dueDate']),
     );
   }
   @override
@@ -2742,6 +2794,8 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'updatedAt': serializer.toJson<String?>(updatedAt),
       'deletedAt': serializer.toJson<String?>(deletedAt),
+      'shippedAt': serializer.toJson<String?>(shippedAt),
+      'dueDate': serializer.toJson<String?>(dueDate),
     };
   }
 
@@ -2753,7 +2807,9 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
           String? status,
           bool? isDeleted,
           Value<String?> updatedAt = const Value.absent(),
-          Value<String?> deletedAt = const Value.absent()}) =>
+          Value<String?> deletedAt = const Value.absent(),
+          Value<String?> shippedAt = const Value.absent(),
+          Value<String?> dueDate = const Value.absent()}) =>
       OrderRow(
         id: id ?? this.id,
         date: date ?? this.date,
@@ -2763,6 +2819,8 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
         isDeleted: isDeleted ?? this.isDeleted,
         updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        shippedAt: shippedAt.present ? shippedAt.value : this.shippedAt,
+        dueDate: dueDate.present ? dueDate.value : this.dueDate,
       );
   OrderRow copyWithCompanion(OrdersCompanion data) {
     return OrderRow(
@@ -2774,6 +2832,8 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      shippedAt: data.shippedAt.present ? data.shippedAt.value : this.shippedAt,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
     );
   }
 
@@ -2787,14 +2847,16 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
           ..write('status: $status, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('shippedAt: $shippedAt, ')
+          ..write('dueDate: $dueDate')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, date, customer, memo, status, isDeleted, updatedAt, deletedAt);
+  int get hashCode => Object.hash(id, date, customer, memo, status, isDeleted,
+      updatedAt, deletedAt, shippedAt, dueDate);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2806,7 +2868,9 @@ class OrderRow extends DataClass implements Insertable<OrderRow> {
           other.status == this.status &&
           other.isDeleted == this.isDeleted &&
           other.updatedAt == this.updatedAt &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.shippedAt == this.shippedAt &&
+          other.dueDate == this.dueDate);
 }
 
 class OrdersCompanion extends UpdateCompanion<OrderRow> {
@@ -2818,6 +2882,8 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
   final Value<bool> isDeleted;
   final Value<String?> updatedAt;
   final Value<String?> deletedAt;
+  final Value<String?> shippedAt;
+  final Value<String?> dueDate;
   final Value<int> rowid;
   const OrdersCompanion({
     this.id = const Value.absent(),
@@ -2828,6 +2894,8 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.shippedAt = const Value.absent(),
+    this.dueDate = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OrdersCompanion.insert({
@@ -2839,6 +2907,8 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
     this.isDeleted = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.shippedAt = const Value.absent(),
+    this.dueDate = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         date = Value(date),
@@ -2853,6 +2923,8 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
     Expression<bool>? isDeleted,
     Expression<String>? updatedAt,
     Expression<String>? deletedAt,
+    Expression<String>? shippedAt,
+    Expression<String>? dueDate,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2864,6 +2936,8 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (shippedAt != null) 'shipped_at': shippedAt,
+      if (dueDate != null) 'due_date': dueDate,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2877,6 +2951,8 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
       Value<bool>? isDeleted,
       Value<String?>? updatedAt,
       Value<String?>? deletedAt,
+      Value<String?>? shippedAt,
+      Value<String?>? dueDate,
       Value<int>? rowid}) {
     return OrdersCompanion(
       id: id ?? this.id,
@@ -2887,6 +2963,8 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
       isDeleted: isDeleted ?? this.isDeleted,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      shippedAt: shippedAt ?? this.shippedAt,
+      dueDate: dueDate ?? this.dueDate,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2918,6 +2996,12 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<String>(deletedAt.value);
     }
+    if (shippedAt.present) {
+      map['shipped_at'] = Variable<String>(shippedAt.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<String>(dueDate.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2935,6 +3019,8 @@ class OrdersCompanion extends UpdateCompanion<OrderRow> {
           ..write('isDeleted: $isDeleted, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('shippedAt: $shippedAt, ')
+          ..write('dueDate: $dueDate, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3365,6 +3451,18 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
   late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
       'deleted_at', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _startedAtMeta =
+      const VerificationMeta('startedAt');
+  @override
+  late final GeneratedColumn<String> startedAt = GeneratedColumn<String>(
+      'started_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _finishedAtMeta =
+      const VerificationMeta('finishedAt');
+  @override
+  late final GeneratedColumn<String> finishedAt = GeneratedColumn<String>(
+      'finished_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -3376,7 +3474,9 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
         updatedAt,
         sourceKey,
         isDeleted,
-        deletedAt
+        deletedAt,
+        startedAt,
+        finishedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3437,6 +3537,16 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
     }
+    if (data.containsKey('started_at')) {
+      context.handle(_startedAtMeta,
+          startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta));
+    }
+    if (data.containsKey('finished_at')) {
+      context.handle(
+          _finishedAtMeta,
+          finishedAt.isAcceptableOrUnknown(
+              data['finished_at']!, _finishedAtMeta));
+    }
     return context;
   }
 
@@ -3466,6 +3576,10 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
+      startedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}started_at']),
+      finishedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}finished_at']),
     );
   }
 
@@ -3486,6 +3600,8 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
   final String? sourceKey;
   final bool isDeleted;
   final String? deletedAt;
+  final String? startedAt;
+  final String? finishedAt;
   const WorkRow(
       {required this.id,
       required this.itemId,
@@ -3496,7 +3612,9 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       this.updatedAt,
       this.sourceKey,
       required this.isDeleted,
-      this.deletedAt});
+      this.deletedAt,
+      this.startedAt,
+      this.finishedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -3517,6 +3635,12 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
     map['is_deleted'] = Variable<bool>(isDeleted);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    if (!nullToAbsent || startedAt != null) {
+      map['started_at'] = Variable<String>(startedAt);
+    }
+    if (!nullToAbsent || finishedAt != null) {
+      map['finished_at'] = Variable<String>(finishedAt);
     }
     return map;
   }
@@ -3541,6 +3665,12 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      startedAt: startedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(startedAt),
+      finishedAt: finishedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(finishedAt),
     );
   }
 
@@ -3558,6 +3688,8 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       sourceKey: serializer.fromJson<String?>(json['sourceKey']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+      startedAt: serializer.fromJson<String?>(json['startedAt']),
+      finishedAt: serializer.fromJson<String?>(json['finishedAt']),
     );
   }
   @override
@@ -3574,6 +3706,8 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       'sourceKey': serializer.toJson<String?>(sourceKey),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
+      'startedAt': serializer.toJson<String?>(startedAt),
+      'finishedAt': serializer.toJson<String?>(finishedAt),
     };
   }
 
@@ -3587,7 +3721,9 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           Value<String?> updatedAt = const Value.absent(),
           Value<String?> sourceKey = const Value.absent(),
           bool? isDeleted,
-          Value<String?> deletedAt = const Value.absent()}) =>
+          Value<String?> deletedAt = const Value.absent(),
+          Value<String?> startedAt = const Value.absent(),
+          Value<String?> finishedAt = const Value.absent()}) =>
       WorkRow(
         id: id ?? this.id,
         itemId: itemId ?? this.itemId,
@@ -3599,6 +3735,8 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
         sourceKey: sourceKey.present ? sourceKey.value : this.sourceKey,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        startedAt: startedAt.present ? startedAt.value : this.startedAt,
+        finishedAt: finishedAt.present ? finishedAt.value : this.finishedAt,
       );
   WorkRow copyWithCompanion(WorksCompanion data) {
     return WorkRow(
@@ -3612,6 +3750,9 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       sourceKey: data.sourceKey.present ? data.sourceKey.value : this.sourceKey,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      finishedAt:
+          data.finishedAt.present ? data.finishedAt.value : this.finishedAt,
     );
   }
 
@@ -3627,14 +3768,16 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('sourceKey: $sourceKey, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('finishedAt: $finishedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, itemId, qty, orderId, status, createdAt,
-      updatedAt, sourceKey, isDeleted, deletedAt);
+      updatedAt, sourceKey, isDeleted, deletedAt, startedAt, finishedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3648,7 +3791,9 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           other.updatedAt == this.updatedAt &&
           other.sourceKey == this.sourceKey &&
           other.isDeleted == this.isDeleted &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.startedAt == this.startedAt &&
+          other.finishedAt == this.finishedAt);
 }
 
 class WorksCompanion extends UpdateCompanion<WorkRow> {
@@ -3662,6 +3807,8 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
   final Value<String?> sourceKey;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
+  final Value<String?> startedAt;
+  final Value<String?> finishedAt;
   final Value<int> rowid;
   const WorksCompanion({
     this.id = const Value.absent(),
@@ -3674,6 +3821,8 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     this.sourceKey = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.finishedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   WorksCompanion.insert({
@@ -3687,6 +3836,8 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     this.sourceKey = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.finishedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         itemId = Value(itemId),
@@ -3704,6 +3855,8 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     Expression<String>? sourceKey,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
+    Expression<String>? startedAt,
+    Expression<String>? finishedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3717,6 +3870,8 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       if (sourceKey != null) 'source_key': sourceKey,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (startedAt != null) 'started_at': startedAt,
+      if (finishedAt != null) 'finished_at': finishedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3732,6 +3887,8 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       Value<String?>? sourceKey,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
+      Value<String?>? startedAt,
+      Value<String?>? finishedAt,
       Value<int>? rowid}) {
     return WorksCompanion(
       id: id ?? this.id,
@@ -3744,6 +3901,8 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       sourceKey: sourceKey ?? this.sourceKey,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
+      startedAt: startedAt ?? this.startedAt,
+      finishedAt: finishedAt ?? this.finishedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3781,6 +3940,12 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<String>(deletedAt.value);
     }
+    if (startedAt.present) {
+      map['started_at'] = Variable<String>(startedAt.value);
+    }
+    if (finishedAt.present) {
+      map['finished_at'] = Variable<String>(finishedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3800,6 +3965,8 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
           ..write('sourceKey: $sourceKey, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('finishedAt: $finishedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3866,6 +4033,18 @@ class $PurchaseOrdersTable extends PurchaseOrders
   late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
       'deleted_at', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _orderIdMeta =
+      const VerificationMeta('orderId');
+  @override
+  late final GeneratedColumn<String> orderId = GeneratedColumn<String>(
+      'order_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _receivedAtMeta =
+      const VerificationMeta('receivedAt');
+  @override
+  late final GeneratedColumn<String> receivedAt = GeneratedColumn<String>(
+      'received_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -3876,7 +4055,9 @@ class $PurchaseOrdersTable extends PurchaseOrders
         updatedAt,
         isDeleted,
         memo,
-        deletedAt
+        deletedAt,
+        orderId,
+        receivedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3937,6 +4118,16 @@ class $PurchaseOrdersTable extends PurchaseOrders
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
     }
+    if (data.containsKey('order_id')) {
+      context.handle(_orderIdMeta,
+          orderId.isAcceptableOrUnknown(data['order_id']!, _orderIdMeta));
+    }
+    if (data.containsKey('received_at')) {
+      context.handle(
+          _receivedAtMeta,
+          receivedAt.isAcceptableOrUnknown(
+              data['received_at']!, _receivedAtMeta));
+    }
     return context;
   }
 
@@ -3964,6 +4155,10 @@ class $PurchaseOrdersTable extends PurchaseOrders
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
+      orderId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}order_id']),
+      receivedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}received_at']),
     );
   }
 
@@ -3984,6 +4179,8 @@ class PurchaseOrderRow extends DataClass
   final bool isDeleted;
   final String? memo;
   final String? deletedAt;
+  final String? orderId;
+  final String? receivedAt;
   const PurchaseOrderRow(
       {required this.id,
       required this.supplierName,
@@ -3993,7 +4190,9 @@ class PurchaseOrderRow extends DataClass
       required this.updatedAt,
       required this.isDeleted,
       this.memo,
-      this.deletedAt});
+      this.deletedAt,
+      this.orderId,
+      this.receivedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -4009,6 +4208,12 @@ class PurchaseOrderRow extends DataClass
     }
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    if (!nullToAbsent || orderId != null) {
+      map['order_id'] = Variable<String>(orderId);
+    }
+    if (!nullToAbsent || receivedAt != null) {
+      map['received_at'] = Variable<String>(receivedAt);
     }
     return map;
   }
@@ -4026,6 +4231,12 @@ class PurchaseOrderRow extends DataClass
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      orderId: orderId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(orderId),
+      receivedAt: receivedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receivedAt),
     );
   }
 
@@ -4042,6 +4253,8 @@ class PurchaseOrderRow extends DataClass
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       memo: serializer.fromJson<String?>(json['memo']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+      orderId: serializer.fromJson<String?>(json['orderId']),
+      receivedAt: serializer.fromJson<String?>(json['receivedAt']),
     );
   }
   @override
@@ -4057,6 +4270,8 @@ class PurchaseOrderRow extends DataClass
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'memo': serializer.toJson<String?>(memo),
       'deletedAt': serializer.toJson<String?>(deletedAt),
+      'orderId': serializer.toJson<String?>(orderId),
+      'receivedAt': serializer.toJson<String?>(receivedAt),
     };
   }
 
@@ -4069,7 +4284,9 @@ class PurchaseOrderRow extends DataClass
           String? updatedAt,
           bool? isDeleted,
           Value<String?> memo = const Value.absent(),
-          Value<String?> deletedAt = const Value.absent()}) =>
+          Value<String?> deletedAt = const Value.absent(),
+          Value<String?> orderId = const Value.absent(),
+          Value<String?> receivedAt = const Value.absent()}) =>
       PurchaseOrderRow(
         id: id ?? this.id,
         supplierName: supplierName ?? this.supplierName,
@@ -4080,6 +4297,8 @@ class PurchaseOrderRow extends DataClass
         isDeleted: isDeleted ?? this.isDeleted,
         memo: memo.present ? memo.value : this.memo,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        orderId: orderId.present ? orderId.value : this.orderId,
+        receivedAt: receivedAt.present ? receivedAt.value : this.receivedAt,
       );
   PurchaseOrderRow copyWithCompanion(PurchaseOrdersCompanion data) {
     return PurchaseOrderRow(
@@ -4094,6 +4313,9 @@ class PurchaseOrderRow extends DataClass
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       memo: data.memo.present ? data.memo.value : this.memo,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      orderId: data.orderId.present ? data.orderId.value : this.orderId,
+      receivedAt:
+          data.receivedAt.present ? data.receivedAt.value : this.receivedAt,
     );
   }
 
@@ -4108,14 +4330,16 @@ class PurchaseOrderRow extends DataClass
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('memo: $memo, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('orderId: $orderId, ')
+          ..write('receivedAt: $receivedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, supplierName, eta, status, createdAt,
-      updatedAt, isDeleted, memo, deletedAt);
+      updatedAt, isDeleted, memo, deletedAt, orderId, receivedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4128,7 +4352,9 @@ class PurchaseOrderRow extends DataClass
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted &&
           other.memo == this.memo &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.orderId == this.orderId &&
+          other.receivedAt == this.receivedAt);
 }
 
 class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
@@ -4141,6 +4367,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<bool> isDeleted;
   final Value<String?> memo;
   final Value<String?> deletedAt;
+  final Value<String?> orderId;
+  final Value<String?> receivedAt;
   final Value<int> rowid;
   const PurchaseOrdersCompanion({
     this.id = const Value.absent(),
@@ -4152,6 +4380,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.isDeleted = const Value.absent(),
     this.memo = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.orderId = const Value.absent(),
+    this.receivedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PurchaseOrdersCompanion.insert({
@@ -4164,6 +4394,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.isDeleted = const Value.absent(),
     this.memo = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.orderId = const Value.absent(),
+    this.receivedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         supplierName = Value(supplierName),
@@ -4181,6 +4413,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     Expression<bool>? isDeleted,
     Expression<String>? memo,
     Expression<String>? deletedAt,
+    Expression<String>? orderId,
+    Expression<String>? receivedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4193,6 +4427,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (memo != null) 'memo': memo,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (orderId != null) 'order_id': orderId,
+      if (receivedAt != null) 'received_at': receivedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4207,6 +4443,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       Value<bool>? isDeleted,
       Value<String?>? memo,
       Value<String?>? deletedAt,
+      Value<String?>? orderId,
+      Value<String?>? receivedAt,
       Value<int>? rowid}) {
     return PurchaseOrdersCompanion(
       id: id ?? this.id,
@@ -4218,6 +4456,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       isDeleted: isDeleted ?? this.isDeleted,
       memo: memo ?? this.memo,
       deletedAt: deletedAt ?? this.deletedAt,
+      orderId: orderId ?? this.orderId,
+      receivedAt: receivedAt ?? this.receivedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4252,6 +4492,12 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<String>(deletedAt.value);
     }
+    if (orderId.present) {
+      map['order_id'] = Variable<String>(orderId.value);
+    }
+    if (receivedAt.present) {
+      map['received_at'] = Variable<String>(receivedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4270,6 +4516,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
           ..write('isDeleted: $isDeleted, ')
           ..write('memo: $memo, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('orderId: $orderId, ')
+          ..write('receivedAt: $receivedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8455,6 +8703,8 @@ typedef $$OrdersTableCreateCompanionBuilder = OrdersCompanion Function({
   Value<bool> isDeleted,
   Value<String?> updatedAt,
   Value<String?> deletedAt,
+  Value<String?> shippedAt,
+  Value<String?> dueDate,
   Value<int> rowid,
 });
 typedef $$OrdersTableUpdateCompanionBuilder = OrdersCompanion Function({
@@ -8466,6 +8716,8 @@ typedef $$OrdersTableUpdateCompanionBuilder = OrdersCompanion Function({
   Value<bool> isDeleted,
   Value<String?> updatedAt,
   Value<String?> deletedAt,
+  Value<String?> shippedAt,
+  Value<String?> dueDate,
   Value<int> rowid,
 });
 
@@ -8534,6 +8786,12 @@ class $$OrdersTableFilterComposer
 
   ColumnFilters<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get shippedAt => $composableBuilder(
+      column: $table.shippedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get dueDate => $composableBuilder(
+      column: $table.dueDate, builder: (column) => ColumnFilters(column));
 
   Expression<bool> orderLinesRefs(
       Expression<bool> Function($$OrderLinesTableFilterComposer f) f) {
@@ -8610,6 +8868,12 @@ class $$OrdersTableOrderingComposer
 
   ColumnOrderings<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get shippedAt => $composableBuilder(
+      column: $table.shippedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get dueDate => $composableBuilder(
+      column: $table.dueDate, builder: (column) => ColumnOrderings(column));
 }
 
 class $$OrdersTableAnnotationComposer
@@ -8644,6 +8908,12 @@ class $$OrdersTableAnnotationComposer
 
   GeneratedColumn<String> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get shippedAt =>
+      $composableBuilder(column: $table.shippedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
 
   Expression<T> orderLinesRefs<T extends Object>(
       Expression<T> Function($$OrderLinesTableAnnotationComposer a) f) {
@@ -8719,6 +8989,8 @@ class $$OrdersTableTableManager extends RootTableManager<
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> updatedAt = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> shippedAt = const Value.absent(),
+            Value<String?> dueDate = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               OrdersCompanion(
@@ -8730,6 +9002,8 @@ class $$OrdersTableTableManager extends RootTableManager<
             isDeleted: isDeleted,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
+            shippedAt: shippedAt,
+            dueDate: dueDate,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8741,6 +9015,8 @@ class $$OrdersTableTableManager extends RootTableManager<
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> updatedAt = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> shippedAt = const Value.absent(),
+            Value<String?> dueDate = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               OrdersCompanion.insert(
@@ -8752,6 +9028,8 @@ class $$OrdersTableTableManager extends RootTableManager<
             isDeleted: isDeleted,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
+            shippedAt: shippedAt,
+            dueDate: dueDate,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -9184,6 +9462,8 @@ typedef $$WorksTableCreateCompanionBuilder = WorksCompanion Function({
   Value<String?> sourceKey,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
+  Value<String?> startedAt,
+  Value<String?> finishedAt,
   Value<int> rowid,
 });
 typedef $$WorksTableUpdateCompanionBuilder = WorksCompanion Function({
@@ -9197,6 +9477,8 @@ typedef $$WorksTableUpdateCompanionBuilder = WorksCompanion Function({
   Value<String?> sourceKey,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
+  Value<String?> startedAt,
+  Value<String?> finishedAt,
   Value<int> rowid,
 });
 
@@ -9264,6 +9546,12 @@ class $$WorksTableFilterComposer extends Composer<_$AppDatabase, $WorksTable> {
 
   ColumnFilters<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get startedAt => $composableBuilder(
+      column: $table.startedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get finishedAt => $composableBuilder(
+      column: $table.finishedAt, builder: (column) => ColumnFilters(column));
 
   $$ItemsTableFilterComposer get itemId {
     final $$ItemsTableFilterComposer composer = $composerBuilder(
@@ -9339,6 +9627,12 @@ class $$WorksTableOrderingComposer
   ColumnOrderings<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get startedAt => $composableBuilder(
+      column: $table.startedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get finishedAt => $composableBuilder(
+      column: $table.finishedAt, builder: (column) => ColumnOrderings(column));
+
   $$ItemsTableOrderingComposer get itemId {
     final $$ItemsTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -9412,6 +9706,12 @@ class $$WorksTableAnnotationComposer
 
   GeneratedColumn<String> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get finishedAt => $composableBuilder(
+      column: $table.finishedAt, builder: (column) => column);
 
   $$ItemsTableAnnotationComposer get itemId {
     final $$ItemsTableAnnotationComposer composer = $composerBuilder(
@@ -9487,6 +9787,8 @@ class $$WorksTableTableManager extends RootTableManager<
             Value<String?> sourceKey = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> startedAt = const Value.absent(),
+            Value<String?> finishedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               WorksCompanion(
@@ -9500,6 +9802,8 @@ class $$WorksTableTableManager extends RootTableManager<
             sourceKey: sourceKey,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
+            startedAt: startedAt,
+            finishedAt: finishedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -9513,6 +9817,8 @@ class $$WorksTableTableManager extends RootTableManager<
             Value<String?> sourceKey = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> startedAt = const Value.absent(),
+            Value<String?> finishedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               WorksCompanion.insert(
@@ -9526,6 +9832,8 @@ class $$WorksTableTableManager extends RootTableManager<
             sourceKey: sourceKey,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
+            startedAt: startedAt,
+            finishedAt: finishedAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -9601,6 +9909,8 @@ typedef $$PurchaseOrdersTableCreateCompanionBuilder = PurchaseOrdersCompanion
   Value<bool> isDeleted,
   Value<String?> memo,
   Value<String?> deletedAt,
+  Value<String?> orderId,
+  Value<String?> receivedAt,
   Value<int> rowid,
 });
 typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
@@ -9614,6 +9924,8 @@ typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
   Value<bool> isDeleted,
   Value<String?> memo,
   Value<String?> deletedAt,
+  Value<String?> orderId,
+  Value<String?> receivedAt,
   Value<int> rowid,
 });
 
@@ -9674,6 +9986,12 @@ class $$PurchaseOrdersTableFilterComposer
   ColumnFilters<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get orderId => $composableBuilder(
+      column: $table.orderId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get receivedAt => $composableBuilder(
+      column: $table.receivedAt, builder: (column) => ColumnFilters(column));
+
   Expression<bool> purchaseLinesRefs(
       Expression<bool> Function($$PurchaseLinesTableFilterComposer f) f) {
     final $$PurchaseLinesTableFilterComposer composer = $composerBuilder(
@@ -9732,6 +10050,12 @@ class $$PurchaseOrdersTableOrderingComposer
 
   ColumnOrderings<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get orderId => $composableBuilder(
+      column: $table.orderId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get receivedAt => $composableBuilder(
+      column: $table.receivedAt, builder: (column) => ColumnOrderings(column));
 }
 
 class $$PurchaseOrdersTableAnnotationComposer
@@ -9769,6 +10093,12 @@ class $$PurchaseOrdersTableAnnotationComposer
 
   GeneratedColumn<String> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get orderId =>
+      $composableBuilder(column: $table.orderId, builder: (column) => column);
+
+  GeneratedColumn<String> get receivedAt => $composableBuilder(
+      column: $table.receivedAt, builder: (column) => column);
 
   Expression<T> purchaseLinesRefs<T extends Object>(
       Expression<T> Function($$PurchaseLinesTableAnnotationComposer a) f) {
@@ -9825,6 +10155,8 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> orderId = const Value.absent(),
+            Value<String?> receivedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               PurchaseOrdersCompanion(
@@ -9837,6 +10169,8 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             isDeleted: isDeleted,
             memo: memo,
             deletedAt: deletedAt,
+            orderId: orderId,
+            receivedAt: receivedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -9849,6 +10183,8 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> orderId = const Value.absent(),
+            Value<String?> receivedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               PurchaseOrdersCompanion.insert(
@@ -9861,6 +10197,8 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             isDeleted: isDeleted,
             memo: memo,
             deletedAt: deletedAt,
+            orderId: orderId,
+            receivedAt: receivedAt,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

@@ -2,13 +2,17 @@ enum PurchaseOrderStatus { draft, ordered, received, canceled }
 
 class PurchaseOrder {
   final String id;
-  final String supplierName;          // 상호 (빈문자 허용)
-  final DateTime eta;                 // 도착 예정일
+  final String supplierName;
+  final DateTime eta;                 // 예상 입고(2단계 점선에 사용)
   final PurchaseOrderStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
-  final String? memo;                 // ✅ 적요(헤더 메모) 추가
+  final String? memo;
+
+  // ✅ 추가
+  final String? orderId;              // 주문 연동 발주만 주문 상세 타임라인에 표시
+  final DateTime? receivedAt;         // 실제 입고 완료일(막대 종료)
 
   PurchaseOrder({
     required this.id,
@@ -18,7 +22,9 @@ class PurchaseOrder {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.isDeleted = false,
-    this.memo,                        // ✅ 추가
+    this.memo,
+    this.orderId,                     // ✅
+    this.receivedAt,                  // ✅
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -28,7 +34,9 @@ class PurchaseOrder {
     PurchaseOrderStatus? status,
     bool? isDeleted,
     DateTime? updatedAt,
-    String? memo,                     // ✅ 추가
+    String? memo,
+    String? orderId,                  // ✅
+    DateTime? receivedAt,             // ✅
   }) => PurchaseOrder(
     id: id,
     supplierName: supplierName ?? this.supplierName,
@@ -37,7 +45,9 @@ class PurchaseOrder {
     createdAt: createdAt,
     updatedAt: updatedAt ?? DateTime.now(),
     isDeleted: isDeleted ?? this.isDeleted,
-    memo: memo ?? this.memo,          // ✅ 추가
+    memo: memo ?? this.memo,
+    orderId: orderId ?? this.orderId,             // ✅
+    receivedAt: receivedAt ?? this.receivedAt,     // ✅
   );
 
   factory PurchaseOrder.fromJson(Map<String, dynamic> j) => PurchaseOrder(
@@ -48,7 +58,11 @@ class PurchaseOrder {
     createdAt: DateTime.parse(j['createdAt']),
     updatedAt: DateTime.parse(j['updatedAt']),
     isDeleted: j['isDeleted'] == true,
-    memo: j['memo'] as String?,       // ✅ 추가(없으면 null)
+    memo: j['memo'] as String?,
+    orderId: j['orderId'] as String?,                         // ✅
+    receivedAt: (j['receivedAt'] as String?) != null          // ✅
+        ? DateTime.parse(j['receivedAt'])
+        : null,
   );
 
   Map<String, dynamic> toJson() => {
@@ -59,6 +73,8 @@ class PurchaseOrder {
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
     'isDeleted': isDeleted,
-    'memo': memo,                     // ✅ 추가(null이면 생략되지 않고 null로 저장)
+    'memo': memo,
+    'orderId': orderId,                           // ✅
+    'receivedAt': receivedAt?.toIso8601String(),  // ✅
   };
 }

@@ -12,6 +12,9 @@ class Work {
   final DateTime? updatedAt;
   final bool isDeleted;
   final String? sourceKey;
+  final DateTime? startedAt;    // 작업 시작
+  final DateTime? finishedAt;   // 작업 완료
+
 
   Work({
     required this.id,
@@ -23,6 +26,8 @@ class Work {
     DateTime? createdAt,
     this.sourceKey,
     this.updatedAt,
+    this.startedAt,        // ✅
+    this.finishedAt,       // ✅
   })  : createdAt = createdAt ?? DateTime.now(),
         assert(qty > 0, 'qty must be > 0');
 
@@ -37,6 +42,8 @@ class Work {
     DateTime? updatedAt,
     String? sourceKey,
   bool? isDeleted,
+    DateTime? startedAt,     // ✅
+    DateTime? finishedAt,    // ✅
   }) {
     return Work(
       id: id ?? this.id,
@@ -48,6 +55,9 @@ class Work {
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       sourceKey: sourceKey ?? this.sourceKey,
+      startedAt: startedAt ?? this.startedAt,     // ✅
+      finishedAt: finishedAt ?? this.finishedAt,  // ✅
+
     );
   }
 
@@ -64,6 +74,15 @@ class Work {
       updatedAt: (json['updatedAt'] as String?) != null
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
+      // ✅ 직렬화 누락 보완
+      isDeleted: json['isDeleted'] == true,
+      sourceKey: json['sourceKey'] as String?,
+      startedAt: (json['startedAt'] as String?) != null
+          ? DateTime.parse(json['startedAt'])
+          : null,
+      finishedAt: (json['finishedAt'] as String?) != null
+          ? DateTime.parse(json['finishedAt'])
+          : null,
     );
   }
 
@@ -75,7 +94,12 @@ class Work {
         'status': status.name,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
-      };
+    'isDeleted': isDeleted,          // ✅
+    'sourceKey': sourceKey,          // ✅
+    'startedAt': startedAt?.toIso8601String(),   // ✅
+    'finishedAt': finishedAt?.toIso8601String(), // ✅
+
+  };
 
   @override
   String toString() =>

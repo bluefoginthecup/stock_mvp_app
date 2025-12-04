@@ -23,6 +23,7 @@ import 'src/services/auth_service.dart';
 import 'src/db/app_database.dart';
 import 'src/repos/drift_unified_repo.dart';
 import 'src/models/txn.dart';
+import 'src/repos/timeline_repo.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,6 +79,18 @@ Future<void> main() async {
         Provider<FolderTreeRepo>.value(value: unifiedRepo),
         // ✅ 통합 휴지통(TrashScreen)이 쓰는 Repo 노출
         Provider<TrashRepo>.value(value: unifiedRepo),
+        Provider<TimelineRepo>(
+          create: (_) => TimelineRepo(
+            getOrderById: (id) async {
+              final o = await unifiedRepo.getOrder(id); // OrderRepo 인터페이스 메서드
+              if (o == null) throw Exception('Order not found: $id');
+              return o;
+            },
+            listPOsByOrderId: (id) => unifiedRepo.listPurchaseOrdersByOrderId(id),
+            listWorksByOrderId: (id) => unifiedRepo.listWorksByOrderId(id),
+          ),
+        ),
+
 
 
         // ✅ txns도 실시간 구독 (UI에서 context.watch<List<Txn>>()로 바로 사용)

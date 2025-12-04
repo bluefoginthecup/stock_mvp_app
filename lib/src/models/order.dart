@@ -50,6 +50,8 @@ class Order {
   final bool isDeleted;           // soft delete 플래그
   final DateTime? deletedAt;      // soft delete 타임스탬프(없으면 null)
   final DateTime updatedAt;       // LWW 동기화 기준
+  final DateTime? shippedAt;   // ✅ 출고(주문완료)일
+  final DateTime? dueDate;     // ✅ 납기(출고 예정)일
 
   Order({
     required this.id,
@@ -60,6 +62,8 @@ class Order {
     required this.lines,
     this.isDeleted = false,
     this.deletedAt,
+    this.shippedAt,
+    this.dueDate,
     DateTime? updatedAt,
   }) : updatedAt = updatedAt ?? DateTime.now();
 
@@ -74,6 +78,8 @@ class Order {
     bool? isDeleted,
     DateTime? deletedAt,
     DateTime? updatedAt,
+    DateTime? shippedAt,
+    DateTime? dueDate,
   }) {
     return Order(
       id: id ?? this.id,
@@ -85,6 +91,8 @@ class Order {
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      shippedAt: shippedAt ?? this.shippedAt,
+      dueDate: dueDate ?? this.dueDate,
     );
   }
 
@@ -100,6 +108,8 @@ class Order {
     'isDeleted': isDeleted,
     'deletedAt': deletedAt?.toIso8601String(),
     'updatedAt': updatedAt.toIso8601String(),
+    'shippedAt': shippedAt?.toIso8601String(),
+    'dueDate':   dueDate?.toIso8601String(),
   };
 
   factory Order.fromMap(Map<String, dynamic> map) => Order(
@@ -120,6 +130,9 @@ class Order {
         ? DateTime.parse(map['updatedAt'] as String)
         : DateTime
         .now(), // 과거 데이터 호환: 없으면 지금 시각으로 보정
+    shippedAt: (map['shippedAt'] as String?) != null ? DateTime.parse(map['shippedAt']) : null,
+    dueDate:   (map['dueDate']   as String?) != null ? DateTime.parse(map['dueDate'])   : null,
+
   );
 
   /// 편의: 지금 시각으로 updatedAt 갱신한 사본
