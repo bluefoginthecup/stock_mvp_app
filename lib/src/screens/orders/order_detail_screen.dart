@@ -11,6 +11,10 @@ import '../bom/shortage_result_screen.dart';
 // ⛳ 전체 주문 품목 부족분 결과 화면
 import '../bom/order_shortage_result_screen.dart';
 
+import '../../repos/timeline_repo.dart';
+import 'widgets/order_timeline.dart';
+
+
 class OrderDetailScreen extends StatefulWidget {
   final Order order;
   const OrderDetailScreen({super.key, required this.order});
@@ -21,12 +25,15 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   late Order _order;
+  TimelineData? _timeline;
+  bool _tlLoading = false;
 
   @override
   void initState() {
     super.initState();
     _order = widget.order;
     _reload(); // 진입 시 최신화(옵션)
+    _loadTimeline(); // 👈 타임라인 로드
   }
 
   Future<void> _reload() async {
@@ -36,7 +43,29 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (!mounted) return;
     if (latest == null) return;
     setState(() => _order = latest);
+    // 주문 편집 후에도 타임라인 갱신
+    await _loadTimeline();
   }
+
+  Future<void> _loadTimeline() async {
+        setState(() => _tlLoading = true);
+        try {
+          final tlRepo = context.read<TimelineRepo>();
+          final data = await tlRepo.fetchOrderTimeline(_order.id);
+          if (!mounted) return;
+          setState(() {
+            _timeline = data;
+            _tlLoading = false;
+          });
+        } catch (e) {
+          if (!mounted) return;
+          setState(() {
+            _timeline = null;
+            _tlLoading = false;
+          });
+          debugPrint('[TL][ERROR] $e');
+        }
+      }
 
   Future<void> _goEdit() async {
     final editedId = await Navigator.push<String>(
@@ -85,6 +114,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         Text('상태: ${_order.status.name}'),
         const SizedBox(height: 12),
 
+    // 👇 타임라인 박스 (리스트 위로)
+            Container(
+              height: 220,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: _tlLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : (_timeline == null
+                      ? const Center(child: Text('타임라인을 불러오지 못했어요.'))
+                      : OrderTimeline(data: _timeline!)),
+            ),
+            const SizedBox(height: 16),
         // ✅ 모든 주문 라인 표시
         Expanded(
           child: ListView.separated(
@@ -102,12 +145,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ElevatedButton.icon(
           icon: const Icon(Icons.assessment),
           label: const Text('전체 품목 부족분 계산'),
-          onPressed: () {
-            Navigator.of(context).push(
+          onPressed: () async{
+            await Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => OrderShortageResultScreen(order: _order),
               ),
             );
+    // 부족분 계산/생성 이후 타임라인 갱신
+                await _loadTimeline();
           },
         ),
         const SizedBox(height: 8),
