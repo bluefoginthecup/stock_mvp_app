@@ -115,4 +115,21 @@ Future<void> restoreOrder(String orderId) async {
     ),
   );
 }
+
+@override
+Future<void> updateOrderStatus(String id, OrderStatus status) async {
+  final nowIso = DateTime.now().toIso8601String();
+
+  final write = OrdersCompanion(
+    status: Value(status.name),
+    updatedAt: Value(nowIso),
+    // 만약 completedAt 컬럼이 있다면 아래 주석 해제:
+    // completedAt: status == OrderStatus.done
+    //     ? Value(nowIso)
+    //     : const Value<String?>(null),
+  );
+
+  await (db.update(db.orders)..where((t) => t.id.equals(id))).write(write);
+}
+
 }

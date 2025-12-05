@@ -131,7 +131,11 @@ abstract class OrderRepo {
 
   /// 복구: soft delete 해제
   Future<void> restoreOrder(String orderId);
+
+  Future<void> updateOrderStatus(String id, OrderStatus status);
+
 }
+
 
 abstract class TxnRepo {
   Future<List<Txn>> listTxns();

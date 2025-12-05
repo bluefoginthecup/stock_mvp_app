@@ -27,6 +27,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   late Order _order;
   TimelineData? _timeline;
   bool _tlLoading = false;
+  bool _busy = false; // 주문 완료 처리 중 여부
 
   @override
   void initState() {
@@ -80,28 +81,87 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  Future<void> _markAsDone() async {
+        if (_busy) return;
+
+        // 미리 캡처 (dialog 안팎 context 혼용 방지)
+        final repo = context.read<OrderRepo>();
+        final messenger = ScaffoldMessenger.of(context);
+
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (dialogCtx) => AlertDialog(
+            title: const Text('주문 완료'),
+            content: const Text('이 주문을 완료 처리할까요?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(false),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(true),
+                child: const Text('완료'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted || ok != true) return;
+
+        setState(() => _busy = true);
+        try {
+          await repo.updateOrderStatus(_order.id, OrderStatus.done);
+          if (!mounted) return;
+
+          // 로컬 상태도 즉시 갱신 (리스트로 돌아가면 바로 반영됨)
+          setState(() => _order = _order.copyWith(status: OrderStatus.done));
+          messenger.showSnackBar(const SnackBar(content: Text('주문을 완료로 변경했어요.')));
+
+          // 원하면 상세 유지 대신 아래 주석을 사용해 리스트로 돌아가기
+          // Navigator.pop(context, 'done');
+        } catch (e) {
+          if (!mounted) return;
+          messenger.showSnackBar(SnackBar(content: Text('완료 처리에 실패했습니다: $e')));
+        } finally {
+          if (mounted) setState(() => _busy = false);
+        }
+      }
+
   @override
   Widget build(BuildContext context) {
     final hasLines = _order.lines.isNotEmpty;
+    final isDone = _order.status == OrderStatus.done; // ✅ 한곳에서 판단
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('주문 상세'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            tooltip: '편집',
-            onPressed: _goEdit,
-          ),
+          IconButton(icon: const Icon(Icons.edit), tooltip: '편집', onPressed: _goEdit),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        // ✅ 항상 하나의 위젯을 반환 → body_might_complete_normally 방지
         child: hasLines ? _buildOrderWithLines(context) : _buildOrderEmpty(context),
       ),
+        bottomNavigationBar: (isDone)
+                ? null
+            : SafeArea(
+                top: false,
+                    child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: SizedBox(
+                    height: 48,
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.check_circle),
+                      label: _busy ? const Text('처리중...') : const Text('주문 완료'),
+                      onPressed: _busy ? null : _markAsDone,
+                    ),
+                  ),
+                ),
+              ),
+
     );
   }
+
 
   /// 라인이 있는 경우 UI
   Widget _buildOrderWithLines(BuildContext context) {
