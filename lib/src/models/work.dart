@@ -2,6 +2,7 @@
 // Production (work) order model.
 import 'types.dart';
 
+
 class Work {
   final String id;        // unique id
   final String itemId;    // item to produce (finished/semi)

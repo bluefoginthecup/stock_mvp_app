@@ -47,6 +47,15 @@ Future<Work?> getWorkById(String id) async {
   final row = await (db.select(db.works)..where((t) => t.id.equals(id))).getSingleOrNull();
   return row?.toDomain();
 }
+@override
+Stream<List<Work>> watchWorksByOrderAndItem(String orderId, String itemId) {
+  final q = (db.select(db.works)
+    ..where((t) => t.orderId.equals(orderId))
+    ..where((t) => t.itemId.equals(itemId))
+    ..where((t) => t.isDeleted.equals(false))
+    ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]));
+  return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
+}
 
 @override
 Stream<List<Work>> watchAllWorks() {

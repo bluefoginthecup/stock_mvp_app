@@ -14,6 +14,13 @@ import '../bom/order_shortage_result_screen.dart';
 import '../../repos/timeline_repo.dart';
 import 'widgets/order_timeline.dart';
 
+import '../../models/work.dart';
+import '../../models/types.dart';
+import '../works/work_detail_screen.dart';
+import '../works/widgets/work_row.dart';
+import '../../services/inventory_service.dart';
+
+
 
 class OrderDetailScreen extends StatefulWidget {
   final Order order;
@@ -138,7 +145,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           IconButton(icon: const Icon(Icons.edit), tooltip: '편집', onPressed: _goEdit),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: hasLines ? _buildOrderWithLines(context) : _buildOrderEmpty(context),
       ),
@@ -188,17 +195,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       : OrderTimeline(data: _timeline!)),
             ),
             const SizedBox(height: 16),
-        // ✅ 모든 주문 라인 표시
-        Expanded(
-          child: ListView.separated(
-            itemCount: _order.lines.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final line = _order.lines[index]; // itemId, qty 사용(필드명은 프로젝트 모델에 맞게)
-              return _buildLineCard(context, line.itemId, line.qty);
-            },
-          ),
-        ),
+
+    // ✅ 비스크롤 리스트 (바깥 SingleChildScrollView가 스크롤 담당)
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _order.lines.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final line = _order.lines[index];
+                return _buildLineCard(context, line.itemId, line.qty);
+              },
+            ),
 
         const SizedBox(height: 16),
         // 전체 품목에 대해 한 번에 계산
@@ -227,21 +235,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   /// 라인이 없는 경우 UI
   Widget _buildOrderEmpty(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('고객명: ${_order.customer}'),
-        Text('주문일: ${_order.date.toIso8601String().split("T").first}'),
-        Text('상태: ${_order.status.name}'),
-        const SizedBox(height: 12),
-        const Expanded(
-          child: Center(child: Text('(주문 라인이 없습니다)')),
-        ),
-      ],
-    );
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+            Text('고객명: ${_order.customer}'),
+            Text('주문일: ${_order.date.toIso8601String().split("T").first}'),
+            Text('상태: ${_order.status.name}'),
+            const SizedBox(height: 12),
+            const SizedBox(height: 120),
+            const Center(child: Text('(주문 라인이 없습니다)')),
+          ],
+        );
   }
 
   /// 개별 라인 카드
   Widget _buildLineCard(BuildContext context, String itemId, int qty) {
+    final workRepo = context.read<WorkRepo>();
+    final inv = context.read<InventoryService>();
+
     return Card(
       elevation: 0.5,
       shape: RoundedRectangleBorder(
@@ -304,6 +314,53 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
               ],
             ),
+
+    const SizedBox(height: 8),
+
+              // 🔹 관련 작업 리스트 (이 주문  이 아이템)
+              StreamBuilder<List<Work>>(
+                stream: workRepo.watchWorksByOrderAndItem(_order.id, itemId),
+                builder: (context, snap) {
+                  final list = snap.data ?? const [];
+                  if (list.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 6),
+                      Text('관련 작업', style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: 6),
+                      ListView.separated(
+                        itemCount: list.length,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final w = list[i];
+                          return WorkRow(
+                            w: w,
+                            onStart: (w.status == WorkStatus.planned)
+                                ? () => inv.startWork(w.id)
+                                : null,
+                            onDone: (w.status == WorkStatus.inProgress)
+                                ? () => inv.completeWork(w.id)
+                                : null,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => WorkDetailScreen(work: w),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
           ],
         ),
       ),
