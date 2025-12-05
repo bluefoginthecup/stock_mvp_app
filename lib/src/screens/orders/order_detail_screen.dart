@@ -19,6 +19,8 @@ import '../../models/types.dart';
 import '../works/work_detail_screen.dart';
 import '../works/widgets/work_row.dart';
 import '../../services/inventory_service.dart';
+import '../../models/txn.dart'; // ✅ Txn, TxnType, TxnStatus
+
 
 
 
@@ -375,23 +377,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (_, i) {
                           final w = list[i];
-                          return WorkRow(
-                            w: w,
-                            onStart: (w.status == WorkStatus.planned)
-                                ? () => inv.startWork(w.id)
-                                : null,
-                            onDone: (w.status == WorkStatus.inProgress)
-                                ? () => inv.completeWork(w.id)
-                                : null,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => WorkDetailScreen(work: w),
-                                ),
-                              );
-                            },
+                          return Column(   crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              WorkRow(
+                                w: w,
+                                onStart: (w.status == WorkStatus.planned)
+                                    ? () => inv.startWork(w.id)
+                                    : null,
+                                onDone: (w.status == WorkStatus.inProgress)
+                                    ? () => inv.completeWork(w.id)
+                                    : null,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => WorkDetailScreen(work: w),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 6),
+                              Text('입출고 기록', style: Theme.of(context).textTheme.bodyMedium),
+                              const SizedBox(height: 6),
+                              _WorkTxnList(refWorkId: w.id),
+                            ],
                           );
+
                         },
                       ),
                     ],
@@ -402,5 +413,94 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
       ),
     );
+  }
+}
+
+class _WorkTxnList extends StatelessWidget {
+  final String refWorkId;
+  const _WorkTxnList({required this.refWorkId});
+
+  @override
+  Widget build(BuildContext context) {
+    final txns = context.read<TxnRepo>();
+    return StreamBuilder<List<Txn>>(
+      stream: txns.watchTxnsByRef(refType: 'work', refId: refWorkId),
+      builder: (context, snap) {
+        final list = (snap.data ?? const []);
+        if (list.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Text('기록 없음', style: Theme.of(context).textTheme.bodySmall),
+          );
+        }
+        // 최대 5개만 바로 보여주고, 더보기 버튼은 선택
+        final show = list.take(5).toList();
+        return Column(
+          children: [
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: show.length,
+              separatorBuilder: (_, __) => const Divider(height: 8, color: Colors.transparent),
+              itemBuilder: (_, i) {
+                final t = show[i];
+                final sign = (t.type == TxnType.in_) ? '+' : '-';
+                final color = (t.type == TxnType.in_) ? Colors.green : Colors.red;
+                final status = (t.status == TxnStatus.actual) ? '실거래' : '예약';
+                final ts = _fmtTs(t.ts);
+                return Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: color.withOpacity(.3)),
+                      ),
+                      child: Text(
+                        '${t.type == TxnType.in_ ? '입고' : '출고'}/$status',
+                        style: TextStyle(fontSize: 12, color: color.shade700),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '$sign${t.qty}  •  $ts',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            if (list.length > 5) ...[
+              const SizedBox(height: 6),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    // TODO: 필요하면 상세 화면으로 이동 (ref=workId 필터)
+                  },
+                  child: const Text('더보기'),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  String _fmtTs(DateTime d) {
+    final mm = d.month.toString().padLeft(2, '0');
+    final dd = d.day.toString().padLeft(2, '0');
+    final hh = d.hour.toString().padLeft(2, '0');
+    final mi = d.minute.toString().padLeft(2, '0');
+    return '${d.year}-$mm-$dd $hh:$mi';
   }
 }

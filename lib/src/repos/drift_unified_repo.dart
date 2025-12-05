@@ -20,6 +20,7 @@ import '../models/types.dart';
 import 'package:uuid/uuid.dart';
 
 
+
 // 표준 repo 인터페이스
 import 'repo_interfaces.dart';
 import '../models/trash_entry.dart'; // ← 이 줄 추가 (alias 없이)
