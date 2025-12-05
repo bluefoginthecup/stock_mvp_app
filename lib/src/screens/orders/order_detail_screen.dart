@@ -36,6 +36,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   bool _tlLoading = false;
   bool _busy = false; // 주문 완료 처리 중 여부
 
+  // ✅ 화면 전역 Primary 용 / 본문 스크롤 전용 분리
+  final ScrollController _primaryCtrl = ScrollController();
+  final ScrollController _bodyCtrl = ScrollController();
+
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +48,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _reload(); // 진입 시 최신화(옵션)
     _loadTimeline(); // 👈 타임라인 로드
   }
+
+  @override
+    void dispose() {
+        _bodyCtrl.dispose();
+        _primaryCtrl.dispose();
+        super.dispose();
+      }
 
   Future<void> _reload() async {
     final orderRepo = context.read<OrderRepo>();
@@ -138,18 +150,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final hasLines = _order.lines.isNotEmpty;
     final isDone = _order.status == OrderStatus.done; // ✅ 한곳에서 판단
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('주문 상세'),
+    return PrimaryScrollController(            // ✅ 하위 Scrollbar들이 Primary를 쓸 수 있게 제공
+            controller: _primaryCtrl,
+             child: Scaffold(
+           appBar: AppBar(
+
+    title: const Text('주문 상세'),
         actions: [
           IconButton(icon: const Icon(Icons.edit), tooltip: '편집', onPressed: _goEdit),
         ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: hasLines ? _buildOrderWithLines(context) : _buildOrderEmpty(context),
-      ),
-        bottomNavigationBar: (isDone)
+           ),
+                         body: SingleChildScrollView(
+                           controller: _bodyCtrl,               // ✅ 본문은 Primary를 쓰지 않도록 전용 컨트롤러 사용
+                           primary: false,                      // ✅ Primary와 충돌 방지 (중요)
+                           padding: const EdgeInsets.all(16),
+                  child: hasLines ? _buildOrderWithLines(context) : _buildOrderEmpty(context),
+            ),
+            bottomNavigationBar: (isDone)
                 ? null
             : SafeArea(
                 top: false,
@@ -165,7 +182,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 ),
               ),
-
+             ),
     );
   }
 
@@ -312,6 +329,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                         }
                                       },
                 ),
+
+    const SizedBox(width: 8),
+        FilledButton.icon(
+          icon: const Icon(Icons.local_shipping),
+          label: const Text('주문 출고'),
+          onPressed: () async {
+            final inv = context.read<InventoryService>();
+            try {
+              await inv.shipOrderLine(
+                orderId: _order.id,
+                itemId: itemId,
+                qty: qty,
+              );
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('출고가 처리되었어요.')),
+              );
+              await _loadTimeline();
+            } catch (e) {
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('출고 실패: $e')),
+              );
+            }
+          },
+        ),
               ],
             ),
 

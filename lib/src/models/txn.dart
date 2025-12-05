@@ -28,7 +28,7 @@ class Txn {
     this.sourceKey,
     this.note,
     this.memo,
-  }) : assert(qty > 0, 'qty must be > 0');
+  }) ;
 
   Txn copyWith({
     String? id,

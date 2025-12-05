@@ -13,10 +13,23 @@ import '../../ui/common/delete_more_menu.dart';
 
 // ⬇️ l10n
 import '../../l10n/l10n.dart';
+class WorkDetailScreen extends StatefulWidget {
+    final Work work;
+    const WorkDetailScreen({super.key, required this.work});
 
-class WorkDetailScreen extends StatelessWidget {
-  final Work work;
-  const WorkDetailScreen({super.key, required this.work});
+    @override
+    State<WorkDetailScreen> createState() => _WorkDetailScreenState();
+  }
+
+class _WorkDetailScreenState extends State<WorkDetailScreen> {
+    late final ScrollController _scrollCtrl = ScrollController();
+    Work get work => widget.work;
+
+    @override
+    void dispose() {
+      _scrollCtrl.dispose();
+      super.dispose();
+    }
 
   // 아이템명, 주문자명 로드
   Future<(String /*itemName*/, String? /*customer*/)> _loadNames(BuildContext ctx) async {
@@ -53,7 +66,7 @@ class WorkDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final inv = context.read<InventoryService>();
     final w = work;
-    final canAdvance = w.status != WorkStatus.done && w.status != WorkStatus.canceled;
+    final canChange = w.status != WorkStatus.canceled;
 
     return Scaffold(
       appBar: AppBar(title: Text(context.t.work_detail_title),
@@ -79,9 +92,13 @@ class WorkDetailScreen extends StatelessWidget {
               ? DateFormat.yMMMd(locale).add_Hms().format(w.createdAt)
               : null;
 
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Card(
+          return Scrollbar(
+                          controller: _scrollCtrl,
+                          thumbVisibility: true, // ← 이 옵션을 쓴다면 controller 필수
+                          child: SingleChildScrollView(
+                            controller: _scrollCtrl,
+                            padding: const EdgeInsets.all(16),
+                        child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -115,42 +132,77 @@ class WorkDetailScreen extends StatelessWidget {
                     const SizedBox(height: 6),
 
                     // 상태
-                    _statusRow(context, Labels.workStatus(context, w.status)),
+          // 상태: 3분할 버튼 (시작 / 진행중 / 완료)
+                              Row(
+                                children: [
+                                  Text(context.t.field_status_label),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Wrap(
+                                      spacing: 8, runSpacing: 8,
+                                      children: [
+                                        _statusButton(
+                                          context: context,
+                                          label: '시작',
+                                          color: Colors.green,
+                                          active: w.status == WorkStatus.planned,
+                                          enabled: canChange,
+                                          onTapConfirm: () async {
+                                            if (w.status == WorkStatus.planned) return;
+                                            final ok = await _confirm(context);
+                                            if (ok != true) return;
+                                            await inv.setWorkStatus(w.id, WorkStatus.planned);
+                                            if (context.mounted) Navigator.pop(context);
+                                          },
+                                        ),
+                                        _statusButton(
+                                          context: context,
+                                          label: '진행중',
+                                          color: Colors.blue,
+                                          active: w.status == WorkStatus.inProgress,
+                                          enabled: canChange,
+                                          onTapConfirm: () async {
+                                            if (w.status == WorkStatus.inProgress) return;
+                                            final ok = await _confirm(context);
+                                            if (ok != true) return;
+                                            await inv.setWorkStatus(w.id, WorkStatus.inProgress);
+                                            if (context.mounted) Navigator.pop(context);
+                                          },
+                                        ),
+                                        _statusButton(
+                                          context: context,
+                                          label: '완료',
+                                          color: Colors.red,
+                                          active: w.status == WorkStatus.done,
+                                          enabled: canChange,
+                                          onTapConfirm: () async {
+                                            if (w.status == WorkStatus.done) return;
+                                            final ok = await _confirm(context);
+                                            if (ok != true) return;
+                                            await inv.setWorkStatus(w.id, WorkStatus.done);
+                                            if (context.mounted) Navigator.pop(context);
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+
                     const SizedBox(height: 6),
 
                     if (createdAtText != null)
                       _kv(context.t.label_created_at, createdAtText),
 
                     const Spacer(),
+                    const SizedBox(height: 16),
 
-                    // 액션 버튼
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: !canAdvance
-                            ? null
-                            : () async {
-                          if (w.status == WorkStatus.planned) {
-                            await inv.startWork(w.id);      // planned → inProgress
-                          } else if (w.status == WorkStatus.inProgress) {
-                            await inv.completeWork(w.id);   // inProgress → done
-                          }
-                          if (context.mounted) Navigator.pop(context);
-                        },
-                        child: Text(
-                          switch (w.status) {
-                            WorkStatus.planned    => context.t.work_btn_start,
-                            WorkStatus.inProgress => context.t.work_btn_complete,
-                            WorkStatus.done       => context.t.work_btn_already_done,
-                            WorkStatus.canceled   => context.t.work_btn_canceled,
-                          },
-                        ),
-                      ),
-                    ),
+
                   ],
                 ),
               ),
             ),
+                          ),
           );
         },
       ),
@@ -176,4 +228,48 @@ class WorkDetailScreen extends StatelessWidget {
       Chip(label: Text(label)),
     ],
   );
+
+  // ✅ 상태 버튼 공통 위젯: 활성(채움) / 비활성(외곽) + 색상
+    Widget _statusButton({
+      required BuildContext context,
+      required String label,
+      required Color color,
+      required bool active,
+      required bool enabled,
+      required Future<void> Function() onTapConfirm,
+    }) {
+    final btn = active
+        ? ElevatedButton(
+            onPressed: enabled ? () async {} : null, // 활성 상태는 눌러도 아무것도 안함
+            style: ElevatedButton.styleFrom(
+              backgroundColor: color,
+            ),
+            child: Text(label),
+          )
+        : OutlinedButton(
+            onPressed: enabled
+                ? () async {
+                    await onTapConfirm();
+                  }
+                : null,
+            child: Text(label),
+          );
+    return SizedBox(height: 40, child: btn);
+  }
+
+  // ✅ 변경 확인 모달
+  Future<bool?> _confirm(BuildContext context) {
+      return showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('상태 변경'),
+          content: const Text('상태를 변경하시겠습니까?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('확인')),
+          ],
+        ),
+      );
+    }
+
 }

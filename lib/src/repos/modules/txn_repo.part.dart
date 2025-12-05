@@ -36,12 +36,27 @@ Future<void> deletePlannedByRef({
   required String refId,
 }) async {
   await (db.delete(db.txns)
-    ..where((t) => t.refType.equals(refType))
-    ..where((t) => t.refId.equals(refId))
-    ..where((t) => t.status.equals(TxnStatus.planned.name)))
-      .go();
+                ..where((t) => t.status.equals(TxnStatus.actual.name))
+            ..where((t) => t.type.equals(TxnType.in_.name))
+            ..where((t) => t.refType.equals(refType))
+            ..where((t) => t.refId.equals(refId)))
+          .go();
   await _refreshTxnSnapshot();
 }
+
+
+// ✅ 완료 롤백용: ref 기준 inActual 삭제
+  @override
+  Future<void> deleteInActualByRef({required String refType, required String refId}) async {
+      // Drift 테이블/컬럼명이 아래 예시와 다르면 같은 패턴으로 맞춰 주세요.
+      // 예: txns.type == 'inActual' AND txns.refType == refType AND txns.refId == refId
+      await (db.delete(db.txns)
+                ..where((t) =>
+                t.type.equals('inActual') &
+                t.refType.equals(refType) &
+                t.refId.equals(refId)))
+          .go();
+    }
 
 @override
 Future<void> addInPlanned({
@@ -51,6 +66,7 @@ Future<void> addInPlanned({
   required String refId,
   String? note,
 }) async {
+  if (qty <= 0) return; // 🔒 최후방어
   await db.into(db.txns).insert(
     Txn.in_(
       id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
@@ -73,6 +89,7 @@ Future<void> addInActual({
   required String refId,
   String? note,
 }) async {
+  if (qty <= 0) return; // 🔒 최후방어
   final rt = RefTypeX.fromString(refType);
   await db.transaction(() async {
     await db.into(db.txns).insert(
@@ -108,6 +125,7 @@ Future<void> addOutPlanned({
   String? note,
   String? memo,
 }) async {
+  if (qty <= 0) return; // 🔒 최후방어
   await db.into(db.txns).insert(
     Txn.out_(
       id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
@@ -132,6 +150,7 @@ Future<void> addOutActual({
   String? note,
   String? memo,
 }) async {
+  if (qty <= 0) return; // 🔒 최후방어
   final rt = RefTypeX.fromString(refType);
   await db.transaction(() async {
     await db.into(db.txns).insert(
@@ -174,6 +193,7 @@ Future<void> adjustQty({
   String? note,
   String? memo,
 }) async {
+  if (delta == 0) return; // 🔒 0 조정은 기록/반영하지 않음
   final now = DateTime.now();
   await db.transaction(() async {
     final row = await (db.select(db.items)..where((t) => t.id.equals(itemId))).getSingleOrNull();

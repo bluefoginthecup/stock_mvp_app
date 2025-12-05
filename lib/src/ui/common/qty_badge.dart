@@ -18,7 +18,7 @@ class QtyBadge extends StatelessWidget {
     required this.status,
     this.showSign = true,
     this.compact = true,
-  }) : assert(qty > 0);
+  }) ;
 
   @override
   Widget build(BuildContext context) {
