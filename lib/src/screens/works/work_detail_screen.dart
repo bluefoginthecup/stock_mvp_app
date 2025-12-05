@@ -102,6 +102,7 @@ class _WorkDetailScreenState extends State<WorkDetailScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min, // ✅ 스크롤뷰 안에서는 shrink-wrap
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 // 🧭 제목 라인: [루앙] 50기본형 방석커버 ×10  (옵션②)
@@ -194,7 +195,6 @@ class _WorkDetailScreenState extends State<WorkDetailScreen> {
                     if (createdAtText != null)
                       _kv(context.t.label_created_at, createdAtText),
 
-                    const Spacer(),
                     const SizedBox(height: 16),
 
 

@@ -50,12 +50,45 @@ Future<void> deletePlannedByRef({
   Future<void> deleteInActualByRef({required String refType, required String refId}) async {
       // Drift 테이블/컬럼명이 아래 예시와 다르면 같은 패턴으로 맞춰 주세요.
       // 예: txns.type == 'inActual' AND txns.refType == refType AND txns.refId == refId
-      await (db.delete(db.txns)
-                ..where((t) =>
-                t.type.equals('inActual') &
-                t.refType.equals(refType) &
-                t.refId.equals(refId)))
-          .go();
+    // 1) 어떤 아이템에 몇 개가 들어갔는지 먼저 조회(그룹 합계)
+        final rows = await (db.select(db.txns)
+              ..where((t) => t.status.equals(TxnStatus.actual.name))
+              ..where((t) => t.type.equals(TxnType.in_.name))
+              ..where((t) => t.refType.equals(refType))
+              ..where((t) => t.refId.equals(refId)))
+            .get();
+        if (rows.isEmpty) return;
+
+        // itemId별 총합 수량
+        final Map<String, int> sumByItem = {};
+        for (final r in rows) {
+          sumByItem[r.itemId] = (sumByItem[r.itemId] ?? 0)+  r.qty;
+        }
+
+        await db.transaction(() async {
+          // 2) 트랜잭션 로그 삭제
+          await (db.delete(db.txns)
+                ..where((t) => t.status.equals(TxnStatus.actual.name))
+                ..where((t) => t.type.equals(TxnType.in_.name))
+                ..where((t) => t.refType.equals(refType))
+                ..where((t) => t.refId.equals(refId)))
+              .go();
+
+          // 3) 재고 되돌리기: items.qty = qty - 합계
+          for (final entry in sumByItem.entries) {
+            final itemId = entry.key;
+            final delta = entry.value; // 이전에 더했던 수량
+            final row = await (db.select(db.items)..where((t) => t.id.equals(itemId))).getSingleOrNull();
+            final before = row?.qty ?? 0;
+            final after = before - delta;
+            await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+              ItemsCompanion(qty: Value(after)),
+            );
+            _stockCache[itemId] = after;
+          }
+        });
+
+        await _refreshTxnSnapshot();
     }
 
 @override

@@ -2,22 +2,36 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../repos/timeline_repo.dart';
 
-class OrderTimeline extends StatelessWidget {
-  final TimelineData data;
-  const OrderTimeline({super.key, required this.data});
+class OrderTimeline extends StatefulWidget {
+    final TimelineData data;
+    const OrderTimeline({super.key, required this.data});
 
-  static const lanes = ['ORDER', 'PROCUREMENT', 'PRODUCTION'];
+    @override
+    State<OrderTimeline> createState() => _OrderTimelineState();
+  }
+
+class _OrderTimelineState extends State<OrderTimeline> {
+    final ScrollController _hCtrl = ScrollController(); // ✅ 가로 스크롤 전용
+    static const lanes = ['ORDER', 'PROCUREMENT', 'PRODUCTION'];
+
+    @override
+    void dispose() {
+      _hCtrl.dispose();
+      super.dispose();
+    }
+
 
   @override
   Widget build(BuildContext context) {
     // 세로 구성: 레인 헤더 + 레인 바들
     final laneToBars = {
-      for (final lane in lanes) lane: data.bars.where((b) => b.lane == lane).toList()
+      for (final lane in _OrderTimelineState.lanes)
+        lane: widget.data.bars.where((b) => b.lane == lane).toList()
     };
-
     // 가로 스크롤: 1px=1day
-    final totalDays = data.rangeEnd.difference(data.rangeStart).inDays + 1;
-    final contentWidth = max(300.0, totalDays.toDouble()); // 최소 너비
+    final totalDays = widget.data.rangeEnd.difference(widget.data.rangeStart).inDays + 1;
+
+  final contentWidth = max(300.0, totalDays.toDouble()); // 최소 너비
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -28,8 +42,9 @@ class OrderTimeline extends StatelessWidget {
           child: Row(
             children: [
               Text(
-                '${_fmtDate(data.rangeStart)} ~ ${_fmtDate(data.rangeEnd)}',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+  '${_fmtDate(widget.data.rangeStart)} ~ ${_fmtDate(widget.data.rangeEnd)}',
+
+  style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const Spacer(),
               Text('1일=1px', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
@@ -41,21 +56,28 @@ class OrderTimeline extends StatelessWidget {
         // 바디
         Expanded(
           child: Scrollbar(
+            controller: _hCtrl,          // ✅ Scrollbar와
             thumbVisibility: true,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              controller: _hCtrl,        // ✅ SingleChildScrollView에 동일 컨트롤러
+
               child: SizedBox(
                 width: contentWidth,
-                child: ListView.builder(
-                  itemCount: lanes.length,
-                  itemBuilder: (context, i) {
-                    final lane = lanes[i];
+              child: ListView.builder(
+                      shrinkWrap: true,                              // ✅ 자체 높이만 사용
+                      physics: const NeverScrollableScrollPhysics(), // ✅ 세로 스크롤 비활성화(Primary 불참여)
+                      itemCount: _OrderTimelineState.lanes.length,
+                      itemBuilder: (context, i) {
+
+                    final lane = _OrderTimelineState.lanes[i];
+
                     final bars = laneToBars[lane]!;
                     return _LaneRow(
                       lane: lane,
                       bars: bars,
-                      rangeStart: data.rangeStart,
-                      rangeEnd: data.rangeEnd,
+                      rangeStart: widget.data.rangeStart,
+                      rangeEnd: widget.data.rangeEnd,
                     );
                   },
                 ),

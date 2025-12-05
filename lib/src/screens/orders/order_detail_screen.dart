@@ -36,9 +36,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   bool _tlLoading = false;
   bool _busy = false; // 주문 완료 처리 중 여부
 
-  // ✅ 화면 전역 Primary 용 / 본문 스크롤 전용 분리
-  final ScrollController _primaryCtrl = ScrollController();
-  final ScrollController _bodyCtrl = ScrollController();
+  final ScrollController _mainScroll = ScrollController();
 
 
   @override
@@ -51,8 +49,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
     void dispose() {
-        _bodyCtrl.dispose();
-        _primaryCtrl.dispose();
+    _mainScroll.dispose();
         super.dispose();
       }
 
@@ -150,10 +147,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     final hasLines = _order.lines.isNotEmpty;
     final isDone = _order.status == OrderStatus.done; // ✅ 한곳에서 판단
 
-    return PrimaryScrollController(            // ✅ 하위 Scrollbar들이 Primary를 쓸 수 있게 제공
-            controller: _primaryCtrl,
-             child: Scaffold(
-           appBar: AppBar(
+    return Scaffold(
+       appBar: AppBar(
 
     title: const Text('주문 상세'),
         actions: [
@@ -161,8 +156,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ],
            ),
                          body: SingleChildScrollView(
-                           controller: _bodyCtrl,               // ✅ 본문은 Primary를 쓰지 않도록 전용 컨트롤러 사용
-                           primary: false,                      // ✅ Primary와 충돌 방지 (중요)
+                           controller: _mainScroll,             //전용 컨트롤러
+                           primary: false,                      // 반드시 false
                            padding: const EdgeInsets.all(16),
                   child: hasLines ? _buildOrderWithLines(context) : _buildOrderEmpty(context),
             ),
@@ -182,7 +177,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ),
                 ),
               ),
-             ),
     );
   }
 
