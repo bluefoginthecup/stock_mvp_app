@@ -210,6 +210,13 @@ abstract class WorkRepo {
   Stream<List<Work>> watchAllWorks();
   Future<void> updateWork(Work w);
   Future<void> completeWork(String id);
+  Future<String> createWorkForOrder({
+    required String orderId,
+    required String itemId,
+    required int qty,
+  });
+  Future<Work?> findWorkForOrderLine(String orderId, String itemId);
+
 
   /// 상태만 변경(재고 반영 없음). 예) planned → inProgress, 또는 취소
   Future<void> updateWorkStatus(String id, WorkStatus status);

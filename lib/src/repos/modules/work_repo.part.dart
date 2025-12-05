@@ -6,6 +6,41 @@ Future<String> createWork(Work w) async {
   await db.into(db.works).insert(w.toCompanion());
   return w.id;
 }
+@override
+Future<String> createWorkForOrder({
+  required String orderId,
+  required String itemId,
+  required int qty,
+}) async {
+  final id = const Uuid().v4();
+  final now = DateTime.now();
+
+  final w = Work(
+    id: id,
+    itemId: itemId,
+    qty: qty,
+    orderId: orderId,
+    status: WorkStatus.planned,
+    createdAt: now,
+    updatedAt: now,
+    isDeleted: false,
+  );
+
+  await db.into(db.works).insert(w.toCompanion());
+  return id;
+}
+@override
+Future<Work?> findWorkForOrderLine(String orderId, String itemId) async {
+  final row = await (db.select(db.works)
+    ..where((t) => t.orderId.equals(orderId))
+    ..where((t) => t.itemId.equals(itemId))
+    ..where((t) => t.isDeleted.equals(false)))
+      .getSingleOrNull();
+
+  return row?.toDomain();
+}
+
+
 
 @override
 Future<Work?> getWorkById(String id) async {

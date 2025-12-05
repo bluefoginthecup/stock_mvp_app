@@ -10,17 +10,20 @@ import '../../utils/item_presentation.dart'; // ✅ 추가
 
 /// 주문 상세에서 호출하는 "부족분 결과" 모달
 class ShortageResultScreen extends StatefulWidget {
+  final String orderId;
   final String finishedItemId;
   final int orderQty;
 
   const ShortageResultScreen({
+    required this.orderId,
     super.key,
     required this.finishedItemId,
     required this.orderQty,
   });
 
-  static Future<void> show(
+  static Future<String?> show(
       BuildContext context, {
+        required String orderId,
         required String finishedItemId,
         required int orderQty,
       }) {
@@ -34,6 +37,7 @@ class ShortageResultScreen extends StatefulWidget {
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
         child: ShortageResultScreen(
+          orderId: orderId,
           finishedItemId: finishedItemId,
           orderQty: orderQty,
         ),
@@ -47,6 +51,16 @@ class ShortageResultScreen extends StatefulWidget {
 
 class _ShortageResultScreenState extends State<ShortageResultScreen> {
   late Future<_Vm> _future;
+  bool _creating = false;
+
+
+
+  Future<String?> _findExistingWorkId() async {
+    final repo = context.read<WorkRepo>();
+    final existing = await repo.findWorkForOrderLine(widget.orderId, widget.finishedItemId);
+    return existing?.id;
+  }
+
 
   @override
   void initState() {
@@ -88,10 +102,11 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
 
     // finished 현재고 (num → int 안전 변환)
     final finStockNum = items.stockOf(widget.finishedItemId);
-       // ✅ 완제품 현재고도 방어
+       // ✅ 완제품 현 재고도 방어
         final finStock = _toInt(items.stockOf(widget.finishedItemId));
 
     return _Vm(
+      orderId: widget.orderId,
       finishedItemId: widget.finishedItemId,
       orderQty: widget.orderQty,
       finishedStock: finStock,
@@ -102,6 +117,51 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
     );
   }
 
+
+  Future<void> _confirmAndCreateWork({
+      required int shortageQty,
+    }) async {
+    if (shortageQty <= 0 || _creating) return;
+
+      // 🔎 이미 생성된 작업 있는지 먼저 확인
+      final existingId = await _findExistingWorkId();
+      if (existingId != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미 이 주문에 대한 작업이 생성되었습니다.')),
+        );
+        // 원하면 기존 작업으로 바로 연결할 수 있게 반환
+        Navigator.of(context).pop(existingId); // ← 주문상세가 받으면 타임라인 갱신 가능
+        return;
+      }
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (_) => _ConfirmSheet(
+        title: '작업을 생성할까요?',
+        body: '완제품 부족 $shortageQty개에 대해 작업을 생성합니다.',
+        okText: '작업 생성',
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _creating = true);
+    try {
+      final repo = context.read<WorkRepo>();
+      final workId = await repo.createWorkForOrder(
+        orderId: widget.orderId,
+        itemId: widget.finishedItemId,
+        qty: shortageQty,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(workId); // ← 호출자(OrderDetail)로 workId 반환
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('작업 생성 실패: $e')),
+      );
+      setState(() => _creating = false);
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -170,11 +230,16 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
                   children: [
                     _Badge(label: '주문수량', value: '${vm.orderQty}'),
                     _Badge(label: '현재고', value: '${vm.finishedStock}'),
-                    _Badge(
-                      label: '부족(완제품)',
-                      value: '${vm.finishedShortage}',
-                      tone: vm.finishedShortage > 0 ? BadgeTone.danger : BadgeTone.ok,
-                    ),
+            GestureDetector(
+                   onTap: vm.finishedShortage > 0
+                       ? () => _confirmAndCreateWork(shortageQty: (vm.finishedShortage.ceil()))
+               : null,
+           child: _Badge(
+             label: '부족(완제품)',
+             value: '${vm.finishedShortage}',
+             tone: vm.finishedShortage > 0 ? BadgeTone.danger : BadgeTone.ok,
+           ),
+         ),
                   ],
                 ),
                 const SizedBox(height: 12.0),
@@ -320,6 +385,7 @@ class RowVm {
 }
 
 class _Vm {
+  final String orderId;
   final String finishedItemId;
   final int orderQty;
   final int finishedStock;
@@ -329,6 +395,7 @@ class _Vm {
   final List<RowVm> sub;
 
   const _Vm({
+    required this.orderId,
     required this.finishedItemId,
     required this.orderQty,
     required this.finishedStock,
@@ -339,3 +406,28 @@ class _Vm {
 
   });
 }
+
+class _ConfirmSheet extends StatelessWidget {
+  const _ConfirmSheet({required this.title, required this.body, required this.okText});
+  final String title, body, okText;
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(body),
+          const SizedBox(height: 16),
+          Row(children: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+            const Spacer(),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(okText)),
+          ]),
+        ]),
+      ),
+    );
+  }
+}
+

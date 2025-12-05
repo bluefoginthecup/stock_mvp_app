@@ -91,7 +91,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         final ok = await showDialog<bool>(
           context: context,
           builder: (dialogCtx) => AlertDialog(
-            title: const Text('주문 완료'),
+            title: const Text('완료'),
             content: const Text('이 주문을 완료 처리할까요?'),
             actions: [
               TextButton(
@@ -152,7 +152,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     height: 48,
                     child: FilledButton.icon(
                       icon: const Icon(Icons.check_circle),
-                      label: _busy ? const Text('처리중...') : const Text('주문 완료'),
+                      label: _busy ? const Text('처리중...') : const Text('완료'),
                       onPressed: _busy ? null : _markAsDone,
                     ),
                   ),
@@ -283,14 +283,24 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 OutlinedButton.icon(
                   icon: const Icon(Icons.calculate),
                   label: const Text('이 품목 부족분'),
-                  onPressed: () {
-                    // ✅ ShortageResultScreen.show(...) 사용 (이름있는 파라미터 정확)
-                    ShortageResultScreen.show(
-                      context,
-                      finishedItemId: itemId,
-                      orderQty: qty,
-                    );
-                  },
+                  onPressed: () async {
+                                        // ✅ ShortageResultScreen.show가 Future<String?> 반환하도록 바뀌어야 함
+                                        final workId = await ShortageResultScreen.show(
+                                          context,
+                                          orderId: _order.id,        // 👈 추가
+                                          finishedItemId: itemId,
+                                          orderQty: qty,
+                                        );
+                                        if (!mounted) return;
+                                        if (workId != null && workId.isNotEmpty) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('작업이 생성되었습니다.')),
+                                          );
+                                          await _reload();        // 주문/상태 갱신
+                                          await _loadTimeline();  // 타임라인 갱신
+                                          // (선택) 관련 작업 섹션을 쓰면: await _reloadWorks();
+                                        }
+                                      },
                 ),
               ],
             ),
