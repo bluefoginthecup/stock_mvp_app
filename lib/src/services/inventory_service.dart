@@ -267,10 +267,18 @@ class InventoryService {
       required String itemId,
       required int qty,
     }) async {
-      // ✅ 사전 검증: 현 재고 초과 출고 방지
+
+      // 1) ✅ 라인 중복 출고 가드
+      final already = await txns.existsOutActual(refType: 'order', refId: orderId, itemId: itemId);
+      if (already) {
+        throw StateError(
+            '이 품목은 이미 해당 주문으로 출고되었습니다. (orderId=$orderId, itemId=$itemId)');
+      }
+
+          // 2) 재고 가드: 현 재고 초과 출고 방지
           await _ensureStockAvailable(itemId: itemId, requestQty: qty);
 
-    // 재고 부족 허용/차단 정책은 여기서 결정한다.
+      // 재고 부족 허용/차단 정책은 여기서 결정한다.
     // 필요하면 현재고 조회 후 가드/모달을 띄워도 된다.
     // ex) final stock = await txns.stockOf(itemId); if (stock < qty) { ... }
 
@@ -285,6 +293,9 @@ class InventoryService {
     /// (선택) 모든 라인 출고 완료 시 주문 상태/ship 처리하고 싶으면 아래 보조함수 구현
      await _maybeMarkOrderShipped(orderId);
   }
+
+
+
 
    Future<void> _maybeMarkOrderShipped(String orderId) async {
      /// 모든 라인 출고 확인 → orders.updateOrderStatus(orderId, OrderStatus.done) 등

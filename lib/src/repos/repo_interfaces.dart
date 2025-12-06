@@ -206,6 +206,8 @@ abstract class TxnRepo {
   Future<void> adjustQty({required String itemId, required int delta, String? refType, String? refId, String? note, String? memo});
   Future<void> updateUnits({required String itemId, String? unitIn, String? unitOut, double? conversionRate});
 
+   /// ✅ 이미 실제 출고(out, actual)가 존재하는지 빠르게 확인
+   Future<bool> existsOutActual({required String refType, required String refId, String? itemId});
 
   /// refType/refId로 필터, itemId가 주어지면 아이템까지 추가 필터
    Stream<List<Txn>> watchTxnsByRef({

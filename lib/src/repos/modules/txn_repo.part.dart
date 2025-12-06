@@ -321,4 +321,25 @@ Future<void> updateUnits({
   final fresh = await getItem(itemId);
   if (fresh != null) _cacheItem(fresh);
 }
+  // ---------- 👇 추가: 이미 출고(out, actual) 기록 존재 여부 확인 ----------
+    @override
+    Future<bool> existsOutActual({
+      required String refType, // 예: 'order'
+      required String refId,   // 주문 ID
+      String? itemId,          // 라인 단위 체크하려면 지정, 주문 전체면 null
+    }) async {
+    final q = db.select(db.txns)
+      ..where((t) => t.status.equals(TxnStatus.actual.name))
+      ..where((t) => t.type.equals(TxnType.out_.name))
+      ..where((t) => t.refType.equals(refType))
+      ..where((t) => t.refId.equals(refId));
+    if (itemId != null) {
+      q.where((t) => t.itemId.equals(itemId));
+    }
+    q.limit(1);
+    final row = await q.getSingleOrNull();
+    return row != null;
+  }
+
+
 }
