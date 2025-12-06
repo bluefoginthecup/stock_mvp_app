@@ -8,6 +8,7 @@ import '../../ui/common/ui.dart';
 import 'order_form_screen.dart';
 import 'order_detail_screen.dart';
 import '../../ui/common/draggable_fab.dart';
+import '../../utils/item_presentation.dart'; // ✅ 아이템 이름 포맷 함수
 
 class OrderListScreen extends StatefulWidget {
   const OrderListScreen({super.key});
@@ -169,28 +170,155 @@ class _OrdersListView extends StatelessWidget {
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (_, i) {
         final o = orders[i];
-        final totalQty = o.lines.fold<int>(0, (a, b) => a + b.qty);
-        final dateStr = o.date.toIso8601String().substring(0, 10);
-
-        return ListTile(
-          title: Text('${o.customer} (${totalQty}ea)'),
-          subtitle: Text('$dateStr • ${o.status.name}'),
-          onTap: () => onTapOrder(o),
-          trailing: PopupMenuButton<String>(
-            onSelected: (v) async {
-              if (v == 'soft') {
-                await onDeleteSoft(o);
-              } else if (v == 'hard') {
-                await onDeleteHard(o);
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'soft', child: Text('숨김(소프트 삭제)')),
-              PopupMenuItem(value: 'hard', child: Text('완전 삭제')),
-            ],
-          ),
-        );
+        return _OrderAccordionTile(
+                      order: o,
+                      onOpenDetail: () => onTapOrder(o),
+                );
       },
+    );
+  }
+}
+/// 개별 주문 아코디언 타일 (부드러운 슬라이드다운)
+class _OrderAccordionTile extends StatefulWidget {
+    final Order order;
+    final VoidCallback onOpenDetail;
+    const _OrderAccordionTile({
+      required this.order,
+      required this.onOpenDetail,
+    });
+
+    @override
+    State<_OrderAccordionTile> createState() => _OrderAccordionTileState();
+  }
+
+class _OrderAccordionTileState extends State<_OrderAccordionTile>
+    with TickerProviderStateMixin {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final o = widget.order;
+    final totalQty = o.lines.fold<int>(0, (a, b) => a + b.qty);
+    final dateStr = o.date.toIso8601String().substring(0, 10);
+
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        children: [
+          // 헤더 행
+          InkWell(
+            onTap: () => setState(() => _open = !_open),
+            onLongPress: widget.onOpenDetail,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+    // ▼ / ▲ 아이콘 (펼침 상태에 따라 전환)
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        switchInCurve: Curves.easeOut,
+                        switchOutCurve: Curves.easeIn,
+                        child: _open
+                            ? const Icon(Icons.keyboard_arrow_up, key: ValueKey('up'))
+                            : const Icon(Icons.keyboard_arrow_down, key: ValueKey('down')),
+                      ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // "김철수 (총 N개)"
+                        Text(
+                          '${o.customer} (${totalQty}개)',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$dateStr • ${o.status.name}',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+              // 우측: 주문 상세 진입 버튼
+                                IconButton(
+                                      visualDensity: VisualDensity.compact,
+                                      icon: const Icon(Icons.chevron_right),
+                                  onPressed: widget.onOpenDetail,
+                                  tooltip: '주문 상세',
+                                ),
+                ],
+              ),
+            ),
+          ),
+
+          // 펼쳐지는 부분 (부드러운 높이  슬라이드  페이드)
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) {
+                // 슬라이드  페이드로 "슥" 내려오는 느낌
+                final offsetTween =
+                    Tween<Offset>(begin: const Offset(0, -0.05), end: Offset.zero)
+                        .chain(CurveTween(curve: Curves.easeOut));
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(position: animation.drive(offsetTween), child: child),
+                );
+              },
+              child: _open
+                  ? Container(
+                      key: const ValueKey('open'),
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(48, 0, 16, 12),
+                      // 48 = 화살표 좌측 여백 정렬
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 라인 목록
+    ...o.lines.map((line) => Padding(
+       padding: const EdgeInsets.only(bottom: 6),
+       child: Row(
+         crossAxisAlignment: CrossAxisAlignment.start,
+         children: [
+           const Text('• '),
+           const SizedBox(width: 6),
+           Expanded(
+             child: Row(
+               children: [
+                 Expanded(
+                   child: ItemLabel(
+                     itemId: line.itemId,
+                     full: false,                // ← shortLabel과 동일 포맷
+                     maxLines: 1,
+                     overflow: TextOverflow.ellipsis,
+                     style: const TextStyle(fontSize: 14),
+                     autoNavigate: true,         // 탭 시 아이템 상세 이동 원치 않으면 false
+                   ),
+                 ),
+                 const SizedBox(width: 8),
+                 Text('· ${line.qty}개', style: const TextStyle(fontSize: 14)),
+               ],
+             ),
+           ),
+         ],
+       ),
+     )),
+
+    // 목록 하단 여백/구분용 Chip 등을 원하면 여기 추가
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(key: ValueKey('closed')),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
