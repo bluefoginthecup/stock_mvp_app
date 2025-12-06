@@ -21,6 +21,10 @@ import '../works/widgets/work_row.dart';
 import '../../services/inventory_service.dart';
 import '../../models/txn.dart'; // ✅ Txn, TxnType, TxnStatus
 
+
+enum _SheetAction { toInProgress, toDone, cancel, restore }
+
+
 class OrderDetailScreen extends StatefulWidget {
   final Order order;
   const OrderDetailScreen({super.key, required this.order});
@@ -157,8 +161,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         padding: const EdgeInsets.all(16),
         child: _buildOrderBody(context),
       ),
-      bottomNavigationBar: (isDone)
-          ? null
+        bottomNavigationBar: (isDone || _order.isDeleted)
+
+        ? null
           : SafeArea(
         top: false,
         child: Padding(
@@ -184,24 +189,32 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         // 주문 메타
         Text('고객명: ${_order.customer}'),
         Text('주문일: ${_order.date.toIso8601String().split("T").first}'),
-        Row(
-          children: [
-            const Text('상태: '),
-            Chip(
-              backgroundColor: _statusColor(_order.status).withOpacity(.08),
-              shape: StadiumBorder(
-                side: BorderSide(color: _statusColor(_order.status).withOpacity(.35)),
-              ),
-              label: Text(
-                _statusLabel(_order.status),
-                style: TextStyle(
-                  color: _statusColor(_order.status).shade700,
-                  fontWeight: FontWeight.w600,
+    Row(
+              children: [
+                const Text('상태: '),
+                Tooltip(
+                  message: _order.isDeleted
+                      ? '길게 눌러 “취소 복구”'
+                      : '길게 눌러 상태 선택',
+                  child: GestureDetector(
+                    onLongPress: _busy ? null : _openStatusSheet,
+                    child: Chip(
+                      backgroundColor: _overallColor(_order).withOpacity(.08),
+                      shape: StadiumBorder(
+                        side: BorderSide(color: _overallColor(_order).withOpacity(.35)),
+                      ),
+                      label: Text(
+                        _overallLabel(_order),
+                        style: TextStyle(
+                          color: _overallColor(_order).shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
         const SizedBox(height: 12),
 
         // 👇 타임라인 박스 (리스트 위로)
@@ -472,6 +485,149 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
     );
   }
+  Future<void> _openStatusSheet() async {
+  // 취소 상태면 "복구"만, 아니면 진행중/완료/취소 제공
+  final actions = <_SheetAction>[
+  if (_order.isDeleted) _SheetAction.restore else ...[
+  if (_order.status == OrderStatus.done)
+  _SheetAction.toInProgress
+  else
+  _SheetAction.toDone,
+  _SheetAction.cancel,
+  ]
+  ];
+
+  final picked = await showModalBottomSheet<_SheetAction>(
+  context: context,
+  showDragHandle: true,
+  builder: (c) {
+  return SafeArea(
+  child: Column(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+  const SizedBox(height: 4),
+  Padding(
+  padding: const EdgeInsets.symmetric(vertical: 8),
+  child: Text('상태 선택', style: Theme.of(c).textTheme.titleMedium),
+  ),
+  ...actions.map((a) {
+  final (icon, title, desc, color) = switch (a) {
+  _SheetAction.toInProgress => (Icons.play_arrow, '진행중', '작업/출고 등 처리 중 상태', Colors.blue),
+  _SheetAction.toDone       => (Icons.check_circle, '완료', '모든 출고가 끝난 상태', Colors.green),
+  _SheetAction.cancel       => (Icons.cancel, '취소', '주문을 소프트 삭제(복구 가능)', Colors.red),
+  _SheetAction.restore      => (Icons.settings_backup_restore, '취소 복구', '취소된 주문을 되살립니다', Colors.blueGrey),
+  };
+  return ListTile(
+  leading: Icon(icon, color: color),
+  title: Text(title, style: TextStyle(color: color.shade700)),
+  subtitle: Text(desc),
+  onTap: () => Navigator.pop(c, a),
+  );
+  }),
+  const SizedBox(height: 8),
+  ],
+  ),
+  );
+  },
+  );
+
+  if (!mounted || picked == null) return;
+
+  // 선택 후 확인 모달
+  String from = _overallLabel(_order);
+  String to = switch (picked) {
+  _SheetAction.toInProgress => _statusLabel(OrderStatus.draft),
+  _SheetAction.toDone => _statusLabel(OrderStatus.done),
+  _SheetAction.cancel => '취소됨',
+  _SheetAction.restore => _statusLabel(_order.status), // 복구는 현재 상태 라벨 유지
+  };
+
+  final ok = await showDialog<bool>(
+  context: context,
+  builder: (c) => AlertDialog(
+  title: const Text('확인'),
+  content: Text('“$from” → “$to”로 변경할까요?'),
+  actions: [
+  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소')),
+  FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('변경')),
+  ],
+  ),
+  );
+  if (ok != true) return;
+
+  // 실행
+  switch (picked) {
+  case _SheetAction.toInProgress:
+  await _setStatus(OrderStatus.draft); // draft = 화면상 '진행중'
+  break;
+  case _SheetAction.toDone:
+  await _setStatus(OrderStatus.done);
+  break;
+  case _SheetAction.cancel:
+  await _cancelOrder();
+  break;
+  case _SheetAction.restore:
+  await _restoreOrder();
+  break;
+  }
+  }
+
+// 상태 변경 공통
+  Future<void> _setStatus(OrderStatus status) async {
+  if (_busy || _order.isDeleted) return;
+  setState(() => _busy = true);
+  try {
+  final repo = context.read<OrderRepo>();
+  await repo.updateOrderStatus(_order.id, status);
+  if (!mounted) return;
+  setState(() => _order = _order.copyWith(status: status));
+  ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text('상태를 “${_statusLabel(status)}”로 변경했어요.')));
+  await _loadTimeline();
+  } catch (e) {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('상태 변경 실패: $e')));
+  } finally {
+  if (mounted) setState(() => _busy = false);
+  }
+  }
+
+// 소프트 삭제(취소)
+  Future<void> _cancelOrder() async {
+  if (_busy || _order.isDeleted) return;
+  setState(() => _busy = true);
+  try {
+  // ❗ 프로젝트에 맞게 선택: OrderRepo or InventoryService
+  await context.read<OrderRepo>().softDeleteOrder(_order.id);
+  // await context.read<InventoryService>().deleteOrderCascade(_order.id, hard: false);
+  if (!mounted) return;
+  setState(() => _order = _order.copyWith(isDeleted: true, deletedAt: DateTime.now()));
+  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('주문을 취소했어요.')));
+  } catch (e) {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('취소 실패: $e')));
+  } finally {
+  if (mounted) setState(() => _busy = false);
+  }
+  }
+
+// 취소 복구
+  Future<void> _restoreOrder() async {
+  if (_busy || !_order.isDeleted) return;
+  setState(() => _busy = true);
+  try {
+  await context.read<OrderRepo>().restoreOrder(_order.id);
+  if (!mounted) return;
+  setState(() => _order = _order.copyWith(isDeleted: false, deletedAt: null));
+  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('주문을 복구했어요.')));
+  } catch (e) {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('복구 실패: $e')));
+  } finally {
+  if (mounted) setState(() => _busy = false);
+  }
+  }
+
 }
 
 class _WorkTxnList extends StatelessWidget {
@@ -703,3 +859,5 @@ MaterialColor _statusColor(OrderStatus s) {
       return Colors.amber;
   }
 }
+String _overallLabel(Order o) => o.isDeleted ? '취소됨' : _statusLabel(o.status);
+MaterialColor _overallColor(Order o) => o.isDeleted ? Colors.red : _statusColor(o.status);
