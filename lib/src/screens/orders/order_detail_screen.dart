@@ -289,51 +289,66 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     autoNavigate: true,
                   ),
                 ),
-                Text(
-                  '수량 $qty',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(color: Colors.blueGrey),
-                ),
               ],
             ),
             const SizedBox(height: 10),
 
-
-
+     StreamBuilder<int>(
+       stream: context.read<ItemRepo>().watchCurrentQty(itemId),
+       builder: (context, snap) {
+         if (!snap.hasData) {
+           return const Padding(
+             padding: EdgeInsets.only(top: 6, bottom: 6),
+             child: Chip(
+               label: Text('재고 확인 중...', style: TextStyle(color: Colors.grey)),
+               backgroundColor: Color(0xFFEFEFEF),
+             ),
+           );
+         }
+         final stock = snap.data!;
+         final orderQty = qty;
+         final shortage = (stock >= orderQty) ? 0 : (orderQty - stock);
+         final isEnough = shortage == 0;
+         final Color bg = isEnough ? Colors.green.shade50 : Colors.red.shade50;
+         final Color fg = isEnough ? Colors.green.shade700 : Colors.red.shade700;
+         final String label = isEnough
+             ? '충분 (주문 $orderQty / 현재고 $stock)'
+             : '부족 $shortage개 (주문 $orderQty / 현재고 $stock)';
+         return Padding(
+           padding: const EdgeInsets.only(top: 6, bottom: 6),
+           child: ActionChip(
+             backgroundColor: bg,
+             shape: StadiumBorder(side: BorderSide(color: fg.withOpacity(0.4))),
+               label: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600)),
+                           onPressed: () async {
+                       final workId = await ShortageResultScreen.show(
+                         context,
+                         orderId: _order.id,
+                         finishedItemId: itemId,
+                         orderQty: orderQty,
+                       );
+                       if (!context.mounted) return;
+                       if (workId != null && workId.isNotEmpty) {
+                         ScaffoldMessenger.of(context).showSnackBar(
+                           const SnackBar(content: Text('작업이 생성되었습니다.')),
+                         );
+                         await _reload();
+                         await _loadTimeline();
+                       }
+                     },
+            ),
+         );
+       },
+     ),
             // 액션
-            Row(
-              children: [
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.calculate),
-                  label: const Text('이 품목 부족분'),
-                  onPressed: () async {
-                                        // ✅ ShortageResultScreen.show가 Future<String?> 반환하도록 바뀌어야 함
-                                        final workId = await ShortageResultScreen.show(
-                                          context,
-                                          orderId: _order.id,        // 👈 추가
-                                          finishedItemId: itemId,
-                                          orderQty: qty,
-                                        );
-                                        if (!mounted) return;
-                                        if (workId != null && workId.isNotEmpty) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('작업이 생성되었습니다.')),
-                                          );
-                                          await _reload();        // 주문/상태 갱신
-                                          await _loadTimeline();  // 타임라인 갱신
-                                          // (선택) 관련 작업 섹션을 쓰면: await _reloadWorks();
-                                        }
-                                      },
-                ),
-
-    const SizedBox(width: 8),
+                       Row(
+                             children: [
+                               // '부족분' 버튼은 칩으로 대체했으므로 제거
+                               const SizedBox(width: 8),
         FilledButton.icon(
           icon: const Icon(Icons.local_shipping),
           label: const Text('주문 출고'),
           onPressed: () async {
-            final inv = context.read<InventoryService>();
             try {
               await inv.shipOrderLine(
                 orderId: _order.id,
@@ -417,10 +432,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ],
                   );
                 },
-              ),
-          ],
-        ),
-      ),
+              )
+    ]
+    )
+      )
     );
   }
 }
@@ -561,19 +576,21 @@ class _ItemTxnListByOrder extends StatelessWidget {
 
         // 버튼 누른 순서대로
         final show = [...list]..sort((a, b) => b.ts.compareTo(b.ts));
+        final visibleCount = show.length > 5 ? 5 : show.length; // clamp의 num → int 문제 회피
+
 
         return Column(
           children: [
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: show.length.clamp(0, 5),
+              itemCount: visibleCount,
               separatorBuilder: (_, __) => const Divider(height: 8, color: Colors.transparent),
               itemBuilder: (_, i) {
                 final t = show[i];
                 final isIn = (t.type == TxnType.in_);
                 final sign = isIn ? '+' : '-';
-                final color = isIn ? Colors.green : Colors.red;
+                final MaterialColor color = isIn ? Colors.green : Colors.red;
                 final status = (t.status == TxnStatus.actual) ? '실제' : '예약';
                 final ts = _fmtTs(t.ts);
 

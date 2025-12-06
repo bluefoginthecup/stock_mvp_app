@@ -107,6 +107,9 @@ abstract class ItemRepo {
     /// 성공 시 true, 실패 시 false를 반환(또는 throw로 바꿔도 됨).
     Future<bool> addToCurrentQty(String itemId, int delta);
 
+   /// 아이템 현재고를 실시간으로 감시
+   Stream<int> watchCurrentQty(String itemId);
+
 
   // ===== BOM (2단계 분리형) =====
     /// Finished 레시피 조회/저장

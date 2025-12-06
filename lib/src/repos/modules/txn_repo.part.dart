@@ -252,6 +252,18 @@ Stream<List<Txn>> watchTxns() {
     return bal;
   }
 
+  @override
+  Stream<int> watchCurrentQty(String itemId) {
+    final q = db.select(db.items)..where((t) => t.id.equals(itemId));
+    // drift가 테이블 변경을 push해주므로 UI가 자동으로 갱신됨
+    return q.watchSingleOrNull().map((row) {
+      final qty = row?.qty ?? 0;
+      _stockCache[itemId] = qty; // 캐시도 맞춰두면 좋음
+      return qty;
+    });
+  }
+
+
 
   @override
 Future<void> adjustQty({
