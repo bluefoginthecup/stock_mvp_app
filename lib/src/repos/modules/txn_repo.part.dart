@@ -216,15 +216,21 @@ Stream<List<Txn>> watchTxns() {
   final q = db.select(db.txns)..orderBy([(t) => OrderingTerm.desc(t.ts)]);
   return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
 }
-  // ✅ refType/refId 기준 트랜잭션 스트림
-    @override
-    Stream<List<Txn>> watchTxnsByRef({required String refType, required String refId}) {
-        final q = db.select(db.txns)
-          ..where((t) => t.refType.equals(refType))
-          ..where((t) => t.refId.equals(refId))
-          ..orderBy([(t) => OrderingTerm.desc(t.ts)]);
-        return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
-      }
+  @override
+   Stream<List<Txn>> watchTxnsByRef({
+     required String refType,
+     required String refId,
+     String? itemId,
+   }) {
+   final q = db.select(db.txns)
+     ..where((t) => t.refType.equals(refType))
+     ..where((t) => t.refId.equals(refId))
+     ..orderBy([(t) => OrderingTerm.desc(t.ts)]);
+   if (itemId != null) {
+     q.where((t) => t.itemId.equals(itemId));
+   }
+   return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
+ }
 
 @override
 Future<void> adjustQty({

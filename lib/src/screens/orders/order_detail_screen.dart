@@ -300,6 +300,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
             const SizedBox(height: 10),
 
+
+
             // 액션
             Row(
               children: [
@@ -355,6 +357,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
 
     const SizedBox(height: 8),
+
+
+                        // 🔹 이 품목(아이템) 기준 입출고 기록 (주문 한정)
+                        Text('입출고 기록 (이 품목)', style: Theme.of(context).textTheme.bodyMedium),
+                        const SizedBox(height: 6),
+                        _ItemTxnListByOrder(itemId: itemId, orderId: _order.id),
+
 
               // 🔹 관련 작업 리스트 (이 주문  이 아이템)
               StreamBuilder<List<Work>>(
@@ -425,6 +434,7 @@ class _WorkTxnList extends StatelessWidget {
     final txns = context.read<TxnRepo>();
     return StreamBuilder<List<Txn>>(
       stream: txns.watchTxnsByRef(refType: 'work', refId: refWorkId),
+      
       builder: (context, snap) {
         final list = (snap.data ?? const []);
         if (list.isEmpty) {
@@ -504,3 +514,99 @@ class _WorkTxnList extends StatelessWidget {
     return '${d.year}-$mm-$dd $hh:$mi';
   }
 }
+
+/// ✅ 아이템+주문 기준 입출고 리스트 (refType='order' 로 좁혀서)
+class _ItemTxnListByOrder extends StatelessWidget {
+  final String itemId;
+  final String orderId;
+  const _ItemTxnListByOrder({required this.itemId, required this.orderId});
+
+  @override
+  Widget build(BuildContext context) {
+    final txns = context.read<TxnRepo>();
+    return StreamBuilder<List<Txn>>(
+      stream: txns.watchTxnsByRef(
+        refType: 'order',
+        refId: orderId,
+        itemId: itemId, // ← 있으면 이 품목만
+      ),
+      builder: (context, snap) {
+        final list = (snap.data ?? const []);
+        if (list.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Text('기록 없음', style: Theme.of(context).textTheme.bodySmall),
+          );
+        }
+
+        // 최신순일 가능성이 크지만, 안전하게 한 번 더 정렬
+        final show = [...list]..sort((a, b) => b.ts.compareTo(a.ts));
+
+        return Column(
+          children: [
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: show.length.clamp(0, 5),
+              separatorBuilder: (_, __) => const Divider(height: 8, color: Colors.transparent),
+              itemBuilder: (_, i) {
+                final t = show[i];
+                final isIn = (t.type == TxnType.in_);
+                final sign = isIn ? '+' : '-';
+                final color = isIn ? Colors.green : Colors.red;
+                final status = (t.status == TxnStatus.actual) ? '실거래' : '예약';
+                final ts = _fmtTs(t.ts);
+
+                return Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: color.withOpacity(.3)),
+                      ),
+                      child: Text(
+                        '${isIn ? '입고' : '출고'}/$status',
+                        style: TextStyle(fontSize: 12, color: color.shade700),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '$sign${t.qty}  •  $ts',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            if (list.length > 5)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(onPressed: () {
+                  // TODO: 필요하면 아이템+주문 기준 상세 화면으로 이동
+                }, child: const Text('더보기')),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+String _fmtTs(DateTime d) {
+  final mm = d.month.toString().padLeft(2, '0');
+  final dd = d.day.toString().padLeft(2, '0');
+  final hh = d.hour.toString().padLeft(2, '0');
+  final mi = d.minute.toString().padLeft(2, '0');
+  return '${d.year}-$mm-$dd $hh:$mi';
+}
+

@@ -199,9 +199,12 @@ abstract class TxnRepo {
   Future<void> updateUnits({required String itemId, String? unitIn, String? unitOut, double? conversionRate});
 
 
-  /// ✅ 특정 참조(work/purchase/order 등)에 매달린 Txn 실시간 조회
-  Stream<List<Txn>> watchTxnsByRef({required String refType, required String refId});
-
+  /// refType/refId로 필터, itemId가 주어지면 아이템까지 추가 필터
+   Stream<List<Txn>> watchTxnsByRef({
+     required String refType,
+     required String refId,
+     String? itemId,
+   });
 
 }
 
