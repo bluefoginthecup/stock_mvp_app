@@ -359,11 +359,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     const SizedBox(height: 8),
 
 
-                        // 🔹 이 품목(아이템) 기준 입출고 기록 (주문 한정)
-                        Text('입출고 기록 (이 품목)', style: Theme.of(context).textTheme.bodyMedium),
-                        const SizedBox(height: 6),
-                        _ItemTxnListByOrder(itemId: itemId, orderId: _order.id),
-
 
               // 🔹 관련 작업 리스트 (이 주문  이 아이템)
               StreamBuilder<List<Work>>(
@@ -405,10 +400,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   );
                                 },
                               ),
+                              ///입고기록
                               const SizedBox(height: 6),
-                              Text('입출고 기록', style: Theme.of(context).textTheme.bodyMedium),
                               const SizedBox(height: 6),
                               _WorkTxnList(refWorkId: w.id),
+
+                              // 🔹 이 품목(아이템) 기준 출고 기록 (주문 한정)
+                              const SizedBox(height: 6),
+                              _ItemTxnListByOrder(itemId: itemId, orderId: _order.id),
+
                             ],
                           );
 
@@ -460,9 +460,22 @@ class _WorkTxnList extends StatelessWidget {
               separatorBuilder: (_, __) => const Divider(height: 8, color: Colors.transparent),
               itemBuilder: (_, i) {
                 final t = limited[i];
-                final sign = (t.type == TxnType.in_) ? '+' : '-';
-                final color = (t.type == TxnType.in_) ? Colors.green : Colors.red;
-                final status = (t.status == TxnStatus.actual) ? '실거래' : '예약';
+                final isIn = t.type == TxnType.in_;
+                final sign = isIn ? '+' : '-';
+
+                // 칩 색상 결정
+                Color color;
+                 if (isIn && t.status == TxnStatus.planned) {
+                   // 입고/예약 → 회색 칩
+                   color = Colors.grey;
+                 } else if (isIn) {
+                   // 입고/실거래 → 초록
+                   color = Colors.green;
+                 } else {
+                   // 출고(예약/실거래) → 빨강
+                   color = Colors.red;
+                 }
+                final status = (t.status == TxnStatus.actual) ? '실제' : '예약';
                 final ts = _fmtTs(t.ts);
                 return Row(
                   children: [
@@ -475,7 +488,7 @@ class _WorkTxnList extends StatelessWidget {
                       ),
                       child: Text(
                         '${t.type == TxnType.in_ ? '입고' : '출고'}/$status',
-                        style: TextStyle(fontSize: 12, color: color.shade700),
+                        style: TextStyle(fontSize: 12, color: color),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -561,7 +574,7 @@ class _ItemTxnListByOrder extends StatelessWidget {
                 final isIn = (t.type == TxnType.in_);
                 final sign = isIn ? '+' : '-';
                 final color = isIn ? Colors.green : Colors.red;
-                final status = (t.status == TxnStatus.actual) ? '실거래' : '예약';
+                final status = (t.status == TxnStatus.actual) ? '실제' : '예약';
                 final ts = _fmtTs(t.ts);
 
                 return Row(
