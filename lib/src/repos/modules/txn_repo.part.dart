@@ -232,7 +232,28 @@ Stream<List<Txn>> watchTxns() {
    return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
  }
 
-@override
+  @override
+  Future<int> getActualBalanceByItem(String itemId) async {
+    // 가장 단순/안전: '실거래'만 모아 Dart에서 합산
+    final rows = await (db.select(db.txns)
+      ..where((t) => t.itemId.equals(itemId))
+      ..where((t) => t.status.equals('actual'))) // ← status 직렬화 규칙에 맞추세요
+        .get();
+
+    int bal = 0;
+    for (final r in rows) {
+      final m = r.toDomain(); // ← 이미 쓰는 mapper
+      if (m.type == TxnType.in_) {
+        bal += m.qty;
+      } else {
+        bal -= m.qty;
+      }
+    }
+    return bal;
+  }
+
+
+  @override
 Future<void> adjustQty({
   required String itemId,
   required int delta,

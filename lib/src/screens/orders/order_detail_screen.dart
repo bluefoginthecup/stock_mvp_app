@@ -447,17 +447,19 @@ class _WorkTxnList extends StatelessWidget {
             child: Text('기록 없음', style: Theme.of(context).textTheme.bodySmall),
           );
         }
-        // 최대 5개만 바로 보여주고, 더보기 버튼은 선택
-        final show = list.take(5).toList();
+        // ✅ 시간 오름차순 + 최대 5개
+                final show = [...list]..sort((a, b) => a.ts.compareTo(b.ts));
+                final limited = show.take(5).toList();
+
         return Column(
           children: [
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: show.length,
+              itemCount: limited.length,
               separatorBuilder: (_, __) => const Divider(height: 8, color: Colors.transparent),
               itemBuilder: (_, i) {
-                final t = show[i];
+                final t = limited[i];
                 final sign = (t.type == TxnType.in_) ? '+' : '-';
                 final color = (t.type == TxnType.in_) ? Colors.green : Colors.red;
                 final status = (t.status == TxnStatus.actual) ? '실거래' : '예약';
@@ -544,8 +546,8 @@ class _ItemTxnListByOrder extends StatelessWidget {
           );
         }
 
-        // 최신순일 가능성이 크지만, 안전하게 한 번 더 정렬
-        final show = [...list]..sort((a, b) => b.ts.compareTo(a.ts));
+        // 버튼 누른 순서대로
+        final show = [...list]..sort((a, b) => b.ts.compareTo(b.ts));
 
         return Column(
           children: [

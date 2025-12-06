@@ -102,6 +102,11 @@ abstract class ItemRepo {
   /// 휴지통에서 영구 삭제
   Future<void> purgeItem(String itemId);
 
+    Future<int> getCurrentQty(String itemId);
+    /// qty += delta (delta가 음수면 감소). 결과가 음수가 되면 업데이트 실패.
+    /// 성공 시 true, 실패 시 false를 반환(또는 throw로 바꿔도 됨).
+    Future<bool> addToCurrentQty(String itemId, int delta);
+
 
   // ===== BOM (2단계 분리형) =====
     /// Finished 레시피 조회/저장
@@ -205,6 +210,9 @@ abstract class TxnRepo {
      required String refId,
      String? itemId,
    });
+  /// itemId의 '실거래(Actual)' 입출고를 합산한 현재고(=입고-출고)를 반환
+  Future<int> getActualBalanceByItem(String itemId);
+
 
 }
 

@@ -118,6 +118,7 @@ Future<void> main() async {
             txns: ctx.read<TxnRepo>(),
             boms: ctx.read<BomRepo>(),
             orders: ctx.read<OrderRepo>(),
+            items: ctx.read<ItemRepo>(),
           ),
         ),
       ],

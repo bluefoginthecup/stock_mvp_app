@@ -443,4 +443,42 @@ int stockOf(String itemId) {
     await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
     notifyListeners();
   }
+
+@override
+Future<int> getCurrentQty(String itemId) async {
+  final row = await (db.select(db.items)
+    ..where((t) => t.id.equals(itemId)))
+      .getSingleOrNull();
+  final qty = row?.qty ?? 0;
+  // 캐시도 갱신해 두면 UI가 즉시 반영되기 쉬움
+  _stockCache[itemId] = qty;
+  return qty;
+}
+
+@override
+Future<bool> addToCurrentQty(String itemId, int delta) async {
+  // 음수 방지까지 한 번에 처리하려면 "조건부 UPDATE"가 가장 안전(경쟁조건 방지)
+  // qty + :delta >= 0 인 경우에만 업데이트
+  final updatedCount = await db.customUpdate(
+    'UPDATE items SET qty = qty + ? '
+        'WHERE id = ? AND is_deleted = 0 AND (qty + ?) >= 0',
+    variables: [
+      Variable.withInt(delta),
+      Variable.withString(itemId),
+      Variable.withInt(delta),
+    ],
+    updates: {db.items},
+  );
+
+  final ok = updatedCount == 1;
+
+  // 캐시 반영
+  if (ok) {
+    final cur = _stockCache[itemId] ?? 0;
+    _stockCache[itemId] = cur + delta;
+    notifyListeners(); // 사용 중이면
+  }
+  return ok;
+}
+
 }

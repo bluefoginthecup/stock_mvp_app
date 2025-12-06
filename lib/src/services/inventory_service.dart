@@ -10,6 +10,7 @@ class InventoryService {
   final TxnRepo txns;
   final BomRepo boms;                  // 선택: BOM 소비 planned/actual 쓰려면 사용
   final OrderRepo orders;
+  final ItemRepo items;
 
   InventoryService({
     required this.works,
@@ -17,6 +18,7 @@ class InventoryService {
     required this.txns,
     required this.boms,
     required this.orders,
+    required this.items,
   });
 
   /// 주문 삭제 (소프트/하드 옵션)
@@ -240,7 +242,23 @@ class InventoryService {
         }
         // BOM 자재 소모까지 롤백하려면 여기서 deleteOutActualByRef도 호출하세요.
       }
-
+  /// ✅ 출고 전에 현재고가 충분한지 검증 (검증 소스 = Item.qty)
+    Future<void> _ensureStockAvailable({
+      required String itemId,
+      required int requestQty,
+    }) async {
+    if (requestQty <= 0) {
+      throw StateError('출고 수량은 1개 이상이어야 합니다.');
+    }
+    // 🔑 핵심: Txn 합산이 아니라 아이템 현재고를 신뢰
+    final current = await items.getCurrentQty(itemId);
+    if (current <= 0) {
+      throw StateError('재고부족: 현재고 0개입니다.');
+    }
+    if (requestQty > current) {
+      throw StateError('재고부족: 현재고 $current개, 요청 $requestQty개');
+    }
+  }
   // ---------- SHIPMENT (ORDER OUT) ----------
     /// ✅ 주문 상세 > 라인 카드의 "주문 출고" 버튼용
     /// 해당 완제품(itemId)을 '주문 수량(qty)'만큼 즉시 출고(실거래) 처리한다.
@@ -249,9 +267,8 @@ class InventoryService {
       required String itemId,
       required int qty,
     }) async {
-    if (qty <= 0) {
-      throw ArgumentError('출고 수량이 0 이하여서는 안됩니다.');
-    }
+      // ✅ 사전 검증: 현 재고 초과 출고 방지
+          await _ensureStockAvailable(itemId: itemId, requestQty: qty);
 
     // 재고 부족 허용/차단 정책은 여기서 결정한다.
     // 필요하면 현재고 조회 후 가드/모달을 띄워도 된다.
