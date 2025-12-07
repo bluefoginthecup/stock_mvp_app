@@ -206,13 +206,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(context.t.dashboard_title)),
-      body: FutureBuilder(
-        future: itemRepo.listItems(),
-        builder: (context, snap) {
-          final items = (snap.data ?? []);
-          final low = items.where((e) => e.qty <= e.minQty).toList();
+        body: StreamBuilder(
+                    stream: itemRepo.watchItems(), // ✅ 실시간 감시
+                builder: (context, snap) {
+              if (snap.hasError) {
+                return Center(child: Text('오류: ${snap.error}'));
+              }
+              if (!snap.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final items = (snap.data ?? []) as List; // drift domain Item 리스트
+              final low = items.where((e) => e.minQty > 0 && e.qty <= e.minQty).toList();
+              final int totalQty = items.fold<int>(0, (sum, it) => sum + (it.qty as int));
 
-          // 화면에 그릴 액션들 (현재 순서에 맞춰 구성)
+
+
+
+              // 화면에 그릴 액션들 (현재 순서에 맞춰 구성)
           final actions = _order.map(_map).toList();
 
           return Padding(
@@ -233,6 +243,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       value: items.length.toString(),
                       onTap: () => context.read<MainTabController>().setIndex(2),
                     ),
+                    // ✅ 전체 수량(= Σ qty) — 실시간
+                                        _StatCard(
+                                          title: '전체 수량',
+                          value: totalQty.toString(),
+                          onTap: () {
+                            context.read<MainTabController>().setIndex(2);
+                          },
+                        ),
                     _StatCard(
                       title: context.t.dashboard_below_threshold,
                       value: low.length.toString(),
