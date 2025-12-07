@@ -1,6 +1,7 @@
-platform :osx, '10.14'
+platform :osx, '10.15'
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+install! 'cocoapods', :warn_for_unused_master_specs_repo => false
+
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -8,6 +9,8 @@ project 'Runner', {
   'Profile' => :release,
   'Release' => :release,
 }
+
+
 
 def flutter_root
   generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__)
@@ -27,9 +30,11 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_macos_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
+     # 🔁 동적 프레임워크로 전환해 gRPC/Firebase 모듈맵 문제 회피
+    use_frameworks! :linkage => :dynamic
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -38,5 +43,11 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+    target.build_configurations.each do |config|
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
+    end
+  end
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
   end
 end

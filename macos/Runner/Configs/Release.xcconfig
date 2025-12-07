@@ -1,2 +1,4 @@
+// Release.xcconfig 또는 AppInfo.xcconfig (Release에 적용)
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"

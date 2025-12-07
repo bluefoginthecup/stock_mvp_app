@@ -5,6 +5,8 @@ class MainTabController extends ChangeNotifier {
   int _index = 0;
   int get index => _index;
 
+  get jumpTo => null;
+
   void setIndex(int i) {
     if (_index == i) return;
     _index = i;

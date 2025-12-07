@@ -1,15 +1,41 @@
 {
+  "version": 1,
   "folders": [
     {
       "id": "Finished",
       "name": "Finished",
-      "parentId": null,
+      "depth": 0,
+      "order": 0
+    },
+    {
+      "id": "Raw",
+      "name": "Raw",
+      "depth": 0,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished",
+      "name": "SemiFinished",
       "depth": 0,
       "order": 0
     },
     {
       "id": "Finished-4seasons",
       "name": "4seasons",
+      "parentId": "Finished",
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "fo_1764316552669266",
+      "name": "맞춤",
+      "parentId": "Finished",
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "Finished-insert",
+      "name": "솜",
       "parentId": "Finished",
       "depth": 1,
       "order": 0
@@ -204,10 +230,80 @@
       "order": 0
     },
     {
-      "id": "SemiFinished",
-      "name": "SemiFinished",
-      "parentId": null,
-      "depth": 0,
+      "id": "Finished-insert-sitcushion",
+      "name": "방석솜",
+      "parentId": "Finished-insert",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-insert-베개솜",
+      "name": "베개솜",
+      "parentId": "Finished-insert",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Finished-insert-pillow",
+      "name": "베개솜",
+      "parentId": "Finished-insert",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "Raw-fabric",
+      "name": "fabric",
+      "parentId": "Raw",
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "fo_1764745142717641",
+      "name": "zipper",
+      "parentId": "Raw",
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "raw-fabric-대안",
+      "name": "대안",
+      "parentId": "Raw-fabric",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "fo_1764917955367926",
+      "name": "대우",
+      "parentId": "Raw-fabric",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "fo_1764305430943717",
+      "name": "송실",
+      "parentId": "Raw-fabric",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "fo_1764734105948182",
+      "name": "예원",
+      "parentId": "Raw-fabric",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Back",
+      "name": "Back",
+      "parentId": "SemiFinished",
+      "depth": 1,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Emb",
+      "name": "Emb",
+      "parentId": "SemiFinished",
+      "depth": 1,
       "order": 0
     },
     {
@@ -218,78 +314,8 @@
       "order": 0
     },
     {
-      "id": "SemiFinished-Piping-cotton_black",
-      "name": "cotton_black",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Piping-cotton_brown",
-      "name": "cotton_brown",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Piping-cotton_gold",
-      "name": "cotton_gold",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Piping-cotton_green",
-      "name": "cotton_green",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Piping-cotton_ivory",
-      "name": "cotton_ivory",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Piping-cotton_lgray",
-      "name": "cotton_lgray",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Piping-cotton_navy",
-      "name": "cotton_navy",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Piping-cotton_orange",
-      "name": "cotton_orange",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Piping-cotton_white",
-      "name": "cotton_white",
-      "parentId": "SemiFinished-Piping",
-      "depth": 2,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished",
-      "name": "SemiFinished",
-      "parentId": null,
-      "depth": 0,
-      "order": 0
-    },
-    {
-      "id": "SemiFinished-Back",
-      "name": "Back",
+      "id": "SemiFinished-back",
+      "name": "back",
       "parentId": "SemiFinished",
       "depth": 1,
       "order": 0
@@ -358,10 +384,10 @@
       "order": 0
     },
     {
-      "id": "SemiFinished-Emb",
-      "name": "Emb",
-      "parentId": "SemiFinished",
-      "depth": 1,
+      "id": "fo_1764297150612125",
+      "name": "top_beige",
+      "parentId": "SemiFinished-Back",
+      "depth": 2,
       "order": 0
     },
     {
@@ -554,44 +580,65 @@
       "order": 0
     },
     {
-      "id": "Raw",
-      "name": "Raw",
-      "parentId": null,
-      "depth": 0,
-      "order": 0
-    },
-    {
-      "id": "Raw-fabric",
-      "name": "fabric",
-      "parentId": "Raw",
-      "depth": 1,
-      "order": 0
-    },
-    {
-      "id": "Raw-fabric-top",
-      "name": "top",
-      "parentId": "Raw-fabric",
+      "id": "SemiFinished-Piping-cotton_black",
+      "name": "cotton_black",
+      "parentId": "SemiFinished-Piping",
       "depth": 2,
       "order": 0
     },
     {
-      "id": "Finished-insert",
-      "name": "솜",
-      "parentId": "Finished",
-      "depth": 1,
-      "order": 0
-    },
-    {
-      "id": "Finished-insert-pillow",
-      "name": "베개솜",
-      "parentId": "Finished-insert",
+      "id": "SemiFinished-Piping-cotton_brown",
+      "name": "cotton_brown",
+      "parentId": "SemiFinished-Piping",
       "depth": 2,
       "order": 0
     },
     {
-      "id": "Finished-insert-sitcushion",
-      "name": "방석솜",
-      "parentId": "Finished-insert",
+      "id": "SemiFinished-Piping-cotton_gold",
+      "name": "cotton_gold",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_green",
+      "name": "cotton_green",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_ivory",
+      "name": "cotton_ivory",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_lgray",
+      "name": "cotton_lgray",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_navy",
+      "name": "cotton_navy",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_orange",
+      "name": "cotton_orange",
+      "parentId": "SemiFinished-Piping",
+      "depth": 2,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished-Piping-cotton_white",
+      "name": "cotton_white",
+      "parentId": "SemiFinished-Piping",
       "depth": 2,
       "order": 0
     }
