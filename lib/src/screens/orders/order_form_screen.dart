@@ -153,30 +153,9 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     );
 
     if (!mounted) return;
-
-    // 컨텍스트 기반 스낵바 + 액션
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-          content: const Text('저장 + 부족분 자동 계획 생성 완료'),
-          action: SnackBarAction(
-            label: '주문상세 보기',
-            onPressed: () {
-              // 현재 화면이 pop된 후에도 동작하도록 rootNavigator 사용
-              if (!mounted) return;
-              Navigator.of(context, rootNavigator: true)
-                  .pushNamed('/orders/detail', arguments: _order.id);
-            },
-          ),
-        ),
-      );
-
-    // 현재 화면 닫기 (호출부가 결과를 사용할 수도 있음)
-    Navigator.of(context).pop(_order.id);
+    Navigator.of(context).pop(updated.id); // ✅ 결과만 반환
   }
+
 
   @override
   Widget build(BuildContext context) {

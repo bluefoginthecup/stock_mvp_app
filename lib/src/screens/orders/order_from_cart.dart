@@ -48,12 +48,34 @@ Future<void> createInternalOrderFromPicked(
   await orderRepo.upsertOrder(order);
 
   // 생성된 주문 편집 화면으로 이동
-  Navigator.push(
-    context,
+
+  final savedOrderId = await Navigator.of(context).push<String>(
     MaterialPageRoute(
       builder: (_) => OrderFormScreen(orderId: orderId, createIfMissing: false),
     ),
   );
+
+  if (!context.mounted || savedOrderId == null) return;
+
+  ScaffoldMessenger.of(context)
+    ..clearSnackBars()
+    ..showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        content: const Text('저장 + 부족분 자동 계획 생성 완료'),
+        action: SnackBarAction(
+          label: '주문상세 보기',
+          onPressed: () {
+            Navigator.of(context).pushNamed(
+              '/orders/detail',
+              arguments: savedOrderId,
+            );
+          },
+        ),
+      ),
+    );
+
 }
 
 /// 기존 버튼 호환용(전체 장바구니로 주문 생성)

@@ -10,6 +10,7 @@ import 'screens/purchases/purchase_list_screen.dart';
 import 'screens/trash/trash_screen.dart';
 import 'screens/cart/cart_screen.dart';
 import '/src/screens/settings/settings_screen.dart';
+import 'screens/orders/order_detail_screen.dart';
 
 
 
@@ -89,6 +90,10 @@ class StockApp extends StatelessWidget {
           },
           '/trash': (_) => const TrashScreen(),     // ← 여기서만 TrashScreen을 import
           '/cart' : (_) => const CartScreen(),
+          '/orders/detail': (context) {
+            final orderId = ModalRoute.of(context)!.settings.arguments as String;
+            return OrderDetailScreen(orderId: orderId);
+          },
           '/settings': (_) => const SettingsScreen(),
           '/suppliers/new': (context) => const SupplierFormScreen(),
           '/suppliers/edit': (context) {
