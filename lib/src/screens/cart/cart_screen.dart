@@ -3,17 +3,43 @@ import 'package:provider/provider.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
 
 import '../../providers/cart_manager.dart';
-import '../../repos/repo_interfaces.dart'; // ✅ 인터페이스로 주입
+import '../../repos/repo_interfaces.dart';
 import '../../screens/orders/order_from_cart.dart';
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  final Set<int> _selected = {};
+
+  bool get _selectMode => _selected.isNotEmpty;
+
+  void _toggleSelect(int index) {
+    setState(() {
+      if (_selected.contains(index)) {
+        _selected.remove(index);
+      } else {
+        _selected.add(index);
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() => _selected.clear());
+  }
 
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartManager>();
-    final poRepo = context.read<PurchaseOrderRepo>(); // ✅ InMemoryRepo → PurchaseOrderRepo
+    final poRepo = context.read<PurchaseOrderRepo>();
     final itemRepo = context.read<ItemRepo>();
+
+    // 선택 목록(현재 스냅샷)
+    final picked = cart.pickByIndexes(_selected);
 
     Future<void> _editQty(BuildContext ctx, int index, double current) async {
       final c = TextEditingController(text: current.toStringAsFixed(0));
@@ -88,13 +114,38 @@ class CartScreen extends StatelessWidget {
       if (v != null && v.isNotEmpty) cart.setAllSupplier(v);
     }
 
-    Future<void> _createPOs(BuildContext ctx) async {
+    Future<void> _createPOsFromPicked(BuildContext ctx) async {
+      if (picked.isEmpty) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('선택된 항목이 없어요')),
+        );
+        return;
+      }
+
       try {
-        // ✅ 인자 타입을 PurchaseOrderRepo로 변경
-        final ids = await cart.createPurchaseOrdersFromCart(
+        // ⚠️ 현재 CartManager API는 "전체 장바구니" 기준이므로,
+        // 선택분만 발주서 생성하려면 CartManager에 선택분 버전을 추가하거나,
+        // 여기서 임시로 "선택분만 남기고" 실행하면 안됨(데이터 꼬임).
+        //
+        // ✅ 최소 수정 전략:
+        // 1) 선택분을 복제하여 CartManager의 기존 함수 로직을 여기서 재사용하지 않고
+        // 2) CartManager에 createPurchaseOrdersFromPicked(...) 를 추가하는 것이 정석.
+        //
+        // 지금은 “중복 최소” 원칙대로 CartManager에 picked 버전 추가를 추천하지만,
+        // 코드 덩치 최소로 가려면 아래처럼 "picked를 공급처별로 직접 생성"도 가능.
+        //
+        // 여기서는 CartManager에 createPurchaseOrdersFromPicked(...)를 추가했다고 가정하고 호출:
+        //
+        final ids = await cart.createPurchaseOrdersFromPicked(
+          picked: picked,
           poRepo: poRepo,
           itemRepo: itemRepo,
         );
+
+        // ✅ 생성 성공 → 선택분만 장바구니에서 제거
+        cart.removeByIndexes(_selected);
+        _clearSelection();
+
         if (ctx.mounted) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             SnackBar(
@@ -118,10 +169,44 @@ class CartScreen extends StatelessWidget {
       }
     }
 
+    Future<void> _createInternalOrderFromPicked(BuildContext ctx) async {
+      if (picked.isEmpty) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('선택된 항목이 없어요')),
+        );
+        return;
+      }
+
+      await createInternalOrderFromPicked(ctx, picked: picked);
+
+      // ✅ 주문 생성 후 선택분 제거(중복 방지)
+      cart.removeByIndexes(_selected);
+      _clearSelection();
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('장바구니'),
+        title: Text(_selectMode ? '장바구니 (선택 ${_selected.length})' : '장바구니'),
+        leading: _selectMode
+            ? IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: '선택 해제',
+          onPressed: _clearSelection,
+        )
+            : null,
         actions: [
+          if (_selectMode)
+            IconButton(
+              icon: const Icon(Icons.select_all),
+              tooltip: '전체 선택',
+              onPressed: () {
+                setState(() {
+                  _selected
+                    ..clear()
+                    ..addAll(List.generate(cart.count, (i) => i));
+                });
+              },
+            ),
           PopupMenuButton<String>(
             onSelected: (key) async {
               switch (key) {
@@ -140,7 +225,10 @@ class CartScreen extends StatelessWidget {
                       ],
                     ),
                   );
-                  if (ok == true) cart.clear();
+                  if (ok == true) {
+                    cart.clear();
+                    _clearSelection();
+                  }
                   break;
               }
             },
@@ -158,8 +246,10 @@ class CartScreen extends StatelessWidget {
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (ctx, i) {
           final it = cart.items[i];
+          final checked = _selected.contains(i);
+
           return Dismissible(
-            key: ValueKey('cart_i_${it.itemId}'),
+            key: ValueKey('cart_i_${it.itemId}_$i'),
             direction: DismissDirection.endToStart,
             background: Container(
               alignment: Alignment.centerRight,
@@ -170,6 +260,10 @@ class CartScreen extends StatelessWidget {
             onDismissed: (_) {
               final removed = it;
               cart.removeAt(i);
+              setState(() {
+                // 인덱스 기반 선택은 삭제 시 흔들리기 쉬움 → 안전하게 선택 해제
+                _selected.remove(i);
+              });
               ScaffoldMessenger.of(ctx).clearSnackBars();
               ScaffoldMessenger.of(ctx).showSnackBar(
                 SnackBar(
@@ -177,8 +271,6 @@ class CartScreen extends StatelessWidget {
                   action: SnackBarAction(
                     label: '실행취소',
                     onPressed: () {
-                      // 필요 시 CartManager에 addRaw(CartItem) 같은 복구용 메서드 추가 권장
-                      // 지금은 간단히 다시 추가:
                       cart.insert(i, removed);
                     },
                   ),
@@ -186,17 +278,17 @@ class CartScreen extends StatelessWidget {
               );
             },
             child: ListTile(
-              leading: const Icon(Icons.inventory),
+              onTap: () => _toggleSelect(i),
+              leading: Checkbox(
+                value: checked,
+                onChanged: (_) => _toggleSelect(i),
+              ),
               title: Text(it.name),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('수량: ${it.qty.toStringAsFixed(0)}  (${it.unit})'),
-                  Text(
-                    it.supplierName.isEmpty
-                        ? '(공급처 미지정)'
-                        : '공급처: ${it.supplierName}',
-                  ),
+                  Text(it.supplierName.isEmpty ? '(공급처 미지정)' : '공급처: ${it.supplierName}'),
                 ],
               ),
               trailing: Wrap(
@@ -232,20 +324,21 @@ class CartScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '품목 ${cart.count} • 공급처 ${cart.supplierCount} • 총수량 ${cart.totalQty.toStringAsFixed(0)}',
+                  _selectMode
+                      ? '선택 ${_selected.length}개'
+                      : '품목 ${cart.count} • 공급처 ${cart.supplierCount} • 총수량 ${cart.totalQty.toStringAsFixed(0)}',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
               FilledButton.icon(
                 icon: const Icon(Icons.shopping_bag),
                 label: const Text('발주서 생성'),
-                onPressed: () => _createPOs(context),
+                onPressed: () => _createPOsFromPicked(context),
               ),
               const SizedBox(width: 8),
-              // 내부 주문 생성(재고보충)
               ElevatedButton.icon(
-                onPressed: () async => await onCreateInternalOrderPressed(context),
-                icon: const Icon(Icons.shopping_bag),
+                onPressed: () => _createInternalOrderFromPicked(context),
+                icon: const Icon(Icons.receipt_long),
                 label: const Text('주문 생성'),
               ),
             ],

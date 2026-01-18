@@ -1,39 +1,45 @@
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
+
 import '../../ui/common/ui.dart';
 import '../../models/order.dart';
 import '../../repos/repo_interfaces.dart';
-import '../../providers/cart_manager.dart'; // CartManager 경로에 맞게
+import '../../providers/cart_manager.dart';
+import '../../models/cart_item.dart';
 import 'order_form_screen.dart';
 
-Future<void> onCreateInternalOrderPressed(BuildContext context) async {
-  final cart = context.read<CartManager>().items;
-  if (cart.isEmpty) {
+/// ✅ 선택 항목으로 내부주문 생성 (재고보충)
+Future<void> createInternalOrderFromPicked(
+    BuildContext context, {
+      required List<CartItem> picked,
+    }) async {
+  if (picked.isEmpty) {
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('장바구니가 비어있어요')));
+        .showSnackBar(const SnackBar(content: Text('선택된 항목이 없어요')));
     return;
   }
 
-  // 1) 아이템별 수량 합산(동일 품목 여러 번 담긴 경우 대비)
+  // 1) itemId별 수량 합산
   final grouped = <String, num>{};
-  for (final c in cart) {
+  for (final c in picked) {
     grouped[c.itemId] = (grouped[c.itemId] ?? 0) + (c.qty);
   }
 
-  // 2) 주문 객체 생성(draft)
+  // 2) 주문(draft) 생성
   final orderId = 'ord_${const Uuid().v4()}';
   final lines = grouped.entries.map((e) {
     final lineId = const Uuid().v4();
-    // OrderLine.qty가 정수라면 반올림/올림 정책 택1 (여기서는 반올림)
-    final intQty = (e.value is int) ? (e.value as int) : (e.value.toDouble().round());
+    // 정책: 여기서는 반올림(원하면 ceil로 변경)
+    final intQty = e.value.toDouble().round();
     return OrderLine(id: lineId, itemId: e.key, qty: intQty);
   }).toList();
 
   final order = Order(
     id: orderId,
     date: DateTime.now(),
-    customer: '재고보충', // 재고 보충용임을 구분
-    memo: '장바구니에서 생성',
+    customer: '재고보충',
+    memo: '장바구니(선택)에서 생성',
     status: OrderStatus.draft,
     lines: lines,
   );
@@ -41,14 +47,17 @@ Future<void> onCreateInternalOrderPressed(BuildContext context) async {
   final orderRepo = context.read<OrderRepo>();
   await orderRepo.upsertOrder(order);
 
-
-  // ─────────────────────────────────────────────
-  // 옵션 B) 생성된 주문 편집 화면으로 이동해서 확인 후 저장하고 싶다면:
+  // 생성된 주문 편집 화면으로 이동
   Navigator.push(
     context,
     MaterialPageRoute(
       builder: (_) => OrderFormScreen(orderId: orderId, createIfMissing: false),
     ),
   );
-  // ─────────────────────────────────────────────
+}
+
+/// 기존 버튼 호환용(전체 장바구니로 주문 생성)
+Future<void> onCreateInternalOrderPressed(BuildContext context) async {
+  final cart = context.read<CartManager>().items;
+  await createInternalOrderFromPicked(context, picked: cart);
 }

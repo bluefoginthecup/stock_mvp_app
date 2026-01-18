@@ -43,6 +43,28 @@ class CartManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// ✅ 선택된 index들만 장바구니에서 제거 (내림차순 삭제로 안전)
+  void removeByIndexes(Set<int> selected) {
+    if (selected.isEmpty) return;
+    final idxs = selected.toList()..sort((a, b) => b.compareTo(a));
+    for (final i in idxs) {
+      if (i >= 0 && i < _items.length) {
+        _items.removeAt(i);
+      }
+    }
+    notifyListeners();
+  }
+
+  /// (선택) 선택된 항목만 뽑기
+  List<CartItem> pickByIndexes(Set<int> selected) {
+    final out = <CartItem>[];
+    for (final i in selected) {
+      if (i >= 0 && i < _items.length) out.add(_items[i]);
+    }
+    return out;
+  }
+
+
   /// UNDO 복구 등에 사용
   void insert(int index, CartItem item) {
     if (index < 0 || index > _items.length) {
@@ -146,4 +168,63 @@ class CartManager extends ChangeNotifier {
     clear();
     return created;
   }
+  /// ✅ 선택된 항목(picked)만으로 발주서 생성
+  Future<List<String>> createPurchaseOrdersFromPicked({
+    required List<CartItem> picked,
+    required PurchaseOrderRepo poRepo,
+    required ItemRepo itemRepo,
+  }) async {
+    if (picked.isEmpty) return [];
+
+    // 1) 공급처별 그룹핑
+    final grouped = <String, List<CartItem>>{};
+    for (final c in picked) {
+      final key = c.supplierName.trim().isEmpty ? '(미지정)' : c.supplierName.trim();
+      (grouped[key] ??= []).add(c);
+    }
+
+    // 2) 생성 루프
+    final created = <String>[];
+
+    for (final entry in grouped.entries) {
+      final supplier = entry.key == '(미지정)' ? '' : entry.key;
+
+      final po = PurchaseOrder(
+        id: 'po_${DateTime.now().microsecondsSinceEpoch}_${created.length}',
+        supplierName: supplier,
+        eta: DateTime.now().add(const Duration(days: 2)),
+        status: PurchaseOrderStatus.draft,
+      );
+
+      final savedId = await poRepo.createPurchaseOrder(po);
+
+      final lines = <PurchaseLine>[];
+      for (var i = 0; i < entry.value.length; i++) {
+        final c = entry.value[i];
+
+        final it = await itemRepo.getItem(c.itemId);
+        final colorNo = (c.colorNo?.trim().isNotEmpty == true)
+            ? c.colorNo!.trim()
+            : (it?.attrs?['color_no'] ?? '').toString().trim();
+
+        lines.add(
+          PurchaseLine(
+            id: 'pol_${savedId}_$i',
+            orderId: savedId,
+            itemId: c.itemId,
+            name: c.name,
+            unit: c.unit,
+            qty: c.qty,
+            colorNo: colorNo,
+          ),
+        );
+      }
+
+      await poRepo.upsertLines(savedId, lines);
+      created.add(savedId);
+    }
+
+    return created;
+  }
+
 }
