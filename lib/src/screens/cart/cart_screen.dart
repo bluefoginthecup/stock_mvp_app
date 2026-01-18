@@ -14,11 +14,23 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  final Set<int> _selected = {};
+  final Set<int> _selected = {}; // ✅ 멀티 선택(인덱스 기반)
 
-  bool get _selectMode => _selected.isNotEmpty;
+  bool _isAllSelected(int total) => total > 0 && _selected.length == total;
 
-  void _toggleSelect(int index) {
+  void _toggleSelectAll(int total) {
+    setState(() {
+      if (_isAllSelected(total)) {
+        _selected.clear(); // ✅ 전체 해제
+      } else {
+        _selected
+          ..clear()
+          ..addAll(List<int>.generate(total, (i) => i)); // ✅ 전체 선택
+      }
+    });
+  }
+
+  void _toggleOne(int index) {
     setState(() {
       if (_selected.contains(index)) {
         _selected.remove(index);
@@ -37,9 +49,6 @@ class _CartScreenState extends State<CartScreen> {
     final cart = context.watch<CartManager>();
     final poRepo = context.read<PurchaseOrderRepo>();
     final itemRepo = context.read<ItemRepo>();
-
-    // 선택 목록(현재 스냅샷)
-    final picked = cart.pickByIndexes(_selected);
 
     Future<void> _editQty(BuildContext ctx, int index, double current) async {
       final c = TextEditingController(text: current.toStringAsFixed(0));
@@ -114,38 +123,95 @@ class _CartScreenState extends State<CartScreen> {
       if (v != null && v.isNotEmpty) cart.setAllSupplier(v);
     }
 
-    Future<void> _createPOsFromPicked(BuildContext ctx) async {
-      if (picked.isEmpty) {
+    // ✅ 선택된 항목에만 공급처 일괄 지정
+    Future<void> _setSupplierForSelected(BuildContext ctx) async {
+      if (_selected.isEmpty) {
         ScaffoldMessenger.of(ctx).showSnackBar(
           const SnackBar(content: Text('선택된 항목이 없어요')),
         );
         return;
       }
 
+      final c = TextEditingController();
+      final v = await showDialog<String>(
+        context: ctx,
+        builder: (dctx) => AlertDialog(
+          title: Text('선택 ${_selected.length}개 공급처 일괄 지정'),
+          content: TextField(
+            controller: c,
+            decoration: const InputDecoration(hintText: '예: OO상사'),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
+            TextButton(
+              onPressed: () => Navigator.pop(dctx, c.text.trim()),
+              child: const Text('적용'),
+            ),
+          ],
+        ),
+      );
+      if (v == null || v.isEmpty) return;
+
+      // 인덱스 기반 업데이트 (중복/동일 아이템이어도 정확히 적용됨)
+      for (final idx in _selected) {
+        if (idx >= 0 && idx < cart.count) {
+          cart.updateSupplier(idx, v);
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(content: Text('선택 ${_selected.length}개에 공급처 적용 완료')),
+        );
+      }
+    }
+
+    // ✅ 선택된 항목 삭제
+    Future<void> _deleteSelected(BuildContext ctx) async {
+      if (_selected.isEmpty) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('선택된 항목이 없어요')),
+        );
+        return;
+      }
+
+      final ok = await showDialog<bool>(
+        context: ctx,
+        builder: (dctx) => AlertDialog(
+          title: Text('선택 ${_selected.length}개 삭제할까요?'),
+          content: const Text('선택된 품목들을 장바구니에서 삭제합니다.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('취소')),
+            TextButton(onPressed: () => Navigator.pop(dctx, true), child: const Text('삭제')),
+          ],
+        ),
+      );
+
+      if (ok != true) return;
+
+      // index 내림차순으로 removeAt (인덱스 밀림 방지)
+      final idxs = _selected.toList()..sort((a, b) => b.compareTo(a));
+      for (final i in idxs) {
+        if (i >= 0 && i < cart.count) {
+          cart.removeAt(i);
+        }
+      }
+      _clearSelection();
+
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('선택 항목 삭제 완료')),
+        );
+      }
+    }
+
+    Future<void> _createPOs(BuildContext ctx) async {
       try {
-        // ⚠️ 현재 CartManager API는 "전체 장바구니" 기준이므로,
-        // 선택분만 발주서 생성하려면 CartManager에 선택분 버전을 추가하거나,
-        // 여기서 임시로 "선택분만 남기고" 실행하면 안됨(데이터 꼬임).
-        //
-        // ✅ 최소 수정 전략:
-        // 1) 선택분을 복제하여 CartManager의 기존 함수 로직을 여기서 재사용하지 않고
-        // 2) CartManager에 createPurchaseOrdersFromPicked(...) 를 추가하는 것이 정석.
-        //
-        // 지금은 “중복 최소” 원칙대로 CartManager에 picked 버전 추가를 추천하지만,
-        // 코드 덩치 최소로 가려면 아래처럼 "picked를 공급처별로 직접 생성"도 가능.
-        //
-        // 여기서는 CartManager에 createPurchaseOrdersFromPicked(...)를 추가했다고 가정하고 호출:
-        //
-        final ids = await cart.createPurchaseOrdersFromPicked(
-          picked: picked,
+        final ids = await cart.createPurchaseOrdersFromCart(
           poRepo: poRepo,
           itemRepo: itemRepo,
         );
-
-        // ✅ 생성 성공 → 선택분만 장바구니에서 제거
-        cart.removeByIndexes(_selected);
-        _clearSelection();
-
+        _clearSelection(); // 생성 후 선택 초기화
         if (ctx.mounted) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             SnackBar(
@@ -169,84 +235,63 @@ class _CartScreenState extends State<CartScreen> {
       }
     }
 
-    Future<void> _createInternalOrderFromPicked(BuildContext ctx) async {
-      if (picked.isEmpty) {
-        ScaffoldMessenger.of(ctx).showSnackBar(
-          const SnackBar(content: Text('선택된 항목이 없어요')),
-        );
-        return;
-      }
-
-      await createInternalOrderFromPicked(ctx, picked: picked);
-
-      // ✅ 주문 생성 후 선택분 제거(중복 방지)
-      cart.removeByIndexes(_selected);
-      _clearSelection();
-    }
+    final hasItems = cart.count > 0;
+    final hasSelection = _selected.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectMode ? '장바구니 (선택 ${_selected.length})' : '장바구니'),
-        leading: _selectMode
+        title: hasSelection
+            ? Text('선택 ${_selected.length}개')
+            : const Text('장바구니'),
+        leading: hasSelection
             ? IconButton(
-          icon: const Icon(Icons.close),
           tooltip: '선택 해제',
+          icon: const Icon(Icons.close),
           onPressed: _clearSelection,
         )
             : null,
         actions: [
-          if (_selectMode)
+          if (hasItems)
             IconButton(
-              icon: const Icon(Icons.select_all),
-              tooltip: '전체 선택',
-              onPressed: () {
-                setState(() {
-                  _selected
-                    ..clear()
-                    ..addAll(List.generate(cart.count, (i) => i));
-                });
-              },
+              tooltip: _isAllSelected(cart.count) ? '전체 해제' : '전체 선택',
+              icon: Icon(
+                _isAllSelected(cart.count)
+                    ? Icons.check_box
+                    : Icons.check_box_outline_blank,
+              ),
+              onPressed: () => _toggleSelectAll(cart.count),
             ),
-          PopupMenuButton<String>(
-            onSelected: (key) async {
-              switch (key) {
-                case 'bulkSupplier':
-                  await _setSupplierForAll(context);
-                  break;
-                case 'clearAll':
-                  final ok = await showDialog<bool>(
-                    context: context,
-                    builder: (dctx) => AlertDialog(
-                      title: const Text('모두 삭제할까요?'),
-                      content: const Text('장바구니의 모든 품목을 삭제합니다.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('취소')),
-                        TextButton(onPressed: () => Navigator.pop(dctx, true), child: const Text('삭제')),
-                      ],
-                    ),
-                  );
-                  if (ok == true) {
-                    cart.clear();
-                    _clearSelection();
-                  }
-                  break;
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'bulkSupplier', child: Text('공급처 일괄 지정')),
-              PopupMenuItem(value: 'clearAll', child: Text('모두 비우기')),
-            ],
-          ),
+
+          // ✅ 선택된 항목이 있을 때만: 멀티 기능 메뉴 노출
+          if (hasSelection)
+            PopupMenuButton<String>(
+              tooltip: '선택 항목 작업',
+              onSelected: (key) async {
+                switch (key) {
+                  case 'selSupplier':
+                    await _setSupplierForSelected(context);
+                    break;
+                  case 'selDelete':
+                    await _deleteSelected(context);
+                    break;
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'selSupplier', child: Text('선택 항목 공급처 지정')),
+                PopupMenuItem(value: 'selDelete', child: Text('선택 항목 삭제')),
+              ],
+            ),
         ],
+
       ),
-      body: cart.count == 0
+      body: !hasItems
           ? const Center(child: Text('장바구니가 비어 있습니다.'))
           : ListView.separated(
         itemCount: cart.count,
         separatorBuilder: (_, __) => const Divider(height: 1),
         itemBuilder: (ctx, i) {
           final it = cart.items[i];
-          final checked = _selected.contains(i);
+          final selected = _selected.contains(i);
 
           return Dismissible(
             key: ValueKey('cart_i_${it.itemId}_$i'),
@@ -260,10 +305,9 @@ class _CartScreenState extends State<CartScreen> {
             onDismissed: (_) {
               final removed = it;
               cart.removeAt(i);
-              setState(() {
-                // 인덱스 기반 선택은 삭제 시 흔들리기 쉬움 → 안전하게 선택 해제
-                _selected.remove(i);
-              });
+              // ✅ 인덱스 기반 선택은 삭제 시 깨질 수 있으니 안전하게 초기화
+              _clearSelection();
+
               ScaffoldMessenger.of(ctx).clearSnackBars();
               ScaffoldMessenger.of(ctx).showSnackBar(
                 SnackBar(
@@ -278,10 +322,10 @@ class _CartScreenState extends State<CartScreen> {
               );
             },
             child: ListTile(
-              onTap: () => _toggleSelect(i),
-              leading: Checkbox(
-                value: checked,
-                onChanged: (_) => _toggleSelect(i),
+              onTap: () => _toggleOne(i), // ✅ 탭으로 선택 토글
+              leading: Icon(
+                selected ? Icons.check_circle : Icons.circle_outlined,
+                color: selected ? Theme.of(context).colorScheme.primary : null,
               ),
               title: Text(it.name),
               subtitle: Column(
@@ -310,7 +354,7 @@ class _CartScreenState extends State<CartScreen> {
           );
         },
       ),
-      bottomNavigationBar: cart.count == 0
+      bottomNavigationBar: !hasItems
           ? null
           : SafeArea(
         top: false,
@@ -324,20 +368,18 @@ class _CartScreenState extends State<CartScreen> {
             children: [
               Expanded(
                 child: Text(
-                  _selectMode
-                      ? '선택 ${_selected.length}개'
-                      : '품목 ${cart.count} • 공급처 ${cart.supplierCount} • 총수량 ${cart.totalQty.toStringAsFixed(0)}',
+                  '품목 ${cart.count} • 공급처 ${cart.supplierCount} • 총수량 ${cart.totalQty.toStringAsFixed(0)}',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
               FilledButton.icon(
                 icon: const Icon(Icons.shopping_bag),
                 label: const Text('발주서 생성'),
-                onPressed: () => _createPOsFromPicked(context),
+                onPressed: () => _createPOs(context),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: () => _createInternalOrderFromPicked(context),
+                onPressed: () async => await onCreateInternalOrderPressed(context),
                 icon: const Icon(Icons.receipt_long),
                 label: const Text('주문 생성'),
               ),
