@@ -37,7 +37,7 @@ Future<void> deletePlannedByRef({
   required String refId,
 }) async {
   await (db.delete(db.txns)
-                ..where((t) => t.status.equals(TxnStatus.actual.name))
+                ..where((t) => t.status.equals(TxnStatus.planned.name))
             ..where((t) => t.type.equals(TxnType.in_.name))
             ..where((t) => t.refType.equals(refType))
             ..where((t) => t.refId.equals(refId)))
@@ -92,7 +92,47 @@ Future<void> deletePlannedByRef({
         await _refreshTxnSnapshot();
     }
 
-@override
+  @override
+  Future<void> deleteOutActualByRef({required String refType, required String refId}) async {
+    final rows = await (db.select(db.txns)
+      ..where((t) => t.status.equals(TxnStatus.actual.name))
+      ..where((t) => t.type.equals(TxnType.out_.name))
+      ..where((t) => t.refType.equals(refType))
+      ..where((t) => t.refId.equals(refId)))
+        .get();
+    if (rows.isEmpty) return;
+
+    final Map<String, int> sumByItem = {};
+    for (final r in rows) {
+      sumByItem[r.itemId] = (sumByItem[r.itemId] ?? 0) + r.qty;
+    }
+
+    await db.transaction(() async {
+      await (db.delete(db.txns)
+        ..where((t) => t.status.equals(TxnStatus.actual.name))
+        ..where((t) => t.type.equals(TxnType.out_.name))
+        ..where((t) => t.refType.equals(refType))
+        ..where((t) => t.refId.equals(refId)))
+          .go();
+
+      // outActual은 재고를 뺐던 거니까, 삭제할 때는 다시 더해준다
+      for (final entry in sumByItem.entries) {
+        final itemId = entry.key;
+        final delta = entry.value;
+        final row = await (db.select(db.items)..where((t) => t.id.equals(itemId))).getSingleOrNull();
+        final before = row?.qty ?? 0;
+        final after = before + delta;
+        await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+          ItemsCompanion(qty: Value(after)),
+        );
+        _stockCache[itemId] = after;
+      }
+    });
+
+    await _refreshTxnSnapshot();
+  }
+
+  @override
 Future<void> addInPlanned({
   required String itemId,
   required int qty,
@@ -187,6 +227,8 @@ Future<void> addOutActual({
   if (qty <= 0) return; // 🔒 최후방어
   final rt = RefTypeX.fromString(refType);
   await db.transaction(() async {
+    print('[TXN] addOutActual itemId=$itemId qty=$qty refType=$refType refId=$refId note=$note');
+
     await db.into(db.txns).insert(
       Txn.out_(
         id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
@@ -205,7 +247,10 @@ Future<void> addOutActual({
     final after = before - qty;
     await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
       ItemsCompanion(qty: Value(after)),
+
     );
+    print('[TXN] stock before=$before after=$after');
+
   });
 
   _stockCache[itemId] = (await getItem(itemId))?.qty ?? _stockCache[itemId] ?? 0;

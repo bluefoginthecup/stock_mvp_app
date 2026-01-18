@@ -1,6 +1,5 @@
 # ios/Podfile
-platform :ios, '16.0'   # MLKit가 요구하는 버전 이상이면 OK
-
+platform :ios, '16.0'
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -18,7 +17,7 @@ def flutter_root
     matches = line.match(/FLUTTER_ROOT\=(.*)/)
     return matches[1].strip if matches
   end
-  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+  raise "FLUTTER_ROOT not found in #{generated_xcconfig_path}. Try deleting Generated.xcconfig, then run flutter pub get"
 end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
@@ -26,8 +25,9 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
-  # use_modular_headers!   # 필요시 사용
+  # ✅ gRPC / Firestore와 충돌 줄이는 권장 구성
+  use_frameworks! :linkage => :static
+  # ⛔ 전역 use_modular_headers! 사용하지 않음
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
 
@@ -38,10 +38,7 @@ end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
-    # Flutter 권장 추가 설정
     flutter_additional_ios_build_settings(target)
-
-    # 모든 Pods에 동일 배포 타깃 강제
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
     end

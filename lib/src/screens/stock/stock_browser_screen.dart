@@ -19,6 +19,8 @@ import 'widgets/item_selection_controller.dart';
 import 'widgets/stock_item_select_tile.dart';
 import 'widgets/stock_multi_select_bar.dart';
 import '../../providers/cart_manager.dart';
+import '../../ui/common/cart_add.dart';
+
 import '../../db/app_database.dart';
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
@@ -73,25 +75,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     });
   }
 
-  // 🛒 CartManager 헬퍼
-  void _addItemsToCart(dynamic cart, List<Item> items) {
-    for (final it in items) {
-      if (cart.addFromItem is Function) {
-        cart.addFromItem(it);
-      } else if (cart.addItem is Function) {
-        cart.addItem(it.id, 1);
-      } else if (cart.addLine is Function) {
-        cart.addLine({
-          'itemId': it.id,
-          'name': it.displayName ?? it.name,
-          'qty': 1,
-          'unit': it.unit,
-        });
-      } else {
-        debugPrint('[CartManager] No known add method.');
-      }
-    }
-  }
+
 
     @override
     Widget build(BuildContext context) {
@@ -337,7 +321,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                                   .where((it) => sel.selected.contains(it.id))
                                   .toList();
                               final cart = context.read<CartManager>();
-                              _addItemsToCart(cart, picked);
+                              addItemsToCart(cart, picked);
+
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(

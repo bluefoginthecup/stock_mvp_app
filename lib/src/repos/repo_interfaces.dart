@@ -202,6 +202,7 @@ abstract class TxnRepo {
 
   /// ✅ 특정 참조(refType/refId)로 기록된 '실거래 inActual' 전부 삭제 (작업 완료 롤백용)
   Future<void> deleteInActualByRef({required String refType, required String refId});
+  Future<void> deleteOutActualByRef({required String refType, required String refId});
 
   Future<void> adjustQty({required String itemId, required int delta, String? refType, String? refId, String? note, String? memo});
   Future<void> updateUnits({required String itemId, String? unitIn, String? unitOut, double? conversionRate});

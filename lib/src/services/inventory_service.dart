@@ -3,6 +3,9 @@ import '../repos/repo_interfaces.dart';
 import '../models/types.dart';
 import '../models/state_guard.dart';
 import '../models/purchase_order.dart';   // ✅ 추가: 상태(enum) 사용
+import 'dart:math' as math;
+import '../models/bom.dart';
+
 
 class InventoryService {
   final WorkRepo works;
@@ -49,21 +52,29 @@ class InventoryService {
         return int.tryParse('$v') ?? 0;
       }
 
-  /// inProgress -> done : actual in + 완료
   Future<void> completeWork(String workId) async {
     final w = await works.getWorkById(workId);
     if (w == null) return;
     if (!canTransitionWork(w.status, WorkStatus.done)) return;
 
-    // ✅ 수량 정규화(정수화) + >0 가드 (예외 대신 안전 리턴)
-        final intQty = _asIntQty(w.qty);
-        if (intQty <= 0) {
-          // 여기서 예외를 던지면 UI가 못 잡으면 앱이 죽음 → 조용히 무시하고 상태도 바꾸지 않음
-          // 필요하면 로그만 남겨도 됨: print('completeWork skipped: qty<=0 (workId:$workId)');
-          return;
-        }
+    final intQty = _asIntQty(w.qty);
+    if (intQty <= 0) return;
 
+    print('[WORK] completeWork start workId=$workId');
+    print('[WORK] w.itemId=${w.itemId} qty=${w.qty} intQty=$intQty status=${w.status}');
 
+    // ✅ BOM 소모 (raw/sub/semi 폭발 포함)
+    print('[WORK] consumeBom begin parent=${w.itemId} qty=$intQty');
+    await _consumeBomForWork(
+      workId: w.id,
+      parentItemId: w.itemId,
+      parentQty: intQty,
+    );
+
+    print('[WORK] consumeBom done');
+
+    // ✅ 완제품 입고
+    print('[WORK] addInActual begin itemId=${w.itemId} qty=$intQty');
     await txns.addInActual(
       itemId: w.itemId,
       qty: intQty,
@@ -72,10 +83,11 @@ class InventoryService {
       note: 'work actual in',
     );
 
-    // (필요 시 BOM actual out 등록)
+    print('[WORK] addInActual done');
 
     await works.updateWorkStatus(workId, WorkStatus.done);
   }
+
 
   /// 취소
   Future<void> cancelWork(String workId) async {
@@ -171,6 +183,7 @@ class InventoryService {
     // planned 롤백 지원 시 사용
     await txns.deletePlannedByRef(refType: 'purchase', refId: po.id);
 
+
     await purchases.updatePurchaseOrderStatus(po.id, PurchaseOrderStatus.canceled);
   }
 
@@ -237,6 +250,8 @@ class InventoryService {
     Future<void> _rollbackWorkActuals(String workId) async {
         try {
           await txns.deleteInActualByRef(refType: 'work', refId: workId);
+          await txns.deleteOutActualByRef(refType: 'work', refId: workId);  // 자재 소모 취소(+)
+
         } catch (_) {
           // 구현 전이거나 실패해도 앱이 죽지 않도록 방어
         }
@@ -300,4 +315,66 @@ class InventoryService {
    Future<void> _maybeMarkOrderShipped(String orderId) async {
      /// 모든 라인 출고 확인 → orders.updateOrderStatus(orderId, OrderStatus.done) 등
    }
+
+  int _ceilToInt(num v) => v <= 0 ? 0 : v.ceil();
+
+  Future<void> _consumeBomForWork({
+    required String workId,
+    required String parentItemId,
+    required int parentQty,
+  }) async {
+    // parentItemId의 BOM을 읽는다 (finished든 semi든 listBom이 알아서 반환)
+    final rows = await boms.listBom(parentItemId);
+    print('[BOM] listBom parent=$parentItemId rows=${rows.length}');
+
+    for (final r in rows) {
+      print('[BOM] row: ${r.toString()} need=${r.needFor(parentQty)}');
+      final need = _ceilToInt(r.needFor(parentQty));
+      if (need <= 0) continue;
+
+      if (r.kind == BomKind.semi) {
+        // semi는 한 번 더 내려가서 raw/sub로 폭발
+        await _consumeSemiExplosion(
+          workId: workId,
+          semiItemId: r.componentItemId,
+          semiQty: need,
+        );
+      } else {
+        // raw/sub는 바로 소모(outActual)
+        await txns.addOutActual(
+          itemId: r.componentItemId,
+          qty: need,
+          refType: 'work',
+          refId: workId,
+          note: 'work consume (${r.kind.name})',
+        );
+      }
+    }
+  }
+
+  Future<void> _consumeSemiExplosion({
+    required String workId,
+    required String semiItemId,
+    required int semiQty,
+  }) async {
+    final rows = await boms.listBom(semiItemId);
+
+    for (final r in rows) {
+      // 정책상 semi 아래 semi 금지지만, 데이터 꼬임 방어
+      if (r.kind == BomKind.semi) continue;
+
+      final need = _ceilToInt(r.needFor(semiQty));
+      if (need <= 0) continue;
+
+      await txns.addOutActual(
+        itemId: r.componentItemId,
+        qty: need,
+        refType: 'work',
+        refId: workId,
+        note: 'work consume (semi->${r.kind.name})',
+      );
+    }
+  }
+
+
 }

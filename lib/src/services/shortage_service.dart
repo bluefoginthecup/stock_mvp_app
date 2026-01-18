@@ -202,4 +202,74 @@ class ShortageService {
 
     return result;
   }
+  Shortage2L computeForMake({required String finishedId, required int makeQty}) {
+    print('======== [ShortageService] computeForMake START ========');
+    print('[ShortageService] finishedId=$finishedId, makeQty=$makeQty');
+
+    final double make = makeQty.toDouble();
+    if (make <= 0) {
+      return const Shortage2L(
+        finishedShortage: 0,
+        semiNeed: {},
+        semiShortage: {},
+        rawNeed: {},
+        rawShortage: {},
+        subNeed: {},
+        subShortage: {},
+      );
+    }
+
+    // ✅ finishedShortage 자리에 "만들 수량"을 그대로 넣고 폭발
+    final ex = bom.explode2Levels(
+      finishedId: finishedId,
+      finishedShortage: make,
+    );
+
+    Map<String, double> _merge(Map<String, double> a, Map<String, double> b) {
+      final r = <String, double>{}..addAll(a);
+      b.forEach((k, v) => r.update(k, (x) => x + v, ifAbsent: () => v));
+      return r;
+    }
+
+    final rawNeed = _merge(ex.finishedRaw, ex.rawFromSemi);
+    final subNeed = _merge(ex.finishedSub, ex.subFromSemi);
+
+    Map<String, double> _lackByItemUnit(Map<String, double> need) {
+      final m = <String, double>{};
+      need.forEach((id, n) {
+        final st = _availableByItemUnit(id);
+        final lack = n - st;
+        print('[ShortageService] lackByItemUnit: id=$id need=$n stock=$st lack=$lack');
+        if (lack > 0) m[id] = lack;
+      });
+      return m;
+    }
+
+    final semiShort = <String, double>{};
+    ex.semiNeed.forEach((id, n) {
+      final st = _availableByItemUnit(id);
+      final lack = n - st;
+      print('[ShortageService] semiShort: id=$id need=$n stock=$st lack=$lack');
+      if (lack > 0) semiShort[id] = lack;
+    });
+
+    final result = Shortage2L(
+      finishedShortage: make, // 의미: "이번에 만들 수량"
+      semiNeed: ex.semiNeed,
+      semiShortage: semiShort,
+      rawNeed: rawNeed,
+      rawShortage: _lackByItemUnit(rawNeed),
+      subNeed: subNeed,
+      subShortage: _lackByItemUnit(subNeed),
+    );
+
+    print('[ShortageService] RESULT(make): '
+        'semiShortage=${result.semiShortage.length}, '
+        'rawShortage=${result.rawShortage.length}, '
+        'subShortage=${result.subShortage.length}');
+    print('======== [ShortageService] computeForMake END ========');
+
+    return result;
+  }
+
 }

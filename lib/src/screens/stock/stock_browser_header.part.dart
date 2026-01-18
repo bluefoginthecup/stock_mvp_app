@@ -58,10 +58,21 @@ PreferredSizeWidget buildAppBar(
       IconButton(
         icon: const Icon(Icons.shopping_cart),
         tooltip: '장바구니 보기',
-        onPressed: () {
-          Navigator.of(context).pushNamed('/cart');
+        onPressed: () async {
+          debugPrint('[CartIcon] tapped');
+          try {
+            final nav = Navigator.of(context, rootNavigator: true);
+            debugPrint('[CartIcon] nav.canPop=${nav.canPop()}');
+
+            final r = await nav.pushNamed('/cart');
+            debugPrint('[CartIcon] /cart popped, result=$r');
+          } catch (e, st) {
+            debugPrint('[CartIcon] pushNamed failed: $e');
+            debugPrint('$st');
+          }
         },
       ),
+
       Builder(builder: (_) {
         final repo = context.watch<FolderTreeRepo>();
         return PopupMenuButton<FolderSortMode>(

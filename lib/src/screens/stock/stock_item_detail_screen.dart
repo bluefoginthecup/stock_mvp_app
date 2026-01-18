@@ -21,6 +21,9 @@ import '../../ui/common/inout_flow.dart';
 import '../../ui/common/path_picker.dart';
 
 import '../../dev/bom_debug.dart';             // 콘솔 덤프 유틸
+import '../../providers/cart_manager.dart';
+import '../../ui/common/cart_add.dart';
+
 
 class StockItemDetailScreen extends StatefulWidget {
   final String itemId;
@@ -230,8 +233,28 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
             SnackBar(content: Text('이동 실패: $e')));
       }
     }
+  void _addThisToCart() {
+    final it = _item;
+    if (it == null) return;
 
-    // ✅ 재고 롱프레스 : 공용 플로우로 연결 (Browser와 동일)
+    final cart = context.read<CartManager>();
+    addItemsToCart(cart, [it]);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('1개를 장바구니에 담았습니다.'),
+        action: SnackBarAction(
+          label: '보기',
+          onPressed: () {
+            Navigator.of(context, rootNavigator: true).pushNamed('/cart');
+          },
+        ),
+      ),
+    );
+  }
+
+
+  // ✅ 재고 롱프레스 : 공용 플로우로 연결 (Browser와 동일)
     Future<void> _openQtyChangeSheet() async {
       final it = _item;
       if (it == null) return;
@@ -364,6 +387,11 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                     Chip(
                       avatar: const Icon(Icons.straighten, size: 16),
                       label: Text('${context.t.item_unit}: ${item.unit}'),
+                    ),
+                    IconButton(
+                      tooltip: '장바구니 담기',
+                      icon: const Icon(Icons.add_shopping_cart),
+                      onPressed: _addThisToCart,
                     ),
                   ],
                 ),
