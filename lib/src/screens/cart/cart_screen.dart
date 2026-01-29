@@ -206,12 +206,28 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     Future<void> _createPOs(BuildContext ctx) async {
+      if (_selected.isEmpty) {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text('발주서로 만들 항목을 먼저 선택해주세요')),
+        );
+        return;
+      }
+
+      // ✅ 선택된 항목만 뽑기
+      final picked = cart.pickByIndexes(_selected);
+
       try {
-        final ids = await cart.createPurchaseOrdersFromCart(
+        // ✅ 선택된 항목만으로 발주서 생성
+        final ids = await cart.createPurchaseOrdersFromPicked(
+          picked: picked,
           poRepo: poRepo,
           itemRepo: itemRepo,
         );
-        _clearSelection(); // 생성 후 선택 초기화
+
+        // ✅ 선택된 항목만 장바구니에서 제거
+        cart.removeByIndexes(_selected);
+        _clearSelection();
+
         if (ctx.mounted) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             SnackBar(
@@ -234,6 +250,7 @@ class _CartScreenState extends State<CartScreen> {
         );
       }
     }
+
 
     final hasItems = cart.count > 0;
     final hasSelection = _selected.isNotEmpty;
@@ -379,10 +396,30 @@ class _CartScreenState extends State<CartScreen> {
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: () async => await onCreateInternalOrderPressed(context),
+                onPressed: () async {
+                  if (_selected.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('주문으로 만들 항목을 먼저 선택해주세요')),
+                    );
+                    return;
+                  }
+
+                  final picked = cart.pickByIndexes(_selected);
+
+                  await createInternalOrderFromPicked(
+                    context,
+                    picked: picked,
+                    onAfterSaved: () {
+                      // ✅ 저장 성공 후: 선택 항목만 장바구니에서 제거
+                      cart.removeByIndexes(_selected);
+                      _clearSelection();
+                    },
+                  );
+                },
                 icon: const Icon(Icons.receipt_long),
                 label: const Text('주문 생성'),
               ),
+
             ],
           ),
         ),

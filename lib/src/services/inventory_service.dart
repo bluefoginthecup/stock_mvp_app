@@ -323,24 +323,15 @@ class InventoryService {
     required String parentItemId,
     required int parentQty,
   }) async {
-    // parentItemId의 BOM을 읽는다 (finished든 semi든 listBom이 알아서 반환)
     final rows = await boms.listBom(parentItemId);
     print('[BOM] listBom parent=$parentItemId rows=${rows.length}');
 
     for (final r in rows) {
-      print('[BOM] row: ${r.toString()} need=${r.needFor(parentQty)}');
       final need = _ceilToInt(r.needFor(parentQty));
       if (need <= 0) continue;
 
-      if (r.kind == BomKind.semi) {
-        // semi는 한 번 더 내려가서 raw/sub로 폭발
-        await _consumeSemiExplosion(
-          workId: workId,
-          semiItemId: r.componentItemId,
-          semiQty: need,
-        );
-      } else {
-        // raw/sub는 바로 소모(outActual)
+      // ✅ 1단계 정책: finished 완료 시 "semi/sub만" 차감 (raw 차감 금지)
+      if (r.kind == BomKind.semi || r.kind == BomKind.sub) {
         await txns.addOutActual(
           itemId: r.componentItemId,
           qty: need,
@@ -348,31 +339,11 @@ class InventoryService {
           refId: workId,
           note: 'work consume (${r.kind.name})',
         );
+        continue;
       }
-    }
-  }
 
-  Future<void> _consumeSemiExplosion({
-    required String workId,
-    required String semiItemId,
-    required int semiQty,
-  }) async {
-    final rows = await boms.listBom(semiItemId);
-
-    for (final r in rows) {
-      // 정책상 semi 아래 semi 금지지만, 데이터 꼬임 방어
-      if (r.kind == BomKind.semi) continue;
-
-      final need = _ceilToInt(r.needFor(semiQty));
-      if (need <= 0) continue;
-
-      await txns.addOutActual(
-        itemId: r.componentItemId,
-        qty: need,
-        refType: 'work',
-        refId: workId,
-        note: 'work consume (semi->${r.kind.name})',
-      );
+      // raw는 무시
+      print('[BOM] skip raw consume (policy): item=${r.componentItemId} need=$need');
     }
   }
 

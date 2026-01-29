@@ -13,6 +13,7 @@ import 'order_form_screen.dart';
 Future<void> createInternalOrderFromPicked(
     BuildContext context, {
       required List<CartItem> picked,
+      VoidCallback? onAfterSaved, // ✅ 추가
     }) async {
   if (picked.isEmpty) {
     ScaffoldMessenger.of(context)
@@ -30,7 +31,6 @@ Future<void> createInternalOrderFromPicked(
   final orderId = 'ord_${const Uuid().v4()}';
   final lines = grouped.entries.map((e) {
     final lineId = const Uuid().v4();
-    // 정책: 여기서는 반올림(원하면 ceil로 변경)
     final intQty = e.value.toDouble().round();
     return OrderLine(id: lineId, itemId: e.key, qty: intQty);
   }).toList();
@@ -47,8 +47,7 @@ Future<void> createInternalOrderFromPicked(
   final orderRepo = context.read<OrderRepo>();
   await orderRepo.upsertOrder(order);
 
-  // 생성된 주문 편집 화면으로 이동
-
+  // 편집 화면으로 이동 (저장 후 savedOrderId를 돌려받는 구조)
   final savedOrderId = await Navigator.of(context).push<String>(
     MaterialPageRoute(
       builder: (_) => OrderFormScreen(orderId: orderId, createIfMissing: false),
@@ -56,6 +55,9 @@ Future<void> createInternalOrderFromPicked(
   );
 
   if (!context.mounted || savedOrderId == null) return;
+
+  // ✅ 여기서 장바구니 제거 트리거
+  onAfterSaved?.call();
 
   ScaffoldMessenger.of(context)
     ..clearSnackBars()
@@ -75,11 +77,5 @@ Future<void> createInternalOrderFromPicked(
         ),
       ),
     );
-
 }
 
-/// 기존 버튼 호환용(전체 장바구니로 주문 생성)
-Future<void> onCreateInternalOrderPressed(BuildContext context) async {
-  final cart = context.read<CartManager>().items;
-  await createInternalOrderFromPicked(context, picked: cart);
-}

@@ -165,7 +165,6 @@ class CartManager extends ChangeNotifier {
     }
 
     // 3) 정리
-    clear();
     return created;
   }
   /// ✅ 선택된 항목(picked)만으로 발주서 생성

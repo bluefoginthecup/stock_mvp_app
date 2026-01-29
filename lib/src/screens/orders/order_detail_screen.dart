@@ -6,7 +6,7 @@ import '../../repos/repo_interfaces.dart';
 import 'order_form_screen.dart';
 import '../../utils/item_presentation.dart';
 
-// ⛳ 개별 품목 부족분 모달 (정적 show 사용)
+// ⛳ 개별 품목 부족분 모달
 import '../bom/shortage_result_screen.dart';
 // ⛳ 전체 주문 품목 부족분 결과 화면
 import '../bom/order_shortage_result_screen.dart';
@@ -21,32 +21,29 @@ import '../works/widgets/work_row.dart';
 import '../../services/inventory_service.dart';
 import '../../models/txn.dart'; // ✅ Txn, TxnType, TxnStatus
 
-
 enum _SheetAction { toInProgress, toDone, cancel, restore }
 
-
 class OrderDetailScreen extends StatefulWidget {
-  final Order order;
-  const OrderDetailScreen({super.key, required this.order});
+  final String orderId;
+  const OrderDetailScreen({super.key, required this.orderId});
 
   @override
   State<OrderDetailScreen> createState() => _OrderDetailScreenState();
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
-  late Order _order;
+  Order? _order; // ✅ orderId로 로드
   TimelineData? _timeline;
   bool _tlLoading = false;
-  bool _busy = false; // 주문 완료 처리 중 여부
+  bool _loading = true;
+  bool _busy = false; // 주문 완료/상태변경 처리 중 여부
 
   final ScrollController _mainScroll = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _order = widget.order;
-    _reload(); // 진입 시 최신화(옵션)
-    _loadTimeline(); // 👈 타임라인 로드
+    _reload(); // 진입 시 최신화
   }
 
   @override
@@ -56,21 +53,29 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _reload() async {
+    setState(() => _loading = true);
     final orderRepo = context.read<OrderRepo>();
-    // 프로젝트에서 sync면 await 제거
-    final latest = await orderRepo.getOrder(_order.id);
+    final latest = await orderRepo.getOrder(widget.orderId);
+
     if (!mounted) return;
-    if (latest == null) return;
-    setState(() => _order = latest);
-    // 주문 편집 후에도 타임라인 갱신
-    await _loadTimeline();
+    setState(() {
+      _order = latest;
+      _loading = false;
+    });
+
+    if (latest != null) {
+      await _loadTimeline();
+    }
   }
 
   Future<void> _loadTimeline() async {
+    final o = _order;
+    if (o == null) return;
+
     setState(() => _tlLoading = true);
     try {
       final tlRepo = context.read<TimelineRepo>();
-      final data = await tlRepo.fetchOrderTimeline(_order.id);
+      final data = await tlRepo.fetchOrderTimeline(o.id);
       if (!mounted) return;
       setState(() {
         _timeline = data;
@@ -87,22 +92,26 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _goEdit() async {
+    final o = _order;
+    if (o == null) return;
+
     final editedId = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (_) => OrderFormScreen(orderId: _order.id),
+        builder: (_) => OrderFormScreen(orderId: o.id),
       ),
     );
-    // 편집 화면에서 저장 시 pop(context, orderId)로 반환한다고 가정
+
     if (editedId != null && editedId.isNotEmpty) {
       await _reload();
     }
   }
 
   Future<void> _markAsDone() async {
+    final o = _order;
+    if (o == null) return;
     if (_busy) return;
 
-    // 미리 캡처 (dialog 안팎 context 혼용 방지)
     final repo = context.read<OrderRepo>();
     final messenger = ScaffoldMessenger.of(context);
 
@@ -127,15 +136,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
     setState(() => _busy = true);
     try {
-      await repo.updateOrderStatus(_order.id, OrderStatus.done);
+      await repo.updateOrderStatus(o.id, OrderStatus.done);
       if (!mounted) return;
 
-      // 로컬 상태도 즉시 갱신 (리스트로 돌아가면 바로 반영됨)
-      setState(() => _order = _order.copyWith(status: OrderStatus.done));
+      setState(() => _order = o.copyWith(status: OrderStatus.done));
       messenger.showSnackBar(const SnackBar(content: Text('주문을 완료로 변경했어요.')));
-
-      // 원하면 상세 유지 대신 아래 주석을 사용해 리스트로 돌아가기
-      // Navigator.pop(context, 'done');
+      await _loadTimeline();
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text('완료 처리에 실패했습니다: $e')));
@@ -146,7 +152,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDone = _order.status == OrderStatus.done; // ✅ 한곳에서 판단
+    if (_loading) {
+      return  Scaffold(
+        appBar: AppBar(title: Text('주문 상세')),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final o = _order;
+    if (o == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('주문 상세')),
+        body: Center(child: Text('주문을 찾을 수 없어요.')),
+      );
+    }
+
+    final isDone = o.status == OrderStatus.done;
 
     return Scaffold(
       appBar: AppBar(
@@ -156,14 +177,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        controller: _mainScroll, // 전용 컨트롤러
-        primary: false, // 반드시 false
+        controller: _mainScroll,
+        primary: false,
         padding: const EdgeInsets.all(16),
-        child: _buildOrderBody(context),
+        child: _buildOrderBody(context, o),
       ),
-        bottomNavigationBar: (isDone || _order.isDeleted)
-
-        ? null
+      bottomNavigationBar: (isDone || o.isDeleted)
+          ? null
           : SafeArea(
         top: false,
         child: Padding(
@@ -181,43 +201,39 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  /// 단일 바디: 라인이 없을 일은 거의 없지만, 안전하게 안내만 표시
-  Widget _buildOrderBody(BuildContext context) {
+  Widget _buildOrderBody(BuildContext context, Order o) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 주문 메타
-        Text('고객명: ${_order.customer}'),
-        Text('주문일: ${_order.date.toIso8601String().split("T").first}'),
-    Row(
-              children: [
-                const Text('상태: '),
-                Tooltip(
-                  message: _order.isDeleted
-                      ? '길게 눌러 “취소 복구”'
-                      : '길게 눌러 상태 선택',
-                  child: GestureDetector(
-                    onLongPress: _busy ? null : _openStatusSheet,
-                    child: Chip(
-                      backgroundColor: _overallColor(_order).withOpacity(.08),
-                      shape: StadiumBorder(
-                        side: BorderSide(color: _overallColor(_order).withOpacity(.35)),
-                      ),
-                      label: Text(
-                        _overallLabel(_order),
-                        style: TextStyle(
-                          color: _overallColor(_order).shade700,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+        Text('고객명: ${o.customer}'),
+        Text('주문일: ${o.date.toIso8601String().split("T").first}'),
+        Row(
+          children: [
+            const Text('상태: '),
+            Tooltip(
+              message: o.isDeleted ? '길게 눌러 “취소 복구”' : '길게 눌러 상태 선택',
+              child: GestureDetector(
+                onLongPress: _busy ? null : _openStatusSheet,
+                child: Chip(
+                  backgroundColor: _overallColor(o).withOpacity(.08),
+                  shape: StadiumBorder(
+                    side: BorderSide(color: _overallColor(o).withOpacity(.35)),
+                  ),
+                  label: Text(
+                    _overallLabel(o),
+                    style: TextStyle(
+                      color: _overallColor(o).shade700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
+          ],
+        ),
         const SizedBox(height: 12),
 
-        // 👇 타임라인 박스 (리스트 위로)
+        // 타임라인
         Container(
           height: 220,
           decoration: BoxDecoration(
@@ -232,16 +248,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
         const SizedBox(height: 16),
 
-        // ✅ 비스크롤 리스트 (바깥 SingleChildScrollView가 스크롤 담당)
-        if (_order.lines.isNotEmpty)
+        // 라인 리스트
+        if (o.lines.isNotEmpty)
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: _order.lines.length,
+            itemCount: o.lines.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final line = _order.lines[index];
-              return _buildLineCard(context, line.itemId, line.qty);
+              final line = o.lines[index];
+              return _buildLineCard(context, o, line.itemId, line.qty);
             },
           )
         else
@@ -260,17 +276,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ),
 
         const SizedBox(height: 16),
-        // 전체 품목에 대해 한 번에 계산
+
         ElevatedButton.icon(
           icon: const Icon(Icons.assessment),
           label: const Text('전체 품목 부족분 계산'),
           onPressed: () async {
             await Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => OrderShortageResultScreen(order: _order),
+                builder: (_) => OrderShortageResultScreen(order: o),
               ),
             );
-            // 부족분 계산/생성 이후 타임라인 갱신
             await _loadTimeline();
           },
         ),
@@ -283,8 +298,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  /// 개별 라인 카드
-  Widget _buildLineCard(BuildContext context, String itemId, int qty) {
+  Widget _buildLineCard(BuildContext context, Order o, String itemId, int qty) {
     final workRepo = context.read<WorkRepo>();
     final inv = context.read<InventoryService>();
 
@@ -299,13 +313,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 제목영역
+            // 제목
             Row(
               children: [
                 Expanded(
                   child: ItemLabel(
                     itemId: itemId,
-                    full: false, // 전체 경로까지 표시 (원하면 false)
+                    full: false,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
@@ -316,6 +330,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
             const SizedBox(height: 10),
 
+            // 부족분 칩
             StreamBuilder<int>(
               stream: context.read<ItemRepo>().watchCurrentQty(itemId),
               builder: (context, snap) {
@@ -337,6 +352,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 final String label = isEnough
                     ? '충분 (주문 $orderQty / 현재고 $stock)'
                     : '부족 $shortage개 (주문 $orderQty / 현재고 $stock)';
+
                 return Padding(
                   padding: const EdgeInsets.only(top: 6, bottom: 6),
                   child: ActionChip(
@@ -346,7 +362,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     onPressed: () async {
                       final workId = await ShortageResultScreen.show(
                         context,
-                        orderId: _order.id,
+                        orderId: o.id,
                         finishedItemId: itemId,
                         orderQty: orderQty,
                       );
@@ -356,7 +372,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           const SnackBar(content: Text('작업이 생성되었습니다.')),
                         );
                         await _reload();
-                        await _loadTimeline();
                       }
                     },
                   ),
@@ -364,18 +379,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               },
             ),
 
-            // 액션
+            // 출고 버튼
             Row(
               children: [
                 const SizedBox(width: 8),
                 FutureBuilder<bool>(
                   future: context.read<TxnRepo>().existsOutActual(
                     refType: 'order',
-                    refId: _order.id,
+                    refId: o.id,
                     itemId: itemId,
                   ),
                   builder: (context, snap) {
-                    final shipped = snap.data ?? false; // 이미 출고됨?
+                    final shipped = snap.data ?? false;
                     final loading = snap.connectionState == ConnectionState.waiting;
                     final disabled = shipped || loading;
 
@@ -386,16 +401,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       ),
                       label: Text(
                         shipped ? '출고 완료' : '주문 출고',
-                        style: TextStyle(
-                          color: shipped ? Colors.grey.shade700 : null,
-                        ),
+                        style: TextStyle(color: shipped ? Colors.grey.shade700 : null),
                       ),
                       onPressed: disabled
                           ? null
                           : () async {
                         try {
                           await inv.shipOrderLine(
-                            orderId: _order.id,
+                            orderId: o.id,
                             itemId: itemId,
                             qty: qty,
                           );
@@ -405,7 +418,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             const SnackBar(content: Text('출고가 처리되었어요.')),
                           );
 
-                          // ✅ 재출고 방지 위해 FutureBuilder 다시 평가
                           await _loadTimeline();
                           (context as Element).markNeedsBuild();
                         } catch (e) {
@@ -423,14 +435,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
             const SizedBox(height: 8),
 
-            // 🔹 관련 작업 리스트 (이 주문  이 아이템)
+            // 관련 작업 리스트
             StreamBuilder<List<Work>>(
-              stream: workRepo.watchWorksByOrderAndItem(_order.id, itemId),
+              stream: workRepo.watchWorksByOrderAndItem(o.id, itemId),
               builder: (context, snap) {
                 final list = snap.data ?? const [];
-                if (list.isEmpty) {
-                  return const SizedBox.shrink();
-                }
+                if (list.isEmpty) return const SizedBox.shrink();
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -449,29 +460,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           children: [
                             WorkRow(
                               w: w,
-                              onStart: (w.status == WorkStatus.planned)
-                                  ? () => inv.startWork(w.id)
-                                  : null,
-                              onDone: (w.status == WorkStatus.inProgress)
-                                  ? () => inv.completeWork(w.id)
-                                  : null,
+                              onStart: (w.status == WorkStatus.planned) ? () => inv.startWork(w.id) : null,
+                              onDone: (w.status == WorkStatus.inProgress) ? () => inv.completeWork(w.id) : null,
                               onTap: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) => WorkDetailScreen(work: w),
-                                  ),
+                                  MaterialPageRoute(builder: (_) => WorkDetailScreen(work: w)),
                                 );
                               },
                             ),
-                            ///입고기록
-                            const SizedBox(height: 6),
                             const SizedBox(height: 6),
                             _WorkTxnList(refWorkId: w.id),
-
-                            // 🔹 이 품목(아이템) 기준 출고 기록 (주문 한정)
                             const SizedBox(height: 6),
-                            _ItemTxnListByOrder(itemId: itemId, orderId: _order.id),
+                            _ItemTxnListByOrder(itemId: itemId, orderId: o.id),
                           ],
                         );
                       },
@@ -479,155 +480,162 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ],
                 );
               },
-            )
+            ),
           ],
         ),
       ),
     );
   }
+
   Future<void> _openStatusSheet() async {
-  // 취소 상태면 "복구"만, 아니면 진행중/완료/취소 제공
-  final actions = <_SheetAction>[
-  if (_order.isDeleted) _SheetAction.restore else ...[
-  if (_order.status == OrderStatus.done)
-  _SheetAction.toInProgress
-  else
-  _SheetAction.toDone,
-  _SheetAction.cancel,
-  ]
-  ];
+    final o = _order;
+    if (o == null) return;
 
-  final picked = await showModalBottomSheet<_SheetAction>(
-  context: context,
-  showDragHandle: true,
-  builder: (c) {
-  return SafeArea(
-  child: Column(
-  mainAxisSize: MainAxisSize.min,
-  children: [
-  const SizedBox(height: 4),
-  Padding(
-  padding: const EdgeInsets.symmetric(vertical: 8),
-  child: Text('상태 선택', style: Theme.of(c).textTheme.titleMedium),
-  ),
-  ...actions.map((a) {
-  final (icon, title, desc, color) = switch (a) {
-  _SheetAction.toInProgress => (Icons.play_arrow, '진행중', '작업/출고 등 처리 중 상태', Colors.blue),
-  _SheetAction.toDone       => (Icons.check_circle, '완료', '모든 출고가 끝난 상태', Colors.green),
-  _SheetAction.cancel       => (Icons.cancel, '취소', '주문을 소프트 삭제(복구 가능)', Colors.red),
-  _SheetAction.restore      => (Icons.settings_backup_restore, '취소 복구', '취소된 주문을 되살립니다', Colors.blueGrey),
-  };
-  return ListTile(
-  leading: Icon(icon, color: color),
-  title: Text(title, style: TextStyle(color: color.shade700)),
-  subtitle: Text(desc),
-  onTap: () => Navigator.pop(c, a),
-  );
-  }),
-  const SizedBox(height: 8),
-  ],
-  ),
-  );
-  },
-  );
+    final actions = <_SheetAction>[
+      if (o.isDeleted)
+        _SheetAction.restore
+      else ...[
+        if (o.status == OrderStatus.done) _SheetAction.toInProgress else _SheetAction.toDone,
+        _SheetAction.cancel,
+      ]
+    ];
 
-  if (!mounted || picked == null) return;
+    final picked = await showModalBottomSheet<_SheetAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('상태 선택', style: Theme.of(c).textTheme.titleMedium),
+              ),
+              ...actions.map((a) {
+                final (icon, title, desc, color) = switch (a) {
+                  _SheetAction.toInProgress => (Icons.play_arrow, '진행중', '작업/출고 등 처리 중 상태', Colors.blue),
+                  _SheetAction.toDone => (Icons.check_circle, '완료', '모든 출고가 끝난 상태', Colors.green),
+                  _SheetAction.cancel => (Icons.cancel, '취소', '주문을 소프트 삭제(복구 가능)', Colors.red),
+                  _SheetAction.restore => (Icons.settings_backup_restore, '취소 복구', '취소된 주문을 되살립니다', Colors.blueGrey),
+                };
+                return ListTile(
+                  leading: Icon(icon, color: color),
+                  title: Text(title, style: TextStyle(color: color.shade700)),
+                  subtitle: Text(desc),
+                  onTap: () => Navigator.pop(c, a),
+                );
+              }),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
 
-  // 선택 후 확인 모달
-  String from = _overallLabel(_order);
-  String to = switch (picked) {
-  _SheetAction.toInProgress => _statusLabel(OrderStatus.draft),
-  _SheetAction.toDone => _statusLabel(OrderStatus.done),
-  _SheetAction.cancel => '취소됨',
-  _SheetAction.restore => _statusLabel(_order.status), // 복구는 현재 상태 라벨 유지
-  };
+    if (!mounted || picked == null) return;
 
-  final ok = await showDialog<bool>(
-  context: context,
-  builder: (c) => AlertDialog(
-  title: const Text('확인'),
-  content: Text('“$from” → “$to”로 변경할까요?'),
-  actions: [
-  TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소')),
-  FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('변경')),
-  ],
-  ),
-  );
-  if (ok != true) return;
+    final from = _overallLabel(o);
+    final to = switch (picked) {
+      _SheetAction.toInProgress => _statusLabel(OrderStatus.draft),
+      _SheetAction.toDone => _statusLabel(OrderStatus.done),
+      _SheetAction.cancel => '취소됨',
+      _SheetAction.restore => _statusLabel(o.status),
+    };
 
-  // 실행
-  switch (picked) {
-  case _SheetAction.toInProgress:
-  await _setStatus(OrderStatus.draft); // draft = 화면상 '진행중'
-  break;
-  case _SheetAction.toDone:
-  await _setStatus(OrderStatus.done);
-  break;
-  case _SheetAction.cancel:
-  await _cancelOrder();
-  break;
-  case _SheetAction.restore:
-  await _restoreOrder();
-  break;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('확인'),
+        content: Text('“$from” → “$to”로 변경할까요?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('변경')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    switch (picked) {
+      case _SheetAction.toInProgress:
+        await _setStatus(OrderStatus.draft);
+        break;
+      case _SheetAction.toDone:
+        await _setStatus(OrderStatus.done);
+        break;
+      case _SheetAction.cancel:
+        await _cancelOrder();
+        break;
+      case _SheetAction.restore:
+        await _restoreOrder();
+        break;
+    }
   }
-  }
 
-// 상태 변경 공통
   Future<void> _setStatus(OrderStatus status) async {
-  if (_busy || _order.isDeleted) return;
-  setState(() => _busy = true);
-  try {
-  final repo = context.read<OrderRepo>();
-  await repo.updateOrderStatus(_order.id, status);
-  if (!mounted) return;
-  setState(() => _order = _order.copyWith(status: status));
-  ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text('상태를 “${_statusLabel(status)}”로 변경했어요.')));
-  await _loadTimeline();
-  } catch (e) {
-  if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('상태 변경 실패: $e')));
-  } finally {
-  if (mounted) setState(() => _busy = false);
-  }
+    final o = _order;
+    if (o == null) return;
+    if (_busy || o.isDeleted) return;
+
+    setState(() => _busy = true);
+    try {
+      final repo = context.read<OrderRepo>();
+      await repo.updateOrderStatus(o.id, status);
+      if (!mounted) return;
+
+      setState(() => _order = o.copyWith(status: status));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('상태를 “${_statusLabel(status)}”로 변경했어요.')),
+      );
+      await _loadTimeline();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('상태 변경 실패: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
-// 소프트 삭제(취소)
   Future<void> _cancelOrder() async {
-  if (_busy || _order.isDeleted) return;
-  setState(() => _busy = true);
-  try {
-  // ❗ 프로젝트에 맞게 선택: OrderRepo or InventoryService
-  await context.read<OrderRepo>().softDeleteOrder(_order.id);
-  // await context.read<InventoryService>().deleteOrderCascade(_order.id, hard: false);
-  if (!mounted) return;
-  setState(() => _order = _order.copyWith(isDeleted: true, deletedAt: DateTime.now()));
-  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('주문을 취소했어요.')));
-  } catch (e) {
-  if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('취소 실패: $e')));
-  } finally {
-  if (mounted) setState(() => _busy = false);
-  }
+    final o = _order;
+    if (o == null) return;
+    if (_busy || o.isDeleted) return;
+
+    setState(() => _busy = true);
+    try {
+      await context.read<OrderRepo>().softDeleteOrder(o.id);
+      if (!mounted) return;
+
+      setState(() => _order = o.copyWith(isDeleted: true, deletedAt: DateTime.now()));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('주문을 취소했어요.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('취소 실패: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
-// 취소 복구
   Future<void> _restoreOrder() async {
-  if (_busy || !_order.isDeleted) return;
-  setState(() => _busy = true);
-  try {
-  await context.read<OrderRepo>().restoreOrder(_order.id);
-  if (!mounted) return;
-  setState(() => _order = _order.copyWith(isDeleted: false, deletedAt: null));
-  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('주문을 복구했어요.')));
-  } catch (e) {
-  if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('복구 실패: $e')));
-  } finally {
-  if (mounted) setState(() => _busy = false);
-  }
-  }
+    final o = _order;
+    if (o == null) return;
+    if (_busy || !o.isDeleted) return;
 
+    setState(() => _busy = true);
+    try {
+      await context.read<OrderRepo>().restoreOrder(o.id);
+      if (!mounted) return;
+
+      setState(() => _order = o.copyWith(isDeleted: false, deletedAt: null));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('주문을 복구했어요.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('복구 실패: $e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 }
 
 class _WorkTxnList extends StatelessWidget {
@@ -652,7 +660,7 @@ class _WorkTxnList extends StatelessWidget {
             child: Text('기록 없음', style: Theme.of(context).textTheme.bodySmall),
           );
         }
-        // ✅ 시간 오름차순 + 최대 5개
+
         final show = [...list]..sort((a, b) => a.ts.compareTo(b.ts));
         final limited = show.take(5).toList();
 
@@ -668,18 +676,15 @@ class _WorkTxnList extends StatelessWidget {
                 final isIn = t.type == TxnType.in_;
                 final sign = isIn ? '+' : '-';
 
-                // 칩 색상 결정
                 Color color;
                 if (isIn && t.status == TxnStatus.planned) {
-                  // 입고/예약 → 회색 칩
                   color = Colors.grey;
                 } else if (isIn) {
-                  // 입고/실거래 → 초록
                   color = Colors.green;
                 } else {
-                  // 출고(예약/실거래) → 빨강
                   color = Colors.red;
                 }
+
                 final status = (t.status == TxnStatus.actual) ? '실제' : '예약';
                 final ts = _fmtTs(t.ts);
                 return Row(
@@ -713,9 +718,7 @@ class _WorkTxnList extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {
-                    // TODO: 필요하면 상세 화면으로 이동 (ref=workId 필터)
-                  },
+                  onPressed: () {},
                   child: const Text('더보기'),
                 ),
               ),
@@ -725,17 +728,8 @@ class _WorkTxnList extends StatelessWidget {
       },
     );
   }
-
-  String _fmtTs(DateTime d) {
-    final mm = d.month.toString().padLeft(2, '0');
-    final dd = d.day.toString().padLeft(2, '0');
-    final hh = d.hour.toString().padLeft(2, '0');
-    final mi = d.minute.toString().padLeft(2, '0');
-    return '${d.year}-$mm-$dd $hh:$mi';
-  }
 }
 
-/// ✅ 아이템+주문 기준 입출고 리스트 (refType='order' 로 좁혀서)
 class _ItemTxnListByOrder extends StatelessWidget {
   final String itemId;
   final String orderId;
@@ -748,7 +742,7 @@ class _ItemTxnListByOrder extends StatelessWidget {
       stream: txns.watchTxnsByRef(
         refType: 'order',
         refId: orderId,
-        itemId: itemId, // ← 있으면 이 품목만
+        itemId: itemId,
       ),
       builder: (context, snap) {
         final list = (snap.data ?? const []);
@@ -764,9 +758,8 @@ class _ItemTxnListByOrder extends StatelessWidget {
           );
         }
 
-        // 버튼 누른 순서대로
         final show = [...list]..sort((a, b) => b.ts.compareTo(a.ts));
-        final visibleCount = show.length > 5 ? 5 : show.length; // clamp의 num → int 문제 회피
+        final visibleCount = show.length > 5 ? 5 : show.length;
 
         return Column(
           children: [
@@ -812,11 +805,7 @@ class _ItemTxnListByOrder extends StatelessWidget {
             if (list.length > 5)
               Align(
                 alignment: Alignment.centerRight,
-                child: TextButton(
-                    onPressed: () {
-                      // TODO: 필요하면 아이템+주문 기준 상세 화면으로 이동
-                    },
-                    child: const Text('더보기')),
+                child: TextButton(onPressed: () {}, child: const Text('더보기')),
               ),
           ],
         );
@@ -835,7 +824,6 @@ String _fmtTs(DateTime d) {
 
 /// --- UI 전용 헬퍼: 저장값은 그대로 두고 라벨만 바꿔서 보여주기 ---
 String _statusLabel(OrderStatus s) {
-  // 내부 값은 draft지만, 화면에는 "진행중"으로만 표시
   switch (s) {
     case OrderStatus.draft:
       return '진행중';
@@ -853,11 +841,12 @@ MaterialColor _statusColor(OrderStatus s) {
     case OrderStatus.done:
       return Colors.green;
     case OrderStatus.inProgress:
-    case OrderStatus.draft: // draft도 진행중 컬러로
+    case OrderStatus.draft:
       return Colors.blue;
     case OrderStatus.planned:
       return Colors.amber;
   }
 }
+
 String _overallLabel(Order o) => o.isDeleted ? '취소됨' : _statusLabel(o.status);
 MaterialColor _overallColor(Order o) => o.isDeleted ? Colors.red : _statusColor(o.status);

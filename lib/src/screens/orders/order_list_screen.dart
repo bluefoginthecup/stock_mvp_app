@@ -66,7 +66,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => OrderDetailScreen(order: o),
+                        builder: (_) => OrderDetailScreen(orderId: o.id),
                       ),
                     );
                   },
@@ -78,7 +78,7 @@ class _OrderListScreenState extends State<OrderListScreen> {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => OrderDetailScreen(order: o),
+                        builder: (_) => OrderDetailScreen(orderId: o.id),
                       ),
                     );
                   },
