@@ -3403,6 +3403,14 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
   late final GeneratedColumn<int> qty = GeneratedColumn<int>(
       'qty', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _doneQtyMeta =
+      const VerificationMeta('doneQty');
+  @override
+  late final GeneratedColumn<int> doneQty = GeneratedColumn<int>(
+      'done_qty', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _orderIdMeta =
       const VerificationMeta('orderId');
   @override
@@ -3468,6 +3476,7 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
         id,
         itemId,
         qty,
+        doneQty,
         orderId,
         status,
         createdAt,
@@ -3504,6 +3513,10 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
           _qtyMeta, qty.isAcceptableOrUnknown(data['qty']!, _qtyMeta));
     } else if (isInserting) {
       context.missing(_qtyMeta);
+    }
+    if (data.containsKey('done_qty')) {
+      context.handle(_doneQtyMeta,
+          doneQty.isAcceptableOrUnknown(data['done_qty']!, _doneQtyMeta));
     }
     if (data.containsKey('order_id')) {
       context.handle(_orderIdMeta,
@@ -3562,6 +3575,8 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
           .read(DriftSqlType.string, data['${effectivePrefix}item_id'])!,
       qty: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}qty'])!,
+      doneQty: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}done_qty'])!,
       orderId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}order_id']),
       status: attachedDatabase.typeMapping
@@ -3593,6 +3608,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
   final String id;
   final String itemId;
   final int qty;
+  final int doneQty;
   final String? orderId;
   final String status;
   final String createdAt;
@@ -3606,6 +3622,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       {required this.id,
       required this.itemId,
       required this.qty,
+      required this.doneQty,
       this.orderId,
       required this.status,
       required this.createdAt,
@@ -3621,6 +3638,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
     map['id'] = Variable<String>(id);
     map['item_id'] = Variable<String>(itemId);
     map['qty'] = Variable<int>(qty);
+    map['done_qty'] = Variable<int>(doneQty);
     if (!nullToAbsent || orderId != null) {
       map['order_id'] = Variable<String>(orderId);
     }
@@ -3650,6 +3668,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       id: Value(id),
       itemId: Value(itemId),
       qty: Value(qty),
+      doneQty: Value(doneQty),
       orderId: orderId == null && nullToAbsent
           ? const Value.absent()
           : Value(orderId),
@@ -3681,6 +3700,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       id: serializer.fromJson<String>(json['id']),
       itemId: serializer.fromJson<String>(json['itemId']),
       qty: serializer.fromJson<int>(json['qty']),
+      doneQty: serializer.fromJson<int>(json['doneQty']),
       orderId: serializer.fromJson<String?>(json['orderId']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
@@ -3699,6 +3719,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       'id': serializer.toJson<String>(id),
       'itemId': serializer.toJson<String>(itemId),
       'qty': serializer.toJson<int>(qty),
+      'doneQty': serializer.toJson<int>(doneQty),
       'orderId': serializer.toJson<String?>(orderId),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<String>(createdAt),
@@ -3715,6 +3736,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           {String? id,
           String? itemId,
           int? qty,
+          int? doneQty,
           Value<String?> orderId = const Value.absent(),
           String? status,
           String? createdAt,
@@ -3728,6 +3750,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
         id: id ?? this.id,
         itemId: itemId ?? this.itemId,
         qty: qty ?? this.qty,
+        doneQty: doneQty ?? this.doneQty,
         orderId: orderId.present ? orderId.value : this.orderId,
         status: status ?? this.status,
         createdAt: createdAt ?? this.createdAt,
@@ -3743,6 +3766,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       id: data.id.present ? data.id.value : this.id,
       itemId: data.itemId.present ? data.itemId.value : this.itemId,
       qty: data.qty.present ? data.qty.value : this.qty,
+      doneQty: data.doneQty.present ? data.doneQty.value : this.doneQty,
       orderId: data.orderId.present ? data.orderId.value : this.orderId,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -3762,6 +3786,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('qty: $qty, ')
+          ..write('doneQty: $doneQty, ')
           ..write('orderId: $orderId, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
@@ -3776,8 +3801,20 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
   }
 
   @override
-  int get hashCode => Object.hash(id, itemId, qty, orderId, status, createdAt,
-      updatedAt, sourceKey, isDeleted, deletedAt, startedAt, finishedAt);
+  int get hashCode => Object.hash(
+      id,
+      itemId,
+      qty,
+      doneQty,
+      orderId,
+      status,
+      createdAt,
+      updatedAt,
+      sourceKey,
+      isDeleted,
+      deletedAt,
+      startedAt,
+      finishedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3785,6 +3822,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           other.id == this.id &&
           other.itemId == this.itemId &&
           other.qty == this.qty &&
+          other.doneQty == this.doneQty &&
           other.orderId == this.orderId &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
@@ -3800,6 +3838,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
   final Value<String> id;
   final Value<String> itemId;
   final Value<int> qty;
+  final Value<int> doneQty;
   final Value<String?> orderId;
   final Value<String> status;
   final Value<String> createdAt;
@@ -3814,6 +3853,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     this.id = const Value.absent(),
     this.itemId = const Value.absent(),
     this.qty = const Value.absent(),
+    this.doneQty = const Value.absent(),
     this.orderId = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3829,6 +3869,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     required String id,
     required String itemId,
     required int qty,
+    this.doneQty = const Value.absent(),
     this.orderId = const Value.absent(),
     required String status,
     required String createdAt,
@@ -3848,6 +3889,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     Expression<String>? id,
     Expression<String>? itemId,
     Expression<int>? qty,
+    Expression<int>? doneQty,
     Expression<String>? orderId,
     Expression<String>? status,
     Expression<String>? createdAt,
@@ -3863,6 +3905,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       if (id != null) 'id': id,
       if (itemId != null) 'item_id': itemId,
       if (qty != null) 'qty': qty,
+      if (doneQty != null) 'done_qty': doneQty,
       if (orderId != null) 'order_id': orderId,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
@@ -3880,6 +3923,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       {Value<String>? id,
       Value<String>? itemId,
       Value<int>? qty,
+      Value<int>? doneQty,
       Value<String?>? orderId,
       Value<String>? status,
       Value<String>? createdAt,
@@ -3894,6 +3938,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
       qty: qty ?? this.qty,
+      doneQty: doneQty ?? this.doneQty,
       orderId: orderId ?? this.orderId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -3918,6 +3963,9 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     }
     if (qty.present) {
       map['qty'] = Variable<int>(qty.value);
+    }
+    if (doneQty.present) {
+      map['done_qty'] = Variable<int>(doneQty.value);
     }
     if (orderId.present) {
       map['order_id'] = Variable<String>(orderId.value);
@@ -3958,6 +4006,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('qty: $qty, ')
+          ..write('doneQty: $doneQty, ')
           ..write('orderId: $orderId, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
@@ -9455,6 +9504,7 @@ typedef $$WorksTableCreateCompanionBuilder = WorksCompanion Function({
   required String id,
   required String itemId,
   required int qty,
+  Value<int> doneQty,
   Value<String?> orderId,
   required String status,
   required String createdAt,
@@ -9470,6 +9520,7 @@ typedef $$WorksTableUpdateCompanionBuilder = WorksCompanion Function({
   Value<String> id,
   Value<String> itemId,
   Value<int> qty,
+  Value<int> doneQty,
   Value<String?> orderId,
   Value<String> status,
   Value<String> createdAt,
@@ -9528,6 +9579,9 @@ class $$WorksTableFilterComposer extends Composer<_$AppDatabase, $WorksTable> {
 
   ColumnFilters<int> get qty => $composableBuilder(
       column: $table.qty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get doneQty => $composableBuilder(
+      column: $table.doneQty, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
@@ -9609,6 +9663,9 @@ class $$WorksTableOrderingComposer
   ColumnOrderings<int> get qty => $composableBuilder(
       column: $table.qty, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get doneQty => $composableBuilder(
+      column: $table.doneQty, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
 
@@ -9688,6 +9745,9 @@ class $$WorksTableAnnotationComposer
 
   GeneratedColumn<int> get qty =>
       $composableBuilder(column: $table.qty, builder: (column) => column);
+
+  GeneratedColumn<int> get doneQty =>
+      $composableBuilder(column: $table.doneQty, builder: (column) => column);
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -9780,6 +9840,7 @@ class $$WorksTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> itemId = const Value.absent(),
             Value<int> qty = const Value.absent(),
+            Value<int> doneQty = const Value.absent(),
             Value<String?> orderId = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> createdAt = const Value.absent(),
@@ -9795,6 +9856,7 @@ class $$WorksTableTableManager extends RootTableManager<
             id: id,
             itemId: itemId,
             qty: qty,
+            doneQty: doneQty,
             orderId: orderId,
             status: status,
             createdAt: createdAt,
@@ -9810,6 +9872,7 @@ class $$WorksTableTableManager extends RootTableManager<
             required String id,
             required String itemId,
             required int qty,
+            Value<int> doneQty = const Value.absent(),
             Value<String?> orderId = const Value.absent(),
             required String status,
             required String createdAt,
@@ -9825,6 +9888,7 @@ class $$WorksTableTableManager extends RootTableManager<
             id: id,
             itemId: itemId,
             qty: qty,
+            doneQty: doneQty,
             orderId: orderId,
             status: status,
             createdAt: createdAt,

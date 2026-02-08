@@ -254,6 +254,15 @@ abstract class WorkRepo {
 
   /// 상태만 변경(재고 반영 없음). 예) planned → inProgress, 또는 취소
   Future<void> updateWorkStatus(String id, WorkStatus status);
+  Future<void> updateWorkProgress({
+    required String id,
+    required WorkStatus status,
+    DateTime? startedAt,
+    DateTime? finishedAt,
+  });
+  Future<void> updateWorkDoneQty(String id, int doneQty);
+  Future<void> addWorkDoneQty(String id, int delta);
+
 
   /// 선택: 편의 메서드
   Future<void> cancelWork(String id) => updateWorkStatus(id, WorkStatus.canceled);

@@ -7,7 +7,8 @@ class Work {
   final String id;        // unique id
   final String itemId;    // item to produce (finished/semi)
   final int qty;          // planned quantity (positive)
-  final String? orderId;   // originating sales order id
+  final int doneQty;      // ✅ cumulative completed quantity (>= 0, can exceed qty)
+  final String? orderId;  // originating sales order id
   final WorkStatus status;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -21,44 +22,51 @@ class Work {
     required this.id,
     required this.itemId,
     required this.qty,
+    this.doneQty = 0,            // ✅ default 0
     required this.orderId,
     this.status = WorkStatus.planned,
-      this.isDeleted = false,
+    this.isDeleted = false,
     DateTime? createdAt,
     this.sourceKey,
     this.updatedAt,
     this.startedAt,        // ✅
     this.finishedAt,       // ✅
   })  : createdAt = createdAt ?? DateTime.now(),
-        assert(qty > 0, 'qty must be > 0');
+        assert(qty > 0, 'qty must be > 0'),
+        assert(doneQty >= 0, 'doneQty must be >= 0');
 
+  // ✅ convenience
+  int get remainingQty => (qty - doneQty) < 0 ? 0 : (qty - doneQty);
+  bool get isFullyDone => doneQty >= qty;
+  int get overProducedQty => doneQty > qty ? (doneQty - qty) : 0;
 
   Work copyWith({
     String? id,
     String? itemId,
     int? qty,
+    int? doneQty,              // ✅
     String? orderId,
     WorkStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? sourceKey,
-  bool? isDeleted,
-    DateTime? startedAt,     // ✅
-    DateTime? finishedAt,    // ✅
+    bool? isDeleted,
+    DateTime? startedAt,
+    DateTime? finishedAt,
   }) {
     return Work(
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
       qty: qty ?? this.qty,
+      doneQty: doneQty ?? this.doneQty,
       orderId: orderId ?? this.orderId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       sourceKey: sourceKey ?? this.sourceKey,
-      startedAt: startedAt ?? this.startedAt,     // ✅
-      finishedAt: finishedAt ?? this.finishedAt,  // ✅
-
+      startedAt: startedAt ?? this.startedAt,
+      finishedAt: finishedAt ?? this.finishedAt,
     );
   }
 
@@ -69,13 +77,14 @@ class Work {
       id: json['id'] as String,
       itemId: json['itemId'] as String,
       qty: (json['qty'] as num).toInt(),
+      doneQty: ((json['doneQty'] ?? 0) as num).toInt(), // ✅ backward compatible
       orderId: json['orderId'] as String,
-      status: WorkStatus.values.firstWhere((e) => e.name == (json['status'] as String)),
+      status: WorkStatus.values
+          .firstWhere((e) => e.name == (json['status'] as String)),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: (json['updatedAt'] as String?) != null
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
-      // ✅ 직렬화 누락 보완
       isDeleted: json['isDeleted'] == true,
       sourceKey: json['sourceKey'] as String?,
       startedAt: (json['startedAt'] as String?) != null
@@ -88,21 +97,21 @@ class Work {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'itemId': itemId,
-        'qty': qty,
-        'orderId': orderId,
-        'status': status.name,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt?.toIso8601String(),
-    'isDeleted': isDeleted,          // ✅
-    'sourceKey': sourceKey,          // ✅
-    'startedAt': startedAt?.toIso8601String(),   // ✅
-    'finishedAt': finishedAt?.toIso8601String(), // ✅
-
+    'id': id,
+    'itemId': itemId,
+    'qty': qty,
+    'doneQty': doneQty, // ✅
+    'orderId': orderId,
+    'status': status.name,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt?.toIso8601String(),
+    'isDeleted': isDeleted,
+    'sourceKey': sourceKey,
+    'startedAt': startedAt?.toIso8601String(),
+    'finishedAt': finishedAt?.toIso8601String(),
   };
 
   @override
   String toString() =>
-      'Work(id: $id, itemId: $itemId, qty: $qty, orderId: $orderId, status: ${status.name})';
+      'Work(id: $id, itemId: $itemId, qty: $qty, doneQty: $doneQty, orderId: $orderId, status: ${status.name})';
 }

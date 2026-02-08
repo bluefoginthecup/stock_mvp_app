@@ -21,7 +21,6 @@ import 'widgets/stock_multi_select_bar.dart';
 import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
 
-import '../../db/app_database.dart';
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
 

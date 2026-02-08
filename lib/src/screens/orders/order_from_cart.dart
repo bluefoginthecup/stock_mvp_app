@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../ui/common/ui.dart';
 import '../../models/order.dart';
 import '../../repos/repo_interfaces.dart';
-import '../../providers/cart_manager.dart';
 import '../../models/cart_item.dart';
 import 'order_form_screen.dart';
 

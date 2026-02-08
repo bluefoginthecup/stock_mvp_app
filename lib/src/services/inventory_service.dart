@@ -52,41 +52,107 @@ class InventoryService {
         return int.tryParse('$v') ?? 0;
       }
 
+
   Future<void> completeWork(String workId) async {
     final w = await works.getWorkById(workId);
     if (w == null) return;
-    if (!canTransitionWork(w.status, WorkStatus.done)) return;
 
-    final intQty = _asIntQty(w.qty);
-    if (intQty <= 0) return;
+    final remaining = w.qty - w.doneQty;
+    if (remaining <= 0) {
+      // 이미 전량(또는 초과) 달성 상태면 굳이 또 처리 안 함
+      await works.updateWorkStatus(workId, WorkStatus.done);
+      return;
+    }
 
-    print('[WORK] completeWork start workId=$workId');
-    print('[WORK] w.itemId=${w.itemId} qty=${w.qty} intQty=$intQty status=${w.status}');
+    await completeWorkPartial(workId: workId, madeQty: remaining);
+  }
 
-    // ✅ BOM 소모 (raw/sub/semi 폭발 포함)
-    print('[WORK] consumeBom begin parent=${w.itemId} qty=$intQty');
-    await _consumeBomForWork(
+
+  Future<void> completeWorkPartial({
+    required String workId,
+    required int madeQty,
+  }) async {
+    final w = await works.getWorkById(workId);
+    if (w == null) return;
+
+    if (madeQty <= 0) return;
+    if (w.isDeleted) return;
+    if (w.status == WorkStatus.canceled) return;
+
+    // 필요하면 상태 전이 규칙 적용(너희 canTransitionWork)
+    // 부분완료는 done이 아니므로 여기선 done 체크만 마지막에
+    // if (!canTransitionWork(w.status, WorkStatus.inProgress)) return;
+
+    print('[WORK] completeWorkPartial start workId=$workId madeQty=$madeQty');
+    print('[WORK] itemId=${w.itemId} planned=${w.qty} done=${w.doneQty} status=${w.status}');
+
+    // ✅ 1) semi/sub만 차감 (raw 금지, 폭발 금지)
+    await _consumeFinishedSemiSubOnly(
       workId: w.id,
-      parentItemId: w.itemId,
-      parentQty: intQty,
+      finishedItemId: w.itemId,
+      madeQty: madeQty,
     );
 
-    print('[WORK] consumeBom done');
-
-    // ✅ 완제품 입고
-    print('[WORK] addInActual begin itemId=${w.itemId} qty=$intQty');
+    // ✅ 2) 완제품 입고
     await txns.addInActual(
       itemId: w.itemId,
-      qty: intQty,
+      qty: madeQty,
       refType: 'work',
       refId: w.id,
-      note: 'work actual in',
+      note: 'work actual in (partial)',
     );
 
-    print('[WORK] addInActual done');
+    // ✅ 3) doneQty 누적 저장
+    final newDoneQty = w.doneQty + madeQty;
+    await works.updateWorkDoneQty(workId, newDoneQty);
 
-    await works.updateWorkStatus(workId, WorkStatus.done);
+    // ✅ 4) 상태/타임스탬프 갱신
+    final now = DateTime.now();
+
+    if (newDoneQty >= w.qty) {
+      // 전량 달성(또는 초과) → done
+      await works.updateWorkProgress(
+        id: workId,
+        status: WorkStatus.done,
+        startedAt: w.startedAt ?? now,
+        finishedAt: now,
+      );
+
+    } else {
+      await works.updateWorkProgress(
+        id: workId,
+        status: WorkStatus.inProgress, // enum에 없으면 WorkStatus.planned
+        startedAt: w.startedAt ?? now,
+      );
+
+    }
   }
+
+  Future<void> _consumeFinishedSemiSubOnly({
+    required String workId,
+    required String finishedItemId,
+    required int madeQty,
+  }) async {
+    final rows = await boms.listBom(finishedItemId);
+
+    final comps = rows.where((r) =>
+    r.root == BomRoot.finished &&
+        (r.kind == BomKind.semi || r.kind == BomKind.sub));
+
+    for (final r in comps) {
+      final needInt = _asIntQty(r.needFor(madeQty));
+      if (needInt <= 0) continue;
+
+      await txns.addOutActual(
+        itemId: r.componentItemId,
+        qty: needInt,
+        refType: 'work',
+        refId: workId,
+        note: 'consume ${r.kind.name} for finished (partial)',
+      );
+    }
+  }
+
 
 
   /// 취소

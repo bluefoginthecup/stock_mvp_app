@@ -19,6 +19,7 @@ Future<String> createWorkForOrder({
     id: id,
     itemId: itemId,
     qty: qty,
+    doneQty: 0,
     orderId: orderId,
     status: WorkStatus.planned,
     createdAt: now,
@@ -82,6 +83,59 @@ Future<void> updateWorkStatus(String id, WorkStatus status) async {
     ),
   );
 }
+@override
+Future<void> updateWorkDoneQty(String id, int doneQty) async {
+  assert(doneQty >= 0);
+  await (db.update(db.works)..where((t) => t.id.equals(id))).write(
+    WorksCompanion(
+      doneQty: Value(doneQty),
+      updatedAt: Value(DateTime.now().toIso8601String()),
+    ),
+  );
+}
+
+
+@override
+Future<void> addWorkDoneQty(String id, int delta) async {
+  assert(delta > 0);
+
+  final row = await (db.select(db.works)..where((t) => t.id.equals(id))).getSingleOrNull();
+  if (row == null) return;
+
+  final next = row.doneQty + delta;
+
+  await (db.update(db.works)..where((t) => t.id.equals(id))).write(
+    WorksCompanion(
+      doneQty: Value(next),
+      updatedAt: Value(DateTime.now().toIso8601String()),
+    ),
+  );
+}
+
+
+@override
+Future<void> updateWorkProgress({
+  required String id,
+  required WorkStatus status,
+  DateTime? startedAt,
+  DateTime? finishedAt,
+}) async {
+  final nowIso = DateTime.now().toIso8601String();
+
+  await (db.update(db.works)..where((t) => t.id.equals(id))).write(
+    WorksCompanion(
+      status: Value(status.name),
+      updatedAt: Value(nowIso),
+      startedAt: startedAt != null
+          ? Value(startedAt.toIso8601String())
+          : const Value.absent(),
+      finishedAt: finishedAt != null
+          ? Value(finishedAt.toIso8601String())
+          : const Value.absent(),
+    ),
+  );
+}
+
 
 @override
 Future<void> cancelWork(String id) => updateWorkStatus(id, WorkStatus.canceled);

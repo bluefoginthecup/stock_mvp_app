@@ -221,6 +221,11 @@ class Works extends Table {
       text().references(Items, #id, onDelete: KeyAction.restrict)();
   IntColumn get qty => integer()(); // >0
 
+  // ✅ 누적 완료 수량 (초과 생산 가능)
+  IntColumn get doneQty =>
+      integer().withDefault(const Constant(0))(); // >= 0
+
+
   TextColumn get orderId =>
       text().nullable().references(Orders, #id, onDelete: KeyAction.setNull)();
 
@@ -369,7 +374,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5; // ⬅️ 4에서 5로 올림
+  int get schemaVersion => 6; // ⬅️ 4에서 5로 올림
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -454,6 +459,14 @@ class AppDatabase extends _$AppDatabase {
           ],
         ));
       }
+
+
+      // ✅ v5 → v6: Works.doneQty 추가
+      if (from < 6) {
+        await m.addColumn(works, works.doneQty);
+      }
+
+
     },
   );
 }
@@ -714,6 +727,7 @@ extension WorkRowMapping on WorkRow {
     id: id,
     itemId: itemId,
     qty: qty,
+    doneQty: doneQty, // ✅ 추가
     orderId: orderId,
     status: WorkStatus.values.firstWhere(
           (e) => e.name == status,
@@ -723,6 +737,8 @@ extension WorkRowMapping on WorkRow {
     updatedAt: updatedAt != null ? DateTime.parse(updatedAt!) : null,
     isDeleted: isDeleted,
     sourceKey: sourceKey,
+    startedAt: startedAt != null ? DateTime.parse(startedAt!) : null,   // ✅ 보완
+    finishedAt: finishedAt != null ? DateTime.parse(finishedAt!) : null, // ✅ 보완
   );
 }
 
@@ -737,6 +753,8 @@ extension WorkToCompanion on Work {
     updatedAt: Value(updatedAt?.toIso8601String()),
     isDeleted: Value(isDeleted),
     sourceKey: Value(sourceKey),
+    startedAt: Value(startedAt?.toIso8601String()),   // ✅ 보완
+    finishedAt: Value(finishedAt?.toIso8601String()),
   );
 }
 
