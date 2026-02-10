@@ -67,6 +67,12 @@ Stream<List<Work>> watchAllWorks() {
 }
 
 @override
+Stream<Work?> watchWorkById(String id) {
+  final q = (db.select(db.works)..where((t) => t.id.equals(id)));
+  return q.watchSingleOrNull().map((row) => row?.toDomain());
+}
+
+@override
 Future<void> updateWork(Work w) async {
   await (db.update(db.works)..where((t) => t.id.equals(w.id))).write(w.toCompanion());
 }

@@ -240,6 +240,7 @@ abstract class BomRepo {
 abstract class WorkRepo {
   Future<String> createWork(Work w);
   Future<Work?> getWorkById(String id);
+  Stream<Work?> watchWorkById(String id);
   Stream<List<Work>> watchWorksByOrderAndItem(String orderId, String itemId);
   Stream<List<Work>> watchAllWorks();
   Future<void> updateWork(Work w);

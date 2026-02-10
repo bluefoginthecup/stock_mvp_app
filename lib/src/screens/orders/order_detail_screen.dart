@@ -19,6 +19,7 @@ import '../../models/types.dart';
 import '../works/widgets/work_row.dart';
 import '../works/work_detail_view.dart';
 import '../works/work_detail_screen.dart';
+import '../works/work_action_view.dart';
 
 import '../../services/inventory_service.dart';
 import '../../models/txn.dart'; // ✅ Txn, TxnType, TxnStatus
@@ -421,7 +422,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           );
 
                           await _loadTimeline();
-                          (context as Element).markNeedsBuild();
+                          if (mounted) setState(() {});
                         } catch (e) {
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -460,34 +461,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            WorkRow(
-                              w: w,
-                              onStart: (w.status == WorkStatus.planned) ? () => inv.startWork(w.id) : null,
-                              onDone:  (w.status == WorkStatus.inProgress) ? () => inv.completeWork(w.id) : null,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => WorkDetailScreen(work: w), // wrapper
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 8),
-
-// ✅ 여기서 바로 “작업상세(부분완료/진행률)”를 끼워넣는다
-                            WorkDetailView(
+                            WorkActionView(
                               workId: w.id,
-                              embedded: true, // ✅ AppBar/상태버튼 같은 화면전용 숨김
+                              embedded: true,
                             ),
-
                             const SizedBox(height: 8),
 
 // 기존 입출고 기록(원하면 WorkDetailView 아래로 정렬)
                             _WorkTxnList(refWorkId: w.id),
-                            const SizedBox(height: 6),
-                            _ItemTxnListByOrder(itemId: itemId, orderId: o.id),
-
                             const SizedBox(height: 6),
                             _ItemTxnListByOrder(itemId: itemId, orderId: o.id),
                           ],
