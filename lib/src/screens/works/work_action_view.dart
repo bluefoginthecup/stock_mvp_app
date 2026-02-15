@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/work.dart';
@@ -8,6 +7,8 @@ import '../../repos/repo_interfaces.dart';
 import '../../services/inventory_service.dart';
 import '../../utils/item_presentation.dart';
 import '../../ui/common/ui.dart';
+import '../works/work_detail_screen.dart';
+import '../works/work_edit_sheet.dart';
 
 class WorkActionView extends StatelessWidget {
   final String workId;
@@ -23,7 +24,12 @@ class WorkActionView extends StatelessWidget {
       stream: workRepo.watchWorkById(workId),
       builder: (context, snap) {
         final w = snap.data;
-        if (w == null) return const SizedBox.shrink();
+        if (w == null) {
+          return const SizedBox(
+            height: 120,
+            child: Center(child: Text('작업 로딩 중…')),
+          );
+        }
 
         final remaining = math.max(0, w.qty - w.doneQty);
         final over = math.max(0, w.doneQty - w.qty);
@@ -91,8 +97,12 @@ class WorkActionView extends StatelessWidget {
               leading: const Icon(Icons.open_in_new),
               title: const Text('작업 상세'),
               onTap: () {
-                Navigator.pop(ctx);
-                // TODO: WorkDetailScreen으로 push (workId 기반)
+                Navigator.pop(ctx); // bottom sheet 닫기
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => WorkDetailScreen(work: w),
+                  ),
+                );
               },
             ),
             ListTile(
@@ -100,16 +110,51 @@ class WorkActionView extends StatelessWidget {
               title: const Text('작업 편집'),
               onTap: () {
                 Navigator.pop(ctx);
-                // TODO: 편집 다이얼로그/화면
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  showDragHandle: true,
+                  builder: (_) => WorkEditSheet(workId: w.id),
+                );
               },
+
+
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
               title: const Text('작업 삭제', style: TextStyle(color: Colors.red)),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(ctx);
-                // TODO: 삭제 confirm
+
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('작업 삭제'),
+                    content: const Text('이 작업을 삭제할까요?\n(완료/부분완료 수량이 있는 경우 재고 롤백은 다음 단계에서 처리합니다)'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(_, false),
+                        child: const Text('취소'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(_, true),
+                        child: const Text('삭제'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (ok != true) return;
+
+                await context.read<WorkRepo>().softDeleteWork(w.id);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('작업이 삭제되었습니다')),
+                  );
+                }
               },
+
             ),
             const SizedBox(height: 8),
           ],
@@ -121,12 +166,18 @@ class WorkActionView extends StatelessWidget {
   Future<bool?> _confirm(BuildContext context, String msg) {
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: const Text('확인'),
         content: Text(msg),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('취소')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('확인')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('삭제'),
+          ),
         ],
       ),
     );
@@ -275,17 +326,79 @@ class _WorkProgressLine extends StatelessWidget {
     final done = w.doneQty;
     final remaining = (planned - done) > 0 ? (planned - done) : 0;
 
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            '진행: $done / $planned (남은 $remaining)',
-            style: Theme.of(context).textTheme.bodyMedium,
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: planned > 0
+          ? () async {
+        final controller = TextEditingController(text: '$done');
+
+        final result = await showDialog<int>(
+          context: context,
+          builder: (c) => AlertDialog(
+            title: const Text('완료 수량 수정'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('계획 수량: $planned'),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: '완료 수량',
+                    hintText: '0 ~ 계획 수량',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(c),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final v = int.tryParse(controller.text);
+                  if (v == null) return;
+                  Navigator.pop(c, v);
+                },
+                child: const Text('확인'),
+              ),
+            ],
           ),
+        );
+
+        if (result == null) return;
+
+        final clamped = result.clamp(0, planned);
+        if (clamped == done) return;
+
+        await context.read<InventoryService>().setWorkDoneQty(
+          workId: w.id,
+          targetDoneQty: clamped,
+        );
+      }
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                '진행: $done / $planned (남은 $remaining)',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            if (planned > 0)
+              Text(
+                '${((done / planned) * 100).clamp(0, 999).toStringAsFixed(0)}%',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+          ],
         ),
-        if (planned > 0)
-          Text('${((done / planned) * 100).clamp(0, 999).toStringAsFixed(0)}%'),
-      ],
+      ),
     );
+
   }
 }

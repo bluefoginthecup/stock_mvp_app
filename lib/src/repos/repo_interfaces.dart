@@ -243,6 +243,7 @@ abstract class WorkRepo {
   Stream<Work?> watchWorkById(String id);
   Stream<List<Work>> watchWorksByOrderAndItem(String orderId, String itemId);
   Stream<List<Work>> watchAllWorks();
+  Stream<List<Work>> watchWorksByOrder(String orderId);
   Future<void> updateWork(Work w);
   Future<void> completeWork(String id);
   Future<String> createWorkForOrder({
@@ -251,6 +252,7 @@ abstract class WorkRepo {
     required int qty,
   });
   Future<Work?> findWorkForOrderLine(String orderId, String itemId);
+  Future<List<Work>> findWorksByOrderAndItem(String orderId, String itemId); // ✅ 추가
 
 
   /// 상태만 변경(재고 반영 없음). 예) planned → inProgress, 또는 취소
@@ -262,6 +264,9 @@ abstract class WorkRepo {
     DateTime? finishedAt,
   });
   Future<void> updateWorkDoneQty(String id, int doneQty);
+  Future<void> updateWorkQty(String id, int qty);
+  Future<void> updateWorkItem(String id, String itemId);
+
   Future<void> addWorkDoneQty(String id, int delta);
 
 
@@ -274,6 +279,7 @@ abstract class WorkRepo {
 
   /// 관리용: 하드 삭제(연계 planned Txn 등은 상위/내부에서 정리)
   Future<void> hardDeleteWork(String workId);
+
 }
 
 abstract class PurchaseOrderRepo {

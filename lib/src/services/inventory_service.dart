@@ -128,6 +128,105 @@ class InventoryService {
     }
   }
 
+  Future<void> setWorkDoneQty({
+    required String workId,
+    required int targetDoneQty,
+  }) async {
+    final w = await works.getWorkById(workId);
+    if (w == null) return;
+    if (w.isDeleted) return;
+    if (w.status == WorkStatus.canceled) return;
+
+    final clamped = targetDoneQty.clamp(0, 1<<30);
+
+    final delta = clamped - w.doneQty;
+    if (delta == 0) return;
+
+    if (delta > 0) {
+      // ✅ 추가 생산은 기존 로직 재사용
+      await completeWorkPartial(workId: workId, madeQty: delta);
+      return;
+    }
+
+    // ✅ 감소(정정) = 롤백
+    final rollbackQty = -delta; // abs
+    await _rollbackWorkProduction(
+      workId: workId,
+      finishedItemId: w.itemId,
+      rollbackQty: rollbackQty,
+    );
+
+    // ✅ doneQty 감소 저장
+    final newDone = w.doneQty - rollbackQty;
+    await works.updateWorkDoneQty(workId, newDone);
+
+    // ✅ 상태/타임스탬프 갱신
+    final now = DateTime.now();
+    if (newDone <= 0) {
+      // 0이면 진행중으로 둘지 planned로 둘지 정책 선택
+      await works.updateWorkProgress(
+        id: workId,
+        status: WorkStatus.inProgress, // 또는 WorkStatus.planned
+        startedAt: w.startedAt,
+        finishedAt: null,
+      );
+    } else if (newDone >= w.qty) {
+      await works.updateWorkProgress(
+        id: workId,
+        status: WorkStatus.done,
+        startedAt: w.startedAt ?? now,
+        finishedAt: w.finishedAt ?? now,
+      );
+    } else {
+      await works.updateWorkProgress(
+        id: workId,
+        status: WorkStatus.inProgress,
+        startedAt: w.startedAt ?? now,
+        finishedAt: null,
+      );
+    }
+  }
+  Future<void> _rollbackWorkProduction({
+    required String workId,
+    required String finishedItemId,
+    required int rollbackQty,
+  }) async {
+    if (rollbackQty <= 0) return;
+
+    // (권장) 여기서 안전장치: 완제품 재고가 rollbackQty 이상 있는지 체크
+    // 예: final stock = await items.getCurrentQty(finishedItemId);
+    // if (stock < rollbackQty) throw Exception('완제품 재고가 부족해서 정정할 수 없습니다.');
+
+    // ✅ 1) 완제품 “입고했던 걸 되돌림” = 완제품 출고(out)
+    await txns.addOutActual(
+      itemId: finishedItemId,
+      qty: rollbackQty,
+      refType: 'work',
+      refId: workId,
+      note: 'rollback finished (adjust doneQty)',
+    );
+
+    // ✅ 2) 소모했던 semi/sub 되돌림 = semi/sub 입고(in)
+    final rows = await boms.listBom(finishedItemId);
+    final comps = rows.where((r) =>
+    r.root == BomRoot.finished &&
+        (r.kind == BomKind.semi || r.kind == BomKind.sub));
+
+    for (final r in comps) {
+      final needInt = _asIntQty(r.needFor(rollbackQty));
+      if (needInt <= 0) continue;
+
+      await txns.addInActual(
+        itemId: r.componentItemId,
+        qty: needInt,
+        refType: 'work',
+        refId: workId,
+        note: 'rollback consume ${r.kind.name} (adjust doneQty)',
+      );
+    }
+  }
+
+
   Future<void> _consumeFinishedSemiSubOnly({
     required String workId,
     required String finishedItemId,
@@ -153,6 +252,40 @@ class InventoryService {
     }
   }
 
+
+  /// ✅ 작업 편집 엔트리포인트 (UI는 이것만 호출)
+  /// - qty 변경
+  /// - doneQty 변경(증가/감소는 기존 setWorkDoneQty 재사용)
+  /// - item 변경(조건: doneQty == 0)
+  Future<void> editWork({
+    required String workId,
+    int? newQty,
+    int? newDoneQty,
+    String? newItemId,
+  }) async {
+    final w = await works.getWorkById(workId);
+    if (w == null) return;
+    if (w.isDeleted) return;
+    if (w.status == WorkStatus.canceled) return;
+
+    // 1) item 변경: doneQty == 0 일 때만
+    if (newItemId != null && newItemId != w.itemId) {
+      if (w.doneQty != 0) {
+        throw Exception('완료 수량이 0일 때만 아이템 변경이 가능합니다.');
+      }
+      await works.updateWorkItem(workId, newItemId); // ⬅️ 아래 2)에서 추가할 메서드
+    }
+
+    // 2) qty 변경: progress가 아니라 qty 컬럼을 직접 업데이트해야 함
+    if (newQty != null && newQty != w.qty) {
+      await works.updateWorkQty(workId, newQty); // ⬅️ 아래 2)에서 추가할 메서드
+    }
+
+    // 3) doneQty 변경: 증감/재고/롤백은 기존 로직 재사용
+    if (newDoneQty != null && newDoneQty != w.doneQty) {
+      await setWorkDoneQty(workId: workId, targetDoneQty: newDoneQty);
+    }
+  }
 
 
   /// 취소

@@ -30,15 +30,31 @@ Future<String> createWorkForOrder({
   await db.into(db.works).insert(w.toCompanion());
   return id;
 }
-@override
-Future<Work?> findWorkForOrderLine(String orderId, String itemId) async {
-  final row = await (db.select(db.works)
+// @override
+  @override
+  Future<Work?> findWorkForOrderLine(String orderId, String itemId) async {
+    final row = await (db.select(db.works)
+      ..where((t) => t.orderId.equals(orderId))
+      ..where((t) => t.itemId.equals(itemId))
+      ..where((t) => t.isDeleted.equals(false)))
+        .getSingleOrNull();
+
+    return row?.toDomain();
+  }
+
+
+  @override
+Future<List<Work>> findWorksByOrderAndItem(
+    String orderId,
+    String itemId,
+    ) async {
+  final rows = await (db.select(db.works)
     ..where((t) => t.orderId.equals(orderId))
     ..where((t) => t.itemId.equals(itemId))
     ..where((t) => t.isDeleted.equals(false)))
-      .getSingleOrNull();
+      .get();
 
-  return row?.toDomain();
+  return rows.map((r) => r.toDomain()).toList();
 }
 
 
@@ -48,16 +64,6 @@ Future<Work?> getWorkById(String id) async {
   final row = await (db.select(db.works)..where((t) => t.id.equals(id))).getSingleOrNull();
   return row?.toDomain();
 }
-@override
-Stream<List<Work>> watchWorksByOrderAndItem(String orderId, String itemId) {
-  final q = (db.select(db.works)
-    ..where((t) => t.orderId.equals(orderId))
-    ..where((t) => t.itemId.equals(itemId))
-    ..where((t) => t.isDeleted.equals(false))
-    ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]));
-  return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
-}
-
 @override
 Stream<List<Work>> watchAllWorks() {
   final q = db.select(db.works)
@@ -71,6 +77,26 @@ Stream<Work?> watchWorkById(String id) {
   final q = (db.select(db.works)..where((t) => t.id.equals(id)));
   return q.watchSingleOrNull().map((row) => row?.toDomain());
 }
+
+@override
+Stream<List<Work>> watchWorksByOrder(String orderId) {
+  final q = (db.select(db.works)
+    ..where((t) => t.orderId.equals(orderId))
+    ..where((t)  => t.isDeleted.equals(false))
+    ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]));
+  return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
+}
+
+@override
+Stream<List<Work>> watchWorksByOrderAndItem(String orderId, String itemId) {
+  final q = (db.select(db.works)
+    ..where((t) => t.orderId.equals(orderId))
+    ..where((t) => t.itemId.equals(itemId))
+    ..where((t) => t.isDeleted.equals(false))
+    ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]));
+  return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
+}
+
 
 @override
 Future<void> updateWork(Work w) async {
@@ -141,6 +167,30 @@ Future<void> updateWorkProgress({
     ),
   );
 }
+@override
+Future<void> updateWorkQty(String id, int qty) async {
+  final nowIso = DateTime.now().toIso8601String();
+
+  await (db.update(db.works)..where((t) => t.id.equals(id))).write(
+    WorksCompanion(
+      qty: Value(qty),                 // ✅ works 테이블에 qty 컬럼이 있어야 함
+      updatedAt: Value(nowIso),
+    ),
+  );
+}
+
+@override
+Future<void> updateWorkItem(String id, String itemId) async {
+  final nowIso = DateTime.now().toIso8601String();
+
+  await (db.update(db.works)..where((t) => t.id.equals(id))).write(
+    WorksCompanion(
+      itemId: Value(itemId),           // ✅ works 테이블에 itemId 컬럼이 있어야 함
+      updatedAt: Value(nowIso),
+    ),
+  );
+}
+
 
 
 @override

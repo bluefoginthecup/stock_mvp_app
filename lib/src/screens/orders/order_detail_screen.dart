@@ -20,6 +20,7 @@ import '../works/widgets/work_row.dart';
 import '../works/work_detail_view.dart';
 import '../works/work_detail_screen.dart';
 import '../works/work_action_view.dart';
+import 'order_line_edit_sheet.dart';
 
 import '../../services/inventory_service.dart';
 import '../../models/txn.dart'; // ✅ Txn, TxnType, TxnStatus
@@ -260,7 +261,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final line = o.lines[index];
-              return _buildLineCard(context, o, line.itemId, line.qty);
+              return _buildLineCard(context, o, line);
             },
           )
         else
@@ -301,7 +302,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
   }
 
-  Widget _buildLineCard(BuildContext context, Order o, String itemId, int qty) {
+  Widget _buildLineCard(BuildContext context, Order o, OrderLine line) {
     final workRepo = context.read<WorkRepo>();
     final inv = context.read<InventoryService>();
 
@@ -321,21 +322,44 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               children: [
                 Expanded(
                   child: ItemLabel(
-                    itemId: itemId,
+                    itemId: line.itemId,
                     full: false,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium,
                     autoNavigate: true,
                   ),
+
                 ),
+                IconButton(
+                  icon: const Icon(Icons.more_horiz),
+                  onPressed: () async{
+                    final result = await showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    showDragHandle: true,
+                    builder: (_) => OrderLineEditSheet(
+                      orderId: o.id,
+                      lineId: line.id,
+                      itemId: line.itemId,
+                      qty: line.qty,
+                    ),
+                  );
+
+                  if (result == true) {
+                    await _reload();
+                  }
+
+                  },
+                ),
+
               ],
             ),
             const SizedBox(height: 10),
 
             // 부족분 칩
             StreamBuilder<int>(
-              stream: context.read<ItemRepo>().watchCurrentQty(itemId),
+              stream: context.read<ItemRepo>().watchCurrentQty(line.itemId),
               builder: (context, snap) {
                 if (!snap.hasData) {
                   return const Padding(
@@ -347,7 +371,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   );
                 }
                 final stock = snap.data!;
-                final orderQty = qty;
+                final orderQty = line.qty;
                 final shortage = (stock >= orderQty) ? 0 : (orderQty - stock);
                 final isEnough = shortage == 0;
                 final Color bg = isEnough ? Colors.green.shade50 : Colors.red.shade50;
@@ -366,7 +390,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       final workId = await ShortageResultScreen.show(
                         context,
                         orderId: o.id,
-                        finishedItemId: itemId,
+                        finishedItemId: line.itemId,
                         orderQty: orderQty,
                       );
                       if (!context.mounted) return;
@@ -390,7 +414,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   future: context.read<TxnRepo>().existsOutActual(
                     refType: 'order',
                     refId: o.id,
-                    itemId: itemId,
+                    itemId: line.itemId,
                   ),
                   builder: (context, snap) {
                     final shipped = snap.data ?? false;
@@ -412,8 +436,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         try {
                           await inv.shipOrderLine(
                             orderId: o.id,
-                            itemId: itemId,
-                            qty: qty,
+                            itemId: line.itemId,
+                            qty: line.qty,
                           );
                           if (!mounted) return;
 
@@ -439,47 +463,45 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             const SizedBox(height: 8),
 
             // 관련 작업 리스트
-            StreamBuilder<List<Work>>(
-              stream: workRepo.watchWorksByOrderAndItem(o.id, itemId),
-              builder: (context, snap) {
-                final list = snap.data ?? const [];
-                if (list.isEmpty) return const SizedBox.shrink();
+    StreamBuilder<List<Work>>(
+    stream: workRepo.watchWorksByOrder(o.id),
+    builder: (context, snap) {
+    final all = snap.data ?? const <Work>[];
+    final list = all.where((w) => w.itemId == line.itemId).toList();
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 6),
-                    Text('관련 작업', style: Theme.of(context).textTheme.titleSmall),
-                    const SizedBox(height: 6),
-                    ListView.separated(
-                      itemCount: list.length,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (_, i) {
-                        final w = list[i];
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            WorkActionView(
-                              workId: w.id,
-                              embedded: true,
-                            ),
-                            const SizedBox(height: 8),
+    if (list.isEmpty) return const SizedBox.shrink();
 
-// 기존 입출고 기록(원하면 WorkDetailView 아래로 정렬)
-                            _WorkTxnList(refWorkId: w.id),
-                            const SizedBox(height: 6),
-                            _ItemTxnListByOrder(itemId: itemId, orderId: o.id),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-          ],
+    return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    const SizedBox(height: 6),
+    Text('관련 작업', style: Theme.of(context).textTheme.titleSmall),
+    const SizedBox(height: 6),
+    ListView.separated(
+    itemCount: list.length,
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    separatorBuilder: (_, __) => const Divider(height: 1),
+    itemBuilder: (_, i) {
+    final w = list[i];
+    return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    WorkActionView(workId: w.id, embedded: true),
+    const SizedBox(height: 8),
+    _WorkTxnList(refWorkId: w.id),
+    const SizedBox(height: 6),
+    _ItemTxnListByOrder(itemId: line.itemId, orderId: o.id),
+    ],
+    );
+    },
+    ),
+    ],
+    );
+    },
+    )
+
+    ],
         ),
       ),
     );
