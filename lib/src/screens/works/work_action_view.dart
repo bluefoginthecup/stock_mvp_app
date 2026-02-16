@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+
 import 'package:provider/provider.dart';
 
 import '../../models/work.dart';
@@ -13,7 +13,8 @@ import '../works/work_edit_sheet.dart';
 class WorkActionView extends StatelessWidget {
   final String workId;
   final bool embedded; // 주문상세 끼워넣기용
-  const WorkActionView({super.key, required this.workId, this.embedded = false});
+  const WorkActionView(
+      {super.key, required this.workId, this.embedded = false});
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +32,6 @@ class WorkActionView extends StatelessWidget {
           );
         }
 
-        final remaining = math.max(0, w.qty - w.doneQty);
-        final over = math.max(0, w.doneQty - w.qty);
         final canChange = w.status != WorkStatus.canceled;
 
         return Card(
@@ -62,18 +61,14 @@ class WorkActionView extends StatelessWidget {
                     await inv.setWorkStatus(w.id, target);
                   },
                 ),
-                const SizedBox(height: 12),
 
-                WorkActionButtons(
-                  enabled: canChange,
-                  remaining: remaining,
-                  onPartial: () => _showPartialCompleteDialog(context, inv, w),
-                  onAllDone: remaining > 0 ? () => inv.completeWork(w.id) : null,
-                ),
 
                 if (!embedded) ...[
                   const SizedBox(height: 12),
-                  Text('workId: ${shortId(w.id)}', style: Theme.of(context).textTheme.bodySmall),
+                  Text('workId: ${shortId(w.id)}', style: Theme
+                      .of(context)
+                      .textTheme
+                      .bodySmall),
                 ],
               ],
             ),
@@ -89,129 +84,103 @@ class WorkActionView extends StatelessWidget {
     await showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.open_in_new),
-              title: const Text('작업 상세'),
-              onTap: () {
-                Navigator.pop(ctx); // bottom sheet 닫기
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => WorkDetailScreen(work: w),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit),
-              title: const Text('작업 편집'),
-              onTap: () {
-                Navigator.pop(ctx);
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  showDragHandle: true,
-                  builder: (_) => WorkEditSheet(workId: w.id),
-                );
-              },
-
-
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('작업 삭제', style: TextStyle(color: Colors.red)),
-              onTap: () async {
-                Navigator.pop(ctx);
-
-                final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('작업 삭제'),
-                    content: const Text('이 작업을 삭제할까요?\n(완료/부분완료 수량이 있는 경우 재고 롤백은 다음 단계에서 처리합니다)'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(_, false),
-                        child: const Text('취소'),
+      builder: (ctx) =>
+          SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.open_in_new),
+                  title: const Text('작업 상세'),
+                  onTap: () {
+                    Navigator.pop(ctx); // bottom sheet 닫기
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => WorkDetailScreen(work: w),
                       ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(_, true),
-                        child: const Text('삭제'),
-                      ),
-                    ],
-                  ),
-                );
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('작업 편집'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      showDragHandle: true,
+                      builder: (_) => WorkEditSheet(workId: w.id),
+                    );
+                  },
 
-                if (ok != true) return;
 
-                await context.read<WorkRepo>().softDeleteWork(w.id);
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text(
+                      '작업 삭제', style: TextStyle(color: Colors.red)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
 
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('작업이 삭제되었습니다')),
-                  );
-                }
-              },
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (_) =>
+                          AlertDialog(
+                            title: const Text('작업 삭제'),
+                            content: const Text(
+                                '이 작업을 삭제할까요?\n(완료/부분완료 수량이 있는 경우 재고 롤백은 다음 단계에서 처리합니다)'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(_, false),
+                                child: const Text('취소'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(_, true),
+                                child: const Text('삭제'),
+                              ),
+                            ],
+                          ),
+                    );
 
+                    if (ok != true) return;
+
+                    await context.read<WorkRepo>().softDeleteWork(w.id);
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('작업이 삭제되었습니다')),
+                      );
+                    }
+                  },
+
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
   Future<bool?> _confirm(BuildContext context, String msg) {
     return showDialog<bool>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('확인'),
-        content: Text(msg),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('취소'),
+      builder: (dialogCtx) =>
+          AlertDialog(
+            title: const Text('확인'),
+            content: Text(msg),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                child: const Text('확인'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
     );
-  }
-
-  Future<void> _showPartialCompleteDialog(
-      BuildContext context,
-      InventoryService inv,
-      Work w,
-      ) async {
-    final remaining = math.max(0, w.qty - w.doneQty);
-    final controller = TextEditingController(text: (remaining > 0 ? remaining : 1).toString());
-
-    final madeQty = await showDialog<int>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('부분 완료'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(hintText: '예: 15'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, int.tryParse(controller.text.trim()) ?? 0),
-            child: const Text('완료 처리'),
-          ),
-        ],
-      ),
-    );
-
-    if (madeQty == null || madeQty <= 0) return;
-    await inv.completeWorkPartial(workId: w.id, madeQty: madeQty); // 초과 생산도 허용
   }
 }
 
@@ -281,41 +250,7 @@ class WorkStatusSelector extends StatelessWidget {
   }
 }
 //--------------------//
-class WorkActionButtons extends StatelessWidget {
-  final bool enabled;
-  final int remaining;
-  final VoidCallback onPartial;
-  final VoidCallback? onAllDone;
 
-  const WorkActionButtons({
-    super.key,
-    required this.enabled,
-    required this.remaining,
-    required this.onPartial,
-    required this.onAllDone,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: FilledButton(
-            onPressed: enabled ? onPartial : null,
-            child: const Text('부분 완료'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: (enabled && onAllDone != null) ? onAllDone : null,
-            child: const Text('전량 완료'),
-          ),
-        ),
-      ],
-    );
-  }
-}
 class _WorkProgressLine extends StatelessWidget {
   final Work w;
   const _WorkProgressLine({required this.w});
