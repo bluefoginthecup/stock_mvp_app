@@ -4,6 +4,7 @@ import 'dart:async';
 
 // DB
 import '../db/app_database.dart';
+import '../utils/korean_search.dart';
 
 // 도메인 모델
 import '../models/item.dart';

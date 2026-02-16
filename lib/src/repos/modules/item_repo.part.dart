@@ -1,5 +1,6 @@
 part of '../drift_unified_repo.dart';
 
+
 mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   @override
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
@@ -25,19 +26,49 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return list;
   }
 
+
   @override
   Future<List<Item>> searchItemsGlobal(String keyword) async {
-    final kw = '%${keyword.trim()}%';
-    final rows = await (db.select(db.items)
-    // 휴지통 제외
-      ..where((t) => t.isDeleted.equals(false))..where((t) =>
-      t.name.like(kw) | t.displayName.like(kw) | t.sku.like(kw) | t.id.like(
-          kw)))
-        .get();
+    final raw = keyword.trim();
+    if (raw.isEmpty) return [];
+
+    final q = db.select(db.items)
+      ..where((t) => t.isDeleted.equals(false))
+      ..limit(80);
+
+    final isCho = looksLikeChosungQuery(raw);
+
+    if (isCho) {
+      // ✅ 초성 토큰 AND (공백/구분자 기준)
+      // 예: "ㅈㅅㅁ ㄹㅇ ㄱㄹㅇ ㄷㄱㅇ"
+      final tokens = raw
+          .split(RegExp(r'[\s,|/]+')) // 공백/쉼표/|/슬래시도 구분자로 허용
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      if (tokens.length >= 2) {
+        // AND 누적: where를 여러 번 호출하면 AND로 합쳐짐
+        for (final tkn in tokens) {
+          q.where((t) => t.searchInitials.like('%$tkn%'));
+        }
+      } else {
+        // 토큰이 1개면 기존 substring 방식
+        final key = raw.replaceAll(RegExp(r'\s+'), '');
+        q.where((t) => t.searchInitials.like('%$key%'));
+      }
+    } else {
+      // ✅ 일반 검색: 정규화 키로 중간 검색(띄어쓰기 무시)
+      final key = normalizeForSearch(raw);
+      q.where((t) => t.searchNormalized.like('%$key%'));
+    }
+
+    final rows = await q.get();
     final list = rows.map((e) => e.toDomain()).toList();
     _cacheItems(list);
     return list;
   }
+
 
   @override
   Future<List<Item>> searchItemsByPath({
@@ -116,14 +147,26 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return it;
   }
 
+
   @override
   Future<void> upsertItem(Item item) async {
     await db.transaction(() async {
       final fav = item.isFavorite;
+
+      final baseName = item.displayName ?? item.name;
+
+      final normalized = normalizeForSearch(baseName);
+      final initials   = toChosungString(baseName);
+
       await db.into(db.items).insertOnConflictUpdate(
-        item.toCompanion().copyWith(isFavorite: Value(fav)),
+        item.toCompanion().copyWith(
+          isFavorite: Value(fav),
+          searchNormalized: Value(normalized),
+          searchInitials: Value(initials),
+        ),
       );
     });
+
     final fresh = await getItem(item.id);
     if (fresh != null) _cacheItem(fresh);
   }
@@ -192,44 +235,6 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     // 5) 캐시 리프레시
     final fresh = await getItem(item.id);
     if (fresh != null) _cacheItem(fresh);
-  }
-
-  Future<void> _updateItemPaths(Item item) async {
-    if (item.folder.isEmpty) {
-      await db.into(db.itemPaths).insertOnConflictUpdate(
-        ItemPathsCompanion(
-          itemId: Value(item.id),
-          l1Id: const Value(null),
-          l2Id: const Value(null),
-          l3Id: const Value(null),
-        ),
-      );
-      return;
-    }
-
-    final l1Name = item.folder;
-    final l2Name = item.subfolder;
-    final l3Name = item.subsubfolder;
-
-    final l1Id = l1Name;
-    String? l2Id = (l2Name != null && l2Name.isNotEmpty)
-        ? '$l1Id-$l2Name'
-        : null;
-    String? l3Id;
-    if (l3Name != null && l3Name.isNotEmpty) {
-      l3Id = (l2Id != null) ? '$l2Id-$l3Name' : '$l1Id-$l3Name';
-    }
-
-    await _ensureFolderPath(l1: l1Name, l2: l2Name, l3: l3Name);
-
-    await db.into(db.itemPaths).insertOnConflictUpdate(
-      ItemPathsCompanion(
-        itemId: Value(item.id),
-        l1Id: Value(l1Id),
-        l2Id: Value(l2Id),
-        l3Id: Value(l3Id),
-      ),
-    );
   }
 
   @override

@@ -76,7 +76,7 @@ class _ItemPickerSheetState extends State<_ItemPickerSheet> {
 
             AppSearchField(
               controller: _searchC,
-              hint: '품목 검색: 이름 또는 SKU',
+              hint: '이름/SKU/초성(예: ㅈㅅㅁ ㄹㅇ ㄱㄹㅇ)',
               onChanged: (q) async {
                 final qq = q.trim();
                 if (qq.isEmpty) {

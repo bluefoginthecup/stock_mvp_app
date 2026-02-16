@@ -19,6 +19,8 @@ import '../models/purchase_line.dart';
 import '../models/suppliers.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
+import '../utils/korean_search.dart';
+
 
 // drift가 생성해줄 파일
 part 'app_database.g.dart';
@@ -33,8 +35,10 @@ class Items extends Table {
   TextColumn get name => text()();              // name
   TextColumn get displayName => text().nullable()();
   TextColumn get sku => text()();
-
   TextColumn get unit => text()();              // EA, SET, ROLL...
+  TextColumn get searchNormalized => text().withDefault(const Constant(''))();
+  TextColumn get searchInitials => text().withDefault(const Constant(''))();
+
 
   // 레거시 폴더 필드
   TextColumn get folder => text()();            // 레거시 L1
@@ -374,7 +378,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6; // ⬅️ 4에서 5로 올림
+  int get schemaVersion => 7; // ⬅️ 4에서 5로 올림
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -466,9 +470,33 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(works, works.doneQty);
       }
 
-
+      // v6 → v7 (검색 키 컬럼 + backfill)
+      if (from < 7) {
+        await m.addColumn(items, items.searchNormalized);
+        await m.addColumn(items, items.searchInitials);
+        await _backfillItemSearchKeys();
+      }
     },
   );
+  Future<void> _backfillItemSearchKeys() async {
+    // 너무 잦은 update 방지를 위해 비어있는 것만 채우는 걸 권장
+    final rows = await (select(items)
+      ..where((t) => t.searchNormalized.equals('') | t.searchInitials.equals('')))
+        .get();
+
+    for (final r in rows) {
+      final base = r.displayName?.trim().isNotEmpty == true ? r.displayName! : r.name;
+      final normalized = normalizeForSearch(base);
+      final initials = toChosungString(base);
+
+      await (update(items)..where((t) => t.id.equals(r.id))).write(
+        ItemsCompanion(
+          searchNormalized: Value(normalized),
+          searchInitials: Value(initials),
+        ),
+      );
+    }
+  }
 }
 
 
