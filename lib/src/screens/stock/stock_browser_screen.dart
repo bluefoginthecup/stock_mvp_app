@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../ui/common/ui.dart';
 import '../../models/folder_node.dart';
 import '../../models/item.dart';
+import '../../utils/korean_search.dart';
 import 'sheet_new_folder.dart';
 import 'stock_new_item_sheet.dart';
 import '../../ui/common/search_field.dart';
@@ -70,13 +71,15 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   void _debouncedRebuild() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
+
       if (mounted) setState(() {});
     });
   }
 
 
 
-    @override
+
+  @override
     Widget build(BuildContext context) {
       final folderRepo = context.read<FolderTreeRepo>();
       final itemRepo = context.read<ItemRepo>();
@@ -189,21 +192,22 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           ),
         ),
         const Divider(height: 1),
+
         Expanded(
           child: StreamBuilder<List<Item>>(
             stream: itemRepo.watchItems(
-              l1: _selectedDepth == 0 ? null : _l1Id,
-              l2: _selectedDepth <= 1 ? null : _l2Id,
-              l3: _selectedDepth <= 2 ? null : _l3Id,
-              keyword: _searchC.text.trim().isNotEmpty ? _searchC.text : null,
-              recursive: _searchC.text.trim().isNotEmpty ||
-                  (_selectedDepth == 0 && (_lowOnly || _showFavoriteOnly)),
+              l1: _searchC.text.trim().isNotEmpty ? null : (_selectedDepth == 0 ? null : _l1Id),
+              l2: _searchC.text.trim().isNotEmpty ? null : (_selectedDepth <= 1 ? null : _l2Id),
+              l3: _searchC.text.trim().isNotEmpty ? null : (_selectedDepth <= 2 ? null : _l3Id),
+              keyword: _searchC.text.trim().isNotEmpty ? _searchC.text.trim() : null,
+              recursive: _searchC.text.trim().isNotEmpty
+                  ? true
+                  : (_selectedDepth == 0 && (_lowOnly || _showFavoriteOnly)),
               lowOnly: _lowOnly,
               favoritesOnly: _showFavoriteOnly,
             ),
             builder: (ctx, snap) {
-              if (snap.connectionState == ConnectionState.waiting &&
-                  !snap.hasData) {
+              if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snap.hasError) {
@@ -215,6 +219,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 lowOnly: _lowOnly,
                 showFavoriteOnly: _showFavoriteOnly,
               );
+
 
               return FutureBuilder<List<FolderNode>>(
                 future: folderRepo.listFolderChildren(_selectedId),

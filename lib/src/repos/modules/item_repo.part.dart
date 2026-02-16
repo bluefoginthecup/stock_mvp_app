@@ -2,6 +2,75 @@ part of '../drift_unified_repo.dart';
 
 
 mixin ItemRepoMixin on _RepoCore implements ItemRepo {
+
+    // ---------- Search helpers ----------
+    String _escapeLike(String s) {
+      return s
+          .replaceAll('\\', '\\\\')
+          .replaceAll('%', r'\%')
+          .replaceAll('_', r'\_');
+    }
+    /// keyword 검색을 searchNormalized/searchInitials 기반으로 통일.
+    /// - 초성: searchInitials contains
+    /// - 일반: searchNormalized token AND (중간 단어 포함)
+    Expression<bool> _keywordExpr(Items i, String raw) {
+      final q = raw.trim();
+      if (q.isEmpty) return const Constant(true);
+
+      final qNoSpace = q.replaceAll(RegExp(r'\s+'), '');
+      debugPrint('[keywordExpr] raw="$raw" q="$q" qNoSpace="$qNoSpace" '
+          'cps=${qNoSpace.runes.map((r) => r.toRadixString(16)).join(' ')} '
+          'isCho=${looksLikeChosungQuery(qNoSpace)}');
+
+      // ✅ 초성 판별은 공백 제거 기준으로 (띄어쓴 초성도 잡기)
+      final isCho = looksLikeChosungQuery(qNoSpace);
+
+      // 1) 초성은 "순서 매칭" (ㄹ%ㅇ%ㅍ%ㅋ%...)
+//    - "ㄹㅇㅍㅋ ㄷㄱㅇ" 처럼 띄어쓰기 토큰도 지원
+      if (isCho) {
+        final parts = q
+            .split(RegExp(r'\s+'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+
+        if (parts.isEmpty) return const Constant(false);
+
+        // 각 토큰을 "ㄹ%ㅇ%ㅍ%ㅋ" 형태로 만들고, 토큰 사이도 %로 이어서 순서만 맞으면 OK
+        final tokenPatterns = parts.map((tok) {
+          final chars = tok.replaceAll(RegExp(r'\s+'), '').split('');
+          return chars.map(_escapeLike).join('%');
+        }).toList();
+
+        final like = '%${tokenPatterns.join('%')}%';
+        debugPrint('[keywordExpr][CHO-FUZZY] parts=$parts like="$like"');
+
+        return i.searchInitials.like(like, escapeChar: '\\');
+      }
+
+
+      // 2) 일반: 공백 기준 토큰 AND
+      final tokens = q
+          .split(RegExp(r'\s+'))
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      if (tokens.isEmpty) return const Constant(false);
+
+      Expression<bool> expr = const Constant(true);
+      for (final t in tokens) {
+        final key = normalizeForSearch(t);
+        if (key.isEmpty) return const Constant(false);
+
+        final like = '%${_escapeLike(key)}%';
+        expr = expr & i.searchNormalized.like(like, escapeChar: '\\');
+      }
+
+      return expr;
+    }
+
+
   @override
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
     final q = db.select(db.items);
@@ -13,12 +82,11 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     if (folder != null && folder.isNotEmpty) {
       q.where((tbl) => tbl.folder.equals(folder));
     }
-    if (keyword != null && keyword
-        .trim()
-        .isNotEmpty) {
-      final like = '%${keyword.trim()}%';
-      q.where((tbl) => tbl.name.like(like) | tbl.displayName.like(like));
-    }
+
+      // ✅ searchNormalized/searchInitials 기반 검색으로 통일
+      if (keyword != null && keyword.trim().isNotEmpty) {
+        q.where((t) => _keywordExpr(t, keyword));
+      }
 
     final rows = await q.get();
     final list = rows.map((r) => r.toDomain()).toList();
@@ -50,17 +118,23 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       if (tokens.length >= 2) {
         // AND 누적: where를 여러 번 호출하면 AND로 합쳐짐
         for (final tkn in tokens) {
-          q.where((t) => t.searchInitials.like('%$tkn%'));
+          final like = '%${_escapeLike(tkn)}%';
+          q.where((t) => t.searchInitials.like(like, escapeChar: '\\'));
+
         }
       } else {
         // 토큰이 1개면 기존 substring 방식
         final key = raw.replaceAll(RegExp(r'\s+'), '');
-        q.where((t) => t.searchInitials.like('%$key%'));
+        final like = '%${_escapeLike(key)}%';
+        q.where((t) => t.searchInitials.like(like, escapeChar: '\\'));
+
       }
     } else {
       // ✅ 일반 검색: 정규화 키로 중간 검색(띄어쓰기 무시)
       final key = normalizeForSearch(raw);
-      q.where((t) => t.searchNormalized.like('%$key%'));
+      final like = '%${_escapeLike(key)}%';
+      q.where((t) => t.searchNormalized.like(like, escapeChar: '\\'));
+
     }
 
     final rows = await q.get();
@@ -78,7 +152,6 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     required String keyword,
     bool recursive = true,
   }) async {
-    final kw = '%${keyword.trim()}%';
     final joinQuery = db.select(db.items).join([
       innerJoin(db.itemPaths, db.itemPaths.itemId.equalsExp(db.items.id)),
     ]);
@@ -91,11 +164,9 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     if (l2 != null) joinQuery.where(db.itemPaths.l2Id.equals(l2));
     if (l3 != null) joinQuery.where(db.itemPaths.l3Id.equals(l3));
 
-    joinQuery.where(
-      db.items.name.like(kw) |
-      db.items.displayName.like(kw) |
-      db.items.sku.like(kw),
-    );
+
+      // ✅ searchNormalized/searchInitials 기반 검색으로 교체
+      joinQuery.where(_keywordExpr(db.items, keyword));
 
     final rows = await joinQuery.get();
     final list = rows.map((r) => r.readTable(db.items).toDomain()).toList();
@@ -209,6 +280,10 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
       // 3) items 테이블의 메타는 "이름"으로 저장 (표시/검색용)
       //    item_paths에는 "ID" 저장 (정합성 원천)
+      final baseName = item.displayName ?? item.name;
+      final normalized = normalizeForSearch(baseName);
+      final initials   = toChosungString(baseName);
+
 
       final base = item.toCompanion();
       final comp = base.copyWith(
@@ -216,6 +291,8 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
         folder: Value(l1Node.name), // ← 이름으로 교체
         subfolder: Value(l2Node?.name),
         subsubfolder: Value(l3Node?.name),
+        searchNormalized: Value(normalized),
+        searchInitials: Value(initials),
 
 
       );
@@ -246,7 +323,11 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
   @override
   Future<void> updateItemMeta(Item item) async {
-    final comp = item.toCompanion();
+    final baseName = item.displayName ?? item.name;
+    final comp = item.toCompanion().copyWith(
+    searchNormalized: Value(normalizeForSearch(baseName)),
+    searchInitials: Value(toChosungString(baseName)),
+    );
     await (db.update(db.items)
       ..where((t) => t.id.equals(item.id))).write(comp);
   }
@@ -323,11 +404,10 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       }
     }
 
-    if (keyword != null && keyword.isNotEmpty) {
-      final like = '%${keyword.replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
-      join.where(
-          i.name.like(like) | i.displayName.like(like) | i.sku.like(like));
-    }
+  // ✅ 검색 교체
+      if (keyword != null && keyword.trim().isNotEmpty) {
+        join.where(_keywordExpr(i, keyword));
+      }
 
     if (lowOnly) {
       join.where(
@@ -564,12 +644,10 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       }
     }
 
-    // 키워드 필터
-    if (keyword != null && keyword.isNotEmpty) {
-      final like = '%${keyword.replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
-      join.where(
-          i.name.like(like) | i.displayName.like(like) | i.sku.like(like));
-    }
+      // ✅ 키워드 필터(목록과 동일 조건)
+      if (keyword != null && keyword.trim().isNotEmpty) {
+        join.where(_keywordExpr(i, keyword));
+      }
 
     // 즐겨찾기만
     if (favoritesOnly) {
@@ -600,4 +678,6 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       favoritesOnly: favoritesOnly,
     ).first;
   }
+
 }
+
