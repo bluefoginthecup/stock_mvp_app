@@ -38,6 +38,7 @@ class Items extends Table {
   TextColumn get unit => text()();              // EA, SET, ROLL...
   TextColumn get searchNormalized => text().withDefault(const Constant(''))();
   TextColumn get searchInitials => text().withDefault(const Constant(''))();
+  TextColumn get searchFullNormalized => text().withDefault(const Constant(''))();
 
 
   // 레거시 폴더 필드
@@ -378,7 +379,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7; // ⬅️ 4에서 5로 올림
+  int get schemaVersion => 8; // ⬅️ 4에서 5로 올림
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -476,6 +477,14 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(items, items.searchInitials);
         await _backfillItemSearchKeys();
       }
+
+      // v7 → v8 (재고브라우저용 full 검색키 컬럼 + backfill)
+      if (from < 8) {
+        await m.addColumn(items, items.searchFullNormalized);
+        await _backfillItemFullSearchKeys();
+      }
+
+
     },
   );
   Future<void> _backfillItemSearchKeys() async {
@@ -497,7 +506,41 @@ class AppDatabase extends _$AppDatabase {
       );
     }
   }
+  Future<void> _backfillItemFullSearchKeys() async {
+    final rows = await (select(items)
+      ..where((t) => t.searchFullNormalized.equals('')))
+        .get();
+
+    await transaction(() async {
+      for (final r in rows) {
+        final baseName = (r.displayName?.trim().isNotEmpty == true)
+            ? r.displayName!.trim()
+            : r.name;
+
+        // ✅ full 키: name + sku + folder names
+        final src = [
+          baseName,
+          r.sku,
+          r.folder,
+          if (r.subfolder != null) r.subfolder!,
+          if (r.subsubfolder != null) r.subsubfolder!,
+        ].join(' ');
+
+        final full = normalizeForSearch(src);
+
+        await (update(items)..where((t) => t.id.equals(r.id))).write(
+          ItemsCompanion(
+            searchFullNormalized: Value(full),
+          ),
+        );
+      }
+    });
+  }
+
+
+
 }
+
 
 
 /// 실제 SQLite 파일을 여는 부분

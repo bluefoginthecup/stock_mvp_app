@@ -1,5 +1,10 @@
 part of '../drift_unified_repo.dart';
 
+enum ItemSearchScope {
+  nameOnly, // 주문상세 등: 아이템명 기준
+  full,     // 재고브라우저: 아이템명 + SKU + 폴더명
+}
+
 
 mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
@@ -10,68 +15,83 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
           .replaceAll('%', r'\%')
           .replaceAll('_', r'\_');
     }
-    /// keyword 검색을 searchNormalized/searchInitials 기반으로 통일.
-    /// - 초성: searchInitials contains
-    /// - 일반: searchNormalized token AND (중간 단어 포함)
-    Expression<bool> _keywordExpr(Items i, String raw) {
+
+    String _buildNameNormalized(Item item) {
+      final baseName =
+      (item.displayName?.trim().isNotEmpty == true) ? item.displayName!.trim() : item.name;
+      return normalizeForSearch(baseName);
+    }
+
+    String _buildFullNormalized({
+      required String name,
+      required String sku,
+      String? folder,
+      String? subfolder,
+      String? subsubfolder,
+    }) {
+      final src = [
+        name,
+        sku,
+        if (folder != null) folder,
+        if (subfolder != null) subfolder,
+        if (subsubfolder != null) subsubfolder,
+      ].join(' ');
+      return normalizeForSearch(src);
+    }
+
+    Expression<bool> _keywordExpr(
+        Items i,
+        String raw, {
+          ItemSearchScope scope = ItemSearchScope.nameOnly,
+        }) {
+      final splitter = RegExp(r'[\s,|/]+');
+
       final q = raw.trim();
       if (q.isEmpty) return const Constant(true);
 
       final qNoSpace = q.replaceAll(RegExp(r'\s+'), '');
-      debugPrint('[keywordExpr] raw="$raw" q="$q" qNoSpace="$qNoSpace" '
-          'cps=${qNoSpace.runes.map((r) => r.toRadixString(16)).join(' ')} '
-          'isCho=${looksLikeChosungQuery(qNoSpace)}');
-
-      // ✅ 초성 판별은 공백 제거 기준으로 (띄어쓴 초성도 잡기)
       final isCho = looksLikeChosungQuery(qNoSpace);
 
-      // 1) 초성은 "순서 매칭" (ㄹ%ㅇ%ㅍ%ㅋ%...)
-//    - "ㄹㅇㅍㅋ ㄷㄱㅇ" 처럼 띄어쓰기 토큰도 지원
+      List<String> parts(String s) => s
+          .split(splitter)
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      // ── 1) 초성 검색 (항상 "이름 초성"만 사용)
       if (isCho) {
-        final parts = q
-            .split(RegExp(r'\s+'))
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
+        final ps = parts(q);
+        if (ps.isEmpty) return const Constant(false);
 
-        if (parts.isEmpty) return const Constant(false);
-
-        // 각 토큰을 "ㄹ%ㅇ%ㅍ%ㅋ" 형태로 만들고, 토큰 사이도 %로 이어서 순서만 맞으면 OK
-        final tokenPatterns = parts.map((tok) {
+        final tokenPatterns = ps.map((tok) {
           final chars = tok.replaceAll(RegExp(r'\s+'), '').split('');
           return chars.map(_escapeLike).join('%');
         }).toList();
 
         final like = '%${tokenPatterns.join('%')}%';
-        debugPrint('[keywordExpr][CHO-FUZZY] parts=$parts like="$like"');
-
         return i.searchInitials.like(like, escapeChar: '\\');
       }
 
-
-      // 2) 일반: 공백 기준 토큰 AND
-      final tokens = q
-          .split(RegExp(r'\s+'))
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-
+      // ── 2) 일반 검색 (scope에 따라 컬럼 선택)
+      final tokens = parts(q);
       if (tokens.isEmpty) return const Constant(false);
+
+      final col = (scope == ItemSearchScope.full)
+          ? i.searchFullNormalized
+          : i.searchNormalized;
 
       Expression<bool> expr = const Constant(true);
       for (final t in tokens) {
         final key = normalizeForSearch(t);
         if (key.isEmpty) return const Constant(false);
-
-        final like = '%${_escapeLike(key)}%';
-        expr = expr & i.searchNormalized.like(like, escapeChar: '\\');
+        expr = expr & col.like('%${_escapeLike(key)}%', escapeChar: '\\');
       }
-
       return expr;
     }
 
 
-  @override
+
+    @override
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
     final q = db.select(db.items);
 
@@ -83,10 +103,12 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       q.where((tbl) => tbl.folder.equals(folder));
     }
 
-      // ✅ searchNormalized/searchInitials 기반 검색으로 통일
-      if (keyword != null && keyword.trim().isNotEmpty) {
-        q.where((t) => _keywordExpr(t, keyword));
-      }
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      q.where((t) =>
+          _keywordExpr(t, keyword, scope: ItemSearchScope.nameOnly),
+      );
+    }
+
 
     final rows = await q.get();
     final list = rows.map((r) => r.toDomain()).toList();
@@ -94,54 +116,23 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return list;
   }
 
+    @override
+    Future<List<Item>> searchItemsGlobal(String keyword) async {
+      final raw = keyword.trim();
+      if (raw.isEmpty) return [];
 
-  @override
-  Future<List<Item>> searchItemsGlobal(String keyword) async {
-    final raw = keyword.trim();
-    if (raw.isEmpty) return [];
+      final q = db.select(db.items)
+        ..where((t) => t.isDeleted.equals(false))
+        ..where((t) =>
+            _keywordExpr(t, raw, scope: ItemSearchScope.nameOnly),
+        )
+        ..limit(80);
 
-    final q = db.select(db.items)
-      ..where((t) => t.isDeleted.equals(false))
-      ..limit(80);
-
-    final isCho = looksLikeChosungQuery(raw);
-
-    if (isCho) {
-      // ✅ 초성 토큰 AND (공백/구분자 기준)
-      // 예: "ㅈㅅㅁ ㄹㅇ ㄱㄹㅇ ㄷㄱㅇ"
-      final tokens = raw
-          .split(RegExp(r'[\s,|/]+')) // 공백/쉼표/|/슬래시도 구분자로 허용
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
-
-      if (tokens.length >= 2) {
-        // AND 누적: where를 여러 번 호출하면 AND로 합쳐짐
-        for (final tkn in tokens) {
-          final like = '%${_escapeLike(tkn)}%';
-          q.where((t) => t.searchInitials.like(like, escapeChar: '\\'));
-
-        }
-      } else {
-        // 토큰이 1개면 기존 substring 방식
-        final key = raw.replaceAll(RegExp(r'\s+'), '');
-        final like = '%${_escapeLike(key)}%';
-        q.where((t) => t.searchInitials.like(like, escapeChar: '\\'));
-
-      }
-    } else {
-      // ✅ 일반 검색: 정규화 키로 중간 검색(띄어쓰기 무시)
-      final key = normalizeForSearch(raw);
-      final like = '%${_escapeLike(key)}%';
-      q.where((t) => t.searchNormalized.like(like, escapeChar: '\\'));
-
+      final rows = await q.get();
+      final list = rows.map((e) => e.toDomain()).toList();
+      _cacheItems(list);
+      return list;
     }
-
-    final rows = await q.get();
-    final list = rows.map((e) => e.toDomain()).toList();
-    _cacheItems(list);
-    return list;
-  }
 
 
   @override
@@ -166,7 +157,10 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
 
       // ✅ searchNormalized/searchInitials 기반 검색으로 교체
-      joinQuery.where(_keywordExpr(db.items, keyword));
+    joinQuery.where(
+      _keywordExpr(db.items, keyword, scope: ItemSearchScope.nameOnly),
+    );
+
 
     final rows = await joinQuery.get();
     final list = rows.map((r) => r.readTable(db.items).toDomain()).toList();
@@ -218,29 +212,35 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return it;
   }
 
+    @override
+    Future<void> upsertItem(Item item) async {
+      await db.transaction(() async {
+        final baseName =
+        (item.displayName?.trim().isNotEmpty == true) ? item.displayName!.trim() : item.name;
 
-  @override
-  Future<void> upsertItem(Item item) async {
-    await db.transaction(() async {
-      final fav = item.isFavorite;
+        final nameNorm = normalizeForSearch(baseName);
+        final initials = toChosungString(baseName);
+        final fullNorm = _buildFullNormalized(
+          name: baseName,
+          sku: item.sku,
+          folder: item.folder,
+          subfolder: item.subfolder,
+          subsubfolder: item.subsubfolder,
+        );
 
-      final baseName = item.displayName ?? item.name;
+        await db.into(db.items).insertOnConflictUpdate(
+          item.toCompanion().copyWith(
+            isFavorite: Value(item.isFavorite),
+            searchNormalized: Value(nameNorm),
+            searchInitials: Value(initials),
+            searchFullNormalized: Value(fullNorm),
+          ),
+        );
+      });
 
-      final normalized = normalizeForSearch(baseName);
-      final initials   = toChosungString(baseName);
-
-      await db.into(db.items).insertOnConflictUpdate(
-        item.toCompanion().copyWith(
-          isFavorite: Value(fav),
-          searchNormalized: Value(normalized),
-          searchInitials: Value(initials),
-        ),
-      );
-    });
-
-    final fresh = await getItem(item.id);
-    if (fresh != null) _cacheItem(fresh);
-  }
+      final fresh = await getItem(item.id);
+      if (fresh != null) _cacheItem(fresh);
+    }
 
   Future<void> upsertItemWithPath(Item item, String? l1, String? l2,
       String? l3) async {
@@ -280,22 +280,30 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
       // 3) items 테이블의 메타는 "이름"으로 저장 (표시/검색용)
       //    item_paths에는 "ID" 저장 (정합성 원천)
-      final baseName = item.displayName ?? item.name;
-      final normalized = normalizeForSearch(baseName);
-      final initials   = toChosungString(baseName);
+      final baseName =
+      (item.displayName?.trim().isNotEmpty == true) ? item.displayName!.trim() : item.name;
 
+      final nameNorm = normalizeForSearch(baseName);
+      final initials = toChosungString(baseName);
+      final fullNorm = _buildFullNormalized(
+        name: baseName,
+        sku: item.sku,
+        folder: l1Node.name,
+        subfolder: l2Node?.name,
+        subsubfolder: l3Node?.name,
+      );
 
       final base = item.toCompanion();
       final comp = base.copyWith(
         isFavorite: Value(item.isFavorite),
-        folder: Value(l1Node.name), // ← 이름으로 교체
+        folder: Value(l1Node.name),
         subfolder: Value(l2Node?.name),
         subsubfolder: Value(l3Node?.name),
-        searchNormalized: Value(normalized),
+        searchNormalized: Value(nameNorm),
         searchInitials: Value(initials),
-
-
+        searchFullNormalized: Value(fullNorm),
       );
+
       await db.into(db.items).insertOnConflictUpdate(comp);
 
       // 4) item_paths 싱크
@@ -321,18 +329,31 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return row?.toDomain();
   }
 
-  @override
-  Future<void> updateItemMeta(Item item) async {
-    final baseName = item.displayName ?? item.name;
-    final comp = item.toCompanion().copyWith(
-    searchNormalized: Value(normalizeForSearch(baseName)),
-    searchInitials: Value(toChosungString(baseName)),
-    );
-    await (db.update(db.items)
-      ..where((t) => t.id.equals(item.id))).write(comp);
-  }
+    @override
+    Future<void> updateItemMeta(Item item) async {
+      final baseName =
+      (item.displayName?.trim().isNotEmpty == true) ? item.displayName!.trim() : item.name;
 
-  @override
+      final nameNorm = normalizeForSearch(baseName);
+      final initials = toChosungString(baseName);
+      final fullNorm = _buildFullNormalized(
+        name: baseName,
+        sku: item.sku,
+        folder: item.folder,
+        subfolder: item.subfolder,
+        subsubfolder: item.subsubfolder,
+      );
+
+      final comp = item.toCompanion().copyWith(
+        searchNormalized: Value(nameNorm),
+        searchInitials: Value(initials),
+        searchFullNormalized: Value(fullNorm),
+      );
+
+      await (db.update(db.items)..where((t) => t.id.equals(item.id))).write(comp);
+    }
+
+    @override
   Future<void> deleteItem(String id) async {
     await (db.delete(db.items)
       ..where((t) => t.id.equals(id))).go();
@@ -405,9 +426,12 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     }
 
   // ✅ 검색 교체
-      if (keyword != null && keyword.trim().isNotEmpty) {
-        join.where(_keywordExpr(i, keyword));
-      }
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      join.where(
+        _keywordExpr(i, keyword, scope: ItemSearchScope.full),
+      );
+    }
+
 
     if (lowOnly) {
       join.where(
@@ -646,7 +670,10 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
       // ✅ 키워드 필터(목록과 동일 조건)
       if (keyword != null && keyword.trim().isNotEmpty) {
-        join.where(_keywordExpr(i, keyword));
+        join.where(
+          _keywordExpr(i, keyword, scope: ItemSearchScope.full),
+        );
+
       }
 
     // 즐겨찾기만

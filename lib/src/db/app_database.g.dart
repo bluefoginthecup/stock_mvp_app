@@ -50,6 +50,14 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
+  static const VerificationMeta _searchFullNormalizedMeta =
+      const VerificationMeta('searchFullNormalized');
+  @override
+  late final GeneratedColumn<String> searchFullNormalized =
+      GeneratedColumn<String>('search_full_normalized', aliasedName, false,
+          type: DriftSqlType.string,
+          requiredDuringInsert: false,
+          defaultValue: const Constant(''));
   static const VerificationMeta _folderMeta = const VerificationMeta('folder');
   @override
   late final GeneratedColumn<String> folder = GeneratedColumn<String>(
@@ -170,6 +178,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
         unit,
         searchNormalized,
         searchInitials,
+        searchFullNormalized,
         folder,
         subfolder,
         subsubfolder,
@@ -237,6 +246,12 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           _searchInitialsMeta,
           searchInitials.isAcceptableOrUnknown(
               data['search_initials']!, _searchInitialsMeta));
+    }
+    if (data.containsKey('search_full_normalized')) {
+      context.handle(
+          _searchFullNormalizedMeta,
+          searchFullNormalized.isAcceptableOrUnknown(
+              data['search_full_normalized']!, _searchFullNormalizedMeta));
     }
     if (data.containsKey('folder')) {
       context.handle(_folderMeta,
@@ -339,6 +354,9 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           DriftSqlType.string, data['${effectivePrefix}search_normalized'])!,
       searchInitials: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}search_initials'])!,
+      searchFullNormalized: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}search_full_normalized'])!,
       folder: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}folder'])!,
       subfolder: attachedDatabase.typeMapping
@@ -388,6 +406,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
   final String unit;
   final String searchNormalized;
   final String searchInitials;
+  final String searchFullNormalized;
   final String folder;
   final String? subfolder;
   final String? subsubfolder;
@@ -412,6 +431,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       required this.unit,
       required this.searchNormalized,
       required this.searchInitials,
+      required this.searchFullNormalized,
       required this.folder,
       this.subfolder,
       this.subsubfolder,
@@ -440,6 +460,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     map['unit'] = Variable<String>(unit);
     map['search_normalized'] = Variable<String>(searchNormalized);
     map['search_initials'] = Variable<String>(searchInitials);
+    map['search_full_normalized'] = Variable<String>(searchFullNormalized);
     map['folder'] = Variable<String>(folder);
     if (!nullToAbsent || subfolder != null) {
       map['subfolder'] = Variable<String>(subfolder);
@@ -484,6 +505,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       unit: Value(unit),
       searchNormalized: Value(searchNormalized),
       searchInitials: Value(searchInitials),
+      searchFullNormalized: Value(searchFullNormalized),
       folder: Value(folder),
       subfolder: subfolder == null && nullToAbsent
           ? const Value.absent()
@@ -526,6 +548,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       unit: serializer.fromJson<String>(json['unit']),
       searchNormalized: serializer.fromJson<String>(json['searchNormalized']),
       searchInitials: serializer.fromJson<String>(json['searchInitials']),
+      searchFullNormalized:
+          serializer.fromJson<String>(json['searchFullNormalized']),
       folder: serializer.fromJson<String>(json['folder']),
       subfolder: serializer.fromJson<String?>(json['subfolder']),
       subsubfolder: serializer.fromJson<String?>(json['subsubfolder']),
@@ -555,6 +579,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       'unit': serializer.toJson<String>(unit),
       'searchNormalized': serializer.toJson<String>(searchNormalized),
       'searchInitials': serializer.toJson<String>(searchInitials),
+      'searchFullNormalized': serializer.toJson<String>(searchFullNormalized),
       'folder': serializer.toJson<String>(folder),
       'subfolder': serializer.toJson<String?>(subfolder),
       'subsubfolder': serializer.toJson<String?>(subsubfolder),
@@ -582,6 +607,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           String? unit,
           String? searchNormalized,
           String? searchInitials,
+          String? searchFullNormalized,
           String? folder,
           Value<String?> subfolder = const Value.absent(),
           Value<String?> subsubfolder = const Value.absent(),
@@ -606,6 +632,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         unit: unit ?? this.unit,
         searchNormalized: searchNormalized ?? this.searchNormalized,
         searchInitials: searchInitials ?? this.searchInitials,
+        searchFullNormalized: searchFullNormalized ?? this.searchFullNormalized,
         folder: folder ?? this.folder,
         subfolder: subfolder.present ? subfolder.value : this.subfolder,
         subsubfolder:
@@ -640,6 +667,9 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       searchInitials: data.searchInitials.present
           ? data.searchInitials.value
           : this.searchInitials,
+      searchFullNormalized: data.searchFullNormalized.present
+          ? data.searchFullNormalized.value
+          : this.searchFullNormalized,
       folder: data.folder.present ? data.folder.value : this.folder,
       subfolder: data.subfolder.present ? data.subfolder.value : this.subfolder,
       subsubfolder: data.subsubfolder.present
@@ -680,6 +710,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           ..write('unit: $unit, ')
           ..write('searchNormalized: $searchNormalized, ')
           ..write('searchInitials: $searchInitials, ')
+          ..write('searchFullNormalized: $searchFullNormalized, ')
           ..write('folder: $folder, ')
           ..write('subfolder: $subfolder, ')
           ..write('subsubfolder: $subsubfolder, ')
@@ -709,6 +740,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         unit,
         searchNormalized,
         searchInitials,
+        searchFullNormalized,
         folder,
         subfolder,
         subsubfolder,
@@ -737,6 +769,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           other.unit == this.unit &&
           other.searchNormalized == this.searchNormalized &&
           other.searchInitials == this.searchInitials &&
+          other.searchFullNormalized == this.searchFullNormalized &&
           other.folder == this.folder &&
           other.subfolder == this.subfolder &&
           other.subsubfolder == this.subsubfolder &&
@@ -763,6 +796,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
   final Value<String> unit;
   final Value<String> searchNormalized;
   final Value<String> searchInitials;
+  final Value<String> searchFullNormalized;
   final Value<String> folder;
   final Value<String?> subfolder;
   final Value<String?> subsubfolder;
@@ -788,6 +822,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.unit = const Value.absent(),
     this.searchNormalized = const Value.absent(),
     this.searchInitials = const Value.absent(),
+    this.searchFullNormalized = const Value.absent(),
     this.folder = const Value.absent(),
     this.subfolder = const Value.absent(),
     this.subsubfolder = const Value.absent(),
@@ -814,6 +849,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     required String unit,
     this.searchNormalized = const Value.absent(),
     this.searchInitials = const Value.absent(),
+    this.searchFullNormalized = const Value.absent(),
     required String folder,
     this.subfolder = const Value.absent(),
     this.subsubfolder = const Value.absent(),
@@ -844,6 +880,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     Expression<String>? unit,
     Expression<String>? searchNormalized,
     Expression<String>? searchInitials,
+    Expression<String>? searchFullNormalized,
     Expression<String>? folder,
     Expression<String>? subfolder,
     Expression<String>? subsubfolder,
@@ -870,6 +907,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       if (unit != null) 'unit': unit,
       if (searchNormalized != null) 'search_normalized': searchNormalized,
       if (searchInitials != null) 'search_initials': searchInitials,
+      if (searchFullNormalized != null)
+        'search_full_normalized': searchFullNormalized,
       if (folder != null) 'folder': folder,
       if (subfolder != null) 'subfolder': subfolder,
       if (subsubfolder != null) 'subsubfolder': subsubfolder,
@@ -898,6 +937,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       Value<String>? unit,
       Value<String>? searchNormalized,
       Value<String>? searchInitials,
+      Value<String>? searchFullNormalized,
       Value<String>? folder,
       Value<String?>? subfolder,
       Value<String?>? subsubfolder,
@@ -923,6 +963,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       unit: unit ?? this.unit,
       searchNormalized: searchNormalized ?? this.searchNormalized,
       searchInitials: searchInitials ?? this.searchInitials,
+      searchFullNormalized: searchFullNormalized ?? this.searchFullNormalized,
       folder: folder ?? this.folder,
       subfolder: subfolder ?? this.subfolder,
       subsubfolder: subsubfolder ?? this.subsubfolder,
@@ -966,6 +1007,10 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     }
     if (searchInitials.present) {
       map['search_initials'] = Variable<String>(searchInitials.value);
+    }
+    if (searchFullNormalized.present) {
+      map['search_full_normalized'] =
+          Variable<String>(searchFullNormalized.value);
     }
     if (folder.present) {
       map['folder'] = Variable<String>(folder.value);
@@ -1031,6 +1076,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
           ..write('unit: $unit, ')
           ..write('searchNormalized: $searchNormalized, ')
           ..write('searchInitials: $searchInitials, ')
+          ..write('searchFullNormalized: $searchFullNormalized, ')
           ..write('folder: $folder, ')
           ..write('subfolder: $subfolder, ')
           ..write('subsubfolder: $subsubfolder, ')
@@ -6476,6 +6522,7 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   required String unit,
   Value<String> searchNormalized,
   Value<String> searchInitials,
+  Value<String> searchFullNormalized,
   required String folder,
   Value<String?> subfolder,
   Value<String?> subsubfolder,
@@ -6502,6 +6549,7 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<String> unit,
   Value<String> searchNormalized,
   Value<String> searchInitials,
+  Value<String> searchFullNormalized,
   Value<String> folder,
   Value<String?> subfolder,
   Value<String?> subsubfolder,
@@ -6640,6 +6688,10 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<String> get searchInitials => $composableBuilder(
       column: $table.searchInitials,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get searchFullNormalized => $composableBuilder(
+      column: $table.searchFullNormalized,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get folder => $composableBuilder(
@@ -6852,6 +6904,10 @@ class $$ItemsTableOrderingComposer
       column: $table.searchInitials,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get searchFullNormalized => $composableBuilder(
+      column: $table.searchFullNormalized,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get folder => $composableBuilder(
       column: $table.folder, builder: (column) => ColumnOrderings(column));
 
@@ -6935,6 +6991,9 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<String> get searchInitials => $composableBuilder(
       column: $table.searchInitials, builder: (column) => column);
+
+  GeneratedColumn<String> get searchFullNormalized => $composableBuilder(
+      column: $table.searchFullNormalized, builder: (column) => column);
 
   GeneratedColumn<String> get folder =>
       $composableBuilder(column: $table.folder, builder: (column) => column);
@@ -7147,6 +7206,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String> unit = const Value.absent(),
             Value<String> searchNormalized = const Value.absent(),
             Value<String> searchInitials = const Value.absent(),
+            Value<String> searchFullNormalized = const Value.absent(),
             Value<String> folder = const Value.absent(),
             Value<String?> subfolder = const Value.absent(),
             Value<String?> subsubfolder = const Value.absent(),
@@ -7173,6 +7233,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             unit: unit,
             searchNormalized: searchNormalized,
             searchInitials: searchInitials,
+            searchFullNormalized: searchFullNormalized,
             folder: folder,
             subfolder: subfolder,
             subsubfolder: subsubfolder,
@@ -7199,6 +7260,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             required String unit,
             Value<String> searchNormalized = const Value.absent(),
             Value<String> searchInitials = const Value.absent(),
+            Value<String> searchFullNormalized = const Value.absent(),
             required String folder,
             Value<String?> subfolder = const Value.absent(),
             Value<String?> subsubfolder = const Value.absent(),
@@ -7225,6 +7287,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             unit: unit,
             searchNormalized: searchNormalized,
             searchInitials: searchInitials,
+            searchFullNormalized: searchFullNormalized,
             folder: folder,
             subfolder: subfolder,
             subsubfolder: subsubfolder,
