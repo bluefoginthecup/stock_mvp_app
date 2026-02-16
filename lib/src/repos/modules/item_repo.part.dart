@@ -16,11 +16,8 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
           .replaceAll('_', r'\_');
     }
 
-    String _buildNameNormalized(Item item) {
-      final baseName =
-      (item.displayName?.trim().isNotEmpty == true) ? item.displayName!.trim() : item.name;
-      return normalizeForSearch(baseName);
-    }
+
+
 
     String _buildFullNormalized({
       required String name,
@@ -45,12 +42,14 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
           ItemSearchScope scope = ItemSearchScope.nameOnly,
         }) {
       final splitter = RegExp(r'[\s,|/]+');
-
       final q = raw.trim();
       if (q.isEmpty) return const Constant(true);
 
+      final hasSpace = q.contains(RegExp(r'\s'));
       final qNoSpace = q.replaceAll(RegExp(r'\s+'), '');
-      final isCho = looksLikeChosungQuery(qNoSpace);
+
+// ✅ 공백 포함한 원문으로 판정해야 "공백 있을 때만 fuzzy"가 가능
+      final isCho = looksLikeChosungQuery(q);
 
       List<String> parts(String s) => s
           .split(splitter)
@@ -58,18 +57,26 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
           .where((e) => e.isNotEmpty)
           .toList();
 
-      // ── 1) 초성 검색 (항상 "이름 초성"만 사용)
+// ── 1) 초성 검색 (항상 "이름 초성"만 사용)
       if (isCho) {
-        final ps = parts(q);
-        if (ps.isEmpty) return const Constant(false);
+        if (!hasSpace) {
+          // ✅ 공백 없으면: 연속 포함(건너뛰기 금지)
+          final key = qNoSpace;
+          final like = '%${_escapeLike(key)}%';
+          return i.searchInitials.like(like, escapeChar: '\\');
+        } else {
+          // ✅ 공백 있으면: 토큰 단위 fuzzy(건너뛰기 허용)
+          final ps = parts(q);
+          if (ps.isEmpty) return const Constant(false);
 
-        final tokenPatterns = ps.map((tok) {
-          final chars = tok.replaceAll(RegExp(r'\s+'), '').split('');
-          return chars.map(_escapeLike).join('%');
-        }).toList();
+          final tokenPatterns = ps.map((tok) {
+            final chars = tok.replaceAll(RegExp(r'\s+'), '').split('');
+            return chars.map(_escapeLike).join('%'); // ㄹ%ㅇ%ㄱ...
+          }).toList();
 
-        final like = '%${tokenPatterns.join('%')}%';
-        return i.searchInitials.like(like, escapeChar: '\\');
+          final like = '%${tokenPatterns.join('%')}%';
+          return i.searchInitials.like(like, escapeChar: '\\');
+        }
       }
 
       // ── 2) 일반 검색 (scope에 따라 컬럼 선택)
@@ -215,27 +222,16 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     @override
     Future<void> upsertItem(Item item) async {
       await db.transaction(() async {
-        final baseName =
-        (item.displayName?.trim().isNotEmpty == true) ? item.displayName!.trim() : item.name;
-
-        final nameNorm = normalizeForSearch(baseName);
-        final initials = toChosungString(baseName);
-        final fullNorm = _buildFullNormalized(
-          name: baseName,
-          sku: item.sku,
-          folder: item.folder,
-          subfolder: item.subfolder,
-          subsubfolder: item.subsubfolder,
-        );
+        final keys = buildItemSearchKeys(item);
 
         await db.into(db.items).insertOnConflictUpdate(
           item.toCompanion().copyWith(
-            isFavorite: Value(item.isFavorite),
-            searchNormalized: Value(nameNorm),
-            searchInitials: Value(initials),
-            searchFullNormalized: Value(fullNorm),
+            searchNormalized: Value(keys.nameNorm),
+            searchInitials: Value(keys.initials),
+            searchFullNormalized: Value(keys.fullNorm),
           ),
         );
+
       });
 
       final fresh = await getItem(item.id);
@@ -277,21 +273,18 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
           throw StateError('Invalid L3 folder id: $effL3 (parent mismatch)');
         }
       }
-
-      // 3) items 테이블의 메타는 "이름"으로 저장 (표시/검색용)
-      //    item_paths에는 "ID" 저장 (정합성 원천)
       final baseName =
-      (item.displayName?.trim().isNotEmpty == true) ? item.displayName!.trim() : item.name;
+                (item.displayName?.trim().isNotEmpty == true)
+                    ? item.displayName!.trim()
+                    : item.name;
+            final keys = buildItemSearchKeysRaw(
+              name: baseName,
+              sku: item.sku,
+              folder: l1Node.name,
+              subfolder: l2Node?.name,
+              subsubfolder: l3Node?.name,
+            );
 
-      final nameNorm = normalizeForSearch(baseName);
-      final initials = toChosungString(baseName);
-      final fullNorm = _buildFullNormalized(
-        name: baseName,
-        sku: item.sku,
-        folder: l1Node.name,
-        subfolder: l2Node?.name,
-        subsubfolder: l3Node?.name,
-      );
 
       final base = item.toCompanion();
       final comp = base.copyWith(
@@ -299,10 +292,11 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
         folder: Value(l1Node.name),
         subfolder: Value(l2Node?.name),
         subsubfolder: Value(l3Node?.name),
-        searchNormalized: Value(nameNorm),
-        searchInitials: Value(initials),
-        searchFullNormalized: Value(fullNorm),
+        searchNormalized: Value(keys.nameNorm),
+        searchInitials: Value(keys.initials),
+        searchFullNormalized: Value(keys.fullNorm),
       );
+
 
       await db.into(db.items).insertOnConflictUpdate(comp);
 
@@ -331,27 +325,18 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
     @override
     Future<void> updateItemMeta(Item item) async {
-      final baseName =
-      (item.displayName?.trim().isNotEmpty == true) ? item.displayName!.trim() : item.name;
-
-      final nameNorm = normalizeForSearch(baseName);
-      final initials = toChosungString(baseName);
-      final fullNorm = _buildFullNormalized(
-        name: baseName,
-        sku: item.sku,
-        folder: item.folder,
-        subfolder: item.subfolder,
-        subsubfolder: item.subsubfolder,
-      );
+      final keys = buildItemSearchKeys(item);
 
       final comp = item.toCompanion().copyWith(
-        searchNormalized: Value(nameNorm),
-        searchInitials: Value(initials),
-        searchFullNormalized: Value(fullNorm),
+        searchNormalized: Value(keys.nameNorm),
+        searchInitials: Value(keys.initials),
+        searchFullNormalized: Value(keys.fullNorm),
       );
 
-      await (db.update(db.items)..where((t) => t.id.equals(item.id))).write(comp);
-    }
+      await (db.update(db.items)
+        ..where((t) => t.id.equals(item.id)))
+          .write(comp);
+ }
 
     @override
   Future<void> deleteItem(String id) async {
