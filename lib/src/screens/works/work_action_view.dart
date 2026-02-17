@@ -34,7 +34,7 @@ class WorkActionView extends StatelessWidget {
 
         final canChange = w.status != WorkStatus.canceled;
 
-        return Card(
+        final parentCard = Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -42,16 +42,11 @@ class WorkActionView extends StatelessWidget {
               children: [
                 WorkHeaderRow(
                   work: w,
-                  onMore: embedded
-                      ? () => _showWorkMoreMenu(context, w)
-                      : null,
+                  onMore: embedded ? () => _showWorkMoreMenu(context, w) : null,
                 ),
                 const SizedBox(height: 10),
-
                 _WorkProgressLine(w: w),
-
                 const SizedBox(height: 10),
-
                 WorkStatusSelector(
                   work: w,
                   enabled: canChange,
@@ -61,23 +56,26 @@ class WorkActionView extends StatelessWidget {
                     await inv.setWorkStatus(w.id, target);
                   },
                 ),
-
-                // ✅ 하위 작업(자식 작업) 표시
-                const SizedBox(height: 12),
-                _ChildWorksSection(parent: w),
-
-
                 if (!embedded) ...[
                   const SizedBox(height: 12),
-                  Text('workId: ${shortId(w.id)}', style: Theme
-                      .of(context)
-                      .textTheme
-                      .bodySmall),
+                  Text('workId: ${shortId(w.id)}',
+                      style: Theme.of(context).textTheme.bodySmall),
                 ],
               ],
             ),
           ),
         );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            parentCard,
+
+            // ✅ 카드 밖으로 빼서 폭을 확보
+            _ChildWorksSection(parent: w),
+          ],
+        );
+
       },
     );
   }
@@ -358,21 +356,34 @@ class _ChildWorksSection extends StatelessWidget {
         final children = snap.data ?? const <Work>[];
         if (children.isEmpty) return const SizedBox.shrink();
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('하위 작업', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 6),
-            ...children.map((c) => Padding(
-              padding: const EdgeInsets.only(left: 12, bottom: 8),
-              child: WorkActionView(
-                workId: c.id,
-                embedded: true, // ✅ 자식은 간단 모드
+        return Padding(
+          padding: const EdgeInsets.only(left: 12, top: 8), // ✅ 살짝만
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.subdirectory_arrow_right, size: 18),
+                  const SizedBox(width: 6),
+                  Text('하위 작업',
+                      style: Theme.of(context).textTheme.titleSmall),
+                ],
               ),
-            )),
-          ],
+              const SizedBox(height: 6),
+              ...children.map(
+                    (c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: WorkActionView(
+                    workId: c.id,
+                    embedded: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
+
