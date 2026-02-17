@@ -62,6 +62,10 @@ class WorkActionView extends StatelessWidget {
                   },
                 ),
 
+                // ✅ 하위 작업(자식 작업) 표시
+                const SizedBox(height: 12),
+                _ChildWorksSection(parent: w),
+
 
                 if (!embedded) ...[
                   const SizedBox(height: 12),
@@ -183,6 +187,8 @@ class WorkActionView extends StatelessWidget {
     );
   }
 }
+
+
 
 //------------------------//
 class WorkHeaderRow extends StatelessWidget {
@@ -335,5 +341,38 @@ class _WorkProgressLine extends StatelessWidget {
       ),
     );
 
+  }
+}
+
+class _ChildWorksSection extends StatelessWidget {
+  final Work parent;
+  const _ChildWorksSection({required this.parent});
+
+  @override
+  Widget build(BuildContext context) {
+    final workRepo = context.read<WorkRepo>();
+
+    return StreamBuilder<List<Work>>(
+      stream: workRepo.watchChildWorks(parent.id),
+      builder: (context, snap) {
+        final children = snap.data ?? const <Work>[];
+        if (children.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('하위 작업', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 6),
+            ...children.map((c) => Padding(
+              padding: const EdgeInsets.only(left: 12, bottom: 8),
+              child: WorkActionView(
+                workId: c.id,
+                embedded: true, // ✅ 자식은 간단 모드
+              ),
+            )),
+          ],
+        );
+      },
+    );
   }
 }

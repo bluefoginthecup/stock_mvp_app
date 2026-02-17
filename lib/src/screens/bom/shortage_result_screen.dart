@@ -45,6 +45,7 @@ class ShortageResultScreen extends StatefulWidget {
     );
   }
 
+
   @override
   State<ShortageResultScreen> createState() => _ShortageResultScreenState();
 }
@@ -52,7 +53,7 @@ class ShortageResultScreen extends StatefulWidget {
 class _ShortageResultScreenState extends State<ShortageResultScreen> {
   late Future<_Vm> _future;
   bool _creating = false;
-
+  String? _rootWorkId; // ✅ 작업1 id
 
 
   Future<String?> _findExistingWorkId() async {
@@ -66,6 +67,13 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
   void initState() {
     super.initState();
     _future = _load();
+    _initRootWork(); // ✅ 추가
+  }
+
+  Future<void> _initRootWork() async {
+    final id = await _findExistingWorkId();
+    if (!mounted) return;
+    setState(() => _rootWorkId = id);
   }
 
   Future<_Vm> _load() async {
@@ -162,6 +170,56 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
       setState(() => _creating = false);
     }
   }
+
+  Future<void> _confirmAndCreateChildWork(RowVm r) async {
+    if (r.shortage <= 0 || _creating) return;
+
+    final parentId = _rootWorkId;
+    if (parentId == null || parentId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('부모 작업을 찾지 못했습니다. 주문 생성 시 자동 생성된 작업이 있는지 확인해주세요.')),
+      );
+      return;
+    }
+
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (_) => _ConfirmSheet(
+        title: '관련작업에 추가하시겠습니까?',
+        body: '부족 ${r.shortage}개 만큼 작업을 추가합니다.',
+        okText: '추가',
+      ),
+    );
+
+    if (ok != true) return;
+
+    setState(() => _creating = true);
+
+    try {
+      final repo = context.read<WorkRepo>();
+
+      await repo.createChildWork(
+        parentWorkId: parentId,
+        itemId: r.itemId,
+        qty: r.shortage,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('하위 작업이 추가되었습니다.')),
+      );
+
+      Navigator.of(context).pop(parentId); // 주문상세가 reload 하도록 반환
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('하위 작업 추가 실패: $e')),
+      );
+      setState(() => _creating = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -245,11 +303,11 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
                 const SizedBox(height: 12.0),
                 const Divider(),
 
-                _Section(title: '세미 구성 필요/부족', rows: vm.semi, emptyLabel: '세미 필요 없음'),
+                _Section(title: '세미 구성 필요/부족', rows: vm.semi, emptyLabel: '세미 필요 없음',onCreateChild: _confirmAndCreateChildWork,),
                 const SizedBox(height: 8.0),
-                _Section(title: '원자재 필요/부족', rows: vm.raw,  emptyLabel: '원자재 필요 없음'),
+                _Section(title: '원자재 필요/부족', rows: vm.raw,  emptyLabel: '원자재 필요 없음',onCreateChild: _confirmAndCreateChildWork,),
                 const SizedBox(height: 8.0),
-                _Section(title: '부자재 필요/부족', rows: vm.sub,  emptyLabel: '부자재 필요 없음'),
+                _Section(title: '부자재 필요/부족', rows: vm.sub,  emptyLabel: '부자재 필요 없음',onCreateChild: _confirmAndCreateChildWork,),
                 const SizedBox(height: 16.0),
               ],
             ),
@@ -264,11 +322,14 @@ class _Section extends StatelessWidget {
   final String title;
   final List<RowVm> rows;
   final String emptyLabel;
+  final Future<void> Function(RowVm r)? onCreateChild; // ✅ 추가
+
 
   const _Section({
     required this.title,
     required this.rows,
     required this.emptyLabel,
+    this.onCreateChild, // ✅
   });
 
   @override
@@ -282,7 +343,8 @@ class _Section extends StatelessWidget {
         if (rows.isEmpty)
           Text(emptyLabel, style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey))
         else
-          ...rows.map((r) => _NeedShortRow(vm: r)),
+          ...rows.map((r) => _NeedShortRow(vm: r, onTapShortage: onCreateChild)),
+
       ],
     );
   }
@@ -290,7 +352,12 @@ class _Section extends StatelessWidget {
 
 class _NeedShortRow extends StatelessWidget {
   final RowVm vm;
-  const _NeedShortRow({required this.vm});
+  final Future<void> Function(RowVm r)? onTapShortage; // ✅ 추가
+  const _NeedShortRow({
+    required this.vm,
+    this.onTapShortage, // ✅ 추가
+  });
+
 
   @override
   Widget build(BuildContext context) {
@@ -329,10 +396,14 @@ class _NeedShortRow extends StatelessWidget {
             children: [
               _Badge(label: '현재고', value: '${vm.stock}'),
               _Badge(label: '필요',   value: '${vm.need}'),
-              _Badge(
-                label: '부족',
-                value: '${vm.shortage}',
-                tone: danger ? BadgeTone.danger : BadgeTone.ok,
+              // ✅ 부족 배지만 탭 가능
+              GestureDetector(
+                onTap: (danger && onTapShortage != null) ? () => onTapShortage!(vm) : null,
+                child: _Badge(
+                  label: '부족',
+                  value: '${vm.shortage}',
+                  tone: danger ? BadgeTone.danger : BadgeTone.ok,
+                ),
               ),
             ],
           ),
@@ -428,6 +499,8 @@ class _ConfirmSheet extends StatelessWidget {
         ]),
       ),
     );
+
   }
+
 }
 

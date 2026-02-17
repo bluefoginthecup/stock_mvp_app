@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../repos/repo_interfaces.dart';
-import '../../models/work.dart';
 import '../../ui/common/item_picker_sheet.dart'; // 네가 만든 파일 경로에 맞춰
 import '../../utils/item_presentation.dart';
 

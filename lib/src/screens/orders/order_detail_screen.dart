@@ -16,9 +16,6 @@ import 'widgets/order_timeline.dart';
 
 import '../../models/work.dart';
 import '../../models/types.dart';
-import '../works/widgets/work_row.dart';
-import '../works/work_detail_view.dart';
-import '../works/work_detail_screen.dart';
 import '../works/work_action_view.dart';
 import 'order_line_edit_sheet.dart';
 

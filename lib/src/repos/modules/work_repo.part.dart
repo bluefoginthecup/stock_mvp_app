@@ -30,7 +30,33 @@ Future<String> createWorkForOrder({
   await db.into(db.works).insert(w.toCompanion());
   return id;
 }
-// @override
+
+@override
+Future<String> createChildWork({
+  required String parentWorkId,
+  required String itemId,
+  required int qty,
+}) async {
+  final id = const Uuid().v4();
+  final now = DateTime.now();
+
+  final w = Work(
+    id: id,
+    itemId: itemId,
+    qty: qty,
+    doneQty: 0,
+    orderId: null,
+    parentWorkId: parentWorkId,
+    status: WorkStatus.planned,
+    createdAt: now,
+    updatedAt: now,
+    isDeleted: false,
+  );
+
+  await db.into(db.works).insert(w.toCompanion());
+  return id;
+}
+
   @override
   Future<Work?> findWorkForOrderLine(String orderId, String itemId) async {
     final row = await (db.select(db.works)
@@ -97,6 +123,15 @@ Stream<List<Work>> watchWorksByOrderAndItem(String orderId, String itemId) {
   return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
 }
 
+  @override
+  Stream<List<Work>> watchChildWorks(String parentWorkId) {
+    return (db.select(db.works)
+      ..where((t) => t.parentWorkId.equals(parentWorkId))
+      ..where((t) => t.isDeleted.equals(false))
+      ..orderBy([(t) => OrderingTerm(expression: t.createdAt)]))
+        .watch()
+        .map((rows) => rows.map((r) => r.toDomain()).toList());
+  }
 
 @override
 Future<void> updateWork(Work w) async {

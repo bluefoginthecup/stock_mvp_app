@@ -245,6 +245,8 @@ abstract class WorkRepo {
   Stream<List<Work>> watchWorksByOrderAndItem(String orderId, String itemId);
   Stream<List<Work>> watchAllWorks();
   Stream<List<Work>> watchWorksByOrder(String orderId);
+  Stream<List<Work>> watchChildWorks(String parentWorkId);
+
   Future<void> updateWork(Work w);
   Future<void> completeWork(String id);
   Future<String> createWorkForOrder({
@@ -252,6 +254,12 @@ abstract class WorkRepo {
     required String itemId,
     required int qty,
   });
+  Future<String> createChildWork({
+    required String parentWorkId,
+    required String itemId,
+    required int qty,
+  });
+
   Future<Work?> findWorkForOrderLine(String orderId, String itemId);
   Future<List<Work>> findWorksByOrderAndItem(String orderId, String itemId); // ✅ 추가
 

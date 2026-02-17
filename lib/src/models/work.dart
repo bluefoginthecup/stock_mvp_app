@@ -48,6 +48,7 @@ class Work {
     int? qty,
     int? doneQty,              // ✅
     String? orderId,
+    String? parentWorkId, // ✅ 추가
     WorkStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -62,7 +63,7 @@ class Work {
       qty: qty ?? this.qty,
       doneQty: doneQty ?? this.doneQty,
       orderId: orderId ?? this.orderId,
-      parentWorkId: parentWorkId ?? this.parentWorkId,
+      parentWorkId: parentWorkId ?? this.parentWorkId, // ✅ 수정
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -80,22 +81,16 @@ class Work {
       id: json['id'] as String,
       itemId: json['itemId'] as String,
       qty: (json['qty'] as num).toInt(),
-      doneQty: ((json['doneQty'] ?? 0) as num).toInt(), // ✅ backward compatible
-      orderId: json['orderId'] as String,
-      status: WorkStatus.values
-          .firstWhere((e) => e.name == (json['status'] as String)),
+      doneQty: ((json['doneQty'] ?? 0) as num).toInt(),
+      orderId: json['orderId'] as String?,
+      parentWorkId: json['parentWorkId'] as String?, // ✅ 추가
+      status: WorkStatus.values.firstWhere((e) => e.name == (json['status'] as String)),
       createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: (json['updatedAt'] as String?) != null
-          ? DateTime.parse(json['updatedAt'] as String)
-          : null,
+      updatedAt: (json['updatedAt'] as String?) != null ? DateTime.parse(json['updatedAt'] as String) : null,
       isDeleted: json['isDeleted'] == true,
       sourceKey: json['sourceKey'] as String?,
-      startedAt: (json['startedAt'] as String?) != null
-          ? DateTime.parse(json['startedAt'])
-          : null,
-      finishedAt: (json['finishedAt'] as String?) != null
-          ? DateTime.parse(json['finishedAt'])
-          : null,
+      startedAt: (json['startedAt'] as String?) != null ? DateTime.parse(json['startedAt'] as String) : null,
+      finishedAt: (json['finishedAt'] as String?) != null ? DateTime.parse(json['finishedAt'] as String) : null,
     );
   }
 
@@ -105,6 +100,7 @@ class Work {
     'qty': qty,
     'doneQty': doneQty, // ✅
     'orderId': orderId,
+    'parentWorkId': parentWorkId, // ✅ 추가
     'status': status.name,
     'createdAt': createdAt.toIso8601String(),
     'updatedAt': updatedAt?.toIso8601String(),
@@ -116,5 +112,5 @@ class Work {
 
   @override
   String toString() =>
-      'Work(id: $id, itemId: $itemId, qty: $qty, doneQty: $doneQty, orderId: $orderId, status: ${status.name})';
+      'Work(id: $id, itemId: $itemId, qty: $qty, doneQty: $doneQty, orderId: $orderId, parentWorkId: $parentWorkId, status: ${status.name})';
 }

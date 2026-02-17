@@ -870,6 +870,7 @@ extension WorkToCompanion on Work {
     itemId: Value(itemId),
     qty: Value(qty),
     orderId: Value(orderId),
+    parentWorkId: parentWorkId == null ? const Value.absent() : Value(parentWorkId!),
     status: Value(status.name),
     createdAt: Value(createdAt.toIso8601String()),
     updatedAt: Value(updatedAt?.toIso8601String()),
