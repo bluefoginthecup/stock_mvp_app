@@ -7,10 +7,17 @@ SliverList _buildFolderSliver(
     List<FolderNode> nodes,
     void Function(void Function()) setState,
     Future<void> Function(FolderNode n) onDelete,
+    Future<void> Function(FolderNode n)? onTapFolder, // ✅ 추가
     ) {
   return SliverList(
     delegate: SliverChildBuilderDelegate(
-          (context, i) => _buildFolderTile(context, nodes[i], setState, onDelete),
+          (context, i) => _buildFolderTile(
+            context,
+            nodes[i],
+            setState,
+            onDelete,
+            onTapFolder,
+          ),
       childCount: nodes.length,
     ),
   );
@@ -21,6 +28,7 @@ Widget _buildFolderTile(
     FolderNode n,
     void Function(void Function()) setState,
     Future<void> Function(FolderNode n) onDelete,
+    Future<void> Function(FolderNode n)? onTapFolder,
     ) {
   return ListTile(
     dense: true,   // ← 아이템 타일과 통일
@@ -48,7 +56,11 @@ Widget _buildFolderTile(
       color: Colors.black45,
     ),
 
-    onTap: () {
+
+  onTap: () async {
+  if (onTapFolder != null) {
+  await onTapFolder(n);
+  } else {
       setState(() {
         final s = context.findAncestorStateOfType<_StockBrowserScreenState>()!;
         if (s._l1Id == null) {
@@ -59,7 +71,8 @@ Widget _buildFolderTile(
           s._l3Id = n.id;
         }
       });
-    },
+    }
+  },
     onLongPress: () async {
       final action = await showEntityActionsSheet(
         context,

@@ -246,6 +246,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                           folders,
                           setState,
                               (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                              (n) => _jumpToFolderFromSearch(folderRepo: folderRepo, target: n, sel: sel),
                         ),
                       );
                     }
@@ -297,6 +298,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                           folders,
                           setState,
                               (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                        null,
                         ),
                       );
                     }
@@ -310,6 +312,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                         folders,
                         setState,
                             (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                        null,
                       ),
                     );
                   } else {
@@ -320,6 +323,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                           folders,
                           setState,
                               (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                          null,
                         ),
                       );
                     }
@@ -524,6 +528,42 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       ],
     );
   }
+  //----검색결과 나온 폴더로 이동 ----//
+//----검색결과 나온 폴더로 이동 ----//
+  Future<void> _jumpToFolderFromSearch({
+    required FolderTreeRepo folderRepo,
+    required FolderNode target,
+    required ItemSelectionController sel,
+  }) async {
+    // 키보드 닫기
+    FocusScope.of(context).unfocus();
 
+    // target -> parent -> ... -> root 로 쌓기
+    final chain = <FolderNode>[target];
+    var cur = target;
 
-}
+    while (cur.parentId != null) {
+      final parent = await folderRepo.folderById(cur.parentId!);
+      if (parent == null) break;
+      chain.add(parent);
+      cur = parent;
+    }
+
+    // root -> ... -> target
+    final path = chain.reversed.toList();
+
+    setState(() {
+      // ✅ 여기서 chain이 아니라 path를 써야 "탭한 폴더(target)"가 최종 목적지가 됨
+      _l1Id = path.isNotEmpty ? path[0].id : null;
+      _l2Id = path.length >= 2 ? path[1].id : null;
+      _l3Id = path.length >= 3 ? path[2].id : null;
+
+      // 검색 종료 (탐색 모드로 전환)
+      _searchC.clear();
+
+      // 멀티선택 해제(선택 상태로 점프하면 UX 혼동 생김)
+      sel.exit();
+    });
+  }
+
+  }
