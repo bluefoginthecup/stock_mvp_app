@@ -1135,8 +1135,25 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _searchNormalizedMeta =
+      const VerificationMeta('searchNormalized');
   @override
-  List<GeneratedColumn> get $columns => [id, name, parentId, depth, order];
+  late final GeneratedColumn<String> searchNormalized = GeneratedColumn<String>(
+      'search_normalized', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _searchInitialsMeta =
+      const VerificationMeta('searchInitials');
+  @override
+  late final GeneratedColumn<String> searchInitials = GeneratedColumn<String>(
+      'search_initials', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, parentId, depth, order, searchNormalized, searchInitials];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1172,6 +1189,18 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
       context.handle(
           _orderMeta, order.isAcceptableOrUnknown(data['order']!, _orderMeta));
     }
+    if (data.containsKey('search_normalized')) {
+      context.handle(
+          _searchNormalizedMeta,
+          searchNormalized.isAcceptableOrUnknown(
+              data['search_normalized']!, _searchNormalizedMeta));
+    }
+    if (data.containsKey('search_initials')) {
+      context.handle(
+          _searchInitialsMeta,
+          searchInitials.isAcceptableOrUnknown(
+              data['search_initials']!, _searchInitialsMeta));
+    }
     return context;
   }
 
@@ -1191,6 +1220,10 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
           .read(DriftSqlType.int, data['${effectivePrefix}depth'])!,
       order: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}order'])!,
+      searchNormalized: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}search_normalized'])!,
+      searchInitials: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}search_initials'])!,
     );
   }
 
@@ -1206,12 +1239,16 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
   final String? parentId;
   final int depth;
   final int order;
+  final String searchNormalized;
+  final String searchInitials;
   const FolderRow(
       {required this.id,
       required this.name,
       this.parentId,
       required this.depth,
-      required this.order});
+      required this.order,
+      required this.searchNormalized,
+      required this.searchInitials});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1222,6 +1259,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
     }
     map['depth'] = Variable<int>(depth);
     map['order'] = Variable<int>(order);
+    map['search_normalized'] = Variable<String>(searchNormalized);
+    map['search_initials'] = Variable<String>(searchInitials);
     return map;
   }
 
@@ -1234,6 +1273,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           : Value(parentId),
       depth: Value(depth),
       order: Value(order),
+      searchNormalized: Value(searchNormalized),
+      searchInitials: Value(searchInitials),
     );
   }
 
@@ -1246,6 +1287,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       parentId: serializer.fromJson<String?>(json['parentId']),
       depth: serializer.fromJson<int>(json['depth']),
       order: serializer.fromJson<int>(json['order']),
+      searchNormalized: serializer.fromJson<String>(json['searchNormalized']),
+      searchInitials: serializer.fromJson<String>(json['searchInitials']),
     );
   }
   @override
@@ -1257,6 +1300,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       'parentId': serializer.toJson<String?>(parentId),
       'depth': serializer.toJson<int>(depth),
       'order': serializer.toJson<int>(order),
+      'searchNormalized': serializer.toJson<String>(searchNormalized),
+      'searchInitials': serializer.toJson<String>(searchInitials),
     };
   }
 
@@ -1265,13 +1310,17 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           String? name,
           Value<String?> parentId = const Value.absent(),
           int? depth,
-          int? order}) =>
+          int? order,
+          String? searchNormalized,
+          String? searchInitials}) =>
       FolderRow(
         id: id ?? this.id,
         name: name ?? this.name,
         parentId: parentId.present ? parentId.value : this.parentId,
         depth: depth ?? this.depth,
         order: order ?? this.order,
+        searchNormalized: searchNormalized ?? this.searchNormalized,
+        searchInitials: searchInitials ?? this.searchInitials,
       );
   FolderRow copyWithCompanion(FoldersCompanion data) {
     return FolderRow(
@@ -1280,6 +1329,12 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
       depth: data.depth.present ? data.depth.value : this.depth,
       order: data.order.present ? data.order.value : this.order,
+      searchNormalized: data.searchNormalized.present
+          ? data.searchNormalized.value
+          : this.searchNormalized,
+      searchInitials: data.searchInitials.present
+          ? data.searchInitials.value
+          : this.searchInitials,
     );
   }
 
@@ -1290,13 +1345,16 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           ..write('name: $name, ')
           ..write('parentId: $parentId, ')
           ..write('depth: $depth, ')
-          ..write('order: $order')
+          ..write('order: $order, ')
+          ..write('searchNormalized: $searchNormalized, ')
+          ..write('searchInitials: $searchInitials')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, parentId, depth, order);
+  int get hashCode => Object.hash(
+      id, name, parentId, depth, order, searchNormalized, searchInitials);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1305,7 +1363,9 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           other.name == this.name &&
           other.parentId == this.parentId &&
           other.depth == this.depth &&
-          other.order == this.order);
+          other.order == this.order &&
+          other.searchNormalized == this.searchNormalized &&
+          other.searchInitials == this.searchInitials);
 }
 
 class FoldersCompanion extends UpdateCompanion<FolderRow> {
@@ -1314,6 +1374,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
   final Value<String?> parentId;
   final Value<int> depth;
   final Value<int> order;
+  final Value<String> searchNormalized;
+  final Value<String> searchInitials;
   final Value<int> rowid;
   const FoldersCompanion({
     this.id = const Value.absent(),
@@ -1321,6 +1383,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.parentId = const Value.absent(),
     this.depth = const Value.absent(),
     this.order = const Value.absent(),
+    this.searchNormalized = const Value.absent(),
+    this.searchInitials = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   FoldersCompanion.insert({
@@ -1329,6 +1393,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.parentId = const Value.absent(),
     required int depth,
     this.order = const Value.absent(),
+    this.searchNormalized = const Value.absent(),
+    this.searchInitials = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -1339,6 +1405,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     Expression<String>? parentId,
     Expression<int>? depth,
     Expression<int>? order,
+    Expression<String>? searchNormalized,
+    Expression<String>? searchInitials,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1347,6 +1415,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       if (parentId != null) 'parent_id': parentId,
       if (depth != null) 'depth': depth,
       if (order != null) 'order': order,
+      if (searchNormalized != null) 'search_normalized': searchNormalized,
+      if (searchInitials != null) 'search_initials': searchInitials,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1357,6 +1427,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       Value<String?>? parentId,
       Value<int>? depth,
       Value<int>? order,
+      Value<String>? searchNormalized,
+      Value<String>? searchInitials,
       Value<int>? rowid}) {
     return FoldersCompanion(
       id: id ?? this.id,
@@ -1364,6 +1436,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       parentId: parentId ?? this.parentId,
       depth: depth ?? this.depth,
       order: order ?? this.order,
+      searchNormalized: searchNormalized ?? this.searchNormalized,
+      searchInitials: searchInitials ?? this.searchInitials,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1386,6 +1460,12 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     if (order.present) {
       map['order'] = Variable<int>(order.value);
     }
+    if (searchNormalized.present) {
+      map['search_normalized'] = Variable<String>(searchNormalized.value);
+    }
+    if (searchInitials.present) {
+      map['search_initials'] = Variable<String>(searchInitials.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1400,6 +1480,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
           ..write('parentId: $parentId, ')
           ..write('depth: $depth, ')
           ..write('order: $order, ')
+          ..write('searchNormalized: $searchNormalized, ')
+          ..write('searchInitials: $searchInitials, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7432,6 +7514,8 @@ typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
   Value<String?> parentId,
   required int depth,
   Value<int> order,
+  Value<String> searchNormalized,
+  Value<String> searchInitials,
   Value<int> rowid,
 });
 typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
@@ -7440,6 +7524,8 @@ typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
   Value<String?> parentId,
   Value<int> depth,
   Value<int> order,
+  Value<String> searchNormalized,
+  Value<String> searchInitials,
   Value<int> rowid,
 });
 
@@ -7483,6 +7569,14 @@ class $$FoldersTableFilterComposer
   ColumnFilters<int> get order => $composableBuilder(
       column: $table.order, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get searchNormalized => $composableBuilder(
+      column: $table.searchNormalized,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get searchInitials => $composableBuilder(
+      column: $table.searchInitials,
+      builder: (column) => ColumnFilters(column));
+
   $$FoldersTableFilterComposer get parentId {
     final $$FoldersTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -7525,6 +7619,14 @@ class $$FoldersTableOrderingComposer
   ColumnOrderings<int> get order => $composableBuilder(
       column: $table.order, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get searchNormalized => $composableBuilder(
+      column: $table.searchNormalized,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get searchInitials => $composableBuilder(
+      column: $table.searchInitials,
+      builder: (column) => ColumnOrderings(column));
+
   $$FoldersTableOrderingComposer get parentId {
     final $$FoldersTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -7566,6 +7668,12 @@ class $$FoldersTableAnnotationComposer
 
   GeneratedColumn<int> get order =>
       $composableBuilder(column: $table.order, builder: (column) => column);
+
+  GeneratedColumn<String> get searchNormalized => $composableBuilder(
+      column: $table.searchNormalized, builder: (column) => column);
+
+  GeneratedColumn<String> get searchInitials => $composableBuilder(
+      column: $table.searchInitials, builder: (column) => column);
 
   $$FoldersTableAnnotationComposer get parentId {
     final $$FoldersTableAnnotationComposer composer = $composerBuilder(
@@ -7616,6 +7724,8 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<String?> parentId = const Value.absent(),
             Value<int> depth = const Value.absent(),
             Value<int> order = const Value.absent(),
+            Value<String> searchNormalized = const Value.absent(),
+            Value<String> searchInitials = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion(
@@ -7624,6 +7734,8 @@ class $$FoldersTableTableManager extends RootTableManager<
             parentId: parentId,
             depth: depth,
             order: order,
+            searchNormalized: searchNormalized,
+            searchInitials: searchInitials,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -7632,6 +7744,8 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<String?> parentId = const Value.absent(),
             required int depth,
             Value<int> order = const Value.absent(),
+            Value<String> searchNormalized = const Value.absent(),
+            Value<String> searchInitials = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion.insert(
@@ -7640,6 +7754,8 @@ class $$FoldersTableTableManager extends RootTableManager<
             parentId: parentId,
             depth: depth,
             order: order,
+            searchNormalized: searchNormalized,
+            searchInitials: searchInitials,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

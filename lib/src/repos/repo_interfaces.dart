@@ -90,6 +90,7 @@ abstract class ItemRepo {
     bool favoritesOnly = false,
   });
 
+
   /// 아이템을 통합휴지통으로(소프트 삭제)
   Future<void> moveItemToTrash(String itemId, {String? reason});
 
@@ -377,5 +378,9 @@ abstract class FolderTreeRepo extends ChangeNotifier {
     required String keyword,
     bool recursive = true,
   });
+
+
+  ///재고브라우저에서 폴더 검색
+  Stream<List<FolderNode>> watchFolderSearch(String keyword);
 
 }

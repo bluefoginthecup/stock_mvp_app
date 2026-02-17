@@ -94,11 +94,30 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
         expr = expr & col.like('%${_escapeLike(key)}%', escapeChar: '\\');
       }
       return expr;
+
     }
 
+//--3)폴더검색 --//
+  Expression<bool> _folderKeywordExpr(Folders f, String raw) {
+    final q = raw.trim();
+    if (q.isEmpty) return const Constant(true);
+
+    final isCho = looksLikeChosungQuery(q);
+    if (isCho) {
+      final key = q.replaceAll(RegExp(r'\s+'), '');
+      final like = '%${_escapeLike(key)}%';
+      return f.searchInitials.like(like, escapeChar: r'\');
+    }
+
+    final norm = normalizeForSearch(q);
+    final like = '%${_escapeLike(norm)}%';
+    return f.searchNormalized.like(like, escapeChar: r'\');
+  }
 
 
-    @override
+
+
+  @override
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
     final q = db.select(db.items);
 

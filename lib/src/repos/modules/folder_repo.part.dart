@@ -38,6 +38,41 @@ Future<List<FolderNode>> listFolderChildren(String? parentId) async {
 }
 
 @override
+Stream<List<FolderNode>> watchFolderSearch(String keyword) {
+  final qRaw = keyword.trim();
+  if (qRaw.isEmpty) {
+    return const Stream.empty();
+  }
+
+  final q = db.select(db.folders)..where((t) {
+    // ✅ 초성 쿼리면 searchInitials, 아니면 searchNormalized
+    if (looksLikeChosungQuery(qRaw)) {
+      final key = qRaw.replaceAll(RegExp(r'\s+'), '');
+      final like = '%${_escapeLike(key)}%';
+      return t.searchInitials.like(like, escapeChar: r'\');
+    } else {
+      final norm = normalizeForSearch(qRaw);
+      final like = '%${_escapeLike(norm)}%';
+      return t.searchNormalized.like(like, escapeChar: r'\');
+    }
+  });
+
+  // 폴더는 적으니 이름순이 UX상 안정적
+  q.orderBy([(t) => OrderingTerm.asc(t.depth), (t) => OrderingTerm.asc(t.name)]);
+
+  return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
+}
+
+// ItemRepoMixin에 이미 있으면 mixin 공용으로 빼도 됨
+  String _escapeLike(String s) {
+    return s
+        .replaceAll(r'\', r'\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+  }
+
+
+@override
 Future<FolderNode?> folderById(String id) async {
   final row = await (db.select(db.folders)..where((t) => t.id.equals(id))).getSingleOrNull();
   return row?.toDomain();

@@ -97,6 +97,13 @@ class Folders extends Table {
   IntColumn get order =>
       integer().withDefault(const Constant(0))(); // 형제 순서
 
+  // ✅ 검색 키
+  TextColumn get searchNormalized =>
+      text().withDefault(const Constant(''))();
+  TextColumn get searchInitials =>
+      text().withDefault(const Constant(''))();
+
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -379,7 +386,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8; // ⬅️ 4에서 5로 올림
+  int get schemaVersion => 9; // ⬅️ 4에서 5로 올림
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -483,6 +490,19 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(items, items.searchFullNormalized);
         await _backfillItemFullSearchKeys();
       }
+      // v8 → v9(재고 브라우저용 폴더 검색키 컬럼 +backfill)
+      if (from < 9) {
+        await m.alterTable(TableMigration(
+          folders,
+          newColumns: [
+            folders.searchNormalized,
+            folders.searchInitials,
+          ],
+        ));
+
+        await _backfillFolderSearchKeys();
+      }
+
 
 
     },
@@ -536,6 +556,27 @@ class AppDatabase extends _$AppDatabase {
       }
     });
   }
+
+  Future<void> _backfillFolderSearchKeys() async {
+    final rows = await (select(folders)
+      ..where((t) =>
+      t.searchNormalized.equals('') | t.searchInitials.equals('')))
+        .get();
+
+    for (final r in rows) {
+      final base = r.name.trim();
+      final normalized = normalizeForSearch(base);
+      final initials = toChosungString(base);
+
+      await (update(folders)..where((t) => t.id.equals(r.id))).write(
+        FoldersCompanion(
+          searchNormalized: Value(normalized),
+          searchInitials: Value(initials),
+        ),
+      );
+    }
+  }
+
 
 
 
