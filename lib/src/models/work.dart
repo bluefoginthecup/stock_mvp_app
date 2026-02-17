@@ -9,6 +9,7 @@ class Work {
   final int qty;          // planned quantity (positive)
   final int doneQty;      // ✅ cumulative completed quantity (>= 0, can exceed qty)
   final String? orderId;  // originating sales order id
+  final String? parentWorkId;
   final WorkStatus status;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -24,6 +25,7 @@ class Work {
     required this.qty,
     this.doneQty = 0,            // ✅ default 0
     required this.orderId,
+    this.parentWorkId,
     this.status = WorkStatus.planned,
     this.isDeleted = false,
     DateTime? createdAt,
@@ -60,6 +62,7 @@ class Work {
       qty: qty ?? this.qty,
       doneQty: doneQty ?? this.doneQty,
       orderId: orderId ?? this.orderId,
+      parentWorkId: parentWorkId ?? this.parentWorkId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

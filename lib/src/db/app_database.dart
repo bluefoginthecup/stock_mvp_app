@@ -240,6 +240,8 @@ class Works extends Table {
 
   TextColumn get orderId =>
       text().nullable().references(Orders, #id, onDelete: KeyAction.setNull)();
+  //부모 작업
+  TextColumn get parentWorkId => text().nullable()();
 
   TextColumn get status => text()(); // WorkStatus.name
   TextColumn get createdAt => text()(); // ISO8601
@@ -386,7 +388,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 9; // ⬅️ 4에서 5로 올림
+  int get schemaVersion => 10; // ⬅️ 4에서 5로 올림
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -503,6 +505,14 @@ class AppDatabase extends _$AppDatabase {
         await _backfillFolderSearchKeys();
       }
 
+      if (from < 10) {
+        await m.alterTable(
+          TableMigration(
+            works,
+            newColumns: [works.parentWorkId],
+          ),
+        );
+      }
 
 
     },

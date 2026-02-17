@@ -3632,6 +3632,12 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
       requiredDuringInsert: false,
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'REFERENCES orders (id) ON DELETE SET NULL'));
+  static const VerificationMeta _parentWorkIdMeta =
+      const VerificationMeta('parentWorkId');
+  @override
+  late final GeneratedColumn<String> parentWorkId = GeneratedColumn<String>(
+      'parent_work_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -3690,6 +3696,7 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
         qty,
         doneQty,
         orderId,
+        parentWorkId,
         status,
         createdAt,
         updatedAt,
@@ -3733,6 +3740,12 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
     if (data.containsKey('order_id')) {
       context.handle(_orderIdMeta,
           orderId.isAcceptableOrUnknown(data['order_id']!, _orderIdMeta));
+    }
+    if (data.containsKey('parent_work_id')) {
+      context.handle(
+          _parentWorkIdMeta,
+          parentWorkId.isAcceptableOrUnknown(
+              data['parent_work_id']!, _parentWorkIdMeta));
     }
     if (data.containsKey('status')) {
       context.handle(_statusMeta,
@@ -3791,6 +3804,8 @@ class $WorksTable extends Works with TableInfo<$WorksTable, WorkRow> {
           .read(DriftSqlType.int, data['${effectivePrefix}done_qty'])!,
       orderId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}order_id']),
+      parentWorkId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parent_work_id']),
       status: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
       createdAt: attachedDatabase.typeMapping
@@ -3822,6 +3837,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
   final int qty;
   final int doneQty;
   final String? orderId;
+  final String? parentWorkId;
   final String status;
   final String createdAt;
   final String? updatedAt;
@@ -3836,6 +3852,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       required this.qty,
       required this.doneQty,
       this.orderId,
+      this.parentWorkId,
       required this.status,
       required this.createdAt,
       this.updatedAt,
@@ -3853,6 +3870,9 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
     map['done_qty'] = Variable<int>(doneQty);
     if (!nullToAbsent || orderId != null) {
       map['order_id'] = Variable<String>(orderId);
+    }
+    if (!nullToAbsent || parentWorkId != null) {
+      map['parent_work_id'] = Variable<String>(parentWorkId);
     }
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<String>(createdAt);
@@ -3884,6 +3904,9 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       orderId: orderId == null && nullToAbsent
           ? const Value.absent()
           : Value(orderId),
+      parentWorkId: parentWorkId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentWorkId),
       status: Value(status),
       createdAt: Value(createdAt),
       updatedAt: updatedAt == null && nullToAbsent
@@ -3914,6 +3937,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       qty: serializer.fromJson<int>(json['qty']),
       doneQty: serializer.fromJson<int>(json['doneQty']),
       orderId: serializer.fromJson<String?>(json['orderId']),
+      parentWorkId: serializer.fromJson<String?>(json['parentWorkId']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String?>(json['updatedAt']),
@@ -3933,6 +3957,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       'qty': serializer.toJson<int>(qty),
       'doneQty': serializer.toJson<int>(doneQty),
       'orderId': serializer.toJson<String?>(orderId),
+      'parentWorkId': serializer.toJson<String?>(parentWorkId),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String?>(updatedAt),
@@ -3950,6 +3975,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           int? qty,
           int? doneQty,
           Value<String?> orderId = const Value.absent(),
+          Value<String?> parentWorkId = const Value.absent(),
           String? status,
           String? createdAt,
           Value<String?> updatedAt = const Value.absent(),
@@ -3964,6 +3990,8 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
         qty: qty ?? this.qty,
         doneQty: doneQty ?? this.doneQty,
         orderId: orderId.present ? orderId.value : this.orderId,
+        parentWorkId:
+            parentWorkId.present ? parentWorkId.value : this.parentWorkId,
         status: status ?? this.status,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -3980,6 +4008,9 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       qty: data.qty.present ? data.qty.value : this.qty,
       doneQty: data.doneQty.present ? data.doneQty.value : this.doneQty,
       orderId: data.orderId.present ? data.orderId.value : this.orderId,
+      parentWorkId: data.parentWorkId.present
+          ? data.parentWorkId.value
+          : this.parentWorkId,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -4000,6 +4031,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           ..write('qty: $qty, ')
           ..write('doneQty: $doneQty, ')
           ..write('orderId: $orderId, ')
+          ..write('parentWorkId: $parentWorkId, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -4019,6 +4051,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
       qty,
       doneQty,
       orderId,
+      parentWorkId,
       status,
       createdAt,
       updatedAt,
@@ -4036,6 +4069,7 @@ class WorkRow extends DataClass implements Insertable<WorkRow> {
           other.qty == this.qty &&
           other.doneQty == this.doneQty &&
           other.orderId == this.orderId &&
+          other.parentWorkId == this.parentWorkId &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -4052,6 +4086,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
   final Value<int> qty;
   final Value<int> doneQty;
   final Value<String?> orderId;
+  final Value<String?> parentWorkId;
   final Value<String> status;
   final Value<String> createdAt;
   final Value<String?> updatedAt;
@@ -4067,6 +4102,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     this.qty = const Value.absent(),
     this.doneQty = const Value.absent(),
     this.orderId = const Value.absent(),
+    this.parentWorkId = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4083,6 +4119,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     required int qty,
     this.doneQty = const Value.absent(),
     this.orderId = const Value.absent(),
+    this.parentWorkId = const Value.absent(),
     required String status,
     required String createdAt,
     this.updatedAt = const Value.absent(),
@@ -4103,6 +4140,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     Expression<int>? qty,
     Expression<int>? doneQty,
     Expression<String>? orderId,
+    Expression<String>? parentWorkId,
     Expression<String>? status,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
@@ -4119,6 +4157,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       if (qty != null) 'qty': qty,
       if (doneQty != null) 'done_qty': doneQty,
       if (orderId != null) 'order_id': orderId,
+      if (parentWorkId != null) 'parent_work_id': parentWorkId,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4137,6 +4176,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       Value<int>? qty,
       Value<int>? doneQty,
       Value<String?>? orderId,
+      Value<String?>? parentWorkId,
       Value<String>? status,
       Value<String>? createdAt,
       Value<String?>? updatedAt,
@@ -4152,6 +4192,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
       qty: qty ?? this.qty,
       doneQty: doneQty ?? this.doneQty,
       orderId: orderId ?? this.orderId,
+      parentWorkId: parentWorkId ?? this.parentWorkId,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4181,6 +4222,9 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
     }
     if (orderId.present) {
       map['order_id'] = Variable<String>(orderId.value);
+    }
+    if (parentWorkId.present) {
+      map['parent_work_id'] = Variable<String>(parentWorkId.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
@@ -4220,6 +4264,7 @@ class WorksCompanion extends UpdateCompanion<WorkRow> {
           ..write('qty: $qty, ')
           ..write('doneQty: $doneQty, ')
           ..write('orderId: $orderId, ')
+          ..write('parentWorkId: $parentWorkId, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -9803,6 +9848,7 @@ typedef $$WorksTableCreateCompanionBuilder = WorksCompanion Function({
   required int qty,
   Value<int> doneQty,
   Value<String?> orderId,
+  Value<String?> parentWorkId,
   required String status,
   required String createdAt,
   Value<String?> updatedAt,
@@ -9819,6 +9865,7 @@ typedef $$WorksTableUpdateCompanionBuilder = WorksCompanion Function({
   Value<int> qty,
   Value<int> doneQty,
   Value<String?> orderId,
+  Value<String?> parentWorkId,
   Value<String> status,
   Value<String> createdAt,
   Value<String?> updatedAt,
@@ -9879,6 +9926,9 @@ class $$WorksTableFilterComposer extends Composer<_$AppDatabase, $WorksTable> {
 
   ColumnFilters<int> get doneQty => $composableBuilder(
       column: $table.doneQty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get parentWorkId => $composableBuilder(
+      column: $table.parentWorkId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
@@ -9963,6 +10013,10 @@ class $$WorksTableOrderingComposer
   ColumnOrderings<int> get doneQty => $composableBuilder(
       column: $table.doneQty, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get parentWorkId => $composableBuilder(
+      column: $table.parentWorkId,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
 
@@ -10045,6 +10099,9 @@ class $$WorksTableAnnotationComposer
 
   GeneratedColumn<int> get doneQty =>
       $composableBuilder(column: $table.doneQty, builder: (column) => column);
+
+  GeneratedColumn<String> get parentWorkId => $composableBuilder(
+      column: $table.parentWorkId, builder: (column) => column);
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -10139,6 +10196,7 @@ class $$WorksTableTableManager extends RootTableManager<
             Value<int> qty = const Value.absent(),
             Value<int> doneQty = const Value.absent(),
             Value<String?> orderId = const Value.absent(),
+            Value<String?> parentWorkId = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> createdAt = const Value.absent(),
             Value<String?> updatedAt = const Value.absent(),
@@ -10155,6 +10213,7 @@ class $$WorksTableTableManager extends RootTableManager<
             qty: qty,
             doneQty: doneQty,
             orderId: orderId,
+            parentWorkId: parentWorkId,
             status: status,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -10171,6 +10230,7 @@ class $$WorksTableTableManager extends RootTableManager<
             required int qty,
             Value<int> doneQty = const Value.absent(),
             Value<String?> orderId = const Value.absent(),
+            Value<String?> parentWorkId = const Value.absent(),
             required String status,
             required String createdAt,
             Value<String?> updatedAt = const Value.absent(),
@@ -10187,6 +10247,7 @@ class $$WorksTableTableManager extends RootTableManager<
             qty: qty,
             doneQty: doneQty,
             orderId: orderId,
+            parentWorkId: parentWorkId,
             status: status,
             createdAt: createdAt,
             updatedAt: updatedAt,
