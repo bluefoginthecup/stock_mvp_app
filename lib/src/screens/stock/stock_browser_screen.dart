@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../ui/common/ui.dart';
 import '../../models/folder_node.dart';
 import '../../models/item.dart';
-import '../../utils/korean_search.dart';
 import 'sheet_new_folder.dart';
 import 'stock_new_item_sheet.dart';
 import '../../ui/common/search_field.dart';
@@ -260,129 +259,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       return const Center(child: Text('검색 결과가 없습니다.'));
                     }
 
-                    return Stack(
-                      children: [
-                        CustomScrollView(slivers: slivers),
-                        if (sel.selectionMode)
-                          Align(
-                            alignment: Alignment.bottomCenter,
-                            child: StockMultiSelectBar(
-                              selectedCount: sel.selected.length,
-                              totalCount: items.length,
-                              onSelectAll: () => sel.selectAll(items.map((e) => e.id).toList()),
-                              onClear: sel.exit,
-                              onMove: sel.selected.isEmpty
-                                  ? () {}
-                                  : () async {
-                                final dest = await showPathPicker(
-                                  context,
-                                  childrenProvider: pathChildrenFromFolderRepo(
-                                    context.read<FolderTreeRepo>(),
-                                  ),
-                                  title: '아이템 이동..',
-                                  maxDepth: 3,
-                                );
-                                if (dest == null || dest.isEmpty) return;
-                                final moved = await context.read<FolderTreeRepo>().moveItemsToPath(
-                                  itemIds: sel.selected.toList(),
-                                  pathIds: dest,
-                                );
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('아이템 $moved개 이동')),
-                                );
-                                sel.exit();
-                              },
-                              onAddToCart: () async {
-                                if (sel.selected.isEmpty) return;
-                                final picked =
-                                items.where((it) => sel.selected.contains(it.id)).toList();
-                                final cart = context.read<CartManager>();
-                                addItemsToCart(cart, picked);
+                    return _buildStackWithList(sel: sel, items: items, slivers: slivers);
 
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('${picked.length}개를 장바구니에 담았습니다.'),
-                                    action: SnackBarAction(
-                                      label: '보기',
-                                      onPressed: () {
-                                        debugPrint('[CartButton] pushNamed(/cart) 호출됨 context=$context');
-                                        Navigator.of(context, rootNavigator: true)
-                                            .pushNamed('/cart')
-                                            .then((_) => debugPrint('[CartButton] /cart 닫힘'));
-                                      },
-                                    ),
-                                  ),
-                                );
-                              },
-                              onTrash: () async {
-                                if (sel.selected.isEmpty) return;
-                                final ok = await showDeleteConfirm(
-                                  context,
-                                  message: '선택한 ${sel.selected.length}개를 휴지통으로 보낼까요?',
-                                );
-                                if (ok != true) return;
-                                try {
-                                  final repo = context.read<ItemRepo>();
-                                  await repo.moveItemsToTrash(sel.selected.toList());
-                                  if (!context.mounted) return;
-                                  showGoSnack(
-                                    context,
-                                    message: '${sel.selected.length}개를 휴지통으로 이동했습니다.',
-                                    actionText: '휴지통 열기',
-                                    onAction: (_) => Navigator.of(context).pushNamed('/trash'),
-                                  );
-                                  sel.exit();
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('이동 실패: $e')),
-                                  );
-                                }
-                              },
-                              allSelectedAreFavorite: (() {
-                                final picked =
-                                items.where((it) => sel.selected.contains(it.id)).toList();
-                                return picked.isNotEmpty && picked.every((it) => it.isFavorite == true);
-                              })(),
-                              onToggleFavoriteAll: () async {
-                                final picked =
-                                items.where((it) => sel.selected.contains(it.id)).toList();
-                                if (picked.isEmpty) return;
-                                final repo = context.read<ItemRepo>();
-                                final ids = picked.map((e) => e.id).toList();
-                                final allFav = picked.every((it) => it.isFavorite == true);
-                                final next = !allFav;
-                                try {
-                                  final dyn = repo as dynamic;
-                                  if (dyn.setFavoritesBulk is Function) {
-                                    await dyn.setFavoritesBulk(ids: ids, value: next);
-                                  } else {
-                                    for (final id in ids) {
-                                      await repo.setFavorite(itemId: id, value: next);
-                                    }
-                                  }
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        next ? '선택한 ${ids.length}개 즐겨찾기 추가' : '선택한 ${ids.length}개 즐겨찾기 해제',
-                                      ),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('처리 실패: $e')),
-                                  );
-                                }
-                              },
-                            ),
-
-                          ),
-                      ],
-                    );
                   },
                 );
               }
@@ -451,142 +329,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   }
 
                   // 리스트 + 멀티선택바
-                  return Stack(
-                    children: [
-                      CustomScrollView(slivers: slivers),
-                      if (sel.selectionMode)
-                        Align(
-                          alignment: Alignment.bottomCenter,
-                          child: StockMultiSelectBar(
-                            selectedCount: sel.selected.length,
-                            totalCount: items.length,
-                            onSelectAll: () =>
-                                sel.selectAll(items.map((e) => e.id).toList()),
-                            onClear: sel.exit,
-                            onMove: sel.selected.isEmpty
-                                ? () {}
-                                : () async {
-                              final dest = await showPathPicker(
-                                context,
-                                childrenProvider: pathChildrenFromFolderRepo(
-                                    context.read<FolderTreeRepo>()),
-                                title: '아이템 이동..',
-                                maxDepth: 3,
-                              );
-                              if (dest == null || dest.isEmpty) return;
-                              final moved = await context
-                                  .read<FolderTreeRepo>()
-                                  .moveItemsToPath(
-                                itemIds: sel.selected.toList(),
-                                pathIds: dest,
-                              );
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('아이템 $moved개 이동')),
-                              );
-                              sel.exit();
-                            },
-                            onAddToCart: () async {
-                              if (sel.selected.isEmpty) return;
-                              final picked = items
-                                  .where((it) => sel.selected.contains(it.id))
-                                  .toList();
-                              final cart = context.read<CartManager>();
-                              addItemsToCart(cart, picked);
+                  return _buildStackWithList(sel: sel, items: items, slivers: slivers);
 
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content:
-                                  Text('${picked.length}개를 장바구니에 담았습니다.'),
-                                  action: SnackBarAction(
-                                    label: '보기',
-                                      onPressed: () {
-                                        debugPrint('[CartButton] pushNamed(/cart) 호출됨 context=$context');
-                                        Navigator.of(context, rootNavigator: true)
-                                            .pushNamed('/cart')
-                                            .then((_) => debugPrint('[CartButton] /cart 닫힘'));
-                                      }
-                                  ),
-                                ),
-                              );
-                            },
-                            onTrash: () async {
-                              if (sel.selected.isEmpty) return;
-                              final ok = await showDeleteConfirm(
-                                context,
-                                message:
-                                '선택한 ${sel.selected.length}개를 휴지통으로 보낼까요?',
-                              );
-                              if (ok != true) return;
-                              try {
-                                final repo = context.read<ItemRepo>();
-                                await repo.moveItemsToTrash(sel.selected.toList());
-                                if (!context.mounted) return;
-                                showGoSnack(
-                                  context,
-                                  message: '${sel.selected.length}개를 휴지통으로 이동했습니다.',
-                                  actionText: '휴지통 열기',
-                                  onAction: (_) =>
-                                      Navigator.of(context).pushNamed('/trash'),
-                                );
-                                sel.exit();
-                              } catch (e) {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('이동 실패: $e')),
-                                );
-                              }
-                            },
-                            allSelectedAreFavorite: (() {
-                              final picked = items
-                                  .where((it) => sel.selected.contains(it.id))
-                                  .toList();
-                              return picked.isNotEmpty &&
-                                  picked.every((it) => it.isFavorite == true);
-                            })(),
-                            onToggleFavoriteAll: () async {
-                              final picked = items
-                                  .where((it) => sel.selected.contains(it.id))
-                                  .toList();
-                              if (picked.isEmpty) return;
-                              final repo = context.read<ItemRepo>();
-                              final ids = picked.map((e) => e.id).toList();
-                              final allFav =
-                              picked.every((it) => it.isFavorite == true);
-                              final next = !allFav;
-                              try {
-                                final dyn = repo as dynamic;
-                                if (dyn.setFavoritesBulk is Function) {
-                                  await dyn.setFavoritesBulk(
-                                      ids: ids, value: next);
-                                } else {
-                                  for (final id in ids) {
-                                    await repo.setFavorite(
-                                        itemId: id, value: next);
-                                  }
-                                }
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      next
-                                          ? '선택한 ${ids.length}개 즐겨찾기 추가'
-                                          : '선택한 ${ids.length}개 즐겨찾기 해제',
-                                    ),
-                                  ),
-                                );
-                              } catch (e) {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('처리 실패: $e')),
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                    ],
-                  );
                 },
               );
             },
@@ -646,4 +390,140 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       child: const Icon(Icons.add),
     );
   }
+
+  //---------멅티셀렉 함수 --------//
+  Widget _buildMultiSelectBar({
+    required BuildContext context,
+    required ItemSelectionController sel,
+    required List<Item> items,
+  }) {
+    return StockMultiSelectBar(
+      selectedCount: sel.selected.length,
+      totalCount: items.length,
+      onSelectAll: () => sel.selectAll(items.map((e) => e.id).toList()),
+      onClear: sel.exit,
+      onMove: sel.selected.isEmpty
+          ? () {}
+          : () async {
+        final dest = await showPathPicker(
+          context,
+          childrenProvider:
+          pathChildrenFromFolderRepo(context.read<FolderTreeRepo>()),
+          title: '아이템 이동..',
+          maxDepth: 3,
+        );
+        if (dest == null || dest.isEmpty) return;
+        final moved = await context.read<FolderTreeRepo>().moveItemsToPath(
+          itemIds: sel.selected.toList(),
+          pathIds: dest,
+        );
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('아이템 $moved개 이동')),
+        );
+        sel.exit();
+      },
+      onAddToCart: () async {
+        if (sel.selected.isEmpty) return;
+        final picked = items.where((it) => sel.selected.contains(it.id)).toList();
+        final cart = context.read<CartManager>();
+        addItemsToCart(cart, picked);
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${picked.length}개를 장바구니에 담았습니다.'),
+            action: SnackBarAction(
+              label: '보기',
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).pushNamed('/cart');
+              },
+            ),
+          ),
+        );
+      },
+      onTrash: () async {
+        if (sel.selected.isEmpty) return;
+        final ok = await showDeleteConfirm(
+          context,
+          message: '선택한 ${sel.selected.length}개를 휴지통으로 보낼까요?',
+        );
+        if (ok != true) return;
+        try {
+          final repo = context.read<ItemRepo>();
+          await repo.moveItemsToTrash(sel.selected.toList());
+          if (!context.mounted) return;
+          showGoSnack(
+            context,
+            message: '${sel.selected.length}개를 휴지통으로 이동했습니다.',
+            actionText: '휴지통 열기',
+            onAction: (_) => Navigator.of(context).pushNamed('/trash'),
+          );
+          sel.exit();
+        } catch (e) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('이동 실패: $e')),
+          );
+        }
+      },
+      allSelectedAreFavorite: (() {
+        final picked = items.where((it) => sel.selected.contains(it.id)).toList();
+        return picked.isNotEmpty && picked.every((it) => it.isFavorite == true);
+      })(),
+      onToggleFavoriteAll: () async {
+        final picked = items.where((it) => sel.selected.contains(it.id)).toList();
+        if (picked.isEmpty) return;
+        final repo = context.read<ItemRepo>();
+        final ids = picked.map((e) => e.id).toList();
+        final allFav = picked.every((it) => it.isFavorite == true);
+        final next = !allFav;
+
+        try {
+          final dyn = repo as dynamic;
+          if (dyn.setFavoritesBulk is Function) {
+            await dyn.setFavoritesBulk(ids: ids, value: next);
+          } else {
+            for (final id in ids) {
+              await repo.setFavorite(itemId: id, value: next);
+            }
+          }
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                next ? '선택한 ${ids.length}개 즐겨찾기 추가' : '선택한 ${ids.length}개 즐겨찾기 해제',
+              ),
+            ),
+          );
+        } catch (e) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('처리 실패: $e')),
+          );
+        }
+      },
+    );
+  }
+
+  //------빌드 스택 위드 리스트 ------//
+
+  Widget _buildStackWithList({
+    required ItemSelectionController sel,
+    required List<Item> items,
+    required List<Widget> slivers,
+  }) {
+    return Stack(
+      children: [
+        CustomScrollView(slivers: slivers),
+        if (sel.selectionMode)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: _buildMultiSelectBar(context: context, sel: sel, items: items),
+          ),
+      ],
+    );
+  }
+
+
 }
