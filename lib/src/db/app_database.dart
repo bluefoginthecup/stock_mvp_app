@@ -475,10 +475,13 @@ class AppDatabase extends _$AppDatabase {
       }
 
 
-      // ✅ v5 → v6: Works.doneQty 추가
       if (from < 6) {
-        await m.addColumn(works, works.doneQty);
+        final exists = await _columnExists('works', 'done_qty');
+        if (!exists) {
+          await m.addColumn(works, works.doneQty);
+        }
       }
+
 
       // v6 → v7 (검색 키 컬럼 + backfill)
       if (from < 7) {
@@ -588,7 +591,13 @@ class AppDatabase extends _$AppDatabase {
   }
 
 
+  Future<bool> _columnExists(String table, String column) async {
+    final result = await customSelect(
+      "PRAGMA table_info($table)",
+    ).get();
 
+    return result.any((row) => row.data['name'] == column);
+  }
 
 }
 

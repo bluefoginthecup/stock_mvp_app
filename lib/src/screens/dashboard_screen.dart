@@ -9,10 +9,12 @@ import '../app/main_tab_controller.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'package:stockapp_mvp/src/db/quick_actions_order_dao.dart';
 import 'trash/trash_screen.dart';
+import '../screens/shortage/shortage_calc_screen.dart';
+
 
 
 enum QuickActionType {
-  orders, stock, txns, works, purchases, settings, suppliers, receipts,trash,
+  orders, stock, txns, works, purchases, settings, suppliers, receipts,trash,shortage,
 }
 
 class DashboardScreen extends StatefulWidget {
@@ -48,6 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       QuickActionType.suppliers,
       QuickActionType.receipts,
       QuickActionType.trash,
+      QuickActionType.shortage, // ✅ 여기
     ];
 
     // 2) DB에서 저장된 순서 로드 (화면 뜬 뒤)
@@ -73,6 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         QuickActionType.suppliers,
         QuickActionType.receipts,
         QuickActionType.trash, // 새로 추가된 액션 포함
+        QuickActionType.shortage, // ✅ 여기
       ];
 
       // 2) 저장된 목록을 enum으로 변환(알 수 없는 값/구버전 값은 걸러냄)
@@ -199,6 +203,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               }
             },
 
+
+          );
+        case QuickActionType.shortage:
+          return _QuickAction(
+            key: const ValueKey('shortage'),
+            icon: Icons.rule_folder, // 아이콘은 취향대로 (예: Icons.playlist_add_check)
+            label: '부족분계산',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ShortageCalcScreen()),
+              );
+            },
           );
 
       }

@@ -1,13 +1,16 @@
 import '../repos/repo_interfaces.dart';
 import 'bom_service.dart';
 
+
 class Shortage2L {
+  final double finishedStock;
   final double finishedShortage;
   final Map<String, double> semiNeed, semiShortage;
   final Map<String, double> rawNeed, rawShortage;
   final Map<String, double> subNeed, subShortage;
 
   const Shortage2L({
+    required this.finishedStock,
     required this.finishedShortage,
     required this.semiNeed,
     required this.semiShortage,
@@ -125,7 +128,8 @@ class ShortageService {
     if (finShort == 0) {
       print('[ShortageService] finShort == 0 → 부족 없음, 바로 리턴');
       print('======== [ShortageService] compute END (no shortage) ========');
-      return const Shortage2L(
+      return Shortage2L(
+        finishedStock: finStock,
         finishedShortage: 0,
         semiNeed: {},
         semiShortage: {},
@@ -183,6 +187,7 @@ class ShortageService {
     });
 
     final result = Shortage2L(
+      finishedStock: finStock,
       finishedShortage: finShort,
       semiNeed: ex.semiNeed,
       semiShortage: semiShort,
@@ -208,16 +213,19 @@ class ShortageService {
 
     final double make = makeQty.toDouble();
     if (make <= 0) {
-      return const Shortage2L(
+      return Shortage2L(
+        finishedStock: _availableByItemUnit(finishedId), // 의미상 있어도 되고 0도 가능
         finishedShortage: 0,
-        semiNeed: {},
-        semiShortage: {},
-        rawNeed: {},
-        rawShortage: {},
-        subNeed: {},
-        subShortage: {},
+
+        semiNeed: const {},
+        semiShortage: const {},
+        rawNeed: const {},
+        rawShortage: const {},
+        subNeed: const {},
+        subShortage: const {},
       );
     }
+
 
     // ✅ finishedShortage 자리에 "만들 수량"을 그대로 넣고 폭발
     final ex = bom.explode2Levels(
@@ -252,8 +260,10 @@ class ShortageService {
       print('[ShortageService] semiShort: id=$id need=$n stock=$st lack=$lack');
       if (lack > 0) semiShort[id] = lack;
     });
+    final finStock = _availableByItemUnit(finishedId);
 
     final result = Shortage2L(
+      finishedStock: finStock,
       finishedShortage: make, // 의미: "이번에 만들 수량"
       semiNeed: ex.semiNeed,
       semiShortage: semiShort,

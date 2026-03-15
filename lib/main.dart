@@ -9,6 +9,9 @@ import 'src/app.dart';
 
 import 'src/repos/repo_interfaces.dart';
 import 'src/services/inventory_service.dart';
+import 'src/services/bom_service.dart';
+import 'src/services/shortage_service.dart';
+
 import 'src/utils/item_presentation.dart';
 import 'src/ui/nav/item_detail_opener.dart';
 import 'src/providers/cart_manager.dart';
@@ -123,8 +126,19 @@ Future<void> main() async {
             boms: ctx.read<BomRepo>(),
             orders: ctx.read<OrderRepo>(),
             items: ctx.read<ItemRepo>(),
+          ),),
+  // ✅ BOM explode (2-level)
+          Provider<BomService>(
+            create: (ctx) => BomService(ctx.read<ItemRepo>()),
           ),
-        ),
+
+          // ✅ ShortageCalcScreen에서 context.read<ShortageService>()
+          Provider<ShortageService>(
+            create: (ctx) => ShortageService(
+              repo: ctx.read<ItemRepo>(),
+              bom: ctx.read<BomService>(),
+            ),
+          ),
       ],
       // ⛳️ 여기 **무조건** StockApp (MaterialApp 포함)
       child: const StockApp(),
