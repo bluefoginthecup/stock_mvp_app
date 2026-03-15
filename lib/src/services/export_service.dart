@@ -1,13 +1,18 @@
 // lib/src/services/export_service.dart
+
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../repos/repo_interfaces.dart'; // ItemRepo, FolderTreeRepo
+import '../repos/repo_interfaces.dart';
 import '../models/item.dart';
 import '../models/folder_node.dart';
+import '../db/app_database.dart';
 
 class ExportService {
   final ItemRepo itemRepo;
@@ -18,18 +23,16 @@ class ExportService {
     required this.folderRepo,
   });
 
-  /// ✅ 폴더 + 아이템을 둘 다 JSON으로 내보내기
+  /// JSON export
   Future<void> exportEditedJson() async {
-    // 1️⃣ 데이터 수집
-    //    - listItems() 를 인자 없이 부르면 전체 아이템 (InMemoryRepo 구현 참고)
-    final List<Item> items = await itemRepo.listItems();
-    final List<FolderNode> folders = await _collectAllFolders();
+    final items = await itemRepo.listItems();
+    final folders = await _collectAllFolders();
 
-    // 2️⃣ JSON 페이로드 구성
     final itemsPayload = {
       'version': 1,
       'items': items.map((it) => it.toJson()).toList(),
     };
+
     final foldersPayload = {
       'version': 1,
       'folders': folders
@@ -43,41 +46,80 @@ class ExportService {
           .toList(),
     };
 
-    // 3️⃣ 파일로 저장
     final dir = await getApplicationDocumentsDirectory();
     final stamp = DateFormat('yyyyMMdd-HHmmss').format(DateTime.now());
-    final itemsPath = '${dir.path}/items_edited_$stamp.json';
-    final foldersPath = '${dir.path}/folders_edited_$stamp.json';
+
+    final itemsPath = '${dir.path}/items_$stamp.json';
+    final foldersPath = '${dir.path}/folders_$stamp.json';
 
     await File(itemsPath)
         .writeAsString(const JsonEncoder.withIndent('  ').convert(itemsPayload));
+
     await File(foldersPath)
         .writeAsString(const JsonEncoder.withIndent('  ').convert(foldersPayload));
 
-    // 4️⃣ OS 공유 시트 열기 (메일, 에어드랍 등)
     await Share.shareXFiles(
       [
-        XFile(itemsPath, mimeType: 'application/json'),
-        XFile(foldersPath, mimeType: 'application/json'),
+        XFile(itemsPath),
+        XFile(foldersPath),
       ],
-      subject: '재고 내보내기 $stamp',
-      text: '앱에서 편집된 폴더/아이템 데이터입니다.',
+      subject: 'StockApp Export $stamp',
     );
   }
+  Future<void> exportDatabase() async {
+    final dir = await getApplicationSupportDirectory();
+    final dbPath = p.join(dir.path, 'stockapp.db');
 
-  /// 전체 폴더 수집 (루트부터 재귀적으로)
+    final file = File(dbPath);
+
+    if (!await file.exists()) {
+      throw Exception('DB 파일이 없습니다');
+    }
+
+    final stamp = DateFormat('yyyyMMdd-HHmmss').format(DateTime.now());
+    final exportPath = p.join(dir.path, 'stockapp_backup_$stamp.db');
+
+    final backup = await file.copy(exportPath);
+
+    await Share.shareXFiles(
+      [XFile(backup.path)],
+      subject: 'StockApp DB Backup',
+    );
+  }
+  Future<void> importDatabase() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['db'],
+    );
+
+    if (result == null) return;
+
+    final path = result.files.single.path;
+    if (path == null) return;
+
+    final backupFile = File(path);
+
+    final db = AppDatabase();
+    await db.close();
+
+    final dir = await getApplicationSupportDirectory();
+    final dbPath = p.join(dir.path, 'stockapp.db');
+
+    await backupFile.copy(dbPath);
+  }
   Future<List<FolderNode>> _collectAllFolders() async {
     final result = <FolderNode>[];
 
     Future<void> dfs(String? parentId) async {
       final children = await folderRepo.listFolderChildren(parentId);
       result.addAll(children);
+
       for (final c in children) {
         await dfs(c.id);
       }
     }
 
-    await dfs(null); // 루트부터 시작
+    await dfs(null);
     return result;
   }
 }

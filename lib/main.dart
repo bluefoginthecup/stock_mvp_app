@@ -16,6 +16,7 @@ import 'src/utils/item_presentation.dart';
 import 'src/ui/nav/item_detail_opener.dart';
 import 'src/providers/cart_manager.dart';
 import 'src/models/purchase_order.dart';
+import 'src/services/db_auto_backup_service.dart';
 
 // 탭/선택 컨트롤러
 import 'src/app/main_tab_controller.dart';
@@ -29,6 +30,7 @@ import 'src/db/app_database.dart';
 import 'src/repos/drift_unified_repo.dart';
 import 'src/models/txn.dart';
 import 'src/repos/timeline_repo.dart';
+import 'src/services/export_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,7 +42,11 @@ Future<void> main() async {
   Provider.debugCheckInvalidValueType = null;
 
   // DB & Repo
+  await DbAutoBackupService.createPreMigrationBackup();
+
   final db = AppDatabase();
+
+  await DbAutoBackupService.run();
 
   // 2) 통합 Drift Repo (Item / Txn / Order / Work / Purchase / Supplier / Paths 모두 포함)
   final unifiedRepo = DriftUnifiedRepo(db);
@@ -86,6 +92,12 @@ Future<void> main() async {
         Provider<FolderTreeRepo>.value(value: unifiedRepo),
         // ✅ 통합 휴지통(TrashScreen)이 쓰는 Repo 노출
         Provider<TrashRepo>.value(value: unifiedRepo),
+        Provider<ExportService>(
+          create: (ctx) => ExportService(
+            itemRepo: ctx.read<ItemRepo>(),
+            folderRepo: ctx.read<FolderTreeRepo>(),
+          ),
+        ),
         Provider<TimelineRepo>(
           create: (_) => TimelineRepo(
             getOrderById: (id) async {
@@ -96,6 +108,7 @@ Future<void> main() async {
             listPOsByOrderId: (id) => unifiedRepo.listPurchaseOrdersByOrderId(id),
             listWorksByOrderId: (id) => unifiedRepo.listWorksByOrderId(id),
           ),
+
         ),
 
 

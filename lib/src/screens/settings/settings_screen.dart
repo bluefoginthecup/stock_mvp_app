@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stockapp_mvp/src/services/seed_importer.dart';
+import 'package:flutter/foundation.dart';
+import 'package:stockapp_mvp/src/db/app_database.dart';
+import 'dart:io';
+import '/src/services/export_service.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
+
   @override
   Widget build(BuildContext context) {
+    final exportService = context.read<ExportService>();  // ← 여기 추가
+
     // 공통 실행 함수: 진행중 스피너 + 에러/성공 스낵바
     Future<void> runWithSpinner(
         Future<void> Function() job, {
@@ -178,11 +185,67 @@ class SettingsScreen extends StatelessWidget {
               await runPart(SeedPart.lots, '로트 임포트 완료');
             },
           ),
+            if (kDebugMode && Platform.isMacOS)
+            ListTile(
+              leading: const Icon(Icons.delete_forever, color: Colors.red),
+              title: const Text('개발용 DB 초기화'),
+              subtitle: const Text('디버그 모드에서만 표시됩니다'),
+              onTap: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('DB 초기화'),
+                    content: const Text('로컬 데이터베이스를 삭제하고 새로 생성합니다. 계속할까요?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('취소'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('초기화'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (ok != true) return;
+
+                await runWithSpinner(() async {
+                  final db = AppDatabase();
+                  await db.resetDatabase();
+                }, okMsg: 'DB 초기화 완료. 앱을 다시 실행하세요.');
+              },
+            ),
+
+          ListTile(
+            leading: const Icon(Icons.save),
+            title: const Text('DB 백업'),
+            subtitle: const Text('데이터베이스 파일을 공유합니다'),
+            onTap: () async {
+              await runWithSpinner(
+                    () => exportService.exportDatabase(),
+                okMsg: 'DB 백업 완료',
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.restore),
+            title: const Text('DB 복원'),
+            subtitle: const Text('백업된 DB 파일을 불러옵니다'),
+            onTap: () async {
+              await runWithSpinner(
+                    () => exportService.importDatabase(),
+                okMsg: 'DB 복원 완료. 앱을 다시 실행하세요.',
+              );
+            },
+          ),
         ],
       ),
     );
   }
 }
+
 
 class _SectionHeader extends StatelessWidget {
   final String text;

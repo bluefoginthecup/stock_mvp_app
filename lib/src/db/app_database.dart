@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 
 // 도메인 모델 import
 import '../models/item.dart';
@@ -80,6 +81,13 @@ class Items extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+  @override
+    List<Index> get indexes => [
+      Index('idx_items_search', 'searchNormalized'),
+      Index('idx_items_search_full', 'searchFullNormalized'),
+      Index('idx_items_initials', 'searchInitials'),
+    ];
+
 }
 
 /// =======================
@@ -126,6 +134,13 @@ class ItemPaths extends Table {
 
   @override
   Set<Column> get primaryKey => {itemId};
+
+  @override
+    List<Index> get indexes => [
+      Index('idx_itempaths_l1', 'l1Id'),
+      Index('idx_itempaths_l2', 'l2Id'),
+      Index('idx_itempaths_l3', 'l3Id'),
+    ];
 }
 
 /// =======================
@@ -156,6 +171,11 @@ class Txns extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+  @override
+    List<Index> get indexes => [
+      Index('idx_txn_item', 'itemId'),
+      Index('idx_txn_ts', 'ts'),
+    ];
 }
 
 /// =======================
@@ -203,6 +223,7 @@ class Orders extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+
 }
 
 @DataClassName('OrderLineRow')
@@ -220,6 +241,11 @@ class OrderLines extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+  @override
+    List<Index> get indexes => [
+      Index('idx_orderline_order', 'orderId'),
+      Index('idx_orderline_item', 'itemId'),
+    ];
 }
 
 /// =======================
@@ -258,6 +284,12 @@ class Works extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+  @override
+    List<Index> get indexes => [
+      Index('idx_work_item', 'itemId'),
+      Index('idx_work_order', 'orderId'),
+      Index('idx_work_status', 'status'),
+    ];
 }
 
 /// =======================
@@ -308,6 +340,11 @@ class PurchaseLines extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+  @override
+    List<Index> get indexes => [
+      Index('idx_purchase_order', 'orderId'),
+      Index('idx_purchase_item', 'itemId'),
+    ];
 }
 
 /// =======================
@@ -385,7 +422,14 @@ class QuickActionOrders extends Table {
 )
 
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  static AppDatabase? _instance;
+
+    factory AppDatabase() {
+        _instance ??= AppDatabase._internal();
+        return _instance!;
+      }
+
+    AppDatabase._internal() : super(_openConnection());
 
   @override
   int get schemaVersion => 10; // ⬅️ 4에서 5로 올림
@@ -519,25 +563,28 @@ class AppDatabase extends _$AppDatabase {
 
 
     },
-  );
-  Future<void> _backfillItemSearchKeys() async {
-    // 너무 잦은 update 방지를 위해 비어있는 것만 채우는 걸 권장
+  );Future<void> _backfillItemSearchKeys() async {
     final rows = await (select(items)
       ..where((t) => t.searchNormalized.equals('') | t.searchInitials.equals('')))
         .get();
 
-    for (final r in rows) {
-      final base = r.displayName?.trim().isNotEmpty == true ? r.displayName! : r.name;
-      final normalized = normalizeForSearch(base);
-      final initials = toChosungString(base);
+    await transaction(() async {
+      for (final r in rows) {
+        final base = r.displayName?.trim().isNotEmpty == true
+            ? r.displayName!
+            : r.name;
 
-      await (update(items)..where((t) => t.id.equals(r.id))).write(
-        ItemsCompanion(
-          searchNormalized: Value(normalized),
-          searchInitials: Value(initials),
-        ),
-      );
-    }
+        final normalized = normalizeForSearch(base);
+        final initials = toChosungString(base);
+
+        await (update(items)..where((t) => t.id.equals(r.id))).write(
+          ItemsCompanion(
+            searchNormalized: Value(normalized),
+            searchInitials: Value(initials),
+          ),
+        );
+      }
+    });
   }
   Future<void> _backfillItemFullSearchKeys() async {
     final rows = await (select(items)
@@ -575,7 +622,7 @@ class AppDatabase extends _$AppDatabase {
       ..where((t) =>
       t.searchNormalized.equals('') | t.searchInitials.equals('')))
         .get();
-
+    await transaction(() async {
     for (final r in rows) {
       final base = r.name.trim();
       final normalized = normalizeForSearch(base);
@@ -588,7 +635,8 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
     }
-  }
+  });
+        }
 
 
   Future<bool> _columnExists(String table, String column) async {
@@ -598,8 +646,26 @@ class AppDatabase extends _$AppDatabase {
 
     return result.any((row) => row.data['name'] == column);
   }
+  Future<void> resetDatabase() async {
+    final db = this;
 
+    // DB 닫기
+    await db.close();
+
+    final dir = await getApplicationSupportDirectory();
+    final dbPath = p.join(dir.path, 'stockapp.db');
+    final file = File(dbPath);
+
+    if (await file.exists()) {
+      await file.delete();
+    }
+
+    // singleton 초기화
+    _instance = null;
+  }
 }
+
+
 
 
 
@@ -610,12 +676,15 @@ LazyDatabase _openConnection() {
     final dbPath = p.join(dir.path, 'stockapp.db');
     final file = File(dbPath);
 
+    debugPrint("DB path: $dbPath");
+
     return NativeDatabase(
       file,
       setup: (rawDb) {
         rawDb.execute('PRAGMA foreign_keys = ON;');
         rawDb.execute('PRAGMA journal_mode = WAL;');
         rawDb.execute('PRAGMA busy_timeout = 5000;');
+        rawDb.execute('PRAGMA synchronous = NORMAL;');
       },
     );
   });
