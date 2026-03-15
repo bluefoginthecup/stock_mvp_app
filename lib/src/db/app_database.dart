@@ -431,6 +431,21 @@ class AppDatabase extends _$AppDatabase {
 
     AppDatabase._internal() : super(_openConnection());
 
+  // 🔥 이것 추가
+  static AppDatabase get instance {
+    if (_instance == null) {
+      _instance = AppDatabase();
+    }
+    return _instance!;
+  }
+
+  static Future<void> closeInstance() async {
+    if (_instance != null) {
+      await _instance!.close();
+      _instance = null;
+    }
+  }
+
   @override
   int get schemaVersion => 10; // ⬅️ 4에서 5로 올림
 

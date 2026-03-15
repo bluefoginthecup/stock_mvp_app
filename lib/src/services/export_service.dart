@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
@@ -66,47 +67,63 @@ class ExportService {
       subject: 'StockApp Export $stamp',
     );
   }
+
   Future<void> exportDatabase() async {
+
+    final db = AppDatabase(); // 현재 DB instance
+
     final dir = await getApplicationSupportDirectory();
-    final dbPath = p.join(dir.path, 'stockapp.db');
-
-    final file = File(dbPath);
-
-    if (!await file.exists()) {
-      throw Exception('DB 파일이 없습니다');
-    }
 
     final stamp = DateFormat('yyyyMMdd-HHmmss').format(DateTime.now());
+
     final exportPath = p.join(dir.path, 'stockapp_backup_$stamp.db');
 
-    final backup = await file.copy(exportPath);
+    // 🔥 SQLite 공식 백업
+    await db.customStatement("VACUUM INTO '$exportPath'");
 
     await Share.shareXFiles(
-      [XFile(backup.path)],
+      [XFile(exportPath)],
       subject: 'StockApp DB Backup',
     );
   }
-  Future<void> importDatabase() async {
+
+  Future<bool> importDatabase() async {
+
+    debugPrint("🟡 importDatabase() 시작");
+
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['db'],
     );
 
-    if (result == null) return;
+    if (result == null) return false;
 
     final path = result.files.single.path;
-    if (path == null) return;
+
+    if (path == null) return false;
 
     final backupFile = File(path);
 
-    final db = AppDatabase();
-    await db.close();
+    await AppDatabase.closeInstance();
 
     final dir = await getApplicationSupportDirectory();
     final dbPath = p.join(dir.path, 'stockapp.db');
 
+    final dbFile = File(dbPath);
+    final wal = File('$dbPath-wal');
+    final shm = File('$dbPath-shm');
+
+    if (await wal.exists()) await wal.delete();
+    if (await shm.exists()) await shm.delete();
+    if (await dbFile.exists()) await dbFile.delete();
+
     await backupFile.copy(dbPath);
+
+    debugPrint("🟢 DB 복원 완료");
+
+    return true;
   }
+
   Future<List<FolderNode>> _collectAllFolders() async {
     final result = <FolderNode>[];
 
