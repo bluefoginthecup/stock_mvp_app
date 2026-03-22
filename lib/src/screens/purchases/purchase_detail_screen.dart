@@ -207,6 +207,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
             // 라인 목록
             Expanded(
+
               child: _lines.isEmpty
                   ? const Center(child: Text('발주 품목이 없습니다.'))
                   : ListView.separated(
@@ -218,9 +219,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   final subtitle = (ln.colorNo ?? '').isEmpty
                       ? null
                       : '색상번호: ${ln.colorNo}';
+                  final lineTotal = ln.qty * ln.unitPrice;
 
                   return ListTile(
-                    title: Text(titleText),
+                    title: Text('$titleText (${lineTotal.toStringAsFixed(0)})'),
                     subtitle:
                     subtitle == null ? null : Text(subtitle),
                     trailing: const Icon(Icons.chevron_right),
@@ -228,6 +230,26 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   );
                 },
               ),
+            ),
+
+            Builder(
+              builder: (_) {
+                final total = _lines.fold(
+                  0.0,
+                      (sum, l) => sum + (l.qty * l.unitPrice),
+                );
+
+                return Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    '총 금액: ${total.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
             ),
 
             const SizedBox(height: 8),

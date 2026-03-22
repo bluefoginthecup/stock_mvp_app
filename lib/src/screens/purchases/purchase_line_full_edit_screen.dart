@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/purchase_line.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/ui.dart';
+import 'package:provider/provider.dart';
 
 
 class PurchaseLineFullEditScreen extends StatefulWidget {
@@ -78,7 +79,13 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('수량은 0보다 큰 숫자여야 합니다')));
       return;
     }
-    final price = double.tryParse(priceC.text.trim()) ?? 0;
+    double price = double.tryParse(priceC.text.trim()) ?? 0;
+
+    if (price == 0) {
+      final itemRepo = context.read<ItemRepo>();
+      final item = await itemRepo.getItem(itemIdC.text.trim());
+      price = item?.defaultPrice ?? 0;
+    }
     final newLine = PurchaseLine(
       id: lineId,
       orderId: widget.orderId,
@@ -188,11 +195,14 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
                       },
                     ),
                   ),
-                  TextFormField(
-                    controller: priceC,
-                    decoration: _dec('단가'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  ),                ],
+                  Expanded(
+                    child: TextFormField(
+                      controller: priceC,
+                      decoration: _dec('단가'),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 16),
