@@ -82,6 +82,116 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
   }
 
+  Future<String?> _editText({
+    required String title,
+    required String initial,
+  }) {
+    final controller = TextEditingController(text: initial);
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 12),
+                TextField(controller: controller),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, controller.text.trim());
+                  },
+                  child: const Text('저장'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<String?> _selectOption({
+    required String title,
+    required List<String> options,
+    required String current,
+  }) {
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (_) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontSize: 16)),
+            const Divider(),
+
+            ...options.map((e) {
+              return ListTile(
+                title: Text(e),
+                trailing: e == current ? const Icon(Icons.check) : null,
+                onTap: () => Navigator.pop(context, e),
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+  Future<double?> _editNumber({
+    required String title,
+    required double initial,
+  }) {
+    final controller = TextEditingController(
+      text: initial.toStringAsFixed(0),
+    );
+
+    return showModalBottomSheet<double>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                ),
+
+                const SizedBox(height: 12),
+
+                ElevatedButton(
+                  onPressed: () {
+                    final value = double.tryParse(controller.text) ?? 0;
+                    Navigator.pop(context, value);
+                  },
+                  child: const Text('저장'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _openHeaderFullEdit() async {
     if (_po == null) return;
 
@@ -148,6 +258,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         : (_itemNameById[ln.itemId] ?? ln.itemId);
     return '$baseName × ${ln.qty} ${ln.unit}';
   }
+  String _fmt(num v) => v.toStringAsFixed(0);
 
   @override
   Widget build(BuildContext context) {
@@ -164,14 +275,23 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       0.0,
           (sum, l) => sum + (l.qty * l.unitPrice),
     );
+    double calcVat(double itemsTotal, bool vatIncluded) {
+      if (vatIncluded) {
+        return itemsTotal / 11;
+      } else {
+        return itemsTotal * 0.1;
+      }
+    }
+    final vat = calcVat(itemsTotal, po.vatIncluded);
 
-    final vat = po.vat ?? 0;
     final shipping = po.shippingCost ?? 0;
     final extra = po.extraCost ?? 0;
 
     final total = po.vatIncluded
         ? itemsTotal + shipping + extra
         : itemsTotal + vat + shipping + extra;
+
+
 
     return Scaffold(
       appBar: AppBar(
@@ -208,10 +328,102 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text('공급처: ${po.supplierName.isEmpty ? '(미지정)' : po.supplierName}'),
-                    Text('입고예정일: ${po.eta.toLocal()}'.split('.').first),
-                    if ((po.memo ?? '').isNotEmpty)
-                      Text('적요: ${po.memo}'),
+                    ListTile(
+                      title: const Text('발주 상태'),
+                      subtitle: Text(po.status.name),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final result = await showModalBottomSheet<PurchaseOrderStatus>(
+                          context: context,
+                          builder: (_) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: PurchaseOrderStatus.values.map((s) {
+                                return ListTile(
+                                  title: Text(s.name),
+                                  trailing: s == po.status ? const Icon(Icons.check) : null,
+                                  onTap: () => Navigator.pop(context, s),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        );
+
+                        if (result != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(status: result),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
+
+                    const SizedBox(height: 8),
+                    ListTile(
+                      title: const Text('공급처'),
+                      subtitle: Text(
+                        po.supplierName.isEmpty ? '(미지정)' : po.supplierName,
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final result = await _editText(
+                          title: '공급처',
+                          initial: po.supplierName,
+                        );
+
+                        if (result != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(supplierName: result),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
+
+                    ListTile(
+                      title: const Text('입고예정일'),
+                      subtitle: Text(
+                        po.eta.toLocal().toString().split('.').first,
+                      ),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: po.eta,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+
+                        if (picked != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(eta: picked),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
+                      ListTile(
+                        title: const Text('메모'),
+                        subtitle: Text(
+                          (po.memo ?? '').isEmpty ? '(없음)' : po.memo!,
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () async {
+                          final result = await _editText(
+                            title: '메모',
+                            initial: po.memo ?? '',
+                          );
+
+                          if (result != null) {
+                            await widget.repo.updatePurchaseOrder(
+                              po.copyWith(
+                                memo: result.isEmpty ? null : result,
+                              ),
+                            );
+                            await _reload();
+                          }
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -232,14 +444,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           children: _lines.map((ln) {
                             final name = (ln.name.trim().isNotEmpty)
                                 ? ln.name
-                                : (_itemNameById[ln.itemId] ?? '상품');
+                                : (_itemNameById[ln.itemId] ?? ln.itemId);
 
                             final total = ln.qty * ln.unitPrice;
 
                             return ListTile(
                               title: Text('$name × ${ln.qty}'),
                               subtitle: Text(
-                                '단가 ${ln.unitPrice} / 합계 ${total.toStringAsFixed(0)}',
+                                '단가 ${ln.unitPrice} / 합계 ${_fmt(total)}',
                               ),
                               trailing: const Icon(Icons.chevron_right),
                               onTap: () => _openLineFull(ln),
@@ -258,9 +470,72 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 child: Column(
                   children: [
                     _row('상품금액', itemsTotal),
-                    _row('부가세', vat),
-                    _row('배송비', shipping),
-                    _row('기타비용', extra),
+                    SwitchListTile(
+                      title: const Text('부가세 포함'),
+                      value: po.vatIncluded,
+                      onChanged: (v) async {
+                        await widget.repo.updatePurchaseOrder(
+                          po.copyWith(vatIncluded: v),
+                        );
+                        await _reload();
+                      },
+                    ),
+
+                    ListTile(
+                      title: const Text('부가세'),
+                      subtitle: Text(_fmt(po.vat ?? 0)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final result = await _editNumber(
+                          title: '부가세',
+                          initial: po.vat ?? 0,
+                        );
+
+                        if (result != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(vat: result),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
+
+                    ListTile(
+                      title: const Text('배송비'),
+                      subtitle: Text(_fmt(po.shippingCost ?? 0)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final result = await _editNumber(
+                          title: '배송비',
+                          initial: po.shippingCost ?? 0,
+                        );
+
+                        if (result != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(shippingCost: result),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: const Text('기타비용'),
+                      subtitle: Text(_fmt(po.extraCost ?? 0)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final result = await _editNumber(
+                          title: '기타비용',
+                          initial: po.extraCost ?? 0,
+                        );
+
+                        if (result != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(extraCost: result),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
                     const Divider(),
                     _row('총 지급금액', total, bold: true),
                   ],
@@ -276,8 +551,49 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Text('결제 상태: ${po.paymentStatus ?? '-'}'),
-                    Text('입금일: ${po.paidAt == null ? '-' : po.paidAt!.toLocal().toString().split('.').first}'),
+                    ListTile(
+                      title: const Text('결제 상태'),
+                      subtitle: Text(po.paymentStatus ?? 'unpaid'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final result = await _selectOption(
+                          title: '결제 상태',
+                          options: ['unpaid', 'paid', 'partial'],
+                          current: po.paymentStatus ?? 'unpaid',
+                        );
+
+                        if (result != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(paymentStatus: result),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: const Text('입금일'),
+                      subtitle: Text(
+                        po.paidAt == null
+                            ? '(미입력)'
+                            : po.paidAt!.toLocal().toString().split('.').first,
+                      ),
+                      trailing: const Icon(Icons.calendar_today),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: po.paidAt ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+
+                        if (picked != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(paidAt: picked),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -291,8 +607,55 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Text('계산서 상태: ${po.vatInvoiceStatus ?? '-'}'),
-                    Text('발행일: ${po.vatInvoiceIssuedAt == null ? '-' : po.vatInvoiceIssuedAt!.toLocal().toString().split('.').first}'),
+                    ListTile(
+                      title: const Text('세금계산서'),
+                      subtitle: Text(po.vatInvoiceStatus ?? 'pending'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () async {
+                        final result = await _selectOption(
+                          title: '세금계산서 상태',
+                          options: ['pending', 'issued'],
+                          current: po.vatInvoiceStatus ?? 'pending',
+                        );
+
+                        if (result != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(vatInvoiceStatus: result),
+                          );
+                          await _reload();
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: const Text('발행일'),
+                      subtitle: Text(
+                        po.vatInvoiceIssuedAt == null
+                            ? '(미입력)'
+                            : po.vatInvoiceIssuedAt!.toLocal().toString().split('.').first,
+                      ),
+                      trailing: const Icon(Icons.calendar_today),
+                      enabled: po.vatInvoiceStatus == 'issued',
+                        onTap: po.vatInvoiceStatus == 'issued'
+                        ? () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: po.vatInvoiceIssuedAt ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+
+                        if (picked != null) {
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(
+                              vatInvoiceIssuedAt: picked,
+                              vatInvoiceStatus: 'issued', // 🔥 같이 변경
+                            ),
+                          );
+                          await _reload();
+                        }
+                      }
+                            : null,
+                    ),
                   ],
                 ),
               ),
@@ -346,7 +709,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         children: [
           Text(label),
           Text(
-            value.toStringAsFixed(0),
+            _fmt(value),
             style: TextStyle(
               fontWeight: bold ? FontWeight.bold : FontWeight.normal,
             ),
