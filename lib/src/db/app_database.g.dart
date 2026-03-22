@@ -155,6 +155,18 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
   late final GeneratedColumn<double> defaultPrice = GeneratedColumn<double>(
       'default_price', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _defaultPurchasePriceMeta =
+      const VerificationMeta('defaultPurchasePrice');
+  @override
+  late final GeneratedColumn<double> defaultPurchasePrice =
+      GeneratedColumn<double>('default_purchase_price', aliasedName, true,
+          type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _defaultSalePriceMeta =
+      const VerificationMeta('defaultSalePrice');
+  @override
+  late final GeneratedColumn<double> defaultSalePrice = GeneratedColumn<double>(
+      'default_sale_price', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _isFavoriteMeta =
       const VerificationMeta('isFavorite');
   @override
@@ -206,6 +218,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
         supplierName,
         defaultSupplierId,
         defaultPrice,
+        defaultPurchasePrice,
+        defaultSalePrice,
         isFavorite,
         isDeleted,
         deletedAt
@@ -343,6 +357,18 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           defaultPrice.isAcceptableOrUnknown(
               data['default_price']!, _defaultPriceMeta));
     }
+    if (data.containsKey('default_purchase_price')) {
+      context.handle(
+          _defaultPurchasePriceMeta,
+          defaultPurchasePrice.isAcceptableOrUnknown(
+              data['default_purchase_price']!, _defaultPurchasePriceMeta));
+    }
+    if (data.containsKey('default_sale_price')) {
+      context.handle(
+          _defaultSalePriceMeta,
+          defaultSalePrice.isAcceptableOrUnknown(
+              data['default_sale_price']!, _defaultSalePriceMeta));
+    }
     if (data.containsKey('is_favorite')) {
       context.handle(
           _isFavoriteMeta,
@@ -413,6 +439,11 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           DriftSqlType.int, data['${effectivePrefix}default_supplier_id']),
       defaultPrice: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}default_price']),
+      defaultPurchasePrice: attachedDatabase.typeMapping.read(
+          DriftSqlType.double,
+          data['${effectivePrefix}default_purchase_price']),
+      defaultSalePrice: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}default_sale_price']),
       isFavorite: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
       isDeleted: attachedDatabase.typeMapping
@@ -452,6 +483,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
   final String? supplierName;
   final int? defaultSupplierId;
   final double? defaultPrice;
+  final double? defaultPurchasePrice;
+  final double? defaultSalePrice;
   final bool isFavorite;
   final bool isDeleted;
   final String? deletedAt;
@@ -479,6 +512,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       this.supplierName,
       this.defaultSupplierId,
       this.defaultPrice,
+      this.defaultPurchasePrice,
+      this.defaultSalePrice,
       required this.isFavorite,
       required this.isDeleted,
       this.deletedAt});
@@ -525,6 +560,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     }
     if (!nullToAbsent || defaultPrice != null) {
       map['default_price'] = Variable<double>(defaultPrice);
+    }
+    if (!nullToAbsent || defaultPurchasePrice != null) {
+      map['default_purchase_price'] = Variable<double>(defaultPurchasePrice);
+    }
+    if (!nullToAbsent || defaultSalePrice != null) {
+      map['default_sale_price'] = Variable<double>(defaultSalePrice);
     }
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['is_deleted'] = Variable<bool>(isDeleted);
@@ -575,6 +616,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       defaultPrice: defaultPrice == null && nullToAbsent
           ? const Value.absent()
           : Value(defaultPrice),
+      defaultPurchasePrice: defaultPurchasePrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultPurchasePrice),
+      defaultSalePrice: defaultSalePrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultSalePrice),
       isFavorite: Value(isFavorite),
       isDeleted: Value(isDeleted),
       deletedAt: deletedAt == null && nullToAbsent
@@ -611,6 +658,9 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       supplierName: serializer.fromJson<String?>(json['supplierName']),
       defaultSupplierId: serializer.fromJson<int?>(json['defaultSupplierId']),
       defaultPrice: serializer.fromJson<double?>(json['defaultPrice']),
+      defaultPurchasePrice:
+          serializer.fromJson<double?>(json['defaultPurchasePrice']),
+      defaultSalePrice: serializer.fromJson<double?>(json['defaultSalePrice']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
@@ -643,6 +693,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       'supplierName': serializer.toJson<String?>(supplierName),
       'defaultSupplierId': serializer.toJson<int?>(defaultSupplierId),
       'defaultPrice': serializer.toJson<double?>(defaultPrice),
+      'defaultPurchasePrice': serializer.toJson<double?>(defaultPurchasePrice),
+      'defaultSalePrice': serializer.toJson<double?>(defaultSalePrice),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
@@ -673,6 +725,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           Value<String?> supplierName = const Value.absent(),
           Value<int?> defaultSupplierId = const Value.absent(),
           Value<double?> defaultPrice = const Value.absent(),
+          Value<double?> defaultPurchasePrice = const Value.absent(),
+          Value<double?> defaultSalePrice = const Value.absent(),
           bool? isFavorite,
           bool? isDeleted,
           Value<String?> deletedAt = const Value.absent()}) =>
@@ -706,6 +760,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
             : this.defaultSupplierId,
         defaultPrice:
             defaultPrice.present ? defaultPrice.value : this.defaultPrice,
+        defaultPurchasePrice: defaultPurchasePrice.present
+            ? defaultPurchasePrice.value
+            : this.defaultPurchasePrice,
+        defaultSalePrice: defaultSalePrice.present
+            ? defaultSalePrice.value
+            : this.defaultSalePrice,
         isFavorite: isFavorite ?? this.isFavorite,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -756,6 +816,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       defaultPrice: data.defaultPrice.present
           ? data.defaultPrice.value
           : this.defaultPrice,
+      defaultPurchasePrice: data.defaultPurchasePrice.present
+          ? data.defaultPurchasePrice.value
+          : this.defaultPurchasePrice,
+      defaultSalePrice: data.defaultSalePrice.present
+          ? data.defaultSalePrice.value
+          : this.defaultSalePrice,
       isFavorite:
           data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
@@ -789,6 +855,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           ..write('supplierName: $supplierName, ')
           ..write('defaultSupplierId: $defaultSupplierId, ')
           ..write('defaultPrice: $defaultPrice, ')
+          ..write('defaultPurchasePrice: $defaultPurchasePrice, ')
+          ..write('defaultSalePrice: $defaultSalePrice, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt')
@@ -821,6 +889,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         supplierName,
         defaultSupplierId,
         defaultPrice,
+        defaultPurchasePrice,
+        defaultSalePrice,
         isFavorite,
         isDeleted,
         deletedAt
@@ -852,6 +922,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           other.supplierName == this.supplierName &&
           other.defaultSupplierId == this.defaultSupplierId &&
           other.defaultPrice == this.defaultPrice &&
+          other.defaultPurchasePrice == this.defaultPurchasePrice &&
+          other.defaultSalePrice == this.defaultSalePrice &&
           other.isFavorite == this.isFavorite &&
           other.isDeleted == this.isDeleted &&
           other.deletedAt == this.deletedAt);
@@ -881,6 +953,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
   final Value<String?> supplierName;
   final Value<int?> defaultSupplierId;
   final Value<double?> defaultPrice;
+  final Value<double?> defaultPurchasePrice;
+  final Value<double?> defaultSalePrice;
   final Value<bool> isFavorite;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
@@ -909,6 +983,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.supplierName = const Value.absent(),
     this.defaultSupplierId = const Value.absent(),
     this.defaultPrice = const Value.absent(),
+    this.defaultPurchasePrice = const Value.absent(),
+    this.defaultSalePrice = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -938,6 +1014,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.supplierName = const Value.absent(),
     this.defaultSupplierId = const Value.absent(),
     this.defaultPrice = const Value.absent(),
+    this.defaultPurchasePrice = const Value.absent(),
+    this.defaultSalePrice = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -971,6 +1049,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     Expression<String>? supplierName,
     Expression<int>? defaultSupplierId,
     Expression<double>? defaultPrice,
+    Expression<double>? defaultPurchasePrice,
+    Expression<double>? defaultSalePrice,
     Expression<bool>? isFavorite,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
@@ -1001,6 +1081,9 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       if (supplierName != null) 'supplier_name': supplierName,
       if (defaultSupplierId != null) 'default_supplier_id': defaultSupplierId,
       if (defaultPrice != null) 'default_price': defaultPrice,
+      if (defaultPurchasePrice != null)
+        'default_purchase_price': defaultPurchasePrice,
+      if (defaultSalePrice != null) 'default_sale_price': defaultSalePrice,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1032,6 +1115,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       Value<String?>? supplierName,
       Value<int?>? defaultSupplierId,
       Value<double?>? defaultPrice,
+      Value<double?>? defaultPurchasePrice,
+      Value<double?>? defaultSalePrice,
       Value<bool>? isFavorite,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
@@ -1060,6 +1145,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       supplierName: supplierName ?? this.supplierName,
       defaultSupplierId: defaultSupplierId ?? this.defaultSupplierId,
       defaultPrice: defaultPrice ?? this.defaultPrice,
+      defaultPurchasePrice: defaultPurchasePrice ?? this.defaultPurchasePrice,
+      defaultSalePrice: defaultSalePrice ?? this.defaultSalePrice,
       isFavorite: isFavorite ?? this.isFavorite,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1140,6 +1227,13 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     if (defaultPrice.present) {
       map['default_price'] = Variable<double>(defaultPrice.value);
     }
+    if (defaultPurchasePrice.present) {
+      map['default_purchase_price'] =
+          Variable<double>(defaultPurchasePrice.value);
+    }
+    if (defaultSalePrice.present) {
+      map['default_sale_price'] = Variable<double>(defaultSalePrice.value);
+    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -1181,6 +1275,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
           ..write('supplierName: $supplierName, ')
           ..write('defaultSupplierId: $defaultSupplierId, ')
           ..write('defaultPrice: $defaultPrice, ')
+          ..write('defaultPurchasePrice: $defaultPurchasePrice, ')
+          ..write('defaultSalePrice: $defaultSalePrice, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
@@ -6963,6 +7059,8 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<String?> supplierName,
   Value<int?> defaultSupplierId,
   Value<double?> defaultPrice,
+  Value<double?> defaultPurchasePrice,
+  Value<double?> defaultSalePrice,
   Value<bool> isFavorite,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
@@ -6992,6 +7090,8 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<String?> supplierName,
   Value<int?> defaultSupplierId,
   Value<double?> defaultPrice,
+  Value<double?> defaultPurchasePrice,
+  Value<double?> defaultSalePrice,
   Value<bool> isFavorite,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
@@ -7171,6 +7271,14 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<double> get defaultPrice => $composableBuilder(
       column: $table.defaultPrice, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get defaultPurchasePrice => $composableBuilder(
+      column: $table.defaultPurchasePrice,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get defaultSalePrice => $composableBuilder(
+      column: $table.defaultSalePrice,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get isFavorite => $composableBuilder(
       column: $table.isFavorite, builder: (column) => ColumnFilters(column));
@@ -7396,6 +7504,14 @@ class $$ItemsTableOrderingComposer
       column: $table.defaultPrice,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get defaultPurchasePrice => $composableBuilder(
+      column: $table.defaultPurchasePrice,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get defaultSalePrice => $composableBuilder(
+      column: $table.defaultSalePrice,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
       column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
 
@@ -7483,6 +7599,12 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<double> get defaultPrice => $composableBuilder(
       column: $table.defaultPrice, builder: (column) => column);
+
+  GeneratedColumn<double> get defaultPurchasePrice => $composableBuilder(
+      column: $table.defaultPurchasePrice, builder: (column) => column);
+
+  GeneratedColumn<double> get defaultSalePrice => $composableBuilder(
+      column: $table.defaultSalePrice, builder: (column) => column);
 
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
       column: $table.isFavorite, builder: (column) => column);
@@ -7672,6 +7794,8 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> supplierName = const Value.absent(),
             Value<int?> defaultSupplierId = const Value.absent(),
             Value<double?> defaultPrice = const Value.absent(),
+            Value<double?> defaultPurchasePrice = const Value.absent(),
+            Value<double?> defaultSalePrice = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
@@ -7701,6 +7825,8 @@ class $$ItemsTableTableManager extends RootTableManager<
             supplierName: supplierName,
             defaultSupplierId: defaultSupplierId,
             defaultPrice: defaultPrice,
+            defaultPurchasePrice: defaultPurchasePrice,
+            defaultSalePrice: defaultSalePrice,
             isFavorite: isFavorite,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
@@ -7730,6 +7856,8 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> supplierName = const Value.absent(),
             Value<int?> defaultSupplierId = const Value.absent(),
             Value<double?> defaultPrice = const Value.absent(),
+            Value<double?> defaultPurchasePrice = const Value.absent(),
+            Value<double?> defaultSalePrice = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
@@ -7759,6 +7887,8 @@ class $$ItemsTableTableManager extends RootTableManager<
             supplierName: supplierName,
             defaultSupplierId: defaultSupplierId,
             defaultPrice: defaultPrice,
+            defaultPurchasePrice: defaultPurchasePrice,
+            defaultSalePrice: defaultSalePrice,
             isFavorite: isFavorite,
             isDeleted: isDeleted,
             deletedAt: deletedAt,

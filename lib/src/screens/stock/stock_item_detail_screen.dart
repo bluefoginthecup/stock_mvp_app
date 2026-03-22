@@ -398,6 +398,22 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
 
                 const SizedBox(height: 12),
                 ItemMetaOverview(item: item),
+                const SizedBox(height: 12),
+
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Chip(
+                      avatar: const Icon(Icons.download, size: 16),
+                      label: Text('입고가: ${item.defaultPurchasePrice ?? 0}'),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.upload, size: 16),
+                      label: Text('출고가: ${item.defaultSalePrice ?? 0}'),
+                    ),
+                  ],
+                ),
 
 
                 const SizedBox(height: 12),

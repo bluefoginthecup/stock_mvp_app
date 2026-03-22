@@ -71,6 +71,8 @@ class Items extends Table {
   TextColumn get supplierName => text().nullable()();
   IntColumn get defaultSupplierId => integer().nullable()();
   RealColumn get defaultPrice => real().nullable()();
+  RealColumn get defaultPurchasePrice => real().nullable()();
+  RealColumn get defaultSalePrice => real().nullable()();
 
   //즐겨찾기
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
@@ -455,7 +457,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 11; //
+  int get schemaVersion => 12; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -593,6 +595,10 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(purchaseOrders, purchaseOrders.vat as GeneratedColumn);
 
         await m.addColumn(purchaseLines, purchaseLines.unitPrice as GeneratedColumn);
+      }
+      if (from < 12) {
+        await m.addColumn(items, items.defaultPurchasePrice as GeneratedColumn);
+        await m.addColumn(items, items.defaultSalePrice as GeneratedColumn);
       }
 
 
@@ -770,6 +776,8 @@ extension ItemRowMapping on ItemRow {
       stockHints: hints,
       supplierName: supplierName,
       isFavorite: isFavorite,
+      defaultPurchasePrice: defaultPurchasePrice,
+      defaultSalePrice: defaultSalePrice,
     );
   }
 }

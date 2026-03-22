@@ -36,6 +36,8 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
   late TextEditingController conversionRateC;
   String conversionMode = 'fixed'; // fixed | lot
   late TextEditingController supplierC;
+  late TextEditingController purchasePriceC;
+  late TextEditingController salePriceC;
 
 
     late Future<Item?> _itemFuture;
@@ -60,6 +62,8 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
         unitOutC = TextEditingController();
         conversionRateC = TextEditingController();
         supplierC = TextEditingController();
+        purchasePriceC = TextEditingController();
+        salePriceC = TextEditingController();
 
         // 2) 아이템은 비동기로 로드
         final repo = context.read<ItemRepo>();
@@ -83,6 +87,8 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     unitOutC.dispose();
     conversionRateC.dispose();
     supplierC.dispose();
+    purchasePriceC.dispose();
+    salePriceC.dispose();
     super.dispose();
   }
 
@@ -113,6 +119,10 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     // 운영정책에 따라 숨기거나 readOnly로 두는 게 안전.
     // 원한다면 아래 line 제거하고 Adjust 플로우만 쓰세요.
     final wantUpdateQtyHere = false;
+
+    final purchasePrice = double.tryParse(purchasePriceC.text.trim());
+    final salePrice = double.tryParse(salePriceC.text.trim());
+
     // ✅ Item 전체를 만들어 updateItemMeta에 전달
         final updated = Item(
           id: i.id,
@@ -134,11 +144,14 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
           stockHints: i.stockHints,
           supplierName: supplierC.text.trim().isEmpty ? i.supplierName : supplierC.text.trim(),
           isFavorite: i.isFavorite,
+          defaultPurchasePrice: purchasePrice ?? i.defaultPurchasePrice,
+          defaultSalePrice: salePrice ?? i.defaultSalePrice,
+
         );
 
         await repo.updateItemMeta(updated);
 
-
+    print('저장 price: $purchasePrice / $salePrice');
     Navigator.pop(context, true);
   }
 
@@ -183,6 +196,8 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
               conversionRateC.text = (item.conversionRate ?? 0).toString();
               conversionMode = item.conversionMode;
               supplierC.text = item.supplierName ?? '';
+              purchasePriceC.text = (item.defaultPurchasePrice ?? 0).toString();
+              salePriceC.text = (item.defaultSalePrice ?? 0).toString();
             }
 
             return Scaffold(
@@ -218,6 +233,29 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
 
               const SizedBox(height: 16),
               Text('재고/임계치', style: text.titleSmall),
+                      const SizedBox(height: 16),
+                      Text('가격', style: text.titleSmall),
+                      const SizedBox(height: 8),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: purchasePriceC,
+                              decoration: _dec('기본 입고가'),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: salePriceC,
+                              decoration: _dec('기본 출고가'),
+                              keyboardType: TextInputType.number,
+                            ),
+                          ),
+                        ],
+                      ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: minQtyC,

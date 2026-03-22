@@ -32,6 +32,8 @@ class Item {
   final String? supplierName;
   final String? defaultSupplierId;
   final double? defaultPrice;
+  final double? defaultPurchasePrice;
+  final double? defaultSalePrice;
 
   Item({
     this.isFavorite = false,   // 기본값 false
@@ -50,6 +52,8 @@ class Item {
     this.supplierName,
     this.defaultSupplierId,
     this.defaultPrice,
+    this.defaultPurchasePrice,
+    this.defaultSalePrice,
 
 
     // 신규 환산 필드 (옵션 파라미터 + 합리적 기본값)
@@ -88,6 +92,8 @@ class Item {
     String? supplierName,
     String? defaultSupplierId,
     double? defaultPrice,
+    double? defaultPurchasePrice,
+    double? defaultSalePrice,
 
 
   }) {
@@ -116,6 +122,8 @@ class Item {
       supplierName: supplierName ?? this.supplierName,
       defaultSupplierId: defaultSupplierId ?? this.defaultSupplierId,
       defaultPrice: defaultPrice ?? this.defaultPrice,
+      defaultPurchasePrice: defaultPurchasePrice ?? this.defaultPurchasePrice,
+      defaultSalePrice: defaultSalePrice ?? this.defaultSalePrice,
     );
   }
 
@@ -172,6 +180,8 @@ class Item {
       supplierName: json['supplierName'] as String?,
       defaultSupplierId: json['defaultSupplierId'] as String?,
       defaultPrice: (json['defaultPrice'] as num?)?.toDouble(),
+      defaultPurchasePrice: (json['defaultPurchasePrice'] as num?)?.toDouble(),
+      defaultSalePrice: (json['defaultSalePrice'] as num?)?.toDouble(),
     );
   }
 
@@ -200,6 +210,8 @@ class Item {
     'supplierName': supplierName,
     'defaultSupplierId': defaultSupplierId,
     'defaultPrice': defaultPrice,
+    'defaultPurchasePrice': defaultPurchasePrice,
+    'defaultSalePrice': defaultSalePrice,
   };
 }
 
@@ -230,5 +242,6 @@ class StockHints {
     if (conversionRate != null) 'conversion_rate': conversionRate,
     if (qty != null) 'qty': qty,
     if (usableQtyM != null) 'usable_qty_m': usableQtyM,
+
   };
 }

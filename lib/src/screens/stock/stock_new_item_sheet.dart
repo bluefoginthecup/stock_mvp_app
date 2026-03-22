@@ -10,6 +10,7 @@ class StockNewItemSheet extends StatefulWidget {
 
   final List<String> pathIds; // [l1Id, l2Id, l3Id]
 
+
   @override
   State<StockNewItemSheet> createState() => _StockNewItemSheetState();
 }
@@ -24,6 +25,8 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
   final _minC = TextEditingController(text: '5');
   final _qtyC = TextEditingController(text: '0');
   final _uuid = const Uuid();
+  final _purchasePriceC = TextEditingController();
+  final _salePriceC = TextEditingController();
 
   @override
   void dispose() {
@@ -32,6 +35,8 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
     _unitC.dispose();
     _minC.dispose();
     _qtyC.dispose();
+    _purchasePriceC.dispose();
+    _salePriceC.dispose();
     super.dispose();
   }
 
@@ -42,6 +47,8 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       return;
     }
 
+    final purchasePrice = double.tryParse(_purchasePriceC.text) ?? 0;
+    final salePrice = double.tryParse(_salePriceC.text) ?? 0;
     final item = Item(
       id: _uuid.v4(),
       name: _nameC.text.trim(),
@@ -66,6 +73,8 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       stockHints: null,
       supplierName: null,
       isFavorite: false,
+      defaultPurchasePrice: purchasePrice,
+      defaultSalePrice: salePrice,
     );
     if (!mounted) return;
         // 아이템 + 최종 pathIds(ID 체인)를 함께 반환
@@ -93,6 +102,27 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
             TextField(controller: _qtyC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '초기 재고 수량')),
             const SizedBox(height: 8),
             TextField(controller: _minC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '임계치(재주문 최소)')),
+            const SizedBox(height: 8),
+
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _purchasePriceC,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: '기본 입고가'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _salePriceC,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: '기본 출고가'),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             ElevatedButton(onPressed: _save, child: const Text('저장')),
           ],

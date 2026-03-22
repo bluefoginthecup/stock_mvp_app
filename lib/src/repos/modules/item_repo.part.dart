@@ -248,6 +248,9 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
             searchNormalized: Value(keys.nameNorm),
             searchInitials: Value(keys.initials),
             searchFullNormalized: Value(keys.fullNorm),
+            defaultPurchasePrice: Value(item.defaultPurchasePrice), // ⭐ 여기
+            defaultSalePrice: Value(item.defaultSalePrice),         // ⭐ 여기
+
           ),
         );
 
@@ -314,6 +317,9 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
         searchNormalized: Value(keys.nameNorm),
         searchInitials: Value(keys.initials),
         searchFullNormalized: Value(keys.fullNorm),
+        defaultPurchasePrice: Value(item.defaultPurchasePrice), // ⭐ 추가
+        defaultSalePrice: Value(item.defaultSalePrice),         // ⭐ 추가
+
       );
 
 
@@ -341,22 +347,30 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       ..where((t) => t.id.equals(id))).getSingleOrNull();
     return row?.toDomain();
   }
+  @override
+  Future<void> updateItemMeta(Item item) async {
 
-    @override
-    Future<void> updateItemMeta(Item item) async {
-      final keys = buildItemSearchKeys(item);
+    final keys = buildItemSearchKeys(item);
 
-      final comp = item.toCompanion().copyWith(
+    print('DB 저장 직전: ${item.defaultPurchasePrice} / ${item.defaultSalePrice}');
+
+    await (db.update(db.items)
+      ..where((t) => t.id.equals(item.id)))
+        .write(
+      ItemsCompanion(
+        // 🔥 필요한 것만 직접 넣어
         searchNormalized: Value(keys.nameNorm),
         searchInitials: Value(keys.initials),
         searchFullNormalized: Value(keys.fullNorm),
-      );
 
-      await (db.update(db.items)
-        ..where((t) => t.id.equals(item.id)))
-          .write(comp);
- }
+        defaultPurchasePrice: Value(item.defaultPurchasePrice),
+        defaultSalePrice: Value(item.defaultSalePrice),
+      ),
+    );
 
+    final check = await getItem(item.id);
+    print('DB 저장 후: ${check?.defaultPurchasePrice} / ${check?.defaultSalePrice}');
+  }
     @override
   Future<void> deleteItem(String id) async {
     await (db.delete(db.items)
