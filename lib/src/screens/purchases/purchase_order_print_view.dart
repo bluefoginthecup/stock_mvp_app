@@ -9,7 +9,7 @@ class PrintLine {
   final String colorNo;
   final String unit;
   final double qty;
-  final double amount;
+  final double unitPrice; // ✅ 추가
   final String memo;
   const PrintLine({
     required this.itemName,
@@ -17,9 +17,10 @@ class PrintLine {
     required this.colorNo,
     required this.unit,
     required this.qty,
-    required this.amount,
+    required this.unitPrice, // ✅ 추가
     required this.memo,
   });
+  double get amount => unitPrice * qty;
 }
 
 /// ② 메인 위젯: A4 고정, 핀치줌 지원
@@ -156,6 +157,7 @@ class PurchaseOrderPrintView extends StatelessWidget {
         _Th('규격', style: head),
         _Th('단위', style: head),
         _Th('수량', style: head),
+        _Th('단가', style: head),
         _Th('금액', style: head),
         _Th('적요', style: head),
       ],
@@ -184,6 +186,7 @@ class PurchaseOrderPrintView extends StatelessWidget {
               _Td(lines[i].spec, style: cell),
               _Td(lines[i].unit, style: cell),
               _Td(_fmtNum(lines[i].qty), style: cell),
+              _Td(_fmtMoney(lines[i].unitPrice)), // 단가
               _Td(_fmtMoney(lines[i].amount), style: cell),
               _Td(lines[i].memo, style: cell),
             ],

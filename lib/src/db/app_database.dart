@@ -1045,7 +1045,7 @@ extension PurchaseLineRowMapping on PurchaseLineRow {
     note: note,
     memo: memo,
     colorNo: colorNo,
-    unitPrice: 0,
+    unitPrice: unitPrice,
   );
 }
 
@@ -1060,6 +1060,7 @@ extension PurchaseLineToCompanionExt on PurchaseLine {
     note: Value(note),
     memo: Value(memo),
     colorNo: Value(colorNo),
+    unitPrice: Value(unitPrice),
   );
 }
 

@@ -32,7 +32,7 @@ class PurchasePrintAction extends StatelessWidget {
       spec: spec,
       unit: l.unit,
       qty: l.qty,
-      amount: 0.0,
+      unitPrice: l.unitPrice,
       memo: '',
       colorNo: colorNo,
     );
@@ -68,7 +68,7 @@ class PurchasePrintAction extends StatelessWidget {
             spec: spec,
             unit: l.unit,
             qty: l.qty,
-            amount: 0.0,
+            unitPrice: l.unitPrice,
             memo: '',
             colorNo: colorNo,
           ),
