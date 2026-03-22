@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../repos/repo_interfaces.dart';
@@ -26,7 +27,7 @@ class PurchaseDetailScreen extends StatefulWidget {
 class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   PurchaseOrder? _po;
   List<PurchaseLine> _lines = const [];
-  Map<String, String> _itemNameById = const {}; // ✅ 아이템명 캐시
+  Map<String, String> _itemNameById = const {};
 
   @override
   void initState() {
@@ -35,13 +36,12 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   Future<void> _reload() async {
-    // 헤더/라인 로드
     final po = await widget.repo.getPurchaseOrderById(widget.orderId);
     final lines = await widget.repo.getLines(widget.orderId);
 
-    // 아이템명 보강 (ItemRepo는 비동기)
     final itemRepo = context.read<ItemRepo>();
     final nameMap = <String, String>{};
+
     await Future.wait(lines.map((ln) async {
       final it = await itemRepo.getItem(ln.itemId);
       if (it != null) {
@@ -83,12 +83,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   Future<void> _openHeaderFullEdit() async {
-    if (_po == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('발주서를 불러오는 중입니다')),
-      );
-      return;
-    }
+    if (_po == null) return;
+
     final changed = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -98,11 +94,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         ),
       ),
     );
+
     if (changed == true) await _reload();
   }
 
   Future<void> _addLineFull() async {
     if (_po == null) return;
+
     final saved = await Navigator.push<PurchaseLine?>(
       context,
       MaterialPageRoute(
@@ -113,9 +111,12 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         ),
       ),
     );
+
     if (saved != null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('추가되었습니다')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('추가되었습니다')),
+      );
       await _reload();
     }
   }
@@ -131,9 +132,12 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         ),
       ),
     );
+
     if (saved != null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('저장되었습니다')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장되었습니다')),
+      );
       await _reload();
     }
   }
@@ -150,6 +154,25 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     final po = _po;
     final t = context.t;
 
+    if (po == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final itemsTotal = _lines.fold(
+      0.0,
+          (sum, l) => sum + (l.qty * l.unitPrice),
+    );
+
+    final vat = po.vat ?? 0;
+    final shipping = po.shippingCost ?? 0;
+    final extra = po.extraCost ?? 0;
+
+    final total = po.vatIncluded
+        ? itemsTotal + shipping + extra
+        : itemsTotal + vat + shipping + extra;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(t.purchase_detail_title),
@@ -157,9 +180,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           IconButton(
             onPressed: _openHeaderFullEdit,
             icon: const Icon(Icons.edit_note),
-            tooltip: '헤더 전체 편집',
           ),
-          PurchasePrintAction(poId: widget.orderId), // ✅ PDF 보기
+          PurchasePrintAction(poId: widget.orderId),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -167,13 +189,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         icon: const Icon(Icons.add),
         label: Text(t.btn_add),
       ),
-      body: po == null
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
           children: [
-            // 헤더 카드
+            /// 헤더
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -189,15 +208,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text('공급처: ${po.supplierName.trim().isEmpty ? '(미지정)' : po.supplierName}'),
+                    Text('공급처: ${po.supplierName.isEmpty ? '(미지정)' : po.supplierName}'),
                     Text('입고예정일: ${po.eta.toLocal()}'.split('.').first),
-                    if ((po.memo ?? '').trim().isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                    if ((po.memo ?? '').isNotEmpty)
                       Text('적요: ${po.memo}'),
-                    ],
-                    const SizedBox(height: 8),
-                    Text('발주ID: ${po.id}',
-                        style: Theme.of(context).textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -205,56 +219,91 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
             const SizedBox(height: 12),
 
-            // 라인 목록
-            Expanded(
+            /// 상품 리스트
+            _lines.isEmpty
+                            ? const Card(
+                                child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text('발주 품목이 없습니다.'),
+                        ),
+                      )
+                    : Card(
+                        child: Column(
+                          children: _lines.map((ln) {
+                            final name = (ln.name.trim().isNotEmpty)
+                                ? ln.name
+                                : (_itemNameById[ln.itemId] ?? '상품');
 
-              child: _lines.isEmpty
-                  ? const Center(child: Text('발주 품목이 없습니다.'))
-                  : ListView.separated(
-                itemCount: _lines.length,
-                separatorBuilder: (_, __) => const Divider(height: 0),
-                itemBuilder: (ctx, i) {
-                  final ln = _lines[i];
-                  final titleText = _titleForLine(ln);
-                  final subtitle = (ln.colorNo ?? '').isEmpty
-                      ? null
-                      : '색상번호: ${ln.colorNo}';
-                  final lineTotal = ln.qty * ln.unitPrice;
+                            final total = ln.qty * ln.unitPrice;
 
-                  return ListTile(
-                    title: Text('$titleText (${lineTotal.toStringAsFixed(0)})'),
-                    subtitle:
-                    subtitle == null ? null : Text(subtitle),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _openLineFull(ln),
-                  );
-                },
+                            return ListTile(
+                              title: Text('$name × ${ln.qty}'),
+                              subtitle: Text(
+                                '단가 ${ln.unitPrice} / 합계 ${total.toStringAsFixed(0)}',
+                              ),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () => _openLineFull(ln),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
+
+            const SizedBox(height: 8),
+
+            /// 금액
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    _row('상품금액', itemsTotal),
+                    _row('부가세', vat),
+                    _row('배송비', shipping),
+                    _row('기타비용', extra),
+                    const Divider(),
+                    _row('총 지급금액', total, bold: true),
+                  ],
+                ),
               ),
-            ),
-
-            Builder(
-              builder: (_) {
-                final total = _lines.fold(
-                  0.0,
-                      (sum, l) => sum + (l.qty * l.unitPrice),
-                );
-
-                return Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    '총 금액: ${total.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                );
-              },
             ),
 
             const SizedBox(height: 8),
 
-            // 상태 전환/취소
+            /// 결제
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text('결제 상태: ${po.paymentStatus ?? '-'}'),
+                    Text('입금일: ${po.paidAt == null ? '-' : po.paidAt!.toLocal().toString().split('.').first}'),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            /// 세금계산서
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text('계산서 상태: ${po.vatInvoiceStatus ?? '-'}'),
+                    Text('발행일: ${po.vatInvoiceIssuedAt == null ? '-' : po.vatInvoiceIssuedAt!.toLocal().toString().split('.').first}'),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+
+            /// 🔥 FAB 공간 확보
+            const SizedBox(height: 80),
+
             _ActionRow(
               status: po.status,
               onAdvance: () async {
@@ -264,18 +313,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 if (po.status == PurchaseOrderStatus.draft &&
                     next == PurchaseOrderStatus.ordered) {
                   await context.read<InventoryService>().orderPurchase(po.id);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('발주완료: 예정 입고 기록 생성됨')),
-                  );
                   await _reload();
                 } else if (po.status == PurchaseOrderStatus.ordered &&
                     next == PurchaseOrderStatus.received) {
                   await context.read<InventoryService>().receivePurchase(po.id);
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('입고 완료: 입출고기록 생성 및 재고 반영됨')),
-                  );
                   await _reload();
                 }
               },
@@ -283,10 +324,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   ? null
                   : () async {
                 await context.read<InventoryService>().cancelPurchase(po.id);
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('발주 취소: 예정 입고 기록이 정리되었습니다')),
-                );
                 await _reload();
               },
               labelForAdvance: switch (po.status) {
@@ -298,6 +335,23 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
             ),
           ],
         ),
+    );
+  }
+
+  Widget _row(String label, double value, {bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label),
+          Text(
+            value.toStringAsFixed(0),
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -309,6 +363,7 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback? onCancel;
   final String labelForAdvance;
   final String cancelLabel;
+
   const _ActionRow({
     required this.status,
     required this.onAdvance,
@@ -321,6 +376,7 @@ class _ActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final canAdvance = status != PurchaseOrderStatus.received &&
         status != PurchaseOrderStatus.canceled;
+
     return Row(
       children: [
         Expanded(
