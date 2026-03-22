@@ -233,24 +233,44 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.restore),
             title: const Text('DB 복원'),
             subtitle: const Text('백업된 DB 파일을 불러옵니다'),
-              onTap: () async {
+            onTap: () async {
 
-                debugPrint("🟢 DB 복원 버튼 눌림");
+              debugPrint("🟢 DB 복원 버튼 눌림");
 
-                final ok = await exportService.importDatabase();
-
-                if (!context.mounted) return;
-
-                if (ok) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('DB 복원이 완료되었습니다.\n앱을 다시 실행해주세요.'),
-                      duration: Duration(seconds: 4),
+              // 🔥 복원 확인창
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('DB 복원'),
+                  content: const Text('현재 데이터가 백업 파일로 덮어쓰여집니다.\n계속하시겠습니까?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('취소'),
                     ),
-                  );
-                }
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('복원'),
+                    ),
+                  ],
+                ),
+              );
 
-              },
+              if (confirm != true) return;
+
+              final ok = await exportService.importDatabase();
+
+              if (!context.mounted) return;
+
+              if (ok) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('DB 복원이 완료되었습니다.\n앱을 다시 실행해주세요.'),
+                  ),
+                );
+              }
+
+            },
           ),
         ],
       ),

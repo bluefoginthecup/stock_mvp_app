@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import '../db/app_database.dart';
 
 class DbAutoBackupService {
 
@@ -66,7 +67,9 @@ class DbAutoBackupService {
       'stockapp_backup_$stamp.db',
     );
 
-    await dbFile.copy(backupPath);
+    // 🔥 SQLite 공식 백업
+    final db = AppDatabase();
+    await db.customStatement("VACUUM INTO '$backupPath'");
   }
 
   /// 오래된 백업 삭제
