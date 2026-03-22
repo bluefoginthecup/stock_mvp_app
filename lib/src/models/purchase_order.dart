@@ -3,7 +3,7 @@ enum PurchaseOrderStatus { draft, ordered, received, canceled }
 class PurchaseOrder {
   final String id;
   final String supplierName;
-  final String? supplierId;
+  final int? supplierId;
   final DateTime eta;                 // 예상 입고(2단계 점선에 사용)
   final PurchaseOrderStatus status;
   final DateTime createdAt;
@@ -17,6 +17,13 @@ class PurchaseOrder {
   final double shippingCost;
   final double extraCost;
   final double vat;
+  final bool vatIncluded;
+
+  final String paymentStatus;
+  final DateTime? paidAt;
+
+  final String vatInvoiceStatus;
+  final DateTime? vatInvoiceIssuedAt;
 
   PurchaseOrder({
     required this.id,
@@ -27,12 +34,18 @@ class PurchaseOrder {
     DateTime? updatedAt,
     this.isDeleted = false,
     this.memo,
-    this.orderId,                     // ✅
-    this.receivedAt,                  // ✅
+    this.orderId,
+    this.receivedAt,
     this.supplierId,
     this.shippingCost = 0,
     this.extraCost = 0,
     this.vat = 0,
+
+    this.vatIncluded = false,
+    this.paymentStatus = 'pending',
+    this.paidAt,
+    this.vatInvoiceStatus = 'pending',
+    this.vatInvoiceIssuedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -43,12 +56,18 @@ class PurchaseOrder {
     bool? isDeleted,
     DateTime? updatedAt,
     String? memo,
-    String? orderId,                  // ✅
-    DateTime? receivedAt,             // ✅
-    String? supplierId,
+    String? orderId,
+    DateTime? receivedAt,
+    int? supplierId,
     double? shippingCost,
     double? extraCost,
     double? vat,
+
+    bool? vatIncluded,
+    String? paymentStatus,
+    DateTime? paidAt,
+    String? vatInvoiceStatus,
+    DateTime? vatInvoiceIssuedAt,
   }) => PurchaseOrder(
     id: id,
     supplierName: supplierName ?? this.supplierName,
@@ -58,12 +77,18 @@ class PurchaseOrder {
     updatedAt: updatedAt ?? DateTime.now(),
     isDeleted: isDeleted ?? this.isDeleted,
     memo: memo ?? this.memo,
-    orderId: orderId ?? this.orderId,             // ✅
-    receivedAt: receivedAt ?? this.receivedAt,     // ✅
+    orderId: orderId ?? this.orderId,
+    receivedAt: receivedAt ?? this.receivedAt,
     supplierId: supplierId ?? this.supplierId,
     shippingCost: shippingCost ?? this.shippingCost,
     extraCost: extraCost ?? this.extraCost,
     vat: vat ?? this.vat,
+
+    vatIncluded: vatIncluded ?? this.vatIncluded,
+    paymentStatus: paymentStatus ?? this.paymentStatus,
+    paidAt: paidAt ?? this.paidAt,
+    vatInvoiceStatus: vatInvoiceStatus ?? this.vatInvoiceStatus,
+    vatInvoiceIssuedAt: vatInvoiceIssuedAt ?? this.vatInvoiceIssuedAt,
   );
 
   factory PurchaseOrder.fromJson(Map<String, dynamic> j) => PurchaseOrder(
@@ -79,10 +104,19 @@ class PurchaseOrder {
     receivedAt: (j['receivedAt'] as String?) != null          // ✅
         ? DateTime.parse(j['receivedAt'])
         : null,
-    supplierId: j['supplierId'] as String?,
+    supplierId: (j['supplierId'] as num?)?.toInt(),
     shippingCost: (j['shippingCost'] as num?)?.toDouble() ?? 0,
     extraCost: (j['extraCost'] as num?)?.toDouble() ?? 0,
     vat: (j['vat'] as num?)?.toDouble() ?? 0,
+    vatIncluded: j['vatIncluded'] == true,
+    paymentStatus: j['paymentStatus'] as String? ?? 'pending',
+    paidAt: (j['paidAt'] as String?) != null
+        ? DateTime.parse(j['paidAt'])
+        : null,
+    vatInvoiceStatus: j['vatInvoiceStatus'] as String? ?? 'pending',
+    vatInvoiceIssuedAt: (j['vatInvoiceIssuedAt'] as String?) != null
+        ? DateTime.parse(j['vatInvoiceIssuedAt'])
+        : null,
   );
 
   Map<String, dynamic> toJson() => {
@@ -100,5 +134,10 @@ class PurchaseOrder {
     'shippingCost': shippingCost,
     'extraCost': extraCost,
     'vat': vat,
+    'vatIncluded': vatIncluded,
+    'paymentStatus': paymentStatus,
+    'paidAt': paidAt?.toIso8601String(),
+    'vatInvoiceStatus': vatInvoiceStatus,
+    'vatInvoiceIssuedAt': vatInvoiceIssuedAt?.toIso8601String(),
   };
 }

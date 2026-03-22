@@ -309,6 +309,12 @@ class PurchaseOrders extends Table {
   RealColumn get shippingCost => real().withDefault(const Constant(0))();
   RealColumn get extraCost => real().withDefault(const Constant(0))();
   RealColumn get vat => real().withDefault(const Constant(0))();
+  TextColumn get paymentStatus => text().withDefault(const Constant('pending'))();//결제여부
+  TextColumn get paidAt => text().nullable()(); //결제일
+  TextColumn get vatInvoiceStatus => text().withDefault(const Constant('pending'))();//
+  TextColumn get vatInvoiceIssuedAt => text().nullable()();
+  BoolColumn get vatIncluded => boolean().withDefault(const Constant(false))();
+
   TextColumn get eta => text()(); // ISO8601
   TextColumn get status => text()(); // PurchaseOrderStatus.name
   TextColumn get createdAt => text()(); // ISO8601
@@ -320,7 +326,6 @@ class PurchaseOrders extends Table {
   // 🔥 신규 컬럼 2개 (주문 연동/입고일)
   TextColumn get orderId => text().nullable()();     // 주문 연동 발주면 채움
   TextColumn get receivedAt => text().nullable()();  // 실제 입고 완료일 (ISO8601 string)
-
 
 
   @override
@@ -457,7 +462,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 12; //
+  int get schemaVersion => 13; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -599,6 +604,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 12) {
         await m.addColumn(items, items.defaultPurchasePrice as GeneratedColumn);
         await m.addColumn(items, items.defaultSalePrice as GeneratedColumn);
+      }
+      if (from < 13) {
+        await m.addColumn(purchaseOrders, purchaseOrders.vatIncluded as GeneratedColumn);
+        await m.addColumn(purchaseOrders, purchaseOrders.paymentStatus as GeneratedColumn);
+        await m.addColumn(purchaseOrders, purchaseOrders.paidAt as GeneratedColumn);
+        await m.addColumn(purchaseOrders, purchaseOrders.vatInvoiceStatus as GeneratedColumn);
+        await m.addColumn(purchaseOrders, purchaseOrders.vatInvoiceIssuedAt as GeneratedColumn);
       }
 
 
@@ -1009,6 +1021,19 @@ extension PurchaseOrderRowMapping on PurchaseOrderRow {
   PurchaseOrder toDomain() => PurchaseOrder(
     id: id,
     supplierName: supplierName,
+    supplierId: supplierId,
+    shippingCost: shippingCost,
+    extraCost: extraCost,
+    vat: vat,
+
+    vatIncluded: vatIncluded,
+    paymentStatus: paymentStatus,
+    paidAt: paidAt != null ? DateTime.parse(paidAt!) : null,
+    vatInvoiceStatus: vatInvoiceStatus,
+    vatInvoiceIssuedAt: vatInvoiceIssuedAt != null
+        ? DateTime.parse(vatInvoiceIssuedAt!)
+        : null,
+
     eta: DateTime.parse(eta),
     status: PurchaseOrderStatus.values.firstWhere(
           (e) => e.name == status,
@@ -1018,6 +1043,8 @@ extension PurchaseOrderRowMapping on PurchaseOrderRow {
     updatedAt: DateTime.parse(updatedAt),
     isDeleted: isDeleted,
     memo: memo,
+    orderId: orderId,
+    receivedAt: receivedAt != null ? DateTime.parse(receivedAt!) : null,
   );
 }
 
@@ -1025,12 +1052,28 @@ extension PurchaseOrderToCompanion on PurchaseOrder {
   PurchaseOrdersCompanion toCompanion() => PurchaseOrdersCompanion(
     id: Value(id),
     supplierName: Value(supplierName),
+    supplierId: Value(supplierId),
+
+    shippingCost: Value(shippingCost),
+    extraCost: Value(extraCost),
+    vat: Value(vat),
+
+    vatIncluded: Value(vatIncluded),
+    paymentStatus: Value(paymentStatus),
+    paidAt: Value(paidAt?.toIso8601String()),
+    vatInvoiceStatus: Value(vatInvoiceStatus),
+    vatInvoiceIssuedAt: Value(vatInvoiceIssuedAt?.toIso8601String()),
+
     eta: Value(eta.toIso8601String()),
     status: Value(status.name),
     createdAt: Value(createdAt.toIso8601String()),
-    updatedAt: Value(updatedAt.toIso8601String()),
+    updatedAt: updatedAt == null
+        ? const Value.absent()
+        : Value(updatedAt!.toIso8601String()),
     isDeleted: Value(isDeleted),
     memo: Value(memo),
+    orderId: Value(orderId),
+    receivedAt: Value(receivedAt?.toIso8601String()),
   );
 }
 
