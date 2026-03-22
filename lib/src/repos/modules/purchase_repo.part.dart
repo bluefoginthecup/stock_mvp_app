@@ -71,9 +71,21 @@ Future<void> upsertLines(String orderId, List<PurchaseLine> lines) async {
   await db.transaction(() async {
     await (db.delete(db.purchaseLines)..where((l) => l.orderId.equals(orderId))).go();
     for (final line in lines) {
-      await db.into(db.purchaseLines).insert(line.toCompanion());
+      final safeLine = line.copyWith(
+        unitPrice: line.unitPrice == 0 ? await _resolvePrice(line.itemId) : line.unitPrice,
+      );
+      await db.into(db.purchaseLines).insert(safeLine.toCompanion());
     }
   });
+}
+
+Future<double> _resolvePrice(String itemId) async {
+  final item = await db.select(db.items)
+    ..where((t) => t.id.equals(itemId));
+
+  final row = await item.getSingleOrNull();
+
+  return row?.defaultPrice ?? 0;
 }
 
 @override

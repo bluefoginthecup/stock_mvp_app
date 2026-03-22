@@ -143,6 +143,18 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
   late final GeneratedColumn<String> supplierName = GeneratedColumn<String>(
       'supplier_name', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _defaultSupplierIdMeta =
+      const VerificationMeta('defaultSupplierId');
+  @override
+  late final GeneratedColumn<int> defaultSupplierId = GeneratedColumn<int>(
+      'default_supplier_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _defaultPriceMeta =
+      const VerificationMeta('defaultPrice');
+  @override
+  late final GeneratedColumn<double> defaultPrice = GeneratedColumn<double>(
+      'default_price', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   static const VerificationMeta _isFavoriteMeta =
       const VerificationMeta('isFavorite');
   @override
@@ -192,6 +204,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
         conversionMode,
         stockHintsJson,
         supplierName,
+        defaultSupplierId,
+        defaultPrice,
         isFavorite,
         isDeleted,
         deletedAt
@@ -317,6 +331,18 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           supplierName.isAcceptableOrUnknown(
               data['supplier_name']!, _supplierNameMeta));
     }
+    if (data.containsKey('default_supplier_id')) {
+      context.handle(
+          _defaultSupplierIdMeta,
+          defaultSupplierId.isAcceptableOrUnknown(
+              data['default_supplier_id']!, _defaultSupplierIdMeta));
+    }
+    if (data.containsKey('default_price')) {
+      context.handle(
+          _defaultPriceMeta,
+          defaultPrice.isAcceptableOrUnknown(
+              data['default_price']!, _defaultPriceMeta));
+    }
     if (data.containsKey('is_favorite')) {
       context.handle(
           _isFavoriteMeta,
@@ -383,6 +409,10 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           DriftSqlType.string, data['${effectivePrefix}stock_hints_json']),
       supplierName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}supplier_name']),
+      defaultSupplierId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}default_supplier_id']),
+      defaultPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}default_price']),
       isFavorite: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
       isDeleted: attachedDatabase.typeMapping
@@ -420,6 +450,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
   final String conversionMode;
   final String? stockHintsJson;
   final String? supplierName;
+  final int? defaultSupplierId;
+  final double? defaultPrice;
   final bool isFavorite;
   final bool isDeleted;
   final String? deletedAt;
@@ -445,6 +477,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       required this.conversionMode,
       this.stockHintsJson,
       this.supplierName,
+      this.defaultSupplierId,
+      this.defaultPrice,
       required this.isFavorite,
       required this.isDeleted,
       this.deletedAt});
@@ -485,6 +519,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     }
     if (!nullToAbsent || supplierName != null) {
       map['supplier_name'] = Variable<String>(supplierName);
+    }
+    if (!nullToAbsent || defaultSupplierId != null) {
+      map['default_supplier_id'] = Variable<int>(defaultSupplierId);
+    }
+    if (!nullToAbsent || defaultPrice != null) {
+      map['default_price'] = Variable<double>(defaultPrice);
     }
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['is_deleted'] = Variable<bool>(isDeleted);
@@ -529,6 +569,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       supplierName: supplierName == null && nullToAbsent
           ? const Value.absent()
           : Value(supplierName),
+      defaultSupplierId: defaultSupplierId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultSupplierId),
+      defaultPrice: defaultPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultPrice),
       isFavorite: Value(isFavorite),
       isDeleted: Value(isDeleted),
       deletedAt: deletedAt == null && nullToAbsent
@@ -563,6 +609,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       conversionMode: serializer.fromJson<String>(json['conversionMode']),
       stockHintsJson: serializer.fromJson<String?>(json['stockHintsJson']),
       supplierName: serializer.fromJson<String?>(json['supplierName']),
+      defaultSupplierId: serializer.fromJson<int?>(json['defaultSupplierId']),
+      defaultPrice: serializer.fromJson<double?>(json['defaultPrice']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
@@ -593,6 +641,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       'conversionMode': serializer.toJson<String>(conversionMode),
       'stockHintsJson': serializer.toJson<String?>(stockHintsJson),
       'supplierName': serializer.toJson<String?>(supplierName),
+      'defaultSupplierId': serializer.toJson<int?>(defaultSupplierId),
+      'defaultPrice': serializer.toJson<double?>(defaultPrice),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
@@ -621,6 +671,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           String? conversionMode,
           Value<String?> stockHintsJson = const Value.absent(),
           Value<String?> supplierName = const Value.absent(),
+          Value<int?> defaultSupplierId = const Value.absent(),
+          Value<double?> defaultPrice = const Value.absent(),
           bool? isFavorite,
           bool? isDeleted,
           Value<String?> deletedAt = const Value.absent()}) =>
@@ -649,6 +701,11 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
             stockHintsJson.present ? stockHintsJson.value : this.stockHintsJson,
         supplierName:
             supplierName.present ? supplierName.value : this.supplierName,
+        defaultSupplierId: defaultSupplierId.present
+            ? defaultSupplierId.value
+            : this.defaultSupplierId,
+        defaultPrice:
+            defaultPrice.present ? defaultPrice.value : this.defaultPrice,
         isFavorite: isFavorite ?? this.isFavorite,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -693,6 +750,12 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       supplierName: data.supplierName.present
           ? data.supplierName.value
           : this.supplierName,
+      defaultSupplierId: data.defaultSupplierId.present
+          ? data.defaultSupplierId.value
+          : this.defaultSupplierId,
+      defaultPrice: data.defaultPrice.present
+          ? data.defaultPrice.value
+          : this.defaultPrice,
       isFavorite:
           data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
@@ -724,6 +787,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           ..write('conversionMode: $conversionMode, ')
           ..write('stockHintsJson: $stockHintsJson, ')
           ..write('supplierName: $supplierName, ')
+          ..write('defaultSupplierId: $defaultSupplierId, ')
+          ..write('defaultPrice: $defaultPrice, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt')
@@ -754,6 +819,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         conversionMode,
         stockHintsJson,
         supplierName,
+        defaultSupplierId,
+        defaultPrice,
         isFavorite,
         isDeleted,
         deletedAt
@@ -783,6 +850,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           other.conversionMode == this.conversionMode &&
           other.stockHintsJson == this.stockHintsJson &&
           other.supplierName == this.supplierName &&
+          other.defaultSupplierId == this.defaultSupplierId &&
+          other.defaultPrice == this.defaultPrice &&
           other.isFavorite == this.isFavorite &&
           other.isDeleted == this.isDeleted &&
           other.deletedAt == this.deletedAt);
@@ -810,6 +879,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
   final Value<String> conversionMode;
   final Value<String?> stockHintsJson;
   final Value<String?> supplierName;
+  final Value<int?> defaultSupplierId;
+  final Value<double?> defaultPrice;
   final Value<bool> isFavorite;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
@@ -836,6 +907,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.conversionMode = const Value.absent(),
     this.stockHintsJson = const Value.absent(),
     this.supplierName = const Value.absent(),
+    this.defaultSupplierId = const Value.absent(),
+    this.defaultPrice = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -863,6 +936,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.conversionMode = const Value.absent(),
     this.stockHintsJson = const Value.absent(),
     this.supplierName = const Value.absent(),
+    this.defaultSupplierId = const Value.absent(),
+    this.defaultPrice = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -894,6 +969,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     Expression<String>? conversionMode,
     Expression<String>? stockHintsJson,
     Expression<String>? supplierName,
+    Expression<int>? defaultSupplierId,
+    Expression<double>? defaultPrice,
     Expression<bool>? isFavorite,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
@@ -922,6 +999,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       if (conversionMode != null) 'conversion_mode': conversionMode,
       if (stockHintsJson != null) 'stock_hints_json': stockHintsJson,
       if (supplierName != null) 'supplier_name': supplierName,
+      if (defaultSupplierId != null) 'default_supplier_id': defaultSupplierId,
+      if (defaultPrice != null) 'default_price': defaultPrice,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -951,6 +1030,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       Value<String>? conversionMode,
       Value<String?>? stockHintsJson,
       Value<String?>? supplierName,
+      Value<int?>? defaultSupplierId,
+      Value<double?>? defaultPrice,
       Value<bool>? isFavorite,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
@@ -977,6 +1058,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       conversionMode: conversionMode ?? this.conversionMode,
       stockHintsJson: stockHintsJson ?? this.stockHintsJson,
       supplierName: supplierName ?? this.supplierName,
+      defaultSupplierId: defaultSupplierId ?? this.defaultSupplierId,
+      defaultPrice: defaultPrice ?? this.defaultPrice,
       isFavorite: isFavorite ?? this.isFavorite,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1051,6 +1134,12 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     if (supplierName.present) {
       map['supplier_name'] = Variable<String>(supplierName.value);
     }
+    if (defaultSupplierId.present) {
+      map['default_supplier_id'] = Variable<int>(defaultSupplierId.value);
+    }
+    if (defaultPrice.present) {
+      map['default_price'] = Variable<double>(defaultPrice.value);
+    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -1090,6 +1179,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
           ..write('conversionMode: $conversionMode, ')
           ..write('stockHintsJson: $stockHintsJson, ')
           ..write('supplierName: $supplierName, ')
+          ..write('defaultSupplierId: $defaultSupplierId, ')
+          ..write('defaultPrice: $defaultPrice, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
@@ -4296,6 +4387,35 @@ class $PurchaseOrdersTable extends PurchaseOrders
   late final GeneratedColumn<String> supplierName = GeneratedColumn<String>(
       'supplier_name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _supplierIdMeta =
+      const VerificationMeta('supplierId');
+  @override
+  late final GeneratedColumn<int> supplierId = GeneratedColumn<int>(
+      'supplier_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _shippingCostMeta =
+      const VerificationMeta('shippingCost');
+  @override
+  late final GeneratedColumn<double> shippingCost = GeneratedColumn<double>(
+      'shipping_cost', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _extraCostMeta =
+      const VerificationMeta('extraCost');
+  @override
+  late final GeneratedColumn<double> extraCost = GeneratedColumn<double>(
+      'extra_cost', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _vatMeta = const VerificationMeta('vat');
+  @override
+  late final GeneratedColumn<double> vat = GeneratedColumn<double>(
+      'vat', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _etaMeta = const VerificationMeta('eta');
   @override
   late final GeneratedColumn<String> eta = GeneratedColumn<String>(
@@ -4355,6 +4475,10 @@ class $PurchaseOrdersTable extends PurchaseOrders
   List<GeneratedColumn> get $columns => [
         id,
         supplierName,
+        supplierId,
+        shippingCost,
+        extraCost,
+        vat,
         eta,
         status,
         createdAt,
@@ -4387,6 +4511,26 @@ class $PurchaseOrdersTable extends PurchaseOrders
               data['supplier_name']!, _supplierNameMeta));
     } else if (isInserting) {
       context.missing(_supplierNameMeta);
+    }
+    if (data.containsKey('supplier_id')) {
+      context.handle(
+          _supplierIdMeta,
+          supplierId.isAcceptableOrUnknown(
+              data['supplier_id']!, _supplierIdMeta));
+    }
+    if (data.containsKey('shipping_cost')) {
+      context.handle(
+          _shippingCostMeta,
+          shippingCost.isAcceptableOrUnknown(
+              data['shipping_cost']!, _shippingCostMeta));
+    }
+    if (data.containsKey('extra_cost')) {
+      context.handle(_extraCostMeta,
+          extraCost.isAcceptableOrUnknown(data['extra_cost']!, _extraCostMeta));
+    }
+    if (data.containsKey('vat')) {
+      context.handle(
+          _vatMeta, vat.isAcceptableOrUnknown(data['vat']!, _vatMeta));
     }
     if (data.containsKey('eta')) {
       context.handle(
@@ -4447,6 +4591,14 @@ class $PurchaseOrdersTable extends PurchaseOrders
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       supplierName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}supplier_name'])!,
+      supplierId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}supplier_id']),
+      shippingCost: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shipping_cost'])!,
+      extraCost: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}extra_cost'])!,
+      vat: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}vat'])!,
       eta: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}eta'])!,
       status: attachedDatabase.typeMapping
@@ -4478,6 +4630,10 @@ class PurchaseOrderRow extends DataClass
     implements Insertable<PurchaseOrderRow> {
   final String id;
   final String supplierName;
+  final int? supplierId;
+  final double shippingCost;
+  final double extraCost;
+  final double vat;
   final String eta;
   final String status;
   final String createdAt;
@@ -4490,6 +4646,10 @@ class PurchaseOrderRow extends DataClass
   const PurchaseOrderRow(
       {required this.id,
       required this.supplierName,
+      this.supplierId,
+      required this.shippingCost,
+      required this.extraCost,
+      required this.vat,
       required this.eta,
       required this.status,
       required this.createdAt,
@@ -4504,6 +4664,12 @@ class PurchaseOrderRow extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['supplier_name'] = Variable<String>(supplierName);
+    if (!nullToAbsent || supplierId != null) {
+      map['supplier_id'] = Variable<int>(supplierId);
+    }
+    map['shipping_cost'] = Variable<double>(shippingCost);
+    map['extra_cost'] = Variable<double>(extraCost);
+    map['vat'] = Variable<double>(vat);
     map['eta'] = Variable<String>(eta);
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<String>(createdAt);
@@ -4528,6 +4694,12 @@ class PurchaseOrderRow extends DataClass
     return PurchaseOrdersCompanion(
       id: Value(id),
       supplierName: Value(supplierName),
+      supplierId: supplierId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierId),
+      shippingCost: Value(shippingCost),
+      extraCost: Value(extraCost),
+      vat: Value(vat),
       eta: Value(eta),
       status: Value(status),
       createdAt: Value(createdAt),
@@ -4552,6 +4724,10 @@ class PurchaseOrderRow extends DataClass
     return PurchaseOrderRow(
       id: serializer.fromJson<String>(json['id']),
       supplierName: serializer.fromJson<String>(json['supplierName']),
+      supplierId: serializer.fromJson<int?>(json['supplierId']),
+      shippingCost: serializer.fromJson<double>(json['shippingCost']),
+      extraCost: serializer.fromJson<double>(json['extraCost']),
+      vat: serializer.fromJson<double>(json['vat']),
       eta: serializer.fromJson<String>(json['eta']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
@@ -4569,6 +4745,10 @@ class PurchaseOrderRow extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'supplierName': serializer.toJson<String>(supplierName),
+      'supplierId': serializer.toJson<int?>(supplierId),
+      'shippingCost': serializer.toJson<double>(shippingCost),
+      'extraCost': serializer.toJson<double>(extraCost),
+      'vat': serializer.toJson<double>(vat),
       'eta': serializer.toJson<String>(eta),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<String>(createdAt),
@@ -4584,6 +4764,10 @@ class PurchaseOrderRow extends DataClass
   PurchaseOrderRow copyWith(
           {String? id,
           String? supplierName,
+          Value<int?> supplierId = const Value.absent(),
+          double? shippingCost,
+          double? extraCost,
+          double? vat,
           String? eta,
           String? status,
           String? createdAt,
@@ -4596,6 +4780,10 @@ class PurchaseOrderRow extends DataClass
       PurchaseOrderRow(
         id: id ?? this.id,
         supplierName: supplierName ?? this.supplierName,
+        supplierId: supplierId.present ? supplierId.value : this.supplierId,
+        shippingCost: shippingCost ?? this.shippingCost,
+        extraCost: extraCost ?? this.extraCost,
+        vat: vat ?? this.vat,
         eta: eta ?? this.eta,
         status: status ?? this.status,
         createdAt: createdAt ?? this.createdAt,
@@ -4612,6 +4800,13 @@ class PurchaseOrderRow extends DataClass
       supplierName: data.supplierName.present
           ? data.supplierName.value
           : this.supplierName,
+      supplierId:
+          data.supplierId.present ? data.supplierId.value : this.supplierId,
+      shippingCost: data.shippingCost.present
+          ? data.shippingCost.value
+          : this.shippingCost,
+      extraCost: data.extraCost.present ? data.extraCost.value : this.extraCost,
+      vat: data.vat.present ? data.vat.value : this.vat,
       eta: data.eta.present ? data.eta.value : this.eta,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -4630,6 +4825,10 @@ class PurchaseOrderRow extends DataClass
     return (StringBuffer('PurchaseOrderRow(')
           ..write('id: $id, ')
           ..write('supplierName: $supplierName, ')
+          ..write('supplierId: $supplierId, ')
+          ..write('shippingCost: $shippingCost, ')
+          ..write('extraCost: $extraCost, ')
+          ..write('vat: $vat, ')
           ..write('eta: $eta, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
@@ -4644,14 +4843,32 @@ class PurchaseOrderRow extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(id, supplierName, eta, status, createdAt,
-      updatedAt, isDeleted, memo, deletedAt, orderId, receivedAt);
+  int get hashCode => Object.hash(
+      id,
+      supplierName,
+      supplierId,
+      shippingCost,
+      extraCost,
+      vat,
+      eta,
+      status,
+      createdAt,
+      updatedAt,
+      isDeleted,
+      memo,
+      deletedAt,
+      orderId,
+      receivedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is PurchaseOrderRow &&
           other.id == this.id &&
           other.supplierName == this.supplierName &&
+          other.supplierId == this.supplierId &&
+          other.shippingCost == this.shippingCost &&
+          other.extraCost == this.extraCost &&
+          other.vat == this.vat &&
           other.eta == this.eta &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
@@ -4666,6 +4883,10 @@ class PurchaseOrderRow extends DataClass
 class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<String> id;
   final Value<String> supplierName;
+  final Value<int?> supplierId;
+  final Value<double> shippingCost;
+  final Value<double> extraCost;
+  final Value<double> vat;
   final Value<String> eta;
   final Value<String> status;
   final Value<String> createdAt;
@@ -4679,6 +4900,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   const PurchaseOrdersCompanion({
     this.id = const Value.absent(),
     this.supplierName = const Value.absent(),
+    this.supplierId = const Value.absent(),
+    this.shippingCost = const Value.absent(),
+    this.extraCost = const Value.absent(),
+    this.vat = const Value.absent(),
     this.eta = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -4693,6 +4918,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   PurchaseOrdersCompanion.insert({
     required String id,
     required String supplierName,
+    this.supplierId = const Value.absent(),
+    this.shippingCost = const Value.absent(),
+    this.extraCost = const Value.absent(),
+    this.vat = const Value.absent(),
     required String eta,
     required String status,
     required String createdAt,
@@ -4712,6 +4941,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   static Insertable<PurchaseOrderRow> custom({
     Expression<String>? id,
     Expression<String>? supplierName,
+    Expression<int>? supplierId,
+    Expression<double>? shippingCost,
+    Expression<double>? extraCost,
+    Expression<double>? vat,
     Expression<String>? eta,
     Expression<String>? status,
     Expression<String>? createdAt,
@@ -4726,6 +4959,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (supplierName != null) 'supplier_name': supplierName,
+      if (supplierId != null) 'supplier_id': supplierId,
+      if (shippingCost != null) 'shipping_cost': shippingCost,
+      if (extraCost != null) 'extra_cost': extraCost,
+      if (vat != null) 'vat': vat,
       if (eta != null) 'eta': eta,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
@@ -4742,6 +4979,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   PurchaseOrdersCompanion copyWith(
       {Value<String>? id,
       Value<String>? supplierName,
+      Value<int?>? supplierId,
+      Value<double>? shippingCost,
+      Value<double>? extraCost,
+      Value<double>? vat,
       Value<String>? eta,
       Value<String>? status,
       Value<String>? createdAt,
@@ -4755,6 +4996,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     return PurchaseOrdersCompanion(
       id: id ?? this.id,
       supplierName: supplierName ?? this.supplierName,
+      supplierId: supplierId ?? this.supplierId,
+      shippingCost: shippingCost ?? this.shippingCost,
+      extraCost: extraCost ?? this.extraCost,
+      vat: vat ?? this.vat,
       eta: eta ?? this.eta,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -4776,6 +5021,18 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     }
     if (supplierName.present) {
       map['supplier_name'] = Variable<String>(supplierName.value);
+    }
+    if (supplierId.present) {
+      map['supplier_id'] = Variable<int>(supplierId.value);
+    }
+    if (shippingCost.present) {
+      map['shipping_cost'] = Variable<double>(shippingCost.value);
+    }
+    if (extraCost.present) {
+      map['extra_cost'] = Variable<double>(extraCost.value);
+    }
+    if (vat.present) {
+      map['vat'] = Variable<double>(vat.value);
     }
     if (eta.present) {
       map['eta'] = Variable<String>(eta.value);
@@ -4815,6 +5072,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     return (StringBuffer('PurchaseOrdersCompanion(')
           ..write('id: $id, ')
           ..write('supplierName: $supplierName, ')
+          ..write('supplierId: $supplierId, ')
+          ..write('shippingCost: $shippingCost, ')
+          ..write('extraCost: $extraCost, ')
+          ..write('vat: $vat, ')
           ..write('eta: $eta, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
@@ -4873,6 +5134,14 @@ class $PurchaseLinesTable extends PurchaseLines
   late final GeneratedColumn<double> qty = GeneratedColumn<double>(
       'qty', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _unitPriceMeta =
+      const VerificationMeta('unitPrice');
+  @override
+  late final GeneratedColumn<double> unitPrice = GeneratedColumn<double>(
+      'unit_price', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -4913,6 +5182,7 @@ class $PurchaseLinesTable extends PurchaseLines
         name,
         unit,
         qty,
+        unitPrice,
         note,
         memo,
         colorNo,
@@ -4964,6 +5234,10 @@ class $PurchaseLinesTable extends PurchaseLines
     } else if (isInserting) {
       context.missing(_qtyMeta);
     }
+    if (data.containsKey('unit_price')) {
+      context.handle(_unitPriceMeta,
+          unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta));
+    }
     if (data.containsKey('note')) {
       context.handle(
           _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
@@ -5005,6 +5279,8 @@ class $PurchaseLinesTable extends PurchaseLines
           .read(DriftSqlType.string, data['${effectivePrefix}unit'])!,
       qty: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}qty'])!,
+      unitPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}unit_price'])!,
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note']),
       memo: attachedDatabase.typeMapping
@@ -5031,6 +5307,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
   final String name;
   final String unit;
   final double qty;
+  final double unitPrice;
   final String? note;
   final String? memo;
   final String? colorNo;
@@ -5043,6 +5320,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       required this.name,
       required this.unit,
       required this.qty,
+      required this.unitPrice,
       this.note,
       this.memo,
       this.colorNo,
@@ -5057,6 +5335,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
     map['name'] = Variable<String>(name);
     map['unit'] = Variable<String>(unit);
     map['qty'] = Variable<double>(qty);
+    map['unit_price'] = Variable<double>(unitPrice);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -5081,6 +5360,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       name: Value(name),
       unit: Value(unit),
       qty: Value(qty),
+      unitPrice: Value(unitPrice),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
       colorNo: colorNo == null && nullToAbsent
@@ -5103,6 +5383,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       name: serializer.fromJson<String>(json['name']),
       unit: serializer.fromJson<String>(json['unit']),
       qty: serializer.fromJson<double>(json['qty']),
+      unitPrice: serializer.fromJson<double>(json['unitPrice']),
       note: serializer.fromJson<String?>(json['note']),
       memo: serializer.fromJson<String?>(json['memo']),
       colorNo: serializer.fromJson<String?>(json['colorNo']),
@@ -5120,6 +5401,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       'name': serializer.toJson<String>(name),
       'unit': serializer.toJson<String>(unit),
       'qty': serializer.toJson<double>(qty),
+      'unitPrice': serializer.toJson<double>(unitPrice),
       'note': serializer.toJson<String?>(note),
       'memo': serializer.toJson<String?>(memo),
       'colorNo': serializer.toJson<String?>(colorNo),
@@ -5135,6 +5417,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           String? name,
           String? unit,
           double? qty,
+          double? unitPrice,
           Value<String?> note = const Value.absent(),
           Value<String?> memo = const Value.absent(),
           Value<String?> colorNo = const Value.absent(),
@@ -5147,6 +5430,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
         name: name ?? this.name,
         unit: unit ?? this.unit,
         qty: qty ?? this.qty,
+        unitPrice: unitPrice ?? this.unitPrice,
         note: note.present ? note.value : this.note,
         memo: memo.present ? memo.value : this.memo,
         colorNo: colorNo.present ? colorNo.value : this.colorNo,
@@ -5161,6 +5445,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       name: data.name.present ? data.name.value : this.name,
       unit: data.unit.present ? data.unit.value : this.unit,
       qty: data.qty.present ? data.qty.value : this.qty,
+      unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
       note: data.note.present ? data.note.value : this.note,
       memo: data.memo.present ? data.memo.value : this.memo,
       colorNo: data.colorNo.present ? data.colorNo.value : this.colorNo,
@@ -5178,6 +5463,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           ..write('name: $name, ')
           ..write('unit: $unit, ')
           ..write('qty: $qty, ')
+          ..write('unitPrice: $unitPrice, ')
           ..write('note: $note, ')
           ..write('memo: $memo, ')
           ..write('colorNo: $colorNo, ')
@@ -5188,8 +5474,8 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
   }
 
   @override
-  int get hashCode => Object.hash(id, orderId, itemId, name, unit, qty, note,
-      memo, colorNo, isDeleted, deletedAt);
+  int get hashCode => Object.hash(id, orderId, itemId, name, unit, qty,
+      unitPrice, note, memo, colorNo, isDeleted, deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5200,6 +5486,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           other.name == this.name &&
           other.unit == this.unit &&
           other.qty == this.qty &&
+          other.unitPrice == this.unitPrice &&
           other.note == this.note &&
           other.memo == this.memo &&
           other.colorNo == this.colorNo &&
@@ -5214,6 +5501,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
   final Value<String> name;
   final Value<String> unit;
   final Value<double> qty;
+  final Value<double> unitPrice;
   final Value<String?> note;
   final Value<String?> memo;
   final Value<String?> colorNo;
@@ -5227,6 +5515,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     this.name = const Value.absent(),
     this.unit = const Value.absent(),
     this.qty = const Value.absent(),
+    this.unitPrice = const Value.absent(),
     this.note = const Value.absent(),
     this.memo = const Value.absent(),
     this.colorNo = const Value.absent(),
@@ -5241,6 +5530,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     required String name,
     required String unit,
     required double qty,
+    this.unitPrice = const Value.absent(),
     this.note = const Value.absent(),
     this.memo = const Value.absent(),
     this.colorNo = const Value.absent(),
@@ -5260,6 +5550,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     Expression<String>? name,
     Expression<String>? unit,
     Expression<double>? qty,
+    Expression<double>? unitPrice,
     Expression<String>? note,
     Expression<String>? memo,
     Expression<String>? colorNo,
@@ -5274,6 +5565,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       if (name != null) 'name': name,
       if (unit != null) 'unit': unit,
       if (qty != null) 'qty': qty,
+      if (unitPrice != null) 'unit_price': unitPrice,
       if (note != null) 'note': note,
       if (memo != null) 'memo': memo,
       if (colorNo != null) 'color_no': colorNo,
@@ -5290,6 +5582,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       Value<String>? name,
       Value<String>? unit,
       Value<double>? qty,
+      Value<double>? unitPrice,
       Value<String?>? note,
       Value<String?>? memo,
       Value<String?>? colorNo,
@@ -5303,6 +5596,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       name: name ?? this.name,
       unit: unit ?? this.unit,
       qty: qty ?? this.qty,
+      unitPrice: unitPrice ?? this.unitPrice,
       note: note ?? this.note,
       memo: memo ?? this.memo,
       colorNo: colorNo ?? this.colorNo,
@@ -5332,6 +5626,9 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     }
     if (qty.present) {
       map['qty'] = Variable<double>(qty.value);
+    }
+    if (unitPrice.present) {
+      map['unit_price'] = Variable<double>(unitPrice.value);
     }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
@@ -5363,6 +5660,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
           ..write('name: $name, ')
           ..write('unit: $unit, ')
           ..write('qty: $qty, ')
+          ..write('unitPrice: $unitPrice, ')
           ..write('note: $note, ')
           ..write('memo: $memo, ')
           ..write('colorNo: $colorNo, ')
@@ -6663,6 +6961,8 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<String> conversionMode,
   Value<String?> stockHintsJson,
   Value<String?> supplierName,
+  Value<int?> defaultSupplierId,
+  Value<double?> defaultPrice,
   Value<bool> isFavorite,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
@@ -6690,6 +6990,8 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<String> conversionMode,
   Value<String?> stockHintsJson,
   Value<String?> supplierName,
+  Value<int?> defaultSupplierId,
+  Value<double?> defaultPrice,
   Value<bool> isFavorite,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
@@ -6862,6 +7164,13 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<String> get supplierName => $composableBuilder(
       column: $table.supplierName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get defaultSupplierId => $composableBuilder(
+      column: $table.defaultSupplierId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get defaultPrice => $composableBuilder(
+      column: $table.defaultPrice, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get isFavorite => $composableBuilder(
       column: $table.isFavorite, builder: (column) => ColumnFilters(column));
@@ -7079,6 +7388,14 @@ class $$ItemsTableOrderingComposer
       column: $table.supplierName,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get defaultSupplierId => $composableBuilder(
+      column: $table.defaultSupplierId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get defaultPrice => $composableBuilder(
+      column: $table.defaultPrice,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
       column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
 
@@ -7160,6 +7477,12 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<String> get supplierName => $composableBuilder(
       column: $table.supplierName, builder: (column) => column);
+
+  GeneratedColumn<int> get defaultSupplierId => $composableBuilder(
+      column: $table.defaultSupplierId, builder: (column) => column);
+
+  GeneratedColumn<double> get defaultPrice => $composableBuilder(
+      column: $table.defaultPrice, builder: (column) => column);
 
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
       column: $table.isFavorite, builder: (column) => column);
@@ -7347,6 +7670,8 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String> conversionMode = const Value.absent(),
             Value<String?> stockHintsJson = const Value.absent(),
             Value<String?> supplierName = const Value.absent(),
+            Value<int?> defaultSupplierId = const Value.absent(),
+            Value<double?> defaultPrice = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
@@ -7374,6 +7699,8 @@ class $$ItemsTableTableManager extends RootTableManager<
             conversionMode: conversionMode,
             stockHintsJson: stockHintsJson,
             supplierName: supplierName,
+            defaultSupplierId: defaultSupplierId,
+            defaultPrice: defaultPrice,
             isFavorite: isFavorite,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
@@ -7401,6 +7728,8 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String> conversionMode = const Value.absent(),
             Value<String?> stockHintsJson = const Value.absent(),
             Value<String?> supplierName = const Value.absent(),
+            Value<int?> defaultSupplierId = const Value.absent(),
+            Value<double?> defaultPrice = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
@@ -7428,6 +7757,8 @@ class $$ItemsTableTableManager extends RootTableManager<
             conversionMode: conversionMode,
             stockHintsJson: stockHintsJson,
             supplierName: supplierName,
+            defaultSupplierId: defaultSupplierId,
+            defaultPrice: defaultPrice,
             isFavorite: isFavorite,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
@@ -10324,6 +10655,10 @@ typedef $$PurchaseOrdersTableCreateCompanionBuilder = PurchaseOrdersCompanion
     Function({
   required String id,
   required String supplierName,
+  Value<int?> supplierId,
+  Value<double> shippingCost,
+  Value<double> extraCost,
+  Value<double> vat,
   required String eta,
   required String status,
   required String createdAt,
@@ -10339,6 +10674,10 @@ typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
     Function({
   Value<String> id,
   Value<String> supplierName,
+  Value<int?> supplierId,
+  Value<double> shippingCost,
+  Value<double> extraCost,
+  Value<double> vat,
   Value<String> eta,
   Value<String> status,
   Value<String> createdAt,
@@ -10386,6 +10725,18 @@ class $$PurchaseOrdersTableFilterComposer
 
   ColumnFilters<String> get supplierName => $composableBuilder(
       column: $table.supplierName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get supplierId => $composableBuilder(
+      column: $table.supplierId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get shippingCost => $composableBuilder(
+      column: $table.shippingCost, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get extraCost => $composableBuilder(
+      column: $table.extraCost, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get vat => $composableBuilder(
+      column: $table.vat, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get eta => $composableBuilder(
       column: $table.eta, builder: (column) => ColumnFilters(column));
@@ -10452,6 +10803,19 @@ class $$PurchaseOrdersTableOrderingComposer
       column: $table.supplierName,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get supplierId => $composableBuilder(
+      column: $table.supplierId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get shippingCost => $composableBuilder(
+      column: $table.shippingCost,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get extraCost => $composableBuilder(
+      column: $table.extraCost, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get vat => $composableBuilder(
+      column: $table.vat, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get eta => $composableBuilder(
       column: $table.eta, builder: (column) => ColumnOrderings(column));
 
@@ -10494,6 +10858,18 @@ class $$PurchaseOrdersTableAnnotationComposer
 
   GeneratedColumn<String> get supplierName => $composableBuilder(
       column: $table.supplierName, builder: (column) => column);
+
+  GeneratedColumn<int> get supplierId => $composableBuilder(
+      column: $table.supplierId, builder: (column) => column);
+
+  GeneratedColumn<double> get shippingCost => $composableBuilder(
+      column: $table.shippingCost, builder: (column) => column);
+
+  GeneratedColumn<double> get extraCost =>
+      $composableBuilder(column: $table.extraCost, builder: (column) => column);
+
+  GeneratedColumn<double> get vat =>
+      $composableBuilder(column: $table.vat, builder: (column) => column);
 
   GeneratedColumn<String> get eta =>
       $composableBuilder(column: $table.eta, builder: (column) => column);
@@ -10570,6 +10946,10 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> supplierName = const Value.absent(),
+            Value<int?> supplierId = const Value.absent(),
+            Value<double> shippingCost = const Value.absent(),
+            Value<double> extraCost = const Value.absent(),
+            Value<double> vat = const Value.absent(),
             Value<String> eta = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> createdAt = const Value.absent(),
@@ -10584,6 +10964,10 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
               PurchaseOrdersCompanion(
             id: id,
             supplierName: supplierName,
+            supplierId: supplierId,
+            shippingCost: shippingCost,
+            extraCost: extraCost,
+            vat: vat,
             eta: eta,
             status: status,
             createdAt: createdAt,
@@ -10598,6 +10982,10 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String supplierName,
+            Value<int?> supplierId = const Value.absent(),
+            Value<double> shippingCost = const Value.absent(),
+            Value<double> extraCost = const Value.absent(),
+            Value<double> vat = const Value.absent(),
             required String eta,
             required String status,
             required String createdAt,
@@ -10612,6 +11000,10 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
               PurchaseOrdersCompanion.insert(
             id: id,
             supplierName: supplierName,
+            supplierId: supplierId,
+            shippingCost: shippingCost,
+            extraCost: extraCost,
+            vat: vat,
             eta: eta,
             status: status,
             createdAt: createdAt,
@@ -10678,6 +11070,7 @@ typedef $$PurchaseLinesTableCreateCompanionBuilder = PurchaseLinesCompanion
   required String name,
   required String unit,
   required double qty,
+  Value<double> unitPrice,
   Value<String?> note,
   Value<String?> memo,
   Value<String?> colorNo,
@@ -10693,6 +11086,7 @@ typedef $$PurchaseLinesTableUpdateCompanionBuilder = PurchaseLinesCompanion
   Value<String> name,
   Value<String> unit,
   Value<double> qty,
+  Value<double> unitPrice,
   Value<String?> note,
   Value<String?> memo,
   Value<String?> colorNo,
@@ -10756,6 +11150,9 @@ class $$PurchaseLinesTableFilterComposer
 
   ColumnFilters<double> get qty => $composableBuilder(
       column: $table.qty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get unitPrice => $composableBuilder(
+      column: $table.unitPrice, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
@@ -10834,6 +11231,9 @@ class $$PurchaseLinesTableOrderingComposer
   ColumnOrderings<double> get qty => $composableBuilder(
       column: $table.qty, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get unitPrice => $composableBuilder(
+      column: $table.unitPrice, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
 
@@ -10910,6 +11310,9 @@ class $$PurchaseLinesTableAnnotationComposer
 
   GeneratedColumn<double> get qty =>
       $composableBuilder(column: $table.qty, builder: (column) => column);
+
+  GeneratedColumn<double> get unitPrice =>
+      $composableBuilder(column: $table.unitPrice, builder: (column) => column);
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -10996,6 +11399,7 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             Value<String> name = const Value.absent(),
             Value<String> unit = const Value.absent(),
             Value<double> qty = const Value.absent(),
+            Value<double> unitPrice = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> colorNo = const Value.absent(),
@@ -11010,6 +11414,7 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             name: name,
             unit: unit,
             qty: qty,
+            unitPrice: unitPrice,
             note: note,
             memo: memo,
             colorNo: colorNo,
@@ -11024,6 +11429,7 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             required String name,
             required String unit,
             required double qty,
+            Value<double> unitPrice = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> colorNo = const Value.absent(),
@@ -11038,6 +11444,7 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             name: name,
             unit: unit,
             qty: qty,
+            unitPrice: unitPrice,
             note: note,
             memo: memo,
             colorNo: colorNo,

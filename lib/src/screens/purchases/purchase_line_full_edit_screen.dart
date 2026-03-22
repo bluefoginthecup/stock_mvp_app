@@ -33,6 +33,7 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
   late final TextEditingController colorNoC;
   late final TextEditingController noteC;
   late final TextEditingController memoC;
+  late final TextEditingController priceC;
 
   late final bool isEdit;
   late final String lineId;
@@ -51,6 +52,9 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
     colorNoC = TextEditingController(text: i?.colorNo ?? '');
     noteC    = TextEditingController(text: i?.note ?? '');
     memoC    = TextEditingController(text: i?.memo ?? '');
+    priceC = TextEditingController(
+      text: (i?.unitPrice ?? 0).toString(),
+    );
   }
 
   @override
@@ -62,6 +66,7 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
     colorNoC.dispose();
     noteC.dispose();
     memoC.dispose();
+    priceC.dispose();
     super.dispose();
   }
 
@@ -73,7 +78,7 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('수량은 0보다 큰 숫자여야 합니다')));
       return;
     }
-
+    final price = double.tryParse(priceC.text.trim()) ?? 0;
     final newLine = PurchaseLine(
       id: lineId,
       orderId: widget.orderId,
@@ -84,6 +89,7 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
       colorNo: colorNoC.text.trim().isEmpty ? null : colorNoC.text.trim(),
       note: noteC.text.trim().isEmpty ? null : noteC.text.trim(),
       memo: memoC.text.trim().isEmpty ? null : memoC.text.trim(),
+      unitPrice: price,
     );
 
     final lines = await widget.repo.getLines(widget.orderId);
@@ -182,7 +188,11 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
                       },
                     ),
                   ),
-                ],
+                  TextFormField(
+                    controller: priceC,
+                    decoration: _dec('단가'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),                ],
               ),
 
               const SizedBox(height: 16),

@@ -8,6 +8,7 @@ class PurchaseLine {
   final String? note;
   final String? memo;
   final String? colorNo;
+  final double unitPrice;
 
   PurchaseLine({
     required this.id,
@@ -19,6 +20,7 @@ class PurchaseLine {
     required this.qty,
     this.note,
     this.memo,
+    required this.unitPrice,
   });
 
   // ✅ 확장된 copyWith
@@ -30,6 +32,7 @@ class PurchaseLine {
     double? qty,
     String? note,
     String? memo,
+    double? unitPrice,
   }) =>
       PurchaseLine(
         id: id,
@@ -41,6 +44,7 @@ class PurchaseLine {
         note: note ?? this.note,
         memo: memo ?? this.memo,
         colorNo: colorNo ?? this.colorNo,
+        unitPrice: unitPrice ?? this.unitPrice,
       );
 
   factory PurchaseLine.fromJson(Map<String, dynamic> j) => PurchaseLine(
@@ -53,6 +57,7 @@ class PurchaseLine {
     note: j['note'] as String?,
     memo: j['memo'] as String?,
     colorNo: j['colorNo'] as String?,
+    unitPrice: (j['unitPrice'] as num?)?.toDouble() ?? 0,
   );
 
   Map<String, dynamic> toJson() => {
@@ -65,5 +70,6 @@ class PurchaseLine {
     'note': note,
     'memo': memo,
     'colorNo': colorNo,
+    'unitPrice': unitPrice,
   };
 }

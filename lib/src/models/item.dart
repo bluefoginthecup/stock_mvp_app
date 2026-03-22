@@ -30,6 +30,8 @@ class Item {
 
   /// 거래처
   final String? supplierName;
+  final String? defaultSupplierId;
+  final double? defaultPrice;
 
   Item({
     this.isFavorite = false,   // 기본값 false
@@ -46,6 +48,8 @@ class Item {
     this.kind,
     this.attrs,
     this.supplierName,
+    this.defaultSupplierId,
+    this.defaultPrice,
 
 
     // 신규 환산 필드 (옵션 파라미터 + 합리적 기본값)
@@ -82,6 +86,9 @@ class Item {
 
     StockHints? stockHints,
     String? supplierName,
+    String? defaultSupplierId,
+    double? defaultPrice,
+
 
   }) {
     final baseUnit = unit ?? this.unit;
@@ -107,6 +114,8 @@ class Item {
 
       stockHints: stockHints ?? this.stockHints,
       supplierName: supplierName ?? this.supplierName,
+      defaultSupplierId: defaultSupplierId ?? this.defaultSupplierId,
+      defaultPrice: defaultPrice ?? this.defaultPrice,
     );
   }
 
@@ -161,6 +170,8 @@ class Item {
 
       stockHints: hints,
       supplierName: json['supplierName'] as String?,
+      defaultSupplierId: json['defaultSupplierId'] as String?,
+      defaultPrice: (json['defaultPrice'] as num?)?.toDouble(),
     );
   }
 
@@ -187,6 +198,8 @@ class Item {
     // 레거시 보존(있을 때만)
     if (stockHints != null) 'stockHints': stockHints!.toJson(),
     'supplierName': supplierName,
+    'defaultSupplierId': defaultSupplierId,
+    'defaultPrice': defaultPrice,
   };
 }
 

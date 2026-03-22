@@ -156,6 +156,7 @@ class CartManager extends ChangeNotifier {
             unit: c.unit,
             qty: c.qty,
             colorNo: colorNo,
+            unitPrice: 0,
           ),
         );
       }
@@ -215,6 +216,7 @@ class CartManager extends ChangeNotifier {
             unit: c.unit,
             qty: c.qty,
             colorNo: colorNo,
+            unitPrice: 0,
           ),
         );
       }

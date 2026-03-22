@@ -69,6 +69,8 @@ class Items extends Table {
 
   // 거래처
   TextColumn get supplierName => text().nullable()();
+  IntColumn get defaultSupplierId => integer().nullable()();
+  RealColumn get defaultPrice => real().nullable()();
 
   //즐겨찾기
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
@@ -300,6 +302,11 @@ class Works extends Table {
 class PurchaseOrders extends Table {
   TextColumn get id => text()(); // uuid
   TextColumn get supplierName => text()(); // 상호
+  IntColumn get supplierId => integer().nullable()();
+
+  RealColumn get shippingCost => real().withDefault(const Constant(0))();
+  RealColumn get extraCost => real().withDefault(const Constant(0))();
+  RealColumn get vat => real().withDefault(const Constant(0))();
   TextColumn get eta => text()(); // ISO8601
   TextColumn get status => text()(); // PurchaseOrderStatus.name
   TextColumn get createdAt => text()(); // ISO8601
@@ -328,6 +335,7 @@ class PurchaseLines extends Table {
   TextColumn get name => text()(); // 표시용 이름
   TextColumn get unit => text()();
   RealColumn get qty => real()(); // 소수 허용
+  RealColumn get unitPrice => real().withDefault(const Constant(0))();
   TextColumn get note => text().nullable()();
   TextColumn get memo => text().nullable()();
   TextColumn get colorNo => text().nullable()();
@@ -447,7 +455,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 10; // ⬅️ 4에서 5로 올림
+  int get schemaVersion => 11; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -574,6 +582,17 @@ class AppDatabase extends _$AppDatabase {
             newColumns: [works.parentWorkId],
           ),
         );
+      }
+      if (from < 11) {
+        await m.addColumn(items, items.defaultSupplierId as GeneratedColumn);
+        await m.addColumn(items, items.defaultPrice as GeneratedColumn);
+
+        await m.addColumn(purchaseOrders, purchaseOrders.supplierId as GeneratedColumn);
+        await m.addColumn(purchaseOrders, purchaseOrders.shippingCost as GeneratedColumn);
+        await m.addColumn(purchaseOrders, purchaseOrders.extraCost as GeneratedColumn);
+        await m.addColumn(purchaseOrders, purchaseOrders.vat as GeneratedColumn);
+
+        await m.addColumn(purchaseLines, purchaseLines.unitPrice as GeneratedColumn);
       }
 
 
@@ -1018,6 +1037,7 @@ extension PurchaseLineRowMapping on PurchaseLineRow {
     note: note,
     memo: memo,
     colorNo: colorNo,
+    unitPrice: 0,
   );
 }
 

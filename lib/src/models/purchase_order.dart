@@ -3,6 +3,7 @@ enum PurchaseOrderStatus { draft, ordered, received, canceled }
 class PurchaseOrder {
   final String id;
   final String supplierName;
+  final String? supplierId;
   final DateTime eta;                 // 예상 입고(2단계 점선에 사용)
   final PurchaseOrderStatus status;
   final DateTime createdAt;
@@ -13,6 +14,9 @@ class PurchaseOrder {
   // ✅ 추가
   final String? orderId;              // 주문 연동 발주만 주문 상세 타임라인에 표시
   final DateTime? receivedAt;         // 실제 입고 완료일(막대 종료)
+  final double shippingCost;
+  final double extraCost;
+  final double vat;
 
   PurchaseOrder({
     required this.id,
@@ -25,6 +29,10 @@ class PurchaseOrder {
     this.memo,
     this.orderId,                     // ✅
     this.receivedAt,                  // ✅
+    this.supplierId,
+    this.shippingCost = 0,
+    this.extraCost = 0,
+    this.vat = 0,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -37,6 +45,10 @@ class PurchaseOrder {
     String? memo,
     String? orderId,                  // ✅
     DateTime? receivedAt,             // ✅
+    String? supplierId,
+    double? shippingCost,
+    double? extraCost,
+    double? vat,
   }) => PurchaseOrder(
     id: id,
     supplierName: supplierName ?? this.supplierName,
@@ -48,6 +60,10 @@ class PurchaseOrder {
     memo: memo ?? this.memo,
     orderId: orderId ?? this.orderId,             // ✅
     receivedAt: receivedAt ?? this.receivedAt,     // ✅
+    supplierId: supplierId ?? this.supplierId,
+    shippingCost: shippingCost ?? this.shippingCost,
+    extraCost: extraCost ?? this.extraCost,
+    vat: vat ?? this.vat,
   );
 
   factory PurchaseOrder.fromJson(Map<String, dynamic> j) => PurchaseOrder(
@@ -63,6 +79,10 @@ class PurchaseOrder {
     receivedAt: (j['receivedAt'] as String?) != null          // ✅
         ? DateTime.parse(j['receivedAt'])
         : null,
+    supplierId: j['supplierId'] as String?,
+    shippingCost: (j['shippingCost'] as num?)?.toDouble() ?? 0,
+    extraCost: (j['extraCost'] as num?)?.toDouble() ?? 0,
+    vat: (j['vat'] as num?)?.toDouble() ?? 0,
   );
 
   Map<String, dynamic> toJson() => {
@@ -76,5 +96,9 @@ class PurchaseOrder {
     'memo': memo,
     'orderId': orderId,                           // ✅
     'receivedAt': receivedAt?.toIso8601String(),  // ✅
+    'supplierId': supplierId,
+    'shippingCost': shippingCost,
+    'extraCost': extraCost,
+    'vat': vat,
   };
 }
