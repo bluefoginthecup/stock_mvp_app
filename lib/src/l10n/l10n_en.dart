@@ -255,6 +255,21 @@ class L10nEn extends L10n {
   }
 
   @override
+  String get payment_unpaid => 'Unpaid';
+
+  @override
+  String get payment_paid => 'Paid';
+
+  @override
+  String get payment_partial => 'Partial';
+
+  @override
+  String get vat_pending => 'Pending';
+
+  @override
+  String get vat_issued => 'Issued';
+
+  @override
   String get purchase_status_canceled => 'Canceled';
 
   @override

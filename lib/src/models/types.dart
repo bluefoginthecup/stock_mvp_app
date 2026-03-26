@@ -27,3 +27,14 @@ enum WorkStatus { planned, inProgress, done, canceled }
 
 /// Purchase status lifecycle.
 enum PurchaseStatus { planned, ordered, received, canceled }
+
+enum PaymentStatus {
+  unpaid,
+  paid,
+  partial,
+}
+
+enum VatInvoiceStatus {
+  pending,
+  issued,
+}

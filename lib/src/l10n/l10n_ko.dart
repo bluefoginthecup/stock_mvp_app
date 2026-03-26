@@ -255,6 +255,21 @@ class L10nKo extends L10n {
   }
 
   @override
+  String get payment_unpaid => '미지급';
+
+  @override
+  String get payment_paid => '지급완료';
+
+  @override
+  String get payment_partial => '부분지급';
+
+  @override
+  String get vat_pending => '세금계산서 대기';
+
+  @override
+  String get vat_issued => '세금계산서 발행';
+
+  @override
   String get purchase_status_canceled => '취소';
 
   @override

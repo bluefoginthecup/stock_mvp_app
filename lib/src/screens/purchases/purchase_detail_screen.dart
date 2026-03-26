@@ -7,8 +7,10 @@ import '../../models/purchase_line.dart';
 import '../../ui/common/ui.dart';
 import 'widgets/purchase_print_action.dart';
 import '../../services/inventory_service.dart';
-import 'purchase_order_full_edit_screen.dart';
 import 'purchase_line_full_edit_screen.dart';
+import '../../models/types.dart';
+import '../../models/extensions/payment_status_ext.dart';
+import '../../models/extensions/vat_invoice_status_ext.dart';
 
 class PurchaseDetailScreen extends StatefulWidget {
   final PurchaseOrderRepo repo;
@@ -192,21 +194,21 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     );
   }
 
-  Future<void> _openHeaderFullEdit() async {
-    if (_po == null) return;
-
-    final changed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PurchaseOrderFullEditScreen(
-          repo: widget.repo,
-          orderId: widget.orderId,
-        ),
-      ),
-    );
-
-    if (changed == true) await _reload();
-  }
+  // Future<void> _openHeaderFullEdit() async {
+  //   if (_po == null) return;
+  //
+  //   final changed = await Navigator.push<bool>(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (_) => PurchaseOrderFullEditScreen(
+  //         repo: widget.repo,
+  //         orderId: widget.orderId,
+  //       ),
+  //     ),
+  //   );
+  //
+  //   if (changed == true) await _reload();
+  // }
 
   Future<void> _addLineFull() async {
     if (_po == null) return;
@@ -259,6 +261,16 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     return '$baseName × ${ln.qty} ${ln.unit}';
   }
   String _fmt(num v) => v.toStringAsFixed(0);
+  String _vatLabel(VatType t) {
+    switch (t) {
+      case VatType.exclusive:
+        return '별도';
+      case VatType.inclusive:
+        return '포함';
+      case VatType.exempt:
+        return '면세';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -275,32 +287,27 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       0.0,
           (sum, l) => sum + (l.qty * l.unitPrice),
     );
-    double calcVat(double itemsTotal, bool vatIncluded) {
-      if (vatIncluded) {
-        return itemsTotal / 11;
-      } else {
-        return itemsTotal * 0.1;
-      }
-    }
-    final vat = calcVat(itemsTotal, po.vatIncluded);
-
+    final vat = switch (po.vatType) {
+      VatType.exempt => 0,
+       VatType.inclusive => itemsTotal / 11,
+       VatType.exclusive => itemsTotal * 0.1,
+     };
     final shipping = po.shippingCost ?? 0;
     final extra = po.extraCost ?? 0;
 
-    final total = po.vatIncluded
-        ? itemsTotal + shipping + extra
-        : itemsTotal + vat + shipping + extra;
-
+    final total = po.vatType == VatType.inclusive
+         ? itemsTotal + shipping + extra
+         : itemsTotal + vat + shipping + extra;
 
 
     return Scaffold(
       appBar: AppBar(
         title: Text(t.purchase_detail_title),
         actions: [
-          IconButton(
-            onPressed: _openHeaderFullEdit,
-            icon: const Icon(Icons.edit_note),
-          ),
+          // IconButton(
+          //   onPressed: _openHeaderFullEdit,
+          //   icon: const Icon(Icons.edit_note),
+          // ),
           PurchasePrintAction(poId: widget.orderId),
         ],
       ),
@@ -340,7 +347,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: PurchaseOrderStatus.values.map((s) {
                                 return ListTile(
-                                  title: Text(s.name),
+                                  title: Text(_statusLabel(s)),
                                   trailing: s == po.status ? const Icon(Icons.check) : null,
                                   onTap: () => Navigator.pop(context, s),
                                 );
@@ -470,35 +477,44 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 child: Column(
                   children: [
                     _row('상품금액', itemsTotal),
-                    SwitchListTile(
-                      title: const Text('부가세 포함'),
-                      value: po.vatIncluded,
-                      onChanged: (v) async {
-                        await widget.repo.updatePurchaseOrder(
-                          po.copyWith(vatIncluded: v),
-                        );
-                        await _reload();
-                      },
-                    ),
-
                     ListTile(
-                      title: const Text('부가세'),
-                      subtitle: Text(_fmt(po.vat ?? 0)),
+                      title: const Text('부가세 유형'),
+                        subtitle: Text(_vatLabel(po.vatType)),
+
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () async {
-                        final result = await _editNumber(
-                          title: '부가세',
-                          initial: po.vat ?? 0,
+                        final result = await showModalBottomSheet<VatType>(
+                          context: context,
+                          builder: (_) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: VatType.values.map((e) {
+                                return ListTile(
+                                  title: Text(_vatLabel(e)),
+                                  trailing: e == po.vatType ? const Icon(Icons.check) : null,
+                                  onTap: () => Navigator.pop(context, e),
+                                );
+                              }).toList(),
+                            );
+                          },
                         );
 
                         if (result != null) {
                           await widget.repo.updatePurchaseOrder(
-                            po.copyWith(vat: result),
+                            po.copyWith(vatType: result),
                           );
                           await _reload();
                         }
                       },
                     ),
+     ListTile(
+       title: const Text('부가세'),
+       subtitle: Text(
+         po.vatType == VatType.exempt
+             ? '0 (면세)'
+             : _fmt(vat),
+       ),
+     ),
 
                     ListTile(
                       title: const Text('배송비'),
@@ -553,18 +569,32 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   children: [
                     ListTile(
                       title: const Text('결제 상태'),
-                      subtitle: Text(po.paymentStatus ?? 'unpaid'),
+                  subtitle: Text(po.paymentStatusEnum.label(context)),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () async {
-                        final result = await _selectOption(
-                          title: '결제 상태',
-                          options: ['unpaid', 'paid', 'partial'],
-                          current: po.paymentStatus ?? 'unpaid',
+                        final result = await showModalBottomSheet<PaymentStatus>(
+                          context: context,
+                          builder: (_) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: PaymentStatus.values.map((s) {
+                                return ListTile(
+                                  title: Text(s.label(context)), // 번역
+                                  trailing: s == po.paymentStatusEnum
+                                      ? const Icon(Icons.check)
+                                      : null,
+                                  onTap: () => Navigator.pop(context, s),
+                                );
+                              }).toList(),
+                            );
+                          },
                         );
+
 
                         if (result != null) {
                           await widget.repo.updatePurchaseOrder(
-                            po.copyWith(paymentStatus: result),
+                            po.copyWith(paymentStatus: result.value),
+
                           );
                           await _reload();
                         }
@@ -609,18 +639,30 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   children: [
                     ListTile(
                       title: const Text('세금계산서'),
-                      subtitle: Text(po.vatInvoiceStatus ?? 'pending'),
+                      subtitle: Text(po.vatInvoiceStatusEnum.label(context)),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () async {
-                        final result = await _selectOption(
-                          title: '세금계산서 상태',
-                          options: ['pending', 'issued'],
-                          current: po.vatInvoiceStatus ?? 'pending',
-                        );
+    final result = await showModalBottomSheet<VatInvoiceStatus>(
+    context: context,
+    builder: (_) {
+    return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: VatInvoiceStatus.values.map((s) {
+    return ListTile(
+    title: Text(s.label(context)),
+    trailing: s == po.vatInvoiceStatusEnum
+    ? const Icon(Icons.check)
+        : null,
+    onTap: () => Navigator.pop(context, s),
+    );
+    }).toList(),
+    );
+    },
+    );
 
                         if (result != null) {
                           await widget.repo.updatePurchaseOrder(
-                            po.copyWith(vatInvoiceStatus: result),
+                            po.copyWith(vatInvoiceStatus: result.value),
                           );
                           await _reload();
                         }

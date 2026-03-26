@@ -1,4 +1,14 @@
+import 'types.dart';
+import 'extensions/payment_status_ext.dart';
+import 'extensions/vat_invoice_status_ext.dart';
+
+
 enum PurchaseOrderStatus { draft, ordered, received, canceled }
+enum VatType {
+  exclusive, // 부가세 별도
+  inclusive, // 부가세 포함
+  exempt,    // 면세
+}
 
 class PurchaseOrder {
   final String id;
@@ -16,14 +26,20 @@ class PurchaseOrder {
   final DateTime? receivedAt;         // 실제 입고 완료일(막대 종료)
   final double shippingCost;
   final double extraCost;
-  final double vat;
-  final bool vatIncluded;
+  final VatType vatType;
 
   final String paymentStatus;
   final DateTime? paidAt;
 
   final String vatInvoiceStatus;
   final DateTime? vatInvoiceIssuedAt;
+
+
+  PaymentStatus get paymentStatusEnum =>
+      PaymentStatusX.from(paymentStatus);
+
+  VatInvoiceStatus get vatInvoiceStatusEnum =>
+      VatInvoiceStatusX.from(vatInvoiceStatus);
 
   PurchaseOrder({
     required this.id,
@@ -39,10 +55,8 @@ class PurchaseOrder {
     this.supplierId,
     this.shippingCost = 0,
     this.extraCost = 0,
-    this.vat = 0,
-
-    this.vatIncluded = false,
-    this.paymentStatus = 'pending',
+    this.vatType = VatType.exclusive,
+    this.paymentStatus = 'unpaid',
     this.paidAt,
     this.vatInvoiceStatus = 'pending',
     this.vatInvoiceIssuedAt,
@@ -61,9 +75,7 @@ class PurchaseOrder {
     int? supplierId,
     double? shippingCost,
     double? extraCost,
-    double? vat,
-
-    bool? vatIncluded,
+    VatType? vatType,
     String? paymentStatus,
     DateTime? paidAt,
     String? vatInvoiceStatus,
@@ -82,9 +94,7 @@ class PurchaseOrder {
     supplierId: supplierId ?? this.supplierId,
     shippingCost: shippingCost ?? this.shippingCost,
     extraCost: extraCost ?? this.extraCost,
-    vat: vat ?? this.vat,
-
-    vatIncluded: vatIncluded ?? this.vatIncluded,
+    vatType: vatType ?? this.vatType,
     paymentStatus: paymentStatus ?? this.paymentStatus,
     paidAt: paidAt ?? this.paidAt,
     vatInvoiceStatus: vatInvoiceStatus ?? this.vatInvoiceStatus,
@@ -107,8 +117,7 @@ class PurchaseOrder {
     supplierId: (j['supplierId'] as num?)?.toInt(),
     shippingCost: (j['shippingCost'] as num?)?.toDouble() ?? 0,
     extraCost: (j['extraCost'] as num?)?.toDouble() ?? 0,
-    vat: (j['vat'] as num?)?.toDouble() ?? 0,
-    vatIncluded: j['vatIncluded'] == true,
+    vatType: VatType.values[j['vatType'] ?? 0],
     paymentStatus: j['paymentStatus'] as String? ?? 'pending',
     paidAt: (j['paidAt'] as String?) != null
         ? DateTime.parse(j['paidAt'])
@@ -133,8 +142,7 @@ class PurchaseOrder {
     'supplierId': supplierId,
     'shippingCost': shippingCost,
     'extraCost': extraCost,
-    'vat': vat,
-    'vatIncluded': vatIncluded,
+    'vatType': vatType.index,
     'paymentStatus': paymentStatus,
     'paidAt': paidAt?.toIso8601String(),
     'vatInvoiceStatus': vatInvoiceStatus,

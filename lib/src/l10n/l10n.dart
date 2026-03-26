@@ -541,6 +541,36 @@ abstract class L10n {
   /// **'{status} • {note}'**
   String purchase_row_status_note(String status, String note);
 
+  /// No description provided for @payment_unpaid.
+  ///
+  /// In ko, this message translates to:
+  /// **'미지급'**
+  String get payment_unpaid;
+
+  /// No description provided for @payment_paid.
+  ///
+  /// In ko, this message translates to:
+  /// **'지급완료'**
+  String get payment_paid;
+
+  /// No description provided for @payment_partial.
+  ///
+  /// In ko, this message translates to:
+  /// **'부분지급'**
+  String get payment_partial;
+
+  /// No description provided for @vat_pending.
+  ///
+  /// In ko, this message translates to:
+  /// **'세금계산서 대기'**
+  String get vat_pending;
+
+  /// No description provided for @vat_issued.
+  ///
+  /// In ko, this message translates to:
+  /// **'세금계산서 발행'**
+  String get vat_issued;
+
   /// No description provided for @purchase_status_canceled.
   ///
   /// In ko, this message translates to:

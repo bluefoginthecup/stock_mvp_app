@@ -170,6 +170,14 @@
       }
     }
   },
+
+  "payment_unpaid": "No pagado",
+  "payment_paid": "Pagado",
+  "payment_partial": "Parcial",
+
+  "vat_pending": "Pendiente",
+  "vat_issued": "Emitido",
+
   "purchase_status_canceled": "Canceled",
   "purchase_status_done": "Completado",
   "purchase_status_in_progress": "En curso",

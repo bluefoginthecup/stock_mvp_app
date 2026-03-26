@@ -4549,6 +4549,14 @@ class $PurchaseOrdersTable extends PurchaseOrders
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("vat_included" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _vatTypeMeta =
+      const VerificationMeta('vatType');
+  @override
+  late final GeneratedColumn<int> vatType = GeneratedColumn<int>(
+      'vat_type', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   static const VerificationMeta _etaMeta = const VerificationMeta('eta');
   @override
   late final GeneratedColumn<String> eta = GeneratedColumn<String>(
@@ -4617,6 +4625,7 @@ class $PurchaseOrdersTable extends PurchaseOrders
         vatInvoiceStatus,
         vatInvoiceIssuedAt,
         vatIncluded,
+        vatType,
         eta,
         status,
         createdAt,
@@ -4698,6 +4707,10 @@ class $PurchaseOrdersTable extends PurchaseOrders
           vatIncluded.isAcceptableOrUnknown(
               data['vat_included']!, _vatIncludedMeta));
     }
+    if (data.containsKey('vat_type')) {
+      context.handle(_vatTypeMeta,
+          vatType.isAcceptableOrUnknown(data['vat_type']!, _vatTypeMeta));
+    }
     if (data.containsKey('eta')) {
       context.handle(
           _etaMeta, eta.isAcceptableOrUnknown(data['eta']!, _etaMeta));
@@ -4775,6 +4788,8 @@ class $PurchaseOrdersTable extends PurchaseOrders
           DriftSqlType.string, data['${effectivePrefix}vat_invoice_issued_at']),
       vatIncluded: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}vat_included'])!,
+      vatType: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}vat_type'])!,
       eta: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}eta'])!,
       status: attachedDatabase.typeMapping
@@ -4815,6 +4830,7 @@ class PurchaseOrderRow extends DataClass
   final String vatInvoiceStatus;
   final String? vatInvoiceIssuedAt;
   final bool vatIncluded;
+  final int vatType;
   final String eta;
   final String status;
   final String createdAt;
@@ -4836,6 +4852,7 @@ class PurchaseOrderRow extends DataClass
       required this.vatInvoiceStatus,
       this.vatInvoiceIssuedAt,
       required this.vatIncluded,
+      required this.vatType,
       required this.eta,
       required this.status,
       required this.createdAt,
@@ -4865,6 +4882,7 @@ class PurchaseOrderRow extends DataClass
       map['vat_invoice_issued_at'] = Variable<String>(vatInvoiceIssuedAt);
     }
     map['vat_included'] = Variable<bool>(vatIncluded);
+    map['vat_type'] = Variable<int>(vatType);
     map['eta'] = Variable<String>(eta);
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<String>(createdAt);
@@ -4903,6 +4921,7 @@ class PurchaseOrderRow extends DataClass
           ? const Value.absent()
           : Value(vatInvoiceIssuedAt),
       vatIncluded: Value(vatIncluded),
+      vatType: Value(vatType),
       eta: Value(eta),
       status: Value(status),
       createdAt: Value(createdAt),
@@ -4937,6 +4956,7 @@ class PurchaseOrderRow extends DataClass
       vatInvoiceIssuedAt:
           serializer.fromJson<String?>(json['vatInvoiceIssuedAt']),
       vatIncluded: serializer.fromJson<bool>(json['vatIncluded']),
+      vatType: serializer.fromJson<int>(json['vatType']),
       eta: serializer.fromJson<String>(json['eta']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
@@ -4963,6 +4983,7 @@ class PurchaseOrderRow extends DataClass
       'vatInvoiceStatus': serializer.toJson<String>(vatInvoiceStatus),
       'vatInvoiceIssuedAt': serializer.toJson<String?>(vatInvoiceIssuedAt),
       'vatIncluded': serializer.toJson<bool>(vatIncluded),
+      'vatType': serializer.toJson<int>(vatType),
       'eta': serializer.toJson<String>(eta),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<String>(createdAt),
@@ -4987,6 +5008,7 @@ class PurchaseOrderRow extends DataClass
           String? vatInvoiceStatus,
           Value<String?> vatInvoiceIssuedAt = const Value.absent(),
           bool? vatIncluded,
+          int? vatType,
           String? eta,
           String? status,
           String? createdAt,
@@ -5010,6 +5032,7 @@ class PurchaseOrderRow extends DataClass
             ? vatInvoiceIssuedAt.value
             : this.vatInvoiceIssuedAt,
         vatIncluded: vatIncluded ?? this.vatIncluded,
+        vatType: vatType ?? this.vatType,
         eta: eta ?? this.eta,
         status: status ?? this.status,
         createdAt: createdAt ?? this.createdAt,
@@ -5045,6 +5068,7 @@ class PurchaseOrderRow extends DataClass
           : this.vatInvoiceIssuedAt,
       vatIncluded:
           data.vatIncluded.present ? data.vatIncluded.value : this.vatIncluded,
+      vatType: data.vatType.present ? data.vatType.value : this.vatType,
       eta: data.eta.present ? data.eta.value : this.eta,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -5072,6 +5096,7 @@ class PurchaseOrderRow extends DataClass
           ..write('vatInvoiceStatus: $vatInvoiceStatus, ')
           ..write('vatInvoiceIssuedAt: $vatInvoiceIssuedAt, ')
           ..write('vatIncluded: $vatIncluded, ')
+          ..write('vatType: $vatType, ')
           ..write('eta: $eta, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
@@ -5086,27 +5111,29 @@ class PurchaseOrderRow extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      supplierName,
-      supplierId,
-      shippingCost,
-      extraCost,
-      vat,
-      paymentStatus,
-      paidAt,
-      vatInvoiceStatus,
-      vatInvoiceIssuedAt,
-      vatIncluded,
-      eta,
-      status,
-      createdAt,
-      updatedAt,
-      isDeleted,
-      memo,
-      deletedAt,
-      orderId,
-      receivedAt);
+  int get hashCode => Object.hashAll([
+        id,
+        supplierName,
+        supplierId,
+        shippingCost,
+        extraCost,
+        vat,
+        paymentStatus,
+        paidAt,
+        vatInvoiceStatus,
+        vatInvoiceIssuedAt,
+        vatIncluded,
+        vatType,
+        eta,
+        status,
+        createdAt,
+        updatedAt,
+        isDeleted,
+        memo,
+        deletedAt,
+        orderId,
+        receivedAt
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5122,6 +5149,7 @@ class PurchaseOrderRow extends DataClass
           other.vatInvoiceStatus == this.vatInvoiceStatus &&
           other.vatInvoiceIssuedAt == this.vatInvoiceIssuedAt &&
           other.vatIncluded == this.vatIncluded &&
+          other.vatType == this.vatType &&
           other.eta == this.eta &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
@@ -5145,6 +5173,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<String> vatInvoiceStatus;
   final Value<String?> vatInvoiceIssuedAt;
   final Value<bool> vatIncluded;
+  final Value<int> vatType;
   final Value<String> eta;
   final Value<String> status;
   final Value<String> createdAt;
@@ -5167,6 +5196,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.vatInvoiceStatus = const Value.absent(),
     this.vatInvoiceIssuedAt = const Value.absent(),
     this.vatIncluded = const Value.absent(),
+    this.vatType = const Value.absent(),
     this.eta = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -5190,6 +5220,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.vatInvoiceStatus = const Value.absent(),
     this.vatInvoiceIssuedAt = const Value.absent(),
     this.vatIncluded = const Value.absent(),
+    this.vatType = const Value.absent(),
     required String eta,
     required String status,
     required String createdAt,
@@ -5218,6 +5249,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     Expression<String>? vatInvoiceStatus,
     Expression<String>? vatInvoiceIssuedAt,
     Expression<bool>? vatIncluded,
+    Expression<int>? vatType,
     Expression<String>? eta,
     Expression<String>? status,
     Expression<String>? createdAt,
@@ -5242,6 +5274,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       if (vatInvoiceIssuedAt != null)
         'vat_invoice_issued_at': vatInvoiceIssuedAt,
       if (vatIncluded != null) 'vat_included': vatIncluded,
+      if (vatType != null) 'vat_type': vatType,
       if (eta != null) 'eta': eta,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
@@ -5267,6 +5300,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       Value<String>? vatInvoiceStatus,
       Value<String?>? vatInvoiceIssuedAt,
       Value<bool>? vatIncluded,
+      Value<int>? vatType,
       Value<String>? eta,
       Value<String>? status,
       Value<String>? createdAt,
@@ -5289,6 +5323,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       vatInvoiceStatus: vatInvoiceStatus ?? this.vatInvoiceStatus,
       vatInvoiceIssuedAt: vatInvoiceIssuedAt ?? this.vatInvoiceIssuedAt,
       vatIncluded: vatIncluded ?? this.vatIncluded,
+      vatType: vatType ?? this.vatType,
       eta: eta ?? this.eta,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
@@ -5338,6 +5373,9 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     if (vatIncluded.present) {
       map['vat_included'] = Variable<bool>(vatIncluded.value);
     }
+    if (vatType.present) {
+      map['vat_type'] = Variable<int>(vatType.value);
+    }
     if (eta.present) {
       map['eta'] = Variable<String>(eta.value);
     }
@@ -5385,6 +5423,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
           ..write('vatInvoiceStatus: $vatInvoiceStatus, ')
           ..write('vatInvoiceIssuedAt: $vatInvoiceIssuedAt, ')
           ..write('vatIncluded: $vatIncluded, ')
+          ..write('vatType: $vatType, ')
           ..write('eta: $eta, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
@@ -11007,6 +11046,7 @@ typedef $$PurchaseOrdersTableCreateCompanionBuilder = PurchaseOrdersCompanion
   Value<String> vatInvoiceStatus,
   Value<String?> vatInvoiceIssuedAt,
   Value<bool> vatIncluded,
+  Value<int> vatType,
   required String eta,
   required String status,
   required String createdAt,
@@ -11031,6 +11071,7 @@ typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
   Value<String> vatInvoiceStatus,
   Value<String?> vatInvoiceIssuedAt,
   Value<bool> vatIncluded,
+  Value<int> vatType,
   Value<String> eta,
   Value<String> status,
   Value<String> createdAt,
@@ -11107,6 +11148,9 @@ class $$PurchaseOrdersTableFilterComposer
 
   ColumnFilters<bool> get vatIncluded => $composableBuilder(
       column: $table.vatIncluded, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get vatType => $composableBuilder(
+      column: $table.vatType, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get eta => $composableBuilder(
       column: $table.eta, builder: (column) => ColumnFilters(column));
@@ -11204,6 +11248,9 @@ class $$PurchaseOrdersTableOrderingComposer
   ColumnOrderings<bool> get vatIncluded => $composableBuilder(
       column: $table.vatIncluded, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get vatType => $composableBuilder(
+      column: $table.vatType, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get eta => $composableBuilder(
       column: $table.eta, builder: (column) => ColumnOrderings(column));
 
@@ -11273,6 +11320,9 @@ class $$PurchaseOrdersTableAnnotationComposer
 
   GeneratedColumn<bool> get vatIncluded => $composableBuilder(
       column: $table.vatIncluded, builder: (column) => column);
+
+  GeneratedColumn<int> get vatType =>
+      $composableBuilder(column: $table.vatType, builder: (column) => column);
 
   GeneratedColumn<String> get eta =>
       $composableBuilder(column: $table.eta, builder: (column) => column);
@@ -11358,6 +11408,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<String> vatInvoiceStatus = const Value.absent(),
             Value<String?> vatInvoiceIssuedAt = const Value.absent(),
             Value<bool> vatIncluded = const Value.absent(),
+            Value<int> vatType = const Value.absent(),
             Value<String> eta = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String> createdAt = const Value.absent(),
@@ -11381,6 +11432,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             vatInvoiceStatus: vatInvoiceStatus,
             vatInvoiceIssuedAt: vatInvoiceIssuedAt,
             vatIncluded: vatIncluded,
+            vatType: vatType,
             eta: eta,
             status: status,
             createdAt: createdAt,
@@ -11404,6 +11456,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<String> vatInvoiceStatus = const Value.absent(),
             Value<String?> vatInvoiceIssuedAt = const Value.absent(),
             Value<bool> vatIncluded = const Value.absent(),
+            Value<int> vatType = const Value.absent(),
             required String eta,
             required String status,
             required String createdAt,
@@ -11427,6 +11480,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             vatInvoiceStatus: vatInvoiceStatus,
             vatInvoiceIssuedAt: vatInvoiceIssuedAt,
             vatIncluded: vatIncluded,
+            vatType: vatType,
             eta: eta,
             status: status,
             createdAt: createdAt,

@@ -169,6 +169,14 @@
       }
     }
   },
+
+  "payment_unpaid": "미지급",
+  "payment_paid": "지급완료",
+  "payment_partial": "부분지급",
+
+  "vat_pending": "세금계산서 대기",
+  "vat_issued": "세금계산서 발행",
+
   "purchase_status_canceled": "취소",
   "purchase_status_done": "완료",
   "purchase_status_in_progress": "진행중",

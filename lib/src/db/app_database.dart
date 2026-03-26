@@ -314,7 +314,7 @@ class PurchaseOrders extends Table {
   TextColumn get vatInvoiceStatus => text().withDefault(const Constant('pending'))();//
   TextColumn get vatInvoiceIssuedAt => text().nullable()();
   BoolColumn get vatIncluded => boolean().withDefault(const Constant(false))();
-
+  IntColumn get vatType => integer().withDefault(const Constant(0))();
   TextColumn get eta => text()(); // ISO8601
   TextColumn get status => text()(); // PurchaseOrderStatus.name
   TextColumn get createdAt => text()(); // ISO8601
@@ -462,7 +462,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 13; //
+  int get schemaVersion => 14; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -612,7 +612,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(purchaseOrders, purchaseOrders.vatInvoiceStatus as GeneratedColumn);
         await m.addColumn(purchaseOrders, purchaseOrders.vatInvoiceIssuedAt as GeneratedColumn);
       }
-
+      if (from < 14) {
+        await m.addColumn(purchaseOrders, purchaseOrders.vatType);
+      }
 
     },
   );Future<void> _backfillItemSearchKeys() async {
@@ -1024,9 +1026,6 @@ extension PurchaseOrderRowMapping on PurchaseOrderRow {
     supplierId: supplierId,
     shippingCost: shippingCost,
     extraCost: extraCost,
-    vat: vat,
-
-    vatIncluded: vatIncluded,
     paymentStatus: paymentStatus,
     paidAt: paidAt != null ? DateTime.parse(paidAt!) : null,
     vatInvoiceStatus: vatInvoiceStatus,
@@ -1056,9 +1055,10 @@ extension PurchaseOrderToCompanion on PurchaseOrder {
 
     shippingCost: Value(shippingCost),
     extraCost: Value(extraCost),
-    vat: Value(vat),
 
-    vatIncluded: Value(vatIncluded),
+
+    vatType: Value(vatType.index),
+
     paymentStatus: Value(paymentStatus),
     paidAt: Value(paidAt?.toIso8601String()),
     vatInvoiceStatus: Value(vatInvoiceStatus),
