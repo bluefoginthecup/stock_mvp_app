@@ -359,7 +359,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               po.copyWith(
                 status: PurchaseOrderStatus.ordered,
                 receivedAt: null,
-                eta: picked, // 🔥 예정일 저장
+                eta: picked,
               ),
             );
             await _reload();
@@ -369,18 +369,27 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
         final picked = await showDatePicker(
           context: context,
-          initialDate: po.receivedAt ?? DateTime.now(),
+          initialDate: DateTime.now(),
           firstDate: DateTime(2020),
           lastDate: DateTime(2100),
         );
 
         if (picked != null) {
-          await widget.repo.updatePurchaseOrder(
-            po.copyWith(
-              status: PurchaseOrderStatus.received,
-              receivedAt: picked,
-            ),
-          );
+          print('🔥 입고 처리 시작');
+
+          await context.read<InventoryService>().receivePurchase(po.id);
+
+          final newPo = await widget.repo.getPurchaseOrderById(po.id);
+
+          print('🔥 상태 확인: ${newPo?.status}');
+
+          if (newPo != null) {
+            await widget.repo.updatePurchaseOrder(
+              newPo.copyWith(receivedAt: picked),
+            );
+          }
+
+
           await _reload();
         }
         break;
@@ -723,35 +732,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           /// 🔥 FAB 공간 확보
           const SizedBox(height: 80),
 
-          _ActionRow(
-            status: po.status,
-            onAdvance: () async {
-              final next = _next(po.status);
-              if (next == po.status) return;
 
-              if (po.status == PurchaseOrderStatus.draft &&
-                  next == PurchaseOrderStatus.ordered) {
-                await context.read<InventoryService>().orderPurchase(po.id);
-                await _reload();
-              } else if (po.status == PurchaseOrderStatus.ordered &&
-                  next == PurchaseOrderStatus.received) {
-                await context.read<InventoryService>().receivePurchase(po.id);
-                await _reload();
-              }
-            },
-            onCancel: po.status == PurchaseOrderStatus.received
-                ? null
-                : () async {
-              await context.read<InventoryService>().cancelPurchase(po.id);
-              await _reload();
-            },
-            labelForAdvance: switch (po.status) {
-              PurchaseOrderStatus.draft => t.purchase_action_order,
-              PurchaseOrderStatus.ordered => t.purchase_action_receive,
-              _ => t.purchase_already_received,
-            },
-            cancelLabel: t.common_cancel,
-          ),
         ],
       ),
     );
