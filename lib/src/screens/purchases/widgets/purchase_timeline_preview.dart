@@ -19,16 +19,6 @@ class PurchaseTimelinePreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.read<PurchaseOrderRepo>();
-    String fmt(DateTime? d) {
-      if (d == null) return '-';
-      return '${d.month}/${d.day}';
-    }
-
-    /// 상태별 날짜
-    final orderedDate = p.createdAt;
-    final receivedDate = p.receivedAt ?? p.eta;
-    final paidDate = p.paidAt ?? p.paymentDueAt;
-    final vatDate = p.vatInvoiceIssuedAt ?? p.vatInvoiceDueAt;
 
     return FutureBuilder<PurchaseOrder?>(
       future: repo.getPurchaseOrderById(purchaseId),
@@ -42,6 +32,18 @@ class PurchaseTimelinePreview extends StatelessWidget {
 
         final p = snap.data!;
         final inv = context.read<InventoryService>();
+
+        String fmt(DateTime? d) {
+          if (d == null) return '-';
+          return '${d.month}/${d.day}';
+        }
+
+        /// 상태별 날짜
+        final orderedDate = p.createdAt;
+        final receivedDate = p.receivedAt ?? p.eta;
+        final paidDate = p.paidAt ?? p.paymentDueAt;
+        final vatDate = p.vatInvoiceIssuedAt ?? p.vatInvoiceDueAt;
+
 
         /// 상태 계산
         final isOrdered = p.status.index >= 1;
@@ -65,14 +67,12 @@ class PurchaseTimelinePreview extends StatelessWidget {
             children: [
               /// 🔥 타임라인
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _node('발주', isOrdered),
-                  _line(isReceived),
-                  _node('입고', isReceived),
-                  _line(isPaid),
-                  _node('결제', isPaid),
-                  _line(isVat),
-                  _node('세금', isVat),
+                  _step('발주완료', orderedDate, isOrdered),
+                  _step('입고예정', receivedDate, isReceived),
+                  _step('결제예정', paidDate, isPaid),
+                  _step('세금발행', vatDate, isVat),
                 ],
               ),
 
@@ -215,4 +215,41 @@ class PurchaseTimelinePreview extends StatelessWidget {
         return status;
     }
   }
+}
+Widget _step(String label, DateTime? date, bool done) {
+  String fmt(DateTime? d) {
+    if (d == null) return '-';
+    return '${d.month}/${d.day}';
+  }
+
+  return Expanded(
+    child: Column(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: done ? Colors.green : Colors.grey,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: done ? Colors.black : Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          fmt(date),
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    ),
+  );
 }
