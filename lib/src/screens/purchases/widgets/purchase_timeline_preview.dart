@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../repos/repo_interfaces.dart';
 import '../../../models/purchase_order.dart';
 import '../../../services/inventory_service.dart';
+import '../../../models/types.dart';
 
 class PurchaseTimelinePreview extends StatelessWidget {
   final String purchaseId;
@@ -33,19 +34,25 @@ class PurchaseTimelinePreview extends StatelessWidget {
         final inv = context.read<InventoryService>();
 
 
+        /// 상태 계산
+        final isOrdered =
+            p.status == PurchaseOrderStatus.ordered ||
+                p.status == PurchaseOrderStatus.received;
+
+        final isReceived =
+            p.status == PurchaseOrderStatus.received;
+
+        final isPaid =
+            p.paymentStatusEnum == PaymentStatus.paid;
+
+        final isVat =
+            p.vatInvoiceStatusEnum == VatInvoiceStatus.issued;
 
         /// 상태별 날짜
         final orderedDate = p.createdAt;
-        final receivedDate = p.receivedAt ?? p.eta;
-        final paidDate = p.paidAt ?? p.paymentDueAt;
-        final vatDate = p.vatInvoiceIssuedAt ?? p.vatInvoiceDueAt;
-
-
-        /// 상태 계산
-        final isOrdered = p.status.index >= 1;
-        final isReceived = p.receivedAt != null;
-        final isPaid = p.paidAt != null;
-        final isVat = p.vatInvoiceIssuedAt != null;
+        final receivedDate = isReceived ? p.receivedAt : p.eta;
+        final paidDate = isPaid ? p.paidAt : p.paymentDueAt;
+        final vatDate = isVat ? p.vatInvoiceIssuedAt : p.vatInvoiceDueAt;
 
         print('STREAM REBUILD: ${p.updatedAt}');
         return InkWell(
@@ -176,7 +183,7 @@ class PurchaseTimelinePreview extends StatelessWidget {
       case 'ordered':
         return '발주 완료 (입고 대기)';
       case 'received':
-        if (p.paidAt != null) {
+          if (p.paymentStatusEnum == PaymentStatus.paid) {
           return '입고 및 결제 완료';
         }
         return '입고 완료 (결제 대기)';
