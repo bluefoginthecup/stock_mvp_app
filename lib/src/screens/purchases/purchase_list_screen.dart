@@ -5,9 +5,18 @@ import '../../models/purchase_order.dart'; // ✅
 import '../../services/inventory_service.dart';
 import '../../ui/common/ui.dart';
 import '../purchases/purchase_detail_screen.dart'; // 경로는 프로젝트 구조에 맞게
+import '../../ui/common/common_calendar_view.dart';
+import '../../utils/calendar_mapper.dart';
 
-class PurchaseListScreen extends StatelessWidget {
+class PurchaseListScreen extends StatefulWidget {
   const PurchaseListScreen({super.key});
+
+  @override
+  State<PurchaseListScreen> createState() => _PurchaseListScreenState();
+}
+
+class _PurchaseListScreenState extends State<PurchaseListScreen> {
+  bool isCalendarView = false;
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +24,19 @@ class PurchaseListScreen extends StatelessWidget {
     final inv    = context.read<InventoryService>();
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.t.dashboard_purchases)),
+      appBar: AppBar(title: Text(context.t.dashboard_purchases),
+        actions: [
+          IconButton(
+            icon: Icon(
+              isCalendarView ? Icons.list : Icons.calendar_today,
+            ),
+            onPressed: () {
+              setState(() {
+                isCalendarView = !isCalendarView;
+              });
+            },
+          ),
+        ],),
       body: StreamBuilder<List<PurchaseOrder>>(
         stream: poRepo.watchAllPurchaseOrders(),
         builder: (context, snap) {
@@ -29,6 +50,26 @@ class PurchaseListScreen extends StatelessWidget {
           if (list.isEmpty) {
             return Center(child: Text(context.t.purchases_list_empty));
           }
+
+// 👇 여기 추가
+          if (isCalendarView) {
+            final events = mapPurchaseToEvents(list);
+            return CommonCalendarView(
+              events: events,
+              onEventTap: (e) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PurchaseDetailScreen(
+                      repo: context.read<PurchaseOrderRepo>(),
+                      orderId: e.refId,
+                    ),
+                  ),
+                );
+              },
+            );
+          }
+
           return ListView.builder(
             itemCount: list.length,
             itemBuilder: (_, i) {
