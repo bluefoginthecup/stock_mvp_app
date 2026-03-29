@@ -321,39 +321,21 @@
 //         children: [
 //           /// 헤더
 //           Card(
-//             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-//             elevation: 2,
 //             child: Padding(
-//               padding: const EdgeInsets.all(12),
+//               padding: const EdgeInsets.all(16),
 //               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
 //                 children: [
-//
-//                   /// 🔥 상태 + 공급처 (요약라인)
 //                   Row(
-//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
 //                     children: [
-//                       Expanded(
-//                         child: Text(
-//                           po.supplierName.isEmpty ? '(미지정)' : po.supplierName,
-//                           style: const TextStyle(
-//                             fontSize: 16,
-//                             fontWeight: FontWeight.bold,
-//                           ),
-//                         ),
-//                       ),
-//                       Chip(
-//                         label: Text(_statusLabel(po.status)),
-//                         backgroundColor: Colors.grey.shade200,
-//                       ),
+//                       Text('헤더',
+//                           style: Theme.of(context).textTheme.titleMedium),
+//                       const SizedBox(width: 8),
+//                       Chip(label: Text(_statusLabel(po.status))),
 //                     ],
 //                   ),
-//
 //                   const SizedBox(height: 8),
-//
-//                   /// 🔥 기존 기능 유지 (ListTile 그대로)
 //                   ListTile(
-//                     dense: true,
-//                     contentPadding: EdgeInsets.zero,
 //                     title: const Text('발주 상태'),
 //                     subtitle: Text(po.status.name),
 //                     trailing: const Icon(Icons.chevron_right),
@@ -383,9 +365,29 @@
 //                     },
 //                   ),
 //
+//                   const SizedBox(height: 8),
 //                   ListTile(
-//                     dense: true,
-//                     contentPadding: EdgeInsets.zero,
+//                     title: const Text('공급처'),
+//                     subtitle: Text(
+//                       po.supplierName.isEmpty ? '(미지정)' : po.supplierName,
+//                     ),
+//                     trailing: const Icon(Icons.chevron_right),
+//                     onTap: () async {
+//                       final result = await _editText(
+//                         title: '공급처',
+//                         initial: po.supplierName,
+//                       );
+//
+//                       if (result != null) {
+//                         await widget.repo.updatePurchaseOrder(
+//                           po.copyWith(supplierName: result),
+//                         );
+//                         await _reload();
+//                       }
+//                     },
+//                   ),
+//
+//                   ListTile(
 //                     title: const Text('입고예정일'),
 //                     subtitle: Text(
 //                       po.eta.toLocal().toString().split('.').first,
@@ -407,10 +409,7 @@
 //                       }
 //                     },
 //                   ),
-//
 //                   ListTile(
-//                     dense: true,
-//                     contentPadding: EdgeInsets.zero,
 //                     title: const Text('메모'),
 //                     subtitle: Text(
 //                       (po.memo ?? '').isEmpty ? '(없음)' : po.memo!,
@@ -473,19 +472,15 @@
 //
 //           /// 금액
 //           Card(
-//             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-//             elevation: 2,
 //             child: Padding(
-//               padding: const EdgeInsets.all(12),
+//               padding: const EdgeInsets.all(16),
 //               child: Column(
 //                 children: [
 //                   _row('상품금액', itemsTotal),
-//
 //                   ListTile(
-//                     dense: true,
-//                     contentPadding: EdgeInsets.zero,
 //                     title: const Text('부가세 유형'),
 //                     subtitle: Text(_vatLabel(po.vatType)),
+//
 //                     trailing: const Icon(Icons.chevron_right),
 //                     onTap: () async {
 //                       final result = await showModalBottomSheet<VatType>(
@@ -512,12 +507,16 @@
 //                       }
 //                     },
 //                   ),
-//
-//                   _row('부가세', vat.toDouble()),
+//                   ListTile(
+//                     title: const Text('부가세'),
+//                     subtitle: Text(
+//                       po.vatType == VatType.exempt
+//                           ? '0 (면세)'
+//                           : _fmt(vat),
+//                     ),
+//                   ),
 //
 //                   ListTile(
-//                     dense: true,
-//                     contentPadding: EdgeInsets.zero,
 //                     title: const Text('배송비'),
 //                     subtitle: Text(_fmt(po.shippingCost ?? 0)),
 //                     trailing: const Icon(Icons.chevron_right),
@@ -535,10 +534,26 @@
 //                       }
 //                     },
 //                   ),
+//                   ListTile(
+//                     title: const Text('기타비용'),
+//                     subtitle: Text(_fmt(po.extraCost ?? 0)),
+//                     trailing: const Icon(Icons.chevron_right),
+//                     onTap: () async {
+//                       final result = await _editNumber(
+//                         title: '기타비용',
+//                         initial: po.extraCost ?? 0,
+//                       );
 //
+//                       if (result != null) {
+//                         await widget.repo.updatePurchaseOrder(
+//                           po.copyWith(extraCost: result),
+//                         );
+//                         await _reload();
+//                       }
+//                     },
+//                   ),
 //                   const Divider(),
-//
-//                   _row('총 지급금액', total.toDouble(), bold: true),
+//                   _row('총 지급금액', total, bold: true),
 //                 ],
 //               ),
 //             ),
