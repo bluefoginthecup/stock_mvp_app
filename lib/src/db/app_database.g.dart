@@ -4525,6 +4525,12 @@ class $PurchaseOrdersTable extends PurchaseOrders
   late final GeneratedColumn<String> paidAt = GeneratedColumn<String>(
       'paid_at', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _paymentDueAtMeta =
+      const VerificationMeta('paymentDueAt');
+  @override
+  late final GeneratedColumn<String> paymentDueAt = GeneratedColumn<String>(
+      'payment_due_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _vatInvoiceStatusMeta =
       const VerificationMeta('vatInvoiceStatus');
   @override
@@ -4539,6 +4545,12 @@ class $PurchaseOrdersTable extends PurchaseOrders
   late final GeneratedColumn<String> vatInvoiceIssuedAt =
       GeneratedColumn<String>('vat_invoice_issued_at', aliasedName, true,
           type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _vatInvoiceDueAtMeta =
+      const VerificationMeta('vatInvoiceDueAt');
+  @override
+  late final GeneratedColumn<String> vatInvoiceDueAt = GeneratedColumn<String>(
+      'vat_invoice_due_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _vatIncludedMeta =
       const VerificationMeta('vatIncluded');
   @override
@@ -4622,8 +4634,10 @@ class $PurchaseOrdersTable extends PurchaseOrders
         vat,
         paymentStatus,
         paidAt,
+        paymentDueAt,
         vatInvoiceStatus,
         vatInvoiceIssuedAt,
+        vatInvoiceDueAt,
         vatIncluded,
         vatType,
         eta,
@@ -4689,6 +4703,12 @@ class $PurchaseOrdersTable extends PurchaseOrders
       context.handle(_paidAtMeta,
           paidAt.isAcceptableOrUnknown(data['paid_at']!, _paidAtMeta));
     }
+    if (data.containsKey('payment_due_at')) {
+      context.handle(
+          _paymentDueAtMeta,
+          paymentDueAt.isAcceptableOrUnknown(
+              data['payment_due_at']!, _paymentDueAtMeta));
+    }
     if (data.containsKey('vat_invoice_status')) {
       context.handle(
           _vatInvoiceStatusMeta,
@@ -4700,6 +4720,12 @@ class $PurchaseOrdersTable extends PurchaseOrders
           _vatInvoiceIssuedAtMeta,
           vatInvoiceIssuedAt.isAcceptableOrUnknown(
               data['vat_invoice_issued_at']!, _vatInvoiceIssuedAtMeta));
+    }
+    if (data.containsKey('vat_invoice_due_at')) {
+      context.handle(
+          _vatInvoiceDueAtMeta,
+          vatInvoiceDueAt.isAcceptableOrUnknown(
+              data['vat_invoice_due_at']!, _vatInvoiceDueAtMeta));
     }
     if (data.containsKey('vat_included')) {
       context.handle(
@@ -4782,10 +4808,14 @@ class $PurchaseOrdersTable extends PurchaseOrders
           .read(DriftSqlType.string, data['${effectivePrefix}payment_status'])!,
       paidAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}paid_at']),
+      paymentDueAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}payment_due_at']),
       vatInvoiceStatus: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}vat_invoice_status'])!,
       vatInvoiceIssuedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.string, data['${effectivePrefix}vat_invoice_issued_at']),
+      vatInvoiceDueAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}vat_invoice_due_at']),
       vatIncluded: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}vat_included'])!,
       vatType: attachedDatabase.typeMapping
@@ -4827,8 +4857,10 @@ class PurchaseOrderRow extends DataClass
   final double vat;
   final String paymentStatus;
   final String? paidAt;
+  final String? paymentDueAt;
   final String vatInvoiceStatus;
   final String? vatInvoiceIssuedAt;
+  final String? vatInvoiceDueAt;
   final bool vatIncluded;
   final int vatType;
   final String eta;
@@ -4849,8 +4881,10 @@ class PurchaseOrderRow extends DataClass
       required this.vat,
       required this.paymentStatus,
       this.paidAt,
+      this.paymentDueAt,
       required this.vatInvoiceStatus,
       this.vatInvoiceIssuedAt,
+      this.vatInvoiceDueAt,
       required this.vatIncluded,
       required this.vatType,
       required this.eta,
@@ -4877,9 +4911,15 @@ class PurchaseOrderRow extends DataClass
     if (!nullToAbsent || paidAt != null) {
       map['paid_at'] = Variable<String>(paidAt);
     }
+    if (!nullToAbsent || paymentDueAt != null) {
+      map['payment_due_at'] = Variable<String>(paymentDueAt);
+    }
     map['vat_invoice_status'] = Variable<String>(vatInvoiceStatus);
     if (!nullToAbsent || vatInvoiceIssuedAt != null) {
       map['vat_invoice_issued_at'] = Variable<String>(vatInvoiceIssuedAt);
+    }
+    if (!nullToAbsent || vatInvoiceDueAt != null) {
+      map['vat_invoice_due_at'] = Variable<String>(vatInvoiceDueAt);
     }
     map['vat_included'] = Variable<bool>(vatIncluded);
     map['vat_type'] = Variable<int>(vatType);
@@ -4916,10 +4956,16 @@ class PurchaseOrderRow extends DataClass
       paymentStatus: Value(paymentStatus),
       paidAt:
           paidAt == null && nullToAbsent ? const Value.absent() : Value(paidAt),
+      paymentDueAt: paymentDueAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(paymentDueAt),
       vatInvoiceStatus: Value(vatInvoiceStatus),
       vatInvoiceIssuedAt: vatInvoiceIssuedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(vatInvoiceIssuedAt),
+      vatInvoiceDueAt: vatInvoiceDueAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(vatInvoiceDueAt),
       vatIncluded: Value(vatIncluded),
       vatType: Value(vatType),
       eta: Value(eta),
@@ -4952,9 +4998,11 @@ class PurchaseOrderRow extends DataClass
       vat: serializer.fromJson<double>(json['vat']),
       paymentStatus: serializer.fromJson<String>(json['paymentStatus']),
       paidAt: serializer.fromJson<String?>(json['paidAt']),
+      paymentDueAt: serializer.fromJson<String?>(json['paymentDueAt']),
       vatInvoiceStatus: serializer.fromJson<String>(json['vatInvoiceStatus']),
       vatInvoiceIssuedAt:
           serializer.fromJson<String?>(json['vatInvoiceIssuedAt']),
+      vatInvoiceDueAt: serializer.fromJson<String?>(json['vatInvoiceDueAt']),
       vatIncluded: serializer.fromJson<bool>(json['vatIncluded']),
       vatType: serializer.fromJson<int>(json['vatType']),
       eta: serializer.fromJson<String>(json['eta']),
@@ -4980,8 +5028,10 @@ class PurchaseOrderRow extends DataClass
       'vat': serializer.toJson<double>(vat),
       'paymentStatus': serializer.toJson<String>(paymentStatus),
       'paidAt': serializer.toJson<String?>(paidAt),
+      'paymentDueAt': serializer.toJson<String?>(paymentDueAt),
       'vatInvoiceStatus': serializer.toJson<String>(vatInvoiceStatus),
       'vatInvoiceIssuedAt': serializer.toJson<String?>(vatInvoiceIssuedAt),
+      'vatInvoiceDueAt': serializer.toJson<String?>(vatInvoiceDueAt),
       'vatIncluded': serializer.toJson<bool>(vatIncluded),
       'vatType': serializer.toJson<int>(vatType),
       'eta': serializer.toJson<String>(eta),
@@ -5005,8 +5055,10 @@ class PurchaseOrderRow extends DataClass
           double? vat,
           String? paymentStatus,
           Value<String?> paidAt = const Value.absent(),
+          Value<String?> paymentDueAt = const Value.absent(),
           String? vatInvoiceStatus,
           Value<String?> vatInvoiceIssuedAt = const Value.absent(),
+          Value<String?> vatInvoiceDueAt = const Value.absent(),
           bool? vatIncluded,
           int? vatType,
           String? eta,
@@ -5027,10 +5079,15 @@ class PurchaseOrderRow extends DataClass
         vat: vat ?? this.vat,
         paymentStatus: paymentStatus ?? this.paymentStatus,
         paidAt: paidAt.present ? paidAt.value : this.paidAt,
+        paymentDueAt:
+            paymentDueAt.present ? paymentDueAt.value : this.paymentDueAt,
         vatInvoiceStatus: vatInvoiceStatus ?? this.vatInvoiceStatus,
         vatInvoiceIssuedAt: vatInvoiceIssuedAt.present
             ? vatInvoiceIssuedAt.value
             : this.vatInvoiceIssuedAt,
+        vatInvoiceDueAt: vatInvoiceDueAt.present
+            ? vatInvoiceDueAt.value
+            : this.vatInvoiceDueAt,
         vatIncluded: vatIncluded ?? this.vatIncluded,
         vatType: vatType ?? this.vatType,
         eta: eta ?? this.eta,
@@ -5060,12 +5117,18 @@ class PurchaseOrderRow extends DataClass
           ? data.paymentStatus.value
           : this.paymentStatus,
       paidAt: data.paidAt.present ? data.paidAt.value : this.paidAt,
+      paymentDueAt: data.paymentDueAt.present
+          ? data.paymentDueAt.value
+          : this.paymentDueAt,
       vatInvoiceStatus: data.vatInvoiceStatus.present
           ? data.vatInvoiceStatus.value
           : this.vatInvoiceStatus,
       vatInvoiceIssuedAt: data.vatInvoiceIssuedAt.present
           ? data.vatInvoiceIssuedAt.value
           : this.vatInvoiceIssuedAt,
+      vatInvoiceDueAt: data.vatInvoiceDueAt.present
+          ? data.vatInvoiceDueAt.value
+          : this.vatInvoiceDueAt,
       vatIncluded:
           data.vatIncluded.present ? data.vatIncluded.value : this.vatIncluded,
       vatType: data.vatType.present ? data.vatType.value : this.vatType,
@@ -5093,8 +5156,10 @@ class PurchaseOrderRow extends DataClass
           ..write('vat: $vat, ')
           ..write('paymentStatus: $paymentStatus, ')
           ..write('paidAt: $paidAt, ')
+          ..write('paymentDueAt: $paymentDueAt, ')
           ..write('vatInvoiceStatus: $vatInvoiceStatus, ')
           ..write('vatInvoiceIssuedAt: $vatInvoiceIssuedAt, ')
+          ..write('vatInvoiceDueAt: $vatInvoiceDueAt, ')
           ..write('vatIncluded: $vatIncluded, ')
           ..write('vatType: $vatType, ')
           ..write('eta: $eta, ')
@@ -5120,8 +5185,10 @@ class PurchaseOrderRow extends DataClass
         vat,
         paymentStatus,
         paidAt,
+        paymentDueAt,
         vatInvoiceStatus,
         vatInvoiceIssuedAt,
+        vatInvoiceDueAt,
         vatIncluded,
         vatType,
         eta,
@@ -5146,8 +5213,10 @@ class PurchaseOrderRow extends DataClass
           other.vat == this.vat &&
           other.paymentStatus == this.paymentStatus &&
           other.paidAt == this.paidAt &&
+          other.paymentDueAt == this.paymentDueAt &&
           other.vatInvoiceStatus == this.vatInvoiceStatus &&
           other.vatInvoiceIssuedAt == this.vatInvoiceIssuedAt &&
+          other.vatInvoiceDueAt == this.vatInvoiceDueAt &&
           other.vatIncluded == this.vatIncluded &&
           other.vatType == this.vatType &&
           other.eta == this.eta &&
@@ -5170,8 +5239,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<double> vat;
   final Value<String> paymentStatus;
   final Value<String?> paidAt;
+  final Value<String?> paymentDueAt;
   final Value<String> vatInvoiceStatus;
   final Value<String?> vatInvoiceIssuedAt;
+  final Value<String?> vatInvoiceDueAt;
   final Value<bool> vatIncluded;
   final Value<int> vatType;
   final Value<String> eta;
@@ -5193,8 +5264,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.vat = const Value.absent(),
     this.paymentStatus = const Value.absent(),
     this.paidAt = const Value.absent(),
+    this.paymentDueAt = const Value.absent(),
     this.vatInvoiceStatus = const Value.absent(),
     this.vatInvoiceIssuedAt = const Value.absent(),
+    this.vatInvoiceDueAt = const Value.absent(),
     this.vatIncluded = const Value.absent(),
     this.vatType = const Value.absent(),
     this.eta = const Value.absent(),
@@ -5217,8 +5290,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.vat = const Value.absent(),
     this.paymentStatus = const Value.absent(),
     this.paidAt = const Value.absent(),
+    this.paymentDueAt = const Value.absent(),
     this.vatInvoiceStatus = const Value.absent(),
     this.vatInvoiceIssuedAt = const Value.absent(),
+    this.vatInvoiceDueAt = const Value.absent(),
     this.vatIncluded = const Value.absent(),
     this.vatType = const Value.absent(),
     required String eta,
@@ -5246,8 +5321,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     Expression<double>? vat,
     Expression<String>? paymentStatus,
     Expression<String>? paidAt,
+    Expression<String>? paymentDueAt,
     Expression<String>? vatInvoiceStatus,
     Expression<String>? vatInvoiceIssuedAt,
+    Expression<String>? vatInvoiceDueAt,
     Expression<bool>? vatIncluded,
     Expression<int>? vatType,
     Expression<String>? eta,
@@ -5270,9 +5347,11 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       if (vat != null) 'vat': vat,
       if (paymentStatus != null) 'payment_status': paymentStatus,
       if (paidAt != null) 'paid_at': paidAt,
+      if (paymentDueAt != null) 'payment_due_at': paymentDueAt,
       if (vatInvoiceStatus != null) 'vat_invoice_status': vatInvoiceStatus,
       if (vatInvoiceIssuedAt != null)
         'vat_invoice_issued_at': vatInvoiceIssuedAt,
+      if (vatInvoiceDueAt != null) 'vat_invoice_due_at': vatInvoiceDueAt,
       if (vatIncluded != null) 'vat_included': vatIncluded,
       if (vatType != null) 'vat_type': vatType,
       if (eta != null) 'eta': eta,
@@ -5297,8 +5376,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       Value<double>? vat,
       Value<String>? paymentStatus,
       Value<String?>? paidAt,
+      Value<String?>? paymentDueAt,
       Value<String>? vatInvoiceStatus,
       Value<String?>? vatInvoiceIssuedAt,
+      Value<String?>? vatInvoiceDueAt,
       Value<bool>? vatIncluded,
       Value<int>? vatType,
       Value<String>? eta,
@@ -5320,8 +5401,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       vat: vat ?? this.vat,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       paidAt: paidAt ?? this.paidAt,
+      paymentDueAt: paymentDueAt ?? this.paymentDueAt,
       vatInvoiceStatus: vatInvoiceStatus ?? this.vatInvoiceStatus,
       vatInvoiceIssuedAt: vatInvoiceIssuedAt ?? this.vatInvoiceIssuedAt,
+      vatInvoiceDueAt: vatInvoiceDueAt ?? this.vatInvoiceDueAt,
       vatIncluded: vatIncluded ?? this.vatIncluded,
       vatType: vatType ?? this.vatType,
       eta: eta ?? this.eta,
@@ -5364,11 +5447,17 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     if (paidAt.present) {
       map['paid_at'] = Variable<String>(paidAt.value);
     }
+    if (paymentDueAt.present) {
+      map['payment_due_at'] = Variable<String>(paymentDueAt.value);
+    }
     if (vatInvoiceStatus.present) {
       map['vat_invoice_status'] = Variable<String>(vatInvoiceStatus.value);
     }
     if (vatInvoiceIssuedAt.present) {
       map['vat_invoice_issued_at'] = Variable<String>(vatInvoiceIssuedAt.value);
+    }
+    if (vatInvoiceDueAt.present) {
+      map['vat_invoice_due_at'] = Variable<String>(vatInvoiceDueAt.value);
     }
     if (vatIncluded.present) {
       map['vat_included'] = Variable<bool>(vatIncluded.value);
@@ -5420,8 +5509,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
           ..write('vat: $vat, ')
           ..write('paymentStatus: $paymentStatus, ')
           ..write('paidAt: $paidAt, ')
+          ..write('paymentDueAt: $paymentDueAt, ')
           ..write('vatInvoiceStatus: $vatInvoiceStatus, ')
           ..write('vatInvoiceIssuedAt: $vatInvoiceIssuedAt, ')
+          ..write('vatInvoiceDueAt: $vatInvoiceDueAt, ')
           ..write('vatIncluded: $vatIncluded, ')
           ..write('vatType: $vatType, ')
           ..write('eta: $eta, ')
@@ -11043,8 +11134,10 @@ typedef $$PurchaseOrdersTableCreateCompanionBuilder = PurchaseOrdersCompanion
   Value<double> vat,
   Value<String> paymentStatus,
   Value<String?> paidAt,
+  Value<String?> paymentDueAt,
   Value<String> vatInvoiceStatus,
   Value<String?> vatInvoiceIssuedAt,
+  Value<String?> vatInvoiceDueAt,
   Value<bool> vatIncluded,
   Value<int> vatType,
   required String eta,
@@ -11068,8 +11161,10 @@ typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
   Value<double> vat,
   Value<String> paymentStatus,
   Value<String?> paidAt,
+  Value<String?> paymentDueAt,
   Value<String> vatInvoiceStatus,
   Value<String?> vatInvoiceIssuedAt,
+  Value<String?> vatInvoiceDueAt,
   Value<bool> vatIncluded,
   Value<int> vatType,
   Value<String> eta,
@@ -11138,12 +11233,19 @@ class $$PurchaseOrdersTableFilterComposer
   ColumnFilters<String> get paidAt => $composableBuilder(
       column: $table.paidAt, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get paymentDueAt => $composableBuilder(
+      column: $table.paymentDueAt, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<String> get vatInvoiceStatus => $composableBuilder(
       column: $table.vatInvoiceStatus,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get vatInvoiceIssuedAt => $composableBuilder(
       column: $table.vatInvoiceIssuedAt,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get vatInvoiceDueAt => $composableBuilder(
+      column: $table.vatInvoiceDueAt,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get vatIncluded => $composableBuilder(
@@ -11237,12 +11339,20 @@ class $$PurchaseOrdersTableOrderingComposer
   ColumnOrderings<String> get paidAt => $composableBuilder(
       column: $table.paidAt, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get paymentDueAt => $composableBuilder(
+      column: $table.paymentDueAt,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get vatInvoiceStatus => $composableBuilder(
       column: $table.vatInvoiceStatus,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get vatInvoiceIssuedAt => $composableBuilder(
       column: $table.vatInvoiceIssuedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get vatInvoiceDueAt => $composableBuilder(
+      column: $table.vatInvoiceDueAt,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<bool> get vatIncluded => $composableBuilder(
@@ -11312,11 +11422,17 @@ class $$PurchaseOrdersTableAnnotationComposer
   GeneratedColumn<String> get paidAt =>
       $composableBuilder(column: $table.paidAt, builder: (column) => column);
 
+  GeneratedColumn<String> get paymentDueAt => $composableBuilder(
+      column: $table.paymentDueAt, builder: (column) => column);
+
   GeneratedColumn<String> get vatInvoiceStatus => $composableBuilder(
       column: $table.vatInvoiceStatus, builder: (column) => column);
 
   GeneratedColumn<String> get vatInvoiceIssuedAt => $composableBuilder(
       column: $table.vatInvoiceIssuedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get vatInvoiceDueAt => $composableBuilder(
+      column: $table.vatInvoiceDueAt, builder: (column) => column);
 
   GeneratedColumn<bool> get vatIncluded => $composableBuilder(
       column: $table.vatIncluded, builder: (column) => column);
@@ -11405,8 +11521,10 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<double> vat = const Value.absent(),
             Value<String> paymentStatus = const Value.absent(),
             Value<String?> paidAt = const Value.absent(),
+            Value<String?> paymentDueAt = const Value.absent(),
             Value<String> vatInvoiceStatus = const Value.absent(),
             Value<String?> vatInvoiceIssuedAt = const Value.absent(),
+            Value<String?> vatInvoiceDueAt = const Value.absent(),
             Value<bool> vatIncluded = const Value.absent(),
             Value<int> vatType = const Value.absent(),
             Value<String> eta = const Value.absent(),
@@ -11429,8 +11547,10 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             vat: vat,
             paymentStatus: paymentStatus,
             paidAt: paidAt,
+            paymentDueAt: paymentDueAt,
             vatInvoiceStatus: vatInvoiceStatus,
             vatInvoiceIssuedAt: vatInvoiceIssuedAt,
+            vatInvoiceDueAt: vatInvoiceDueAt,
             vatIncluded: vatIncluded,
             vatType: vatType,
             eta: eta,
@@ -11453,8 +11573,10 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<double> vat = const Value.absent(),
             Value<String> paymentStatus = const Value.absent(),
             Value<String?> paidAt = const Value.absent(),
+            Value<String?> paymentDueAt = const Value.absent(),
             Value<String> vatInvoiceStatus = const Value.absent(),
             Value<String?> vatInvoiceIssuedAt = const Value.absent(),
+            Value<String?> vatInvoiceDueAt = const Value.absent(),
             Value<bool> vatIncluded = const Value.absent(),
             Value<int> vatType = const Value.absent(),
             required String eta,
@@ -11477,8 +11599,10 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             vat: vat,
             paymentStatus: paymentStatus,
             paidAt: paidAt,
+            paymentDueAt: paymentDueAt,
             vatInvoiceStatus: vatInvoiceStatus,
             vatInvoiceIssuedAt: vatInvoiceIssuedAt,
+            vatInvoiceDueAt: vatInvoiceDueAt,
             vatIncluded: vatIncluded,
             vatType: vatType,
             eta: eta,

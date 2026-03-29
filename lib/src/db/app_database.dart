@@ -76,11 +76,8 @@ class Items extends Table {
 
   //즐겨찾기
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
-
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
-
-
 
 
   @override
@@ -311,11 +308,13 @@ class PurchaseOrders extends Table {
   RealColumn get vat => real().withDefault(const Constant(0))();
   TextColumn get paymentStatus => text().withDefault(const Constant('pending'))();//결제여부
   TextColumn get paidAt => text().nullable()(); //결제일
+  TextColumn get paymentDueAt => text().nullable()();
   TextColumn get vatInvoiceStatus => text().withDefault(const Constant('pending'))();//
   TextColumn get vatInvoiceIssuedAt => text().nullable()();
+  TextColumn get vatInvoiceDueAt => text().nullable()();
   BoolColumn get vatIncluded => boolean().withDefault(const Constant(false))();
   IntColumn get vatType => integer().withDefault(const Constant(0))();
-  TextColumn get eta => text()(); // ISO8601
+   TextColumn get eta => text()(); // ISO8601
   TextColumn get status => text()(); // PurchaseOrderStatus.name
   TextColumn get createdAt => text()(); // ISO8601
   TextColumn get updatedAt => text()(); // ISO8601
@@ -462,7 +461,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 14; //
+  int get schemaVersion => 15; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -614,6 +613,15 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 14) {
         await m.addColumn(purchaseOrders, purchaseOrders.vatType);
+      }
+      if (from < 15) {
+        await customStatement(
+            'ALTER TABLE purchase_orders ADD COLUMN payment_due_at TEXT'
+        );
+
+        await customStatement(
+            'ALTER TABLE purchase_orders ADD COLUMN vat_invoice_due_at TEXT'
+        );
       }
 
     },
@@ -1028,9 +1036,15 @@ extension PurchaseOrderRowMapping on PurchaseOrderRow {
     extraCost: extraCost,
     paymentStatus: paymentStatus,
     paidAt: paidAt != null ? DateTime.parse(paidAt!) : null,
+    paymentDueAt: paymentDueAt != null
+        ? DateTime.parse(paymentDueAt!)
+        : null,
     vatInvoiceStatus: vatInvoiceStatus,
     vatInvoiceIssuedAt: vatInvoiceIssuedAt != null
         ? DateTime.parse(vatInvoiceIssuedAt!)
+        : null,
+    vatInvoiceDueAt: vatInvoiceDueAt != null
+        ? DateTime.parse(vatInvoiceDueAt!)
         : null,
 
     eta: DateTime.parse(eta),
@@ -1055,14 +1069,13 @@ extension PurchaseOrderToCompanion on PurchaseOrder {
 
     shippingCost: Value(shippingCost),
     extraCost: Value(extraCost),
-
-
     vatType: Value(vatType.index),
-
     paymentStatus: Value(paymentStatus),
     paidAt: Value(paidAt?.toIso8601String()),
+    paymentDueAt: Value(paymentDueAt?.toIso8601String()),
     vatInvoiceStatus: Value(vatInvoiceStatus),
     vatInvoiceIssuedAt: Value(vatInvoiceIssuedAt?.toIso8601String()),
+    vatInvoiceDueAt: Value(vatInvoiceDueAt?.toIso8601String()),
 
     eta: Value(eta.toIso8601String()),
     status: Value(status.name),

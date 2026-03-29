@@ -42,6 +42,12 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
   Future<void> _reload() async {
     final po = await widget.repo.getPurchaseOrderById(widget.orderId);
+
+    print('🔥 reload po:');
+    print('paymentDueAt: ${po?.paymentDueAt}');
+    print('vatInvoiceDueAt: ${po?.vatInvoiceDueAt}');
+    print('paidAt: ${po?.paidAt}');
+    print('vatIssuedAt: ${po?.vatInvoiceIssuedAt}');
     final lines = await widget.repo.getLines(widget.orderId);
 
     final itemRepo = context.read<ItemRepo>();
@@ -239,22 +245,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     );
   }
 
-  // Future<void> _openHeaderFullEdit() async {
-  //   if (_po == null) return;
-  //
-  //   final changed = await Navigator.push<bool>(
-  //     context,
-  //     MaterialPageRoute(
-  //       builder: (_) => PurchaseOrderFullEditScreen(
-  //         repo: widget.repo,
-  //         orderId: widget.orderId,
-  //       ),
-  //     ),
-  //   );
-  //
-  //   if (changed == true) await _reload();
-  // }
-
   Future<void> _addLineFull() async {
     if (_po == null) return;
 
@@ -346,7 +336,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   onTap: () => Navigator.pop(context, true),
                 ),
                 ListTile(
-                  title: const Text('미입고'),
+                  title: const Text('입고예정'),
                   onTap: () => Navigator.pop(context, false),
                 ),
               ],
@@ -357,13 +347,23 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (result == null) return;
 
         if (result == false) {
-          await widget.repo.updatePurchaseOrder(
-            po.copyWith(
-              status: PurchaseOrderStatus.ordered,
-              receivedAt: null, // 🔥 중요
-            ),
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: po.eta ?? DateTime.now(),
+            firstDate: DateTime(2020),
+            lastDate: DateTime(2100),
           );
-          await _reload();
+
+          if (picked != null) {
+            await widget.repo.updatePurchaseOrder(
+              po.copyWith(
+                status: PurchaseOrderStatus.ordered,
+                receivedAt: null,
+                eta: picked, // 🔥 예정일 저장
+              ),
+            );
+            await _reload();
+          }
           return;
         }
 
@@ -387,64 +387,122 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     /// 2️⃣ 결제
       case 2:
-        final result = await showModalBottomSheet<PaymentStatus>(
+        final result = await showModalBottomSheet<bool>(
           context: context,
           builder: (_) {
             return Column(
               mainAxisSize: MainAxisSize.min,
-              children: PaymentStatus.values.map((s) {
-                return ListTile(
-                  title: Text(s.label(context)),
-                  trailing: s == po.paymentStatusEnum
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () => Navigator.pop(context, s),
-                );
-              }).toList(),
+              children: [
+                ListTile(
+                  title: const Text('결제완료'),
+                  onTap: () => Navigator.pop(context, true),
+                ),
+                ListTile(
+                  title: const Text('결제예정'),
+                  onTap: () => Navigator.pop(context, false),
+                ),
+              ],
             );
           },
         );
 
-        if (result != null) {
+        if (result == null) return;
+
+        if (result == false) {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: po.paymentDueAt ?? _endOfMonth(),
+            firstDate: DateTime(2020),
+            lastDate: DateTime(2100),
+          );
+
+          if (picked != null) {
+            await widget.repo.updatePurchaseOrder(
+              po.copyWith(
+                paymentStatus: PaymentStatus.unpaid.value,
+                paidAt: null,
+                paymentDueAt: picked, // 🔥 예정일
+              ),
+            );
+            await _reload();
+          }
+          return;
+        }
+
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: po.paidAt ?? DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2100),
+        );
+
+        if (picked != null) {
           await widget.repo.updatePurchaseOrder(
             po.copyWith(
-              paymentStatus: result.value,
-              paidAt: result == PaymentStatus.paid
-                  ? (po.paidAt ?? DateTime.now())
-                  : null, // 🔥 핵심
-
+              paymentStatus: PaymentStatus.paid.value,
+              paidAt: picked,
             ),
           );
           await _reload();
         }
         break;
+
     /// 3️⃣ 세금계산서
       case 3:
-        final result = await showModalBottomSheet<VatInvoiceStatus>(
+        final result = await showModalBottomSheet<bool>(
           context: context,
           builder: (_) {
             return Column(
               mainAxisSize: MainAxisSize.min,
-              children: VatInvoiceStatus.values.map((s) {
-                return ListTile(
-                  title: Text(s.label(context)),
-                  trailing: s == po.vatInvoiceStatusEnum
-                      ? const Icon(Icons.check)
-                      : null,
-                  onTap: () => Navigator.pop(context, s),
-                );
-              }).toList(),
+              children: [
+                ListTile(
+                  title: const Text('세금계산서 발행완료'),
+                  onTap: () => Navigator.pop(context, true),
+                ),
+                ListTile(
+                  title: const Text('세금계산서 발행예정'),
+                  onTap: () => Navigator.pop(context, false),
+                ),
+              ],
             );
           },
         );
 
-        if (result != null) {
+        if (result == null) return;
+
+        if (result == false) {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: po.vatInvoiceDueAt ?? _endOfMonth(),
+            firstDate: DateTime(2020),
+            lastDate: DateTime(2100),
+          );
+
+          if (picked != null) {
+            await widget.repo.updatePurchaseOrder(
+              po.copyWith(
+                vatInvoiceStatus: VatInvoiceStatus.pending.value,
+                vatInvoiceIssuedAt: null,
+                vatInvoiceDueAt: picked,
+              ),
+            );
+            await _reload();
+          }
+          return;
+        }
+
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: po.vatInvoiceIssuedAt ?? DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2100),
+        );
+
+        if (picked != null) {
           await widget.repo.updatePurchaseOrder(
             po.copyWith(
-              vatInvoiceStatus: result.value,
-              vatInvoiceIssuedAt: result == VatInvoiceStatus.issued
-                  ? (po.vatInvoiceIssuedAt ?? DateTime.now())
-                  : null, // 🔥 핵심
+              vatInvoiceStatus: VatInvoiceStatus.issued.value,
+              vatInvoiceIssuedAt: picked,
             ),
           );
           await _reload();
@@ -558,62 +616,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   const SizedBox(height: 8),
 
                   /// 🔥 기존 기능 유지 (ListTile 그대로)
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('발주 상태'),
-                    subtitle: Text(po.status.name),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      final result = await showModalBottomSheet<PurchaseOrderStatus>(
-                        context: context,
-                        builder: (_) {
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: PurchaseOrderStatus.values.map((s) {
-                              return ListTile(
-                                title: Text(_statusLabel(s)),
-                                trailing: s == po.status ? const Icon(Icons.check) : null,
-                                onTap: () => Navigator.pop(context, s),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      );
-
-                      if (result != null) {
-                        await widget.repo.updatePurchaseOrder(
-                          po.copyWith(status: result),
-                        );
-                        await _reload();
-                      }
-                    },
-                  ),
-
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('입고예정일'),
-                    subtitle: Text(
-                      po.eta.toLocal().toString().split('.').first,
-                    ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: po.eta,
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
-                      );
-
-                      if (picked != null) {
-                        await widget.repo.updatePurchaseOrder(
-                          po.copyWith(eta: picked),
-                        );
-                        await _reload();
-                      }
-                    },
-                  ),
 
                   ListTile(
                     dense: true,
@@ -716,149 +718,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
           const SizedBox(height: 8),
 
-          /// 결제
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  ListTile(
-                    title: const Text('결제 상태'),
-                    subtitle: Text(po.paymentStatusEnum.label(context)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      final result = await showModalBottomSheet<PaymentStatus>(
-                        context: context,
-                        builder: (_) {
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: PaymentStatus.values.map((s) {
-                              return ListTile(
-                                title: Text(s.label(context)), // 번역
-                                trailing: s == po.paymentStatusEnum
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () => Navigator.pop(context, s),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      );
-
-
-                      if (result != null) {
-                        await widget.repo.updatePurchaseOrder(
-                          po.copyWith(paymentStatus: result.value),
-
-                        );
-                        await _reload();
-                      }
-                    },
-                  ),
-                  ListTile(
-                    title: const Text('입금일'),
-                    subtitle: Text(
-                      po.paidAt == null
-                          ? '(미입력)'
-                          : po.paidAt!.toLocal().toString().split('.').first,
-                    ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: po.paidAt ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
-                      );
-
-                      if (picked != null) {
-                        await widget.repo.updatePurchaseOrder(
-                          po.copyWith(paidAt: picked),
-                        );
-                        await _reload();
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          /// 세금계산서
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  ListTile(
-                    title: const Text('세금계산서'),
-                    subtitle: Text(po.vatInvoiceStatusEnum.label(context)),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      final result = await showModalBottomSheet<VatInvoiceStatus>(
-                        context: context,
-                        builder: (_) {
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: VatInvoiceStatus.values.map((s) {
-                              return ListTile(
-                                title: Text(s.label(context)),
-                                trailing: s == po.vatInvoiceStatusEnum
-                                    ? const Icon(Icons.check)
-                                    : null,
-                                onTap: () => Navigator.pop(context, s),
-                              );
-                            }).toList(),
-                          );
-                        },
-                      );
-
-                      if (result != null) {
-                        await widget.repo.updatePurchaseOrder(
-                          po.copyWith(vatInvoiceStatus: result.value),
-                        );
-                        await _reload();
-                      }
-                    },
-                  ),
-                  ListTile(
-                    title: const Text('발행일'),
-                    subtitle: Text(
-                      po.vatInvoiceIssuedAt == null
-                          ? '(미입력)'
-                          : po.vatInvoiceIssuedAt!.toLocal().toString().split('.').first,
-                    ),
-                    trailing: const Icon(Icons.calendar_today),
-                    enabled: po.vatInvoiceStatus == 'issued',
-                    onTap: po.vatInvoiceStatus == 'issued'
-                        ? () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: po.vatInvoiceIssuedAt ?? DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2100),
-                      );
-
-                      if (picked != null) {
-                        await widget.repo.updatePurchaseOrder(
-                          po.copyWith(
-                            vatInvoiceIssuedAt: picked,
-                            vatInvoiceStatus: 'issued', // 🔥 같이 변경
-                          ),
-                        );
-                        await _reload();
-                      }
-                    }
-                        : null,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 8),
 
 
           /// 🔥 FAB 공간 확보
@@ -1004,24 +863,23 @@ class PurchaseTimeline extends StatelessWidget {
       case PurchaseOrderStatus.draft:
         return '임시저장';
       case PurchaseOrderStatus.ordered:
-        return '발주완료';
       case PurchaseOrderStatus.received:
-        return '입고완료';
+        return '발주완료';
       case PurchaseOrderStatus.canceled:
         return '발주취소';
     }
   }
 
   String _receiveLabel() {
-    return isReceived ? '입고완료' : '미입고';
+    return isReceived ? '입고완료' : '입고예정';
   }
 
   String _paymentLabel() {
-    return isPaid ? '결제완료' : '미결제';
+    return isPaid ? '결제완료' : '결제예정';
   }
 
   String _vatLabel() {
-    return isVatIssued ? '발행완료' : '미발행';
+    return isVatIssued ? '세금계산서 발행완료' : '세금계산서 발행예정';
   }
 
   @override
@@ -1034,19 +892,19 @@ class PurchaseTimeline extends StatelessWidget {
       _Step(
         _receiveLabel(),
         isReceived,
-        isReceived ? po.receivedAt : null,
+        isReceived ? po.receivedAt : po.eta,
       ),
 
       _Step(
         _paymentLabel(),
         isPaid,
-        isPaid ? po.paidAt : null,
+        isPaid ? po.paidAt : po.paymentDueAt,
       ),
 
       _Step(
         _vatLabel(),
         isVatIssued,
-        isVatIssued ? po.vatInvoiceIssuedAt : null,
+        isVatIssued ? po.vatInvoiceIssuedAt : po.vatInvoiceDueAt,
       ),
     ];
 
@@ -1109,7 +967,7 @@ class PurchaseTimeline extends StatelessWidget {
 
             return Expanded(
               child: GestureDetector(
-                onTap: (s.done && onDateTap != null)
+                onTap: (onDateTap != null)
                     ? () => onDateTap!(i)
                     : null,
                 child: Center(
@@ -1126,7 +984,9 @@ class PurchaseTimeline extends StatelessWidget {
         ),
       ],
     );
+
   }
+
 
   Widget _line(bool active) {
     return Container(
@@ -1155,4 +1015,9 @@ Widget _calcItem(String label, double value) {
       ),
     ],
   );
+}
+
+DateTime _endOfMonth([DateTime? base]) {
+  final now = base ?? DateTime.now();
+  return DateTime(now.year, now.month + 1, 0);
 }

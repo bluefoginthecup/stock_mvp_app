@@ -30,9 +30,11 @@ class PurchaseOrder {
 
   final String paymentStatus;
   final DateTime? paidAt;
+  final DateTime? paymentDueAt;
 
   final String vatInvoiceStatus;
   final DateTime? vatInvoiceIssuedAt;
+  final DateTime? vatInvoiceDueAt;
 
 
   PaymentStatus get paymentStatusEnum =>
@@ -58,8 +60,10 @@ class PurchaseOrder {
     this.vatType = VatType.exclusive,
     this.paymentStatus = 'unpaid',
     this.paidAt,
+    this.paymentDueAt,
     this.vatInvoiceStatus = 'pending',
     this.vatInvoiceIssuedAt,
+    this.vatInvoiceDueAt,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -78,8 +82,10 @@ class PurchaseOrder {
     VatType? vatType,
     String? paymentStatus,
     DateTime? paidAt,
+    DateTime? paymentDueAt,
     String? vatInvoiceStatus,
     DateTime? vatInvoiceIssuedAt,
+    DateTime? vatInvoiceDueAt,
     DateTime? createdAt,
   }) => PurchaseOrder(
     id: id,
@@ -98,8 +104,10 @@ class PurchaseOrder {
     vatType: vatType ?? this.vatType,
     paymentStatus: paymentStatus ?? this.paymentStatus,
     paidAt: paidAt ?? this.paidAt,
+    paymentDueAt: paymentDueAt ?? this.paymentDueAt,
     vatInvoiceStatus: vatInvoiceStatus ?? this.vatInvoiceStatus,
     vatInvoiceIssuedAt: vatInvoiceIssuedAt ?? this.vatInvoiceIssuedAt,
+    vatInvoiceDueAt: vatInvoiceDueAt ?? this.vatInvoiceDueAt,
   );
 
   factory PurchaseOrder.fromJson(Map<String, dynamic> j) => PurchaseOrder(
