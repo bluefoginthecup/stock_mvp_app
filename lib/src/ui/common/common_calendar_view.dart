@@ -6,11 +6,13 @@ import '../../models/calendar_event.dart';
 class CommonCalendarView extends StatefulWidget {
   final List<CalendarEvent> events;
   final void Function(CalendarEvent event)? onEventTap;
+  final Widget Function(CalendarEvent e)? expandedBuilder;
 
   const CommonCalendarView({
     super.key,
     required this.events,
     this.onEventTap, // 👈 추가
+    this.expandedBuilder,
   });
 
 
@@ -21,6 +23,7 @@ class CommonCalendarView extends StatefulWidget {
 
 
 class _CommonCalendarViewState extends State<CommonCalendarView> {
+  int _expandedIndex = -1;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
@@ -146,27 +149,37 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
 
               print('UI 확인 → type: ${e.type}, isPaid: ${e.isPaid}'); // 👈 여기
 
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colorForEvent(e).withValues(alpha:0.1), // 👈 핵심
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ListTile(
-                  leading: Icon(
-                    _iconForType(e),
-                    color: colorForEvent(e),
+              return Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colorForEvent(e).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListTile(
+                      leading: Icon(
+                        _iconForType(e),
+                        color: colorForEvent(e),
+                      ),
+                      title: Text(e.title),
+                      subtitle: Text(
+                        e.subtitle ?? _typeLabel(e.type),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _expandedIndex = _expandedIndex == i ? -1 : i;
+                        });
+                      },
+                    ),
                   ),
-                  title: Text(e.title),
-                  subtitle: Text(
-                    e.subtitle ?? _typeLabel(e.type),
-                  ),
-                  onTap: () {
-                    if (widget.onEventTap != null) {
-                      widget.onEventTap!(e);
-                    }
-                  },
-                ),
+
+                  if (_expandedIndex == i && widget.expandedBuilder != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: widget.expandedBuilder!(e),
+                    ),
+                ],
               );
             },
           ),

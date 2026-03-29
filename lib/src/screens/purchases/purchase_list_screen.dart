@@ -8,6 +8,7 @@ import '../../ui/common/ui.dart';
 import '../purchases/purchase_detail_screen.dart'; // 경로는 프로젝트 구조에 맞게
 import '../../ui/common/common_calendar_view.dart';
 import '../../utils/calendar_mapper.dart';
+import 'widgets/purchase_timeline_preview.dart';
 
 class PurchaseListScreen extends StatefulWidget {
   const PurchaseListScreen({super.key});
@@ -76,6 +77,22 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                           orderId: e.refId,
                         ),
                       ),
+                    );
+                  },
+                  expandedBuilder: (e) {
+                    return PurchaseTimelinePreview(
+                      purchaseId: e.refId,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PurchaseDetailScreen(
+                              repo: context.read<PurchaseOrderRepo>(),
+                              orderId: e.refId,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );
