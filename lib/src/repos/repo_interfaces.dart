@@ -306,6 +306,7 @@ abstract class PurchaseOrderRepo {
   // Lines
   Future<void> upsertLines(String orderId, List<PurchaseLine> lines);
   Future<List<PurchaseLine>> getLines(String orderId);
+  Future<Map<String, List<PurchaseLine>>> getLinesMap();
 
 
 }

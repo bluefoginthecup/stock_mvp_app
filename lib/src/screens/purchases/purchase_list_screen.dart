@@ -2,6 +2,7 @@
 import 'package:provider/provider.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase_order.dart'; // ✅
+import '../../models/purchase_line.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/ui.dart';
 import '../purchases/purchase_detail_screen.dart'; // 경로는 프로젝트 구조에 맞게
@@ -53,23 +54,34 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
 
 // 👇 여기 추가
           if (isCalendarView) {
-            final events = mapPurchaseToEvents(list);
-            return CommonCalendarView(
-              events: events,
-              onEventTap: (e) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PurchaseDetailScreen(
-                      repo: context.read<PurchaseOrderRepo>(),
-                      orderId: e.refId,
-                    ),
-                  ),
+            return FutureBuilder<Map<String, List<PurchaseLine>>>(
+              future: poRepo.getLinesMap(),
+              builder: (context, snap2) {
+                if (!snap2.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final linesMap = snap2.data!;
+
+                final events = mapPurchaseToEvents(list, linesMap);
+
+                return CommonCalendarView(
+                  events: events,
+                  onEventTap: (e) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PurchaseDetailScreen(
+                          repo: context.read<PurchaseOrderRepo>(),
+                          orderId: e.refId,
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             );
           }
-
           return ListView.builder(
             itemCount: list.length,
             itemBuilder: (_, i) {

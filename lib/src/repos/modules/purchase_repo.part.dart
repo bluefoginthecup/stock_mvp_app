@@ -1,5 +1,6 @@
 part of '../drift_unified_repo.dart';
 
+
 mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
 @override
 Future<String> createPurchaseOrder(PurchaseOrder po) async {
@@ -93,5 +94,18 @@ Future<double> _resolvePrice(String itemId) async {
 Future<List<PurchaseLine>> getLines(String orderId) async {
   final rows = await (db.select(db.purchaseLines)..where((l) => l.orderId.equals(orderId))).get();
   return rows.map((r) => r.toDomain()).toList();
+}
+
+Future<Map<String, List<PurchaseLine>>> getLinesMap() async {
+  final rows = await db.select(db.purchaseLines).get();
+
+  final map = <String, List<PurchaseLine>>{};
+
+  for (final r in rows) {
+    final line = r.toDomain();
+    map.putIfAbsent(line.orderId, () => []).add(line);
+  }
+
+  return map;
 }
 }

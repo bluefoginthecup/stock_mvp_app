@@ -1,21 +1,22 @@
 import '../models/calendar_event.dart';
 import '../models/purchase_order.dart';
+import '../models/purchase_line.dart';
 
-
-  List<CalendarEvent> mapPurchaseToEvents(List<PurchaseOrder> list) {
+List<CalendarEvent> mapPurchaseToEvents(
+    List<PurchaseOrder> list,
+    Map<String, List<PurchaseLine>> linesMap,
+    ) {
     final events = <CalendarEvent>[];
-
     for (final p in list) {
       print('DEBUG 결제상태 → id: ${p.id}, paidAt: ${p.paidAt}');
 
-
-
+      final lines = linesMap[p.id] ?? [];
       // 📦 발주일
       events.add(CalendarEvent(
         date: p.createdAt,
         type: CalendarEventType.purchaseOrderDate,
         title: '발주 - ${p.supplierName}',
-        subtitle: p.items.map((i) => i.name).join(', '),
+        subtitle: lines.map((i) => i.name).join(', '),
         refId: p.id,
       ));
 
