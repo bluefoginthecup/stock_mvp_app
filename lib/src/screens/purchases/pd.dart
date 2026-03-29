@@ -12,6 +12,7 @@
 // import '../../models/extensions/payment_status_ext.dart';
 // import '../../models/extensions/vat_invoice_status_ext.dart';
 //
+//
 // class PurchaseDetailScreen extends StatefulWidget {
 //   final PurchaseOrderRepo repo;
 //   final String orderId;
@@ -21,6 +22,8 @@
 //     required this.repo,
 //     required this.orderId,
 //   });
+//
+//
 //
 //   @override
 //   State<PurchaseDetailScreen> createState() => _PurchaseDetailScreenState();
@@ -39,6 +42,12 @@
 //
 //   Future<void> _reload() async {
 //     final po = await widget.repo.getPurchaseOrderById(widget.orderId);
+//
+//     print('🔥 reload po:');
+//     print('paymentDueAt: ${po?.paymentDueAt}');
+//     print('vatInvoiceDueAt: ${po?.vatInvoiceDueAt}');
+//     print('paidAt: ${po?.paidAt}');
+//     print('vatIssuedAt: ${po?.vatInvoiceIssuedAt}');
 //     final lines = await widget.repo.getLines(widget.orderId);
 //
 //     final itemRepo = context.read<ItemRepo>();
@@ -121,6 +130,48 @@
 //     );
 //   }
 //
+//   Future<void> _handleDateTap(int index) async {
+//     final po = _po;
+//     if (po == null) return;
+//
+//     final picked = await showDatePicker(
+//       context: context,
+//       initialDate: DateTime.now(),
+//       firstDate: DateTime(2020),
+//       lastDate: DateTime(2100),
+//     );
+//
+//     if (picked == null) return;
+//
+//     switch (index) {
+//       case 0:
+//         await widget.repo.updatePurchaseOrder(
+//           po.copyWith(createdAt: picked),
+//         );
+//         break;
+//
+//       case 1:
+//         await widget.repo.updatePurchaseOrder(
+//           po.copyWith(receivedAt: picked),
+//         );
+//         break;
+//
+//       case 2:
+//         await widget.repo.updatePurchaseOrder(
+//           po.copyWith(paidAt: picked),
+//         );
+//         break;
+//
+//       case 3:
+//         await widget.repo.updatePurchaseOrder(
+//           po.copyWith(vatInvoiceIssuedAt: picked),
+//         );
+//         break;
+//     }
+//
+//     await _reload();
+//   }
+//
 //   Future<String?> _selectOption({
 //     required String title,
 //     required List<String> options,
@@ -194,22 +245,6 @@
 //     );
 //   }
 //
-//   // Future<void> _openHeaderFullEdit() async {
-//   //   if (_po == null) return;
-//   //
-//   //   final changed = await Navigator.push<bool>(
-//   //     context,
-//   //     MaterialPageRoute(
-//   //       builder: (_) => PurchaseOrderFullEditScreen(
-//   //         repo: widget.repo,
-//   //         orderId: widget.orderId,
-//   //       ),
-//   //     ),
-//   //   );
-//   //
-//   //   if (changed == true) await _reload();
-//   // }
-//
 //   Future<void> _addLineFull() async {
 //     if (_po == null) return;
 //
@@ -254,6 +289,235 @@
 //     }
 //   }
 //
+//   Future<void> _handleTimelineTap(int index) async {
+//     final po = _po;
+//     if (po == null) return;
+//
+//     switch (index) {
+//     /// 0️⃣ 발주 상태
+//       case 0:
+//         final result = await showModalBottomSheet<PurchaseOrderStatus>(
+//           context: context,
+//           builder: (_) {
+//             return Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: PurchaseOrderStatus.values
+//                   .where((s) => s != PurchaseOrderStatus.received) // 🔥 핵심
+//                   .map((s) {
+//                 return ListTile(
+//                   title: Text(_statusLabel(s)),
+//                   trailing:
+//                   s == po.status ? const Icon(Icons.check) : null,
+//                   onTap: () => Navigator.pop(context, s),
+//                 );
+//               }).toList(),
+//             );
+//           },
+//         );
+//
+//         if (result != null) {
+//           await widget.repo.updatePurchaseOrder(
+//             po.copyWith(status: result),
+//           );
+//           await _reload();
+//         }
+//         break;
+//
+//     /// 1️⃣ 입고 날짜
+//       case 1:
+//         final result = await showModalBottomSheet<bool>(
+//           context: context,
+//           builder: (_) {
+//             return Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 ListTile(
+//                   title: const Text('입고완료'),
+//                   onTap: () => Navigator.pop(context, true),
+//                 ),
+//                 ListTile(
+//                   title: const Text('입고예정'),
+//                   onTap: () => Navigator.pop(context, false),
+//                 ),
+//               ],
+//             );
+//           },
+//         );
+//
+//         if (result == null) return;
+//
+//         if (result == false) {
+//           final picked = await showDatePicker(
+//             context: context,
+//             initialDate: po.eta ?? DateTime.now(),
+//             firstDate: DateTime(2020),
+//             lastDate: DateTime(2100),
+//           );
+//
+//           if (picked != null) {
+//             await context.read<InventoryService>().rollbackReceivePurchase(
+//               po.id,
+//               eta: picked,
+//             );
+//
+//             await _reload();
+//           }
+//           return;
+//         }
+//
+//         final picked = await showDatePicker(
+//           context: context,
+//           initialDate: DateTime.now(),
+//           firstDate: DateTime(2020),
+//           lastDate: DateTime(2100),
+//         );
+//
+//         if (picked != null) {
+//           print('🔥 입고 처리 시작');
+//
+//           await context.read<InventoryService>().receivePurchase(po.id);
+//
+//           final newPo = await widget.repo.getPurchaseOrderById(po.id);
+//
+//           print('🔥 상태 확인: ${newPo?.status}');
+//
+//           if (newPo != null) {
+//             await widget.repo.updatePurchaseOrder(
+//               newPo.copyWith(receivedAt: picked),
+//             );
+//           }
+//
+//
+//           await _reload();
+//         }
+//         break;
+//
+//     /// 2️⃣ 결제
+//       case 2:
+//         final result = await showModalBottomSheet<bool>(
+//           context: context,
+//           builder: (_) {
+//             return Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 ListTile(
+//                   title: const Text('결제완료'),
+//                   onTap: () => Navigator.pop(context, true),
+//                 ),
+//                 ListTile(
+//                   title: const Text('결제예정'),
+//                   onTap: () => Navigator.pop(context, false),
+//                 ),
+//               ],
+//             );
+//           },
+//         );
+//
+//         if (result == null) return;
+//
+//         if (result == false) {
+//           final picked = await showDatePicker(
+//             context: context,
+//             initialDate: po.paymentDueAt ?? _endOfMonth(),
+//             firstDate: DateTime(2020),
+//             lastDate: DateTime(2100),
+//           );
+//
+//           if (picked != null) {
+//             await widget.repo.updatePurchaseOrder(
+//               po.copyWith(
+//                 paymentStatus: PaymentStatus.unpaid.value,
+//                 paidAt: null,
+//                 paymentDueAt: picked, // 🔥 예정일
+//               ),
+//             );
+//             await _reload();
+//           }
+//           return;
+//         }
+//
+//         final picked = await showDatePicker(
+//           context: context,
+//           initialDate: po.paidAt ?? DateTime.now(),
+//           firstDate: DateTime(2020),
+//           lastDate: DateTime(2100),
+//         );
+//
+//         if (picked != null) {
+//           await widget.repo.updatePurchaseOrder(
+//             po.copyWith(
+//               paymentStatus: PaymentStatus.paid.value,
+//               paidAt: picked,
+//             ),
+//           );
+//           await _reload();
+//         }
+//         break;
+//
+//     /// 3️⃣ 세금계산서
+//       case 3:
+//         final result = await showModalBottomSheet<bool>(
+//           context: context,
+//           builder: (_) {
+//             return Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 ListTile(
+//                   title: const Text('세금계산서 발행완료'),
+//                   onTap: () => Navigator.pop(context, true),
+//                 ),
+//                 ListTile(
+//                   title: const Text('세금계산서 발행예정'),
+//                   onTap: () => Navigator.pop(context, false),
+//                 ),
+//               ],
+//             );
+//           },
+//         );
+//
+//         if (result == null) return;
+//
+//         if (result == false) {
+//           final picked = await showDatePicker(
+//             context: context,
+//             initialDate: po.vatInvoiceDueAt ?? _endOfMonth(),
+//             firstDate: DateTime(2020),
+//             lastDate: DateTime(2100),
+//           );
+//
+//           if (picked != null) {
+//             await widget.repo.updatePurchaseOrder(
+//               po.copyWith(
+//                 vatInvoiceStatus: VatInvoiceStatus.pending.value,
+//                 vatInvoiceIssuedAt: null,
+//                 vatInvoiceDueAt: picked,
+//               ),
+//             );
+//             await _reload();
+//           }
+//           return;
+//         }
+//
+//         final picked = await showDatePicker(
+//           context: context,
+//           initialDate: po.vatInvoiceIssuedAt ?? DateTime.now(),
+//           firstDate: DateTime(2020),
+//           lastDate: DateTime(2100),
+//         );
+//
+//         if (picked != null) {
+//           await widget.repo.updatePurchaseOrder(
+//             po.copyWith(
+//               vatInvoiceStatus: VatInvoiceStatus.issued.value,
+//               vatInvoiceIssuedAt: picked,
+//             ),
+//           );
+//           await _reload();
+//         }
+//         break;
+//     }
+//   }
+//
 //   String _titleForLine(PurchaseLine ln) {
 //     final baseName = (ln.name.trim().isNotEmpty)
 //         ? ln.name
@@ -291,7 +555,7 @@
 //       VatType.exempt => 0,
 //       VatType.inclusive => itemsTotal / 11,
 //       VatType.exclusive => itemsTotal * 0.1,
-//     };
+//     }.toDouble();
 //     final shipping = po.shippingCost ?? 0;
 //     final extra = po.extraCost ?? 0;
 //
@@ -321,95 +585,48 @@
 //         children: [
 //           /// 헤더
 //           Card(
+//             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+//             elevation: 2,
 //             child: Padding(
-//               padding: const EdgeInsets.all(16),
+//               padding: const EdgeInsets.all(12),
 //               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
 //                 children: [
+//
+//                   /// 🔥 상태 + 공급처 (요약라인)
 //                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
 //                     children: [
-//                       Text('헤더',
-//                           style: Theme.of(context).textTheme.titleMedium),
-//                       const SizedBox(width: 8),
-//                       Chip(label: Text(_statusLabel(po.status))),
+//                       Expanded(
+//                         child: Text(
+//                           po.supplierName.isEmpty ? '(미지정)' : po.supplierName,
+//                           style: const TextStyle(
+//                             fontSize: 16,
+//                             fontWeight: FontWeight.bold,
+//                           ),
+//                         ),
+//                       ),
+//                       Chip(
+//                         label: Text(_statusLabel(po.status)),
+//                         backgroundColor: Colors.grey.shade200,
+//                       ),
 //                     ],
 //                   ),
-//                   const SizedBox(height: 8),
-//                   ListTile(
-//                     title: const Text('발주 상태'),
-//                     subtitle: Text(po.status.name),
-//                     trailing: const Icon(Icons.chevron_right),
-//                     onTap: () async {
-//                       final result = await showModalBottomSheet<PurchaseOrderStatus>(
-//                         context: context,
-//                         builder: (_) {
-//                           return Column(
-//                             mainAxisSize: MainAxisSize.min,
-//                             children: PurchaseOrderStatus.values.map((s) {
-//                               return ListTile(
-//                                 title: Text(_statusLabel(s)),
-//                                 trailing: s == po.status ? const Icon(Icons.check) : null,
-//                                 onTap: () => Navigator.pop(context, s),
-//                               );
-//                             }).toList(),
-//                           );
-//                         },
-//                       );
 //
-//                       if (result != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(status: result),
-//                         );
-//                         await _reload();
-//                       }
-//                     },
+//                   const SizedBox(height: 12),
+//
+//                   PurchaseTimeline(
+//                     po: po,
+//                     onStepTap: (index) => _handleTimelineTap(index),
+//                     onDateTap: (index) => _handleDateTap(index),
 //                   ),
 //
 //                   const SizedBox(height: 8),
-//                   ListTile(
-//                     title: const Text('공급처'),
-//                     subtitle: Text(
-//                       po.supplierName.isEmpty ? '(미지정)' : po.supplierName,
-//                     ),
-//                     trailing: const Icon(Icons.chevron_right),
-//                     onTap: () async {
-//                       final result = await _editText(
-//                         title: '공급처',
-//                         initial: po.supplierName,
-//                       );
 //
-//                       if (result != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(supplierName: result),
-//                         );
-//                         await _reload();
-//                       }
-//                     },
-//                   ),
+//                   /// 🔥 기존 기능 유지 (ListTile 그대로)
 //
 //                   ListTile(
-//                     title: const Text('입고예정일'),
-//                     subtitle: Text(
-//                       po.eta.toLocal().toString().split('.').first,
-//                     ),
-//                     trailing: const Icon(Icons.calendar_today),
-//                     onTap: () async {
-//                       final picked = await showDatePicker(
-//                         context: context,
-//                         initialDate: po.eta,
-//                         firstDate: DateTime(2020),
-//                         lastDate: DateTime(2100),
-//                       );
-//
-//                       if (picked != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(eta: picked),
-//                         );
-//                         await _reload();
-//                       }
-//                     },
-//                   ),
-//                   ListTile(
+//                     dense: true,
+//                     contentPadding: EdgeInsets.zero,
 //                     title: const Text('메모'),
 //                     subtitle: Text(
 //                       (po.memo ?? '').isEmpty ? '(없음)' : po.memo!,
@@ -472,272 +689,48 @@
 //
 //           /// 금액
 //           Card(
+//             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+//             elevation: 2,
 //             child: Padding(
 //               padding: const EdgeInsets.all(16),
 //               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
 //                 children: [
-//                   _row('상품금액', itemsTotal),
-//                   ListTile(
-//                     title: const Text('부가세 유형'),
-//                     subtitle: Text(_vatLabel(po.vatType)),
-//
-//                     trailing: const Icon(Icons.chevron_right),
-//                     onTap: () async {
-//                       final result = await showModalBottomSheet<VatType>(
-//                         context: context,
-//                         builder: (_) {
-//                           return Column(
-//                             mainAxisSize: MainAxisSize.min,
-//                             children: VatType.values.map((e) {
-//                               return ListTile(
-//                                 title: Text(_vatLabel(e)),
-//                                 trailing: e == po.vatType ? const Icon(Icons.check) : null,
-//                                 onTap: () => Navigator.pop(context, e),
-//                               );
-//                             }).toList(),
-//                           );
-//                         },
-//                       );
-//
-//                       if (result != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(vatType: result),
-//                         );
-//                         await _reload();
-//                       }
-//                     },
-//                   ),
-//                   ListTile(
-//                     title: const Text('부가세'),
-//                     subtitle: Text(
-//                       po.vatType == VatType.exempt
-//                           ? '0 (면세)'
-//                           : _fmt(vat),
+//                   /// 총금액 크게
+//                   Text(
+//                     '₩ ${_fmt(total)}',
+//                     style: const TextStyle(
+//                       fontSize: 20,
+//                       fontWeight: FontWeight.bold,
 //                     ),
 //                   ),
 //
-//                   ListTile(
-//                     title: const Text('배송비'),
-//                     subtitle: Text(_fmt(po.shippingCost ?? 0)),
-//                     trailing: const Icon(Icons.chevron_right),
-//                     onTap: () async {
-//                       final result = await _editNumber(
-//                         title: '배송비',
-//                         initial: po.shippingCost ?? 0,
-//                       );
+//                   const SizedBox(height: 8),
 //
-//                       if (result != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(shippingCost: result),
-//                         );
-//                         await _reload();
-//                       }
-//                     },
-//                   ),
-//                   ListTile(
-//                     title: const Text('기타비용'),
-//                     subtitle: Text(_fmt(po.extraCost ?? 0)),
-//                     trailing: const Icon(Icons.chevron_right),
-//                     onTap: () async {
-//                       final result = await _editNumber(
-//                         title: '기타비용',
-//                         initial: po.extraCost ?? 0,
-//                       );
-//
-//                       if (result != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(extraCost: result),
-//                         );
-//                         await _reload();
-//                       }
-//                     },
-//                   ),
-//                   const Divider(),
-//                   _row('총 지급금액', total, bold: true),
-//                 ],
-//               ),
-//             ),
-//           ),
-//
-//           const SizedBox(height: 8),
-//
-//           /// 결제
-//           Card(
-//             child: Padding(
-//               padding: const EdgeInsets.all(16),
-//               child: Column(
-//                 children: [
-//                   ListTile(
-//                     title: const Text('결제 상태'),
-//                     subtitle: Text(po.paymentStatusEnum.label(context)),
-//                     trailing: const Icon(Icons.chevron_right),
-//                     onTap: () async {
-//                       final result = await showModalBottomSheet<PaymentStatus>(
-//                         context: context,
-//                         builder: (_) {
-//                           return Column(
-//                             mainAxisSize: MainAxisSize.min,
-//                             children: PaymentStatus.values.map((s) {
-//                               return ListTile(
-//                                 title: Text(s.label(context)), // 번역
-//                                 trailing: s == po.paymentStatusEnum
-//                                     ? const Icon(Icons.check)
-//                                     : null,
-//                                 onTap: () => Navigator.pop(context, s),
-//                               );
-//                             }).toList(),
-//                           );
-//                         },
-//                       );
-//
-//
-//                       if (result != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(paymentStatus: result.value),
-//
-//                         );
-//                         await _reload();
-//                       }
-//                     },
-//                   ),
-//                   ListTile(
-//                     title: const Text('입금일'),
-//                     subtitle: Text(
-//                       po.paidAt == null
-//                           ? '(미입력)'
-//                           : po.paidAt!.toLocal().toString().split('.').first,
-//                     ),
-//                     trailing: const Icon(Icons.calendar_today),
-//                     onTap: () async {
-//                       final picked = await showDatePicker(
-//                         context: context,
-//                         initialDate: po.paidAt ?? DateTime.now(),
-//                         firstDate: DateTime(2020),
-//                         lastDate: DateTime(2100),
-//                       );
-//
-//                       if (picked != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(paidAt: picked),
-//                         );
-//                         await _reload();
-//                       }
-//                     },
+//                   /// 🔥 가로 계산 UI
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                     children: [
+//                       _calcItem('상품', itemsTotal),
+//                       _calcItem('세금', vat),
+//                       _calcItem('기타', (shipping + extra)),
+//                     ],
 //                   ),
 //                 ],
 //               ),
 //             ),
 //           ),
 //
-//           const SizedBox(height: 8),
 //
-//           /// 세금계산서
-//           Card(
-//             child: Padding(
-//               padding: const EdgeInsets.all(16),
-//               child: Column(
-//                 children: [
-//                   ListTile(
-//                     title: const Text('세금계산서'),
-//                     subtitle: Text(po.vatInvoiceStatusEnum.label(context)),
-//                     trailing: const Icon(Icons.chevron_right),
-//                     onTap: () async {
-//                       final result = await showModalBottomSheet<VatInvoiceStatus>(
-//                         context: context,
-//                         builder: (_) {
-//                           return Column(
-//                             mainAxisSize: MainAxisSize.min,
-//                             children: VatInvoiceStatus.values.map((s) {
-//                               return ListTile(
-//                                 title: Text(s.label(context)),
-//                                 trailing: s == po.vatInvoiceStatusEnum
-//                                     ? const Icon(Icons.check)
-//                                     : null,
-//                                 onTap: () => Navigator.pop(context, s),
-//                               );
-//                             }).toList(),
-//                           );
-//                         },
-//                       );
-//
-//                       if (result != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(vatInvoiceStatus: result.value),
-//                         );
-//                         await _reload();
-//                       }
-//                     },
-//                   ),
-//                   ListTile(
-//                     title: const Text('발행일'),
-//                     subtitle: Text(
-//                       po.vatInvoiceIssuedAt == null
-//                           ? '(미입력)'
-//                           : po.vatInvoiceIssuedAt!.toLocal().toString().split('.').first,
-//                     ),
-//                     trailing: const Icon(Icons.calendar_today),
-//                     enabled: po.vatInvoiceStatus == 'issued',
-//                     onTap: po.vatInvoiceStatus == 'issued'
-//                         ? () async {
-//                       final picked = await showDatePicker(
-//                         context: context,
-//                         initialDate: po.vatInvoiceIssuedAt ?? DateTime.now(),
-//                         firstDate: DateTime(2020),
-//                         lastDate: DateTime(2100),
-//                       );
-//
-//                       if (picked != null) {
-//                         await widget.repo.updatePurchaseOrder(
-//                           po.copyWith(
-//                             vatInvoiceIssuedAt: picked,
-//                             vatInvoiceStatus: 'issued', // 🔥 같이 변경
-//                           ),
-//                         );
-//                         await _reload();
-//                       }
-//                     }
-//                         : null,
-//                   ),
-//                 ],
-//               ),
-//             ),
-//           ),
 //
 //           const SizedBox(height: 8),
+//
 //
 //
 //           /// 🔥 FAB 공간 확보
 //           const SizedBox(height: 80),
 //
-//           _ActionRow(
-//             status: po.status,
-//             onAdvance: () async {
-//               final next = _next(po.status);
-//               if (next == po.status) return;
 //
-//               if (po.status == PurchaseOrderStatus.draft &&
-//                   next == PurchaseOrderStatus.ordered) {
-//                 await context.read<InventoryService>().orderPurchase(po.id);
-//                 await _reload();
-//               } else if (po.status == PurchaseOrderStatus.ordered &&
-//                   next == PurchaseOrderStatus.received) {
-//                 await context.read<InventoryService>().receivePurchase(po.id);
-//                 await _reload();
-//               }
-//             },
-//             onCancel: po.status == PurchaseOrderStatus.received
-//                 ? null
-//                 : () async {
-//               await context.read<InventoryService>().cancelPurchase(po.id);
-//               await _reload();
-//             },
-//             labelForAdvance: switch (po.status) {
-//               PurchaseOrderStatus.draft => t.purchase_action_order,
-//               PurchaseOrderStatus.ordered => t.purchase_action_receive,
-//               _ => t.purchase_already_received,
-//             },
-//             cancelLabel: t.common_cancel,
-//           ),
 //         ],
 //       ),
 //     );
@@ -800,4 +793,210 @@
 //       ],
 //     );
 //   }
+//
+// }
+//
+// class PurchaseTimeline extends StatelessWidget {
+//   final PurchaseOrder po;
+//   final void Function(int index) onStepTap;
+//   final void Function(int index)? onDateTap;
+//
+//
+//
+//   const PurchaseTimeline({
+//     super.key,
+//     required this.po,
+//     required this.onStepTap,
+//     this.onDateTap,
+//   });
+//
+//   bool get isOrdered =>
+//       po.status == PurchaseOrderStatus.ordered ||
+//           po.status == PurchaseOrderStatus.received;
+//
+//   bool get isReceived => po.status == PurchaseOrderStatus.received;
+//
+//   bool get isPaid =>
+//       po.paymentStatusEnum == PaymentStatus.paid;
+//
+//   bool get isVatIssued =>
+//       po.vatInvoiceStatusEnum == VatInvoiceStatus.issued;
+//
+//   Widget _segmentBox({required bool active}) {
+//     return Expanded(
+//       child: Container(
+//         height: 6,
+//         decoration: BoxDecoration(
+//           color: active ? Colors.green : Colors.grey.shade300,
+//           border: Border.all(
+//             color: Colors.grey.shade400, // 🔥 구간 경계
+//             width: 1,
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+//
+//   String _orderLabel() {
+//     switch (po.status) {
+//       case PurchaseOrderStatus.draft:
+//         return '임시저장';
+//       case PurchaseOrderStatus.ordered:
+//       case PurchaseOrderStatus.received:
+//         return '발주완료';
+//       case PurchaseOrderStatus.canceled:
+//         return '발주취소';
+//     }
+//   }
+//
+//   String _receiveLabel() {
+//     return isReceived ? '입고완료' : '입고예정';
+//   }
+//
+//   String _paymentLabel() {
+//     return isPaid ? '결제완료' : '결제예정';
+//   }
+//
+//   String _vatLabel() {
+//     return isVatIssued ? '세금계산서 발행완료' : '세금계산서 발행예정';
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//
+//
+//     final steps = [
+//       _Step(_orderLabel(), true, po.createdAt),
+//
+//       _Step(
+//         _receiveLabel(),
+//         isReceived,
+//         isReceived ? po.receivedAt : po.eta,
+//       ),
+//
+//       _Step(
+//         _paymentLabel(),
+//         isPaid,
+//         isPaid ? po.paidAt : po.paymentDueAt,
+//       ),
+//
+//       _Step(
+//         _vatLabel(),
+//         isVatIssued,
+//         isVatIssued ? po.vatInvoiceIssuedAt : po.vatInvoiceDueAt,
+//       ),
+//     ];
+//
+//
+//     return Column(
+//       children: [
+//         /// 🔥 연결된 라인 (progress 제거!)
+//         SizedBox(
+//           height: 20,
+//           child: Row(
+//             children: [
+//               _segmentBox(active: isOrdered),
+//               _segmentBox(active: isReceived),
+//               _segmentBox(active: isPaid),
+//               _segmentBox(active: isVatIssued),   // 세금 🔥 추가
+//             ],
+//           ),
+//         ),
+//
+//
+//         const SizedBox(height: 10),
+//
+//         /// 🔥 점 + 라벨 (클릭 가능)
+//         Row(
+//           children: steps.asMap().entries.map((entry) {
+//             final i = entry.key;
+//             final s = entry.value;
+//
+//             return Expanded(
+//               child: GestureDetector(
+//                 onTap: () => onStepTap(i),
+//                 child: Column(
+//                   children: [
+//                     Container(
+//                       width: 14,
+//                       height: 14,
+//                       decoration: BoxDecoration(
+//                         color: s.done
+//                             ? Colors.green
+//                             : Colors.grey.shade400,
+//                         shape: BoxShape.circle,
+//                       ),
+//                     ),
+//                     const SizedBox(height: 6),
+//                     Text(s.label),
+//                   ],
+//                 ),
+//               ),
+//             );
+//           }).toList(),
+//         ),
+//
+//         const SizedBox(height: 6),
+//
+//         /// 🔥 날짜 (클릭 가능)
+//         Row(
+//           children: steps.asMap().entries.map((entry) {
+//             final i = entry.key;
+//             final s = entry.value;
+//
+//             return Expanded(
+//               child: GestureDetector(
+//                 onTap: (onDateTap != null)
+//                     ? () => onDateTap!(i)
+//                     : null,
+//                 child: Center(
+//                   child: Text(
+//                     s.date != null
+//                         ? '${s.date!.month}/${s.date!.day}'
+//                         : '',
+//                     style: const TextStyle(fontSize: 11),
+//                   ),
+//                 ),
+//               ),
+//             );
+//           }).toList(),
+//         ),
+//       ],
+//     );
+//
+//   }
+//
+//
+//   Widget _line(bool active) {
+//     return Container(
+//       height: 4,
+//       color: active ? Colors.green : Colors.grey.shade300,
+//     );
+//   }
+// }
+//
+// class _Step {
+//   final String label;
+//   final bool done;
+//   final DateTime? date;
+//
+//   _Step(this.label, this.done, this.date);
+// }
+//
+// Widget _calcItem(String label, double value) {
+//   return Column(
+//     children: [
+//       Text(value.toStringAsFixed(0)),
+//       const SizedBox(height: 2),
+//       Text(
+//         label,
+//         style: const TextStyle(fontSize: 11, color: Colors.grey),
+//       ),
+//     ],
+//   );
+// }
+//
+// DateTime _endOfMonth([DateTime? base]) {
+//   final now = base ?? DateTime.now();
+//   return DateTime(now.year, now.month + 1, 0);
 // }

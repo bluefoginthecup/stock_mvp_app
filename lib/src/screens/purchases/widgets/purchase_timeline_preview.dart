@@ -20,8 +20,7 @@ class PurchaseTimelinePreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final repo = context.read<PurchaseOrderRepo>();
 
-    return FutureBuilder<PurchaseOrder?>(
-      future: repo.getPurchaseOrderById(purchaseId),
+    return StreamBuilder(stream: repo.watchPurchaseOrderById(purchaseId),
       builder: (context, snap) {
         if (!snap.hasData) {
           return const Padding(
@@ -33,10 +32,7 @@ class PurchaseTimelinePreview extends StatelessWidget {
         final p = snap.data!;
         final inv = context.read<InventoryService>();
 
-        String fmt(DateTime? d) {
-          if (d == null) return '-';
-          return '${d.month}/${d.day}';
-        }
+
 
         /// 상태별 날짜
         final orderedDate = p.createdAt;
@@ -51,6 +47,7 @@ class PurchaseTimelinePreview extends StatelessWidget {
         final isPaid = p.paidAt != null;
         final isVat = p.vatInvoiceIssuedAt != null;
 
+        print('STREAM REBUILD: ${p.updatedAt}');
         return InkWell(
             onTap: onTap,
           child:
@@ -167,33 +164,7 @@ class PurchaseTimelinePreview extends StatelessWidget {
     );
   }
 
-  /// 🔹 타임라인 노드
-  Widget _node(String label, bool active) {
-    return Column(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: active ? Colors.green : Colors.grey,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 11)),
-      ],
-    );
-  }
 
-  /// 🔹 연결선
-  Widget _line(bool active) {
-    return Expanded(
-      child: Container(
-        height: 2,
-        color: active ? Colors.green : Colors.grey.shade300,
-      ),
-    );
-  }
 
   /// 🔹 상태 텍스트
   String _statusText(PurchaseOrder p) {

@@ -296,6 +296,7 @@ abstract class PurchaseOrderRepo {
   Future<void> updatePurchaseOrder(PurchaseOrder po);
   Future<void> updatePurchaseOrderStatus(String id, PurchaseOrderStatus status);
   Stream<List<PurchaseOrder>> watchAllPurchaseOrders();
+  Stream<PurchaseOrder?> watchPurchaseOrderById(String id);
   Future<PurchaseOrder?> getPurchaseOrderById(String id);
   Future<void> softDeletePurchaseOrder(String id);
   Future<void> hardDeletePurchaseOrder(String id);

@@ -8,9 +8,11 @@ Future<String> createPurchaseOrder(PurchaseOrder po) async {
   return po.id;
 }
 
-@override
+
 Future<void> updatePurchaseOrder(PurchaseOrder po) async {
-  await db.into(db.purchaseOrders).insertOnConflictUpdate(po.toCompanion());
+  await (db.update(db.purchaseOrders)
+    ..where((t) => t.id.equals(po.id)))
+      .write(po.toCompanion());
 }
 
 @override
@@ -29,6 +31,15 @@ Stream<List<PurchaseOrder>> watchAllPurchaseOrders() {
     ..where((t) => t.isDeleted.equals(false))
     ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]);
   return q.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
+}
+
+@override
+Stream<PurchaseOrder?> watchPurchaseOrderById(String id) {
+  final q = db.select(db.purchaseOrders)
+    ..where((t) => t.id.equals(id));
+
+  return q.watchSingleOrNull()
+      .map((row) => row?.toDomain());
 }
 
 @override

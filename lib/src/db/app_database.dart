@@ -1039,6 +1039,7 @@ extension PurchaseOrderRowMapping on PurchaseOrderRow {
     paymentDueAt: paymentDueAt != null
         ? DateTime.parse(paymentDueAt!)
         : null,
+
     vatInvoiceStatus: vatInvoiceStatus,
     vatInvoiceIssuedAt: vatInvoiceIssuedAt != null
         ? DateTime.parse(vatInvoiceIssuedAt!)
@@ -1072,12 +1073,18 @@ extension PurchaseOrderToCompanion on PurchaseOrder {
     vatType: Value(vatType.index),
     paymentStatus: Value(paymentStatus),
     paidAt: Value(paidAt?.toIso8601String()),
-    paymentDueAt: Value(paymentDueAt?.toIso8601String()),
+    paymentDueAt: paymentDueAt == null
+        ? const Value.absent()
+        : Value(paymentDueAt!.toIso8601String()),
     vatInvoiceStatus: Value(vatInvoiceStatus),
     vatInvoiceIssuedAt: Value(vatInvoiceIssuedAt?.toIso8601String()),
-    vatInvoiceDueAt: Value(vatInvoiceDueAt?.toIso8601String()),
+    vatInvoiceDueAt: vatInvoiceDueAt == null
+        ? const Value.absent()
+        : Value(vatInvoiceDueAt!.toIso8601String()),
 
-    eta: Value(eta.toIso8601String()),
+    eta: eta == null
+        ? const Value.absent()
+        : Value(eta!.toIso8601String()),
     status: Value(status.name),
     createdAt: Value(createdAt.toIso8601String()),
     updatedAt: updatedAt == null
