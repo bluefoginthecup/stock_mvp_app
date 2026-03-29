@@ -963,6 +963,8 @@ class PurchaseTimeline extends StatelessWidget {
   final void Function(int index) onStepTap;
   final void Function(int index)? onDateTap;
 
+
+
   const PurchaseTimeline({
     super.key,
     required this.po,
@@ -997,13 +999,55 @@ class PurchaseTimeline extends StatelessWidget {
     );
   }
 
+  String _orderLabel() {
+    switch (po.status) {
+      case PurchaseOrderStatus.draft:
+        return '임시저장';
+      case PurchaseOrderStatus.ordered:
+        return '발주완료';
+      case PurchaseOrderStatus.received:
+        return '입고완료';
+      case PurchaseOrderStatus.canceled:
+        return '발주취소';
+    }
+  }
+
+  String _receiveLabel() {
+    return isReceived ? '입고완료' : '미입고';
+  }
+
+  String _paymentLabel() {
+    return isPaid ? '결제완료' : '미결제';
+  }
+
+  String _vatLabel() {
+    return isVatIssued ? '발행완료' : '미발행';
+  }
+
   @override
   Widget build(BuildContext context) {
+
+
     final steps = [
-      _Step('발주', isOrdered, isOrdered ? po.createdAt : null),
-      _Step('입고', isReceived, isReceived ? po.receivedAt : null),
-      _Step('결제', isPaid, isPaid ? po.paidAt : null),
-      _Step('세금', isVatIssued, isVatIssued ? po.vatInvoiceIssuedAt : null),
+      _Step(_orderLabel(), true, po.createdAt),
+
+      _Step(
+        _receiveLabel(),
+        isReceived,
+        isReceived ? po.receivedAt : null,
+      ),
+
+      _Step(
+        _paymentLabel(),
+        isPaid,
+        isPaid ? po.paidAt : null,
+      ),
+
+      _Step(
+        _vatLabel(),
+        isVatIssued,
+        isVatIssued ? po.vatInvoiceIssuedAt : null,
+      ),
     ];
 
 
