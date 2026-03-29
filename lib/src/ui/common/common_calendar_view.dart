@@ -47,8 +47,13 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
     final selectedEvents =
     _getEventsForDay(_selectedDay ?? _focusedDay);
 
-    Color _colorForType(CalendarEventType type) {
-      switch (type) {
+    Color colorForEvent(CalendarEvent e) {
+
+      // 🔥 미결제
+      if (e.type == CalendarEventType.paymentDate && e.isPaid == false) {
+        return Colors.red;
+      }
+      switch (e.type) {
         case CalendarEventType.purchaseOrderDate:
           return Colors.blue;      // 발주
         case CalendarEventType.purchaseEta:
@@ -61,30 +66,6 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
           return Colors.grey;
       }
     }
-
-    calendarBuilders: CalendarBuilders(
-      markerBuilder: (context, date, events) {
-        if (events.isEmpty) return const SizedBox();
-
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: events.take(3).map((e) {
-            final event = e as CalendarEvent;
-
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 1),
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: _colorForType(event.type),
-                shape: BoxShape.circle,
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-
     return Column(
       children: [
         /// 📅 캘린더
@@ -110,6 +91,8 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
 
           eventLoader: _getEventsForDay,
 
+
+
     calendarBuilders: CalendarBuilders(
     markerBuilder: (context, date, events) {
     if (events.isEmpty) return const SizedBox();
@@ -124,7 +107,7 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
     width: 6,
     height: 6,
     decoration: BoxDecoration(
-    color: _colorForType(event.type),
+    color: colorForEvent(event),
     shape: BoxShape.circle,
     ),
     );
@@ -132,9 +115,7 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
     );
     },
     ),
-
-
-          calendarStyle: const CalendarStyle(
+ calendarStyle: const CalendarStyle(
             todayDecoration: BoxDecoration(
               color: Colors.orange,
               shape: BoxShape.circle,
@@ -161,19 +142,30 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
             itemBuilder: (_, i) {
               final e = selectedEvents[i];
 
+
+
+              print('UI 확인 → type: ${e.type}, isPaid: ${e.isPaid}'); // 👈 여기
+
               return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _colorForType(e.type).withOpacity(0.1), // 👈 핵심
+                  color: colorForEvent(e).withValues(alpha:0.1), // 👈 핵심
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: ListTile(
                   leading: Icon(
-                    _iconForType(e.type),
-                    color: _colorForType(e.type),
+                    _iconForType(e),
+                    color: colorForEvent(e),
                   ),
                   title: Text(e.title),
-                  subtitle: Text(_typeLabel(e.type)),
+                  subtitle: Text(
+                    e.subtitle ?? _typeLabel(e.type),
+                  ),
+                  onTap: () {
+                    if (widget.onEventTap != null) {
+                      widget.onEventTap!(e);
+                    }
+                  },
                 ),
               );
             },
@@ -184,8 +176,8 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
   }
 
   /// 아이콘
-  IconData _iconForType(CalendarEventType type) {
-    switch (type) {
+  IconData _iconForType(CalendarEvent e) {
+    switch (e.type) {
       case CalendarEventType.purchaseOrderDate:
         return Icons.shopping_cart;
       case CalendarEventType.purchaseEta:

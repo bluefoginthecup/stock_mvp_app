@@ -12,12 +12,17 @@ class CalendarEvent {
   final CalendarEventType type;
   final String title;
   final String refId;
+  final bool? isPaid;
+  final String? subtitle;
 
   const CalendarEvent({
     required this.date,
     required this.type,
     required this.title,
+    this.subtitle,
     required this.refId,
+    this.isPaid,
+
   });
 
   /// 날짜 비교용 (시간 제거)
