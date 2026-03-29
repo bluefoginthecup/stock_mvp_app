@@ -42,6 +42,8 @@ class PurchaseTimelinePreview extends StatelessWidget {
         final isReceived =
             p.status == PurchaseOrderStatus.received;
 
+
+
         final isPaid =
             p.paymentStatusEnum == PaymentStatus.paid;
 
@@ -55,6 +57,8 @@ class PurchaseTimelinePreview extends StatelessWidget {
         final vatDate = isVat ? p.vatInvoiceIssuedAt : p.vatInvoiceDueAt;
 
         print('STREAM REBUILD: ${p.updatedAt}');
+        print('status: ${p.status}');
+        print('receivedAt: ${p.receivedAt}');
         return InkWell(
             onTap: onTap,
           child:
@@ -73,10 +77,26 @@ class PurchaseTimelinePreview extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _step('발주완료', orderedDate, isOrdered),
-                  _step('입고예정', receivedDate, isReceived),
-                  _step('결제예정', paidDate, isPaid),
-                  _step('세금발행', vatDate, isVat),
+                  _step(
+                    label: '발주완료',
+                    date: p.createdAt,
+                    done: true,
+                  ),
+                  _step(
+                    label: isReceived ? '입고완료' : '입고예정',
+                    date: isReceived ? p.receivedAt : p.eta,
+                    done: isReceived,
+                  ),
+                  _step(
+                    label: isPaid ? '결제완료' : '결제예정',
+                    date: isPaid ? p.paidAt : p.paymentDueAt,
+                    done: isPaid,
+                  ),
+                  _step(
+                    label: isVat ? '세금계산서 발행완료' : '세금계산서 발행예정',
+                    date: isVat ? p.vatInvoiceIssuedAt : p.vatInvoiceDueAt,
+                    done: isVat,
+                  ),
                 ],
               ),
 
@@ -193,8 +213,11 @@ class PurchaseTimelinePreview extends StatelessWidget {
         return status;
     }
   }
-}
-Widget _step(String label, DateTime? date, bool done) {
+}Widget _step({
+  required String label,
+  required DateTime? date,
+  required bool done,
+}) {
   String fmt(DateTime? d) {
     if (d == null) return '-';
     return '${d.month}/${d.day}';
@@ -216,6 +239,7 @@ Widget _step(String label, DateTime? date, bool done) {
           label,
           style: TextStyle(
             fontSize: 11,
+            fontWeight: done ? FontWeight.bold : FontWeight.normal,
             color: done ? Colors.black : Colors.grey,
           ),
         ),

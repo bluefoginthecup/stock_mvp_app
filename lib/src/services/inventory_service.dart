@@ -368,7 +368,13 @@ class InventoryService {
       );
     }
 
-    await purchases.updatePurchaseOrderStatus(po.id, PurchaseOrderStatus.received);
+    await purchases.updatePurchaseOrder(
+      po.copyWith(
+        status: PurchaseOrderStatus.received,
+        receivedAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
   }
 
  /// 입고예정으로 변경시 재고 롤백
@@ -403,7 +409,8 @@ class InventoryService {
       po.copyWith(
         status: PurchaseOrderStatus.ordered,
         receivedAt: null,
-        eta: eta,
+        eta: eta ?? po.eta,
+        updatedAt: DateTime.now(),
       ),
     );
   }
