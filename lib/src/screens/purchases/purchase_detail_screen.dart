@@ -124,6 +124,48 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     );
   }
 
+  Future<void> _handleDateTap(int index) async {
+    final po = _po;
+    if (po == null) return;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+
+    if (picked == null) return;
+
+    switch (index) {
+      case 0:
+        await widget.repo.updatePurchaseOrder(
+          po.copyWith(createdAt: picked),
+        );
+        break;
+
+      case 1:
+        await widget.repo.updatePurchaseOrder(
+          po.copyWith(receivedAt: picked),
+        );
+        break;
+
+      case 2:
+        await widget.repo.updatePurchaseOrder(
+          po.copyWith(paidAt: picked),
+        );
+        break;
+
+      case 3:
+        await widget.repo.updatePurchaseOrder(
+          po.copyWith(vatInvoiceIssuedAt: picked),
+        );
+        break;
+    }
+
+    await _reload();
+  }
+
   Future<String?> _selectOption({
     required String title,
     required List<String> options,
@@ -257,6 +299,138 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
   }
 
+  Future<void> _handleTimelineTap(int index) async {
+    final po = _po;
+    if (po == null) return;
+
+    switch (index) {
+    /// 0️⃣ 발주 상태
+      case 0:
+        final result = await showModalBottomSheet<PurchaseOrderStatus>(
+          context: context,
+          builder: (_) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: PurchaseOrderStatus.values.map((s) {
+                return ListTile(
+                  title: Text(_statusLabel(s)),
+                  trailing:
+                  s == po.status ? const Icon(Icons.check) : null,
+                  onTap: () => Navigator.pop(context, s),
+                );
+              }).toList(),
+            );
+          },
+        );
+
+        if (result != null) {
+          await widget.repo.updatePurchaseOrder(
+            po.copyWith(status: result),
+          );
+          await _reload();
+        }
+        break;
+
+    /// 1️⃣ 입고 날짜
+      case 1:
+        if (po.status == PurchaseOrderStatus.received) {
+          // 🔥 취소
+          await widget.repo.updatePurchaseOrder(
+            po.copyWith(
+              status: PurchaseOrderStatus.ordered,
+              receivedAt: null, // 🔥 중요
+            ),
+          );
+          await _reload();
+          break;
+        }
+
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: po.receivedAt ?? DateTime.now(),
+          firstDate: DateTime(2020),
+          lastDate: DateTime(2100),
+        );
+
+        if (picked != null) {
+          await widget.repo.updatePurchaseOrder(
+            po.copyWith(
+              receivedAt: picked,
+              status: PurchaseOrderStatus.received,
+            ),
+          );
+          await _reload();
+        }
+        break;
+
+
+    /// 2️⃣ 결제
+      case 2:
+        final result = await showModalBottomSheet<PaymentStatus>(
+          context: context,
+          builder: (_) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: PaymentStatus.values.map((s) {
+                return ListTile(
+                  title: Text(s.label(context)),
+                  trailing: s == po.paymentStatusEnum
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.pop(context, s),
+                );
+              }).toList(),
+            );
+          },
+        );
+
+        if (result != null) {
+          await widget.repo.updatePurchaseOrder(
+            po.copyWith(
+              paymentStatus: result.value,
+              paidAt: result == PaymentStatus.paid
+                  ? (po.paidAt ?? DateTime.now())
+                  : null, // 🔥 핵심
+            ),
+          );
+          await _reload();
+        }
+        break;
+    /// 3️⃣ 세금계산서
+      case 3:
+        final result = await showModalBottomSheet<VatInvoiceStatus>(
+          context: context,
+          builder: (_) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: VatInvoiceStatus.values.map((s) {
+                return ListTile(
+                  title: Text(s.label(context)),
+                  trailing: s == po.vatInvoiceStatusEnum
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.pop(context, s),
+                );
+              }).toList(),
+            );
+          },
+        );
+
+        if (result != null) {
+          await widget.repo.updatePurchaseOrder(
+            po.copyWith(
+              vatInvoiceStatus: result.value,
+              vatInvoiceIssuedAt: result == VatInvoiceStatus.issued
+                  ? (po.vatInvoiceIssuedAt ?? DateTime.now())
+                  : null, // 🔥 핵심
+            ),
+          );
+          await _reload();
+        }
+        break;
+    }
+  }
+
   String _titleForLine(PurchaseLine ln) {
     final baseName = (ln.name.trim().isNotEmpty)
         ? ln.name
@@ -353,7 +527,11 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
                   const SizedBox(height: 12),
 
-                  PurchaseTimeline(po: po),
+                  PurchaseTimeline(
+                    po: po,
+                    onStepTap: (index) => _handleTimelineTap(index),
+                    onDateTap: (index) => _handleDateTap(index),
+                  ),
 
                   const SizedBox(height: 8),
 
@@ -761,94 +939,115 @@ class _ActionRow extends StatelessWidget {
 class PurchaseTimeline extends StatelessWidget {
   final PurchaseOrder po;
 
-  const PurchaseTimeline({super.key, required this.po});
+  /// 🔥 콜백 추가
+  final void Function(int stepIndex) onStepTap;
+  final void Function(int index)? onDateTap;
 
-  bool _isReceived() => po.status == PurchaseOrderStatus.received;
-
-  bool _isPaid() => po.paidAt != null;
-
-  bool _isVatIssued() => po.vatInvoiceIssuedAt != null;
+  const PurchaseTimeline({
+    super.key,
+    required this.po,
+    required this.onStepTap,
+    this.onDateTap, // 🔥 추가
+  });
+  bool get isOrdered => po.status == PurchaseOrderStatus.ordered
+      || po.status == PurchaseOrderStatus.received;
+  bool get isReceived => po.status == PurchaseOrderStatus.received;
+  bool get isPaid => po.paymentStatusEnum == PaymentStatus.paid;
+  bool get isVatIssued => po.vatInvoiceStatusEnum == VatInvoiceStatus.issued;
 
   @override
   Widget build(BuildContext context) {
     final steps = [
-      _StepData(
-        label: '발주',
-        done: true,
-        date: po.createdAt,
-      ),
-      _StepData(
-        label: '입고',
-        done: _isReceived(),
-        date: _isReceived() ? po.receivedAt : null,
-      ),
-      _StepData(
-        label: '결제',
-        done: _isPaid(),
-        date: po.paidAt,
-      ),
-      _StepData(
-        label: '세금',
-        done: _isVatIssued(),
-        date: po.vatInvoiceIssuedAt,
-      ),
+      _Step('발주', isOrdered, isOrdered ? po.createdAt : null),
+
+      _Step('입고', isReceived, isReceived ? po.receivedAt : null),
+      _Step('결제', isPaid, isPaid ? po.paidAt : null),
+      _Step('세금', isVatIssued, isVatIssued ? po.vatInvoiceIssuedAt : null),
     ];
+
+    final completed = steps.where((e) => e.done).length;
+    final progress = completed <= 1
+        ? 0.0
+        : (completed - 1) / (steps.length - 1);
 
     return Column(
       children: [
-        /// 🔥 라인
-        Row(
-          children: List.generate(steps.length * 2 - 1, (i) {
-            if (i.isEven) {
-              final step = steps[i ~/ 2];
-              return Expanded(
+        /// 🔥 연결된 라인
+        SizedBox(
+          height: 6,
+          child: Stack(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: progress.clamp(0, 1),
                 child: Container(
-                  height: 4,
                   decoration: BoxDecoration(
-                    color: step.done ? Colors.green : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(3),
                   ),
                 ),
-              );
-            } else {
-              return Expanded(
-                child: Container(
-                  height: 4,
-                  color: Colors.grey.shade300,
-                ),
-              );
-            }
-          }),
+              ),
+            ],
+          ),
         ),
 
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
 
-        /// 🔥 날짜
+        /// 🔥 클릭 가능한 단계
         Row(
-          children: steps.map((s) {
+          children: steps.asMap().entries.map((entry) {
+            final i = entry.key;
+            final s = entry.value;
+
             return Expanded(
-              child: Center(
-                child: Text(
-                  s.date != null
-                      ? '${s.date!.month}/${s.date!.day}'
-                      : '',
-                  style: const TextStyle(fontSize: 11),
+              child: GestureDetector(
+                onTap: () => onStepTap(i),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: s.done
+                            ? Colors.green
+                            : Colors.grey.shade400,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(s.label),
+                  ],
                 ),
               ),
             );
           }).toList(),
         ),
 
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
 
-        /// 🔥 라벨
+        /// 날짜
         Row(
-          children: steps.map((s) {
+          children: steps.asMap().entries.map((entry) {
+            final i = entry.key;
+            final s = entry.value;
+
             return Expanded(
-              child: Center(
-                child: Text(
-                  s.label,
-                  style: const TextStyle(fontSize: 12),
+              child: GestureDetector(
+                onTap: (s.done && onDateTap != null)
+                    ? () => onDateTap!(i)
+                    : null,
+                child: Center(
+                  child: Text(
+                    s.date != null
+                        ? '${s.date!.month}/${s.date!.day}'
+                        : '',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                 ),
               ),
             );
@@ -857,6 +1056,14 @@ class PurchaseTimeline extends StatelessWidget {
       ],
     );
   }
+}
+
+class _Step {
+  final String label;
+  final bool done;
+  final DateTime? date;
+
+  _Step(this.label, this.done, this.date);
 }
 
 class _StepData {
