@@ -311,7 +311,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           builder: (_) {
             return Column(
               mainAxisSize: MainAxisSize.min,
-              children: PurchaseOrderStatus.values.map((s) {
+              children: PurchaseOrderStatus.values
+                  .where((s) => s != PurchaseOrderStatus.received) // 🔥 핵심
+                  .map((s) {
                 return ListTile(
                   title: Text(_statusLabel(s)),
                   trailing:
@@ -333,8 +335,28 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     /// 1️⃣ 입고 날짜
       case 1:
-        if (po.status == PurchaseOrderStatus.received) {
-          // 🔥 취소
+        final result = await showModalBottomSheet<bool>(
+          context: context,
+          builder: (_) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  title: const Text('입고완료'),
+                  onTap: () => Navigator.pop(context, true),
+                ),
+                ListTile(
+                  title: const Text('미입고'),
+                  onTap: () => Navigator.pop(context, false),
+                ),
+              ],
+            );
+          },
+        );
+
+        if (result == null) return;
+
+        if (result == false) {
           await widget.repo.updatePurchaseOrder(
             po.copyWith(
               status: PurchaseOrderStatus.ordered,
@@ -342,7 +364,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
             ),
           );
           await _reload();
-          break;
+          return;
         }
 
         final picked = await showDatePicker(
@@ -355,14 +377,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (picked != null) {
           await widget.repo.updatePurchaseOrder(
             po.copyWith(
-              receivedAt: picked,
               status: PurchaseOrderStatus.received,
+              receivedAt: picked,
             ),
           );
           await _reload();
         }
         break;
-
 
     /// 2️⃣ 결제
       case 2:
@@ -391,6 +412,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               paidAt: result == PaymentStatus.paid
                   ? (po.paidAt ?? DateTime.now())
                   : null, // 🔥 핵심
+
             ),
           );
           await _reload();
@@ -938,67 +960,72 @@ class _ActionRow extends StatelessWidget {
 
 class PurchaseTimeline extends StatelessWidget {
   final PurchaseOrder po;
-
-  /// 🔥 콜백 추가
-  final void Function(int stepIndex) onStepTap;
+  final void Function(int index) onStepTap;
   final void Function(int index)? onDateTap;
 
   const PurchaseTimeline({
     super.key,
     required this.po,
     required this.onStepTap,
-    this.onDateTap, // 🔥 추가
+    this.onDateTap,
   });
-  bool get isOrdered => po.status == PurchaseOrderStatus.ordered
-      || po.status == PurchaseOrderStatus.received;
+
+  bool get isOrdered =>
+      po.status == PurchaseOrderStatus.ordered ||
+          po.status == PurchaseOrderStatus.received;
+
   bool get isReceived => po.status == PurchaseOrderStatus.received;
-  bool get isPaid => po.paymentStatusEnum == PaymentStatus.paid;
-  bool get isVatIssued => po.vatInvoiceStatusEnum == VatInvoiceStatus.issued;
+
+  bool get isPaid =>
+      po.paymentStatusEnum == PaymentStatus.paid;
+
+  bool get isVatIssued =>
+      po.vatInvoiceStatusEnum == VatInvoiceStatus.issued;
+
+  Widget _segmentBox({required bool active}) {
+    return Expanded(
+      child: Container(
+        height: 6,
+        decoration: BoxDecoration(
+          color: active ? Colors.green : Colors.grey.shade300,
+          border: Border.all(
+            color: Colors.grey.shade400, // 🔥 구간 경계
+            width: 1,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final steps = [
       _Step('발주', isOrdered, isOrdered ? po.createdAt : null),
-
       _Step('입고', isReceived, isReceived ? po.receivedAt : null),
       _Step('결제', isPaid, isPaid ? po.paidAt : null),
       _Step('세금', isVatIssued, isVatIssued ? po.vatInvoiceIssuedAt : null),
     ];
 
-    final completed = steps.where((e) => e.done).length;
-    final progress = completed <= 1
-        ? 0.0
-        : (completed - 1) / (steps.length - 1);
 
     return Column(
       children: [
-        /// 🔥 연결된 라인
+        /// 🔥 연결된 라인 (progress 제거!)
         SizedBox(
-          height: 6,
-          child: Stack(
+          height: 20,
+          child: Row(
             children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              FractionallySizedBox(
-                widthFactor: progress.clamp(0, 1),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              ),
+              _segmentBox(active: isOrdered),
+              _segmentBox(active: isReceived),
+              _segmentBox(active: isPaid),
+              _segmentBox(active: isVatIssued),   // 세금 🔥 추가
             ],
           ),
         ),
 
-        const SizedBox(height: 8),
 
-        /// 🔥 클릭 가능한 단계
+        const SizedBox(height: 10),
+
+        /// 🔥 점 + 라벨 (클릭 가능)
         Row(
           children: steps.asMap().entries.map((entry) {
             final i = entry.key;
@@ -1030,7 +1057,7 @@ class PurchaseTimeline extends StatelessWidget {
 
         const SizedBox(height: 6),
 
-        /// 날짜
+        /// 🔥 날짜 (클릭 가능)
         Row(
           children: steps.asMap().entries.map((entry) {
             final i = entry.key;
@@ -1056,6 +1083,13 @@ class PurchaseTimeline extends StatelessWidget {
       ],
     );
   }
+
+  Widget _line(bool active) {
+    return Container(
+      height: 4,
+      color: active ? Colors.green : Colors.grey.shade300,
+    );
+  }
 }
 
 class _Step {
@@ -1064,18 +1098,6 @@ class _Step {
   final DateTime? date;
 
   _Step(this.label, this.done, this.date);
-}
-
-class _StepData {
-  final String label;
-  final bool done;
-  final DateTime? date;
-
-  _StepData({
-    required this.label,
-    required this.done,
-    required this.date,
-  });
 }
 
 Widget _calcItem(String label, double value) {
