@@ -355,13 +355,11 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           );
 
           if (picked != null) {
-            await widget.repo.updatePurchaseOrder(
-              po.copyWith(
-                status: PurchaseOrderStatus.ordered,
-                receivedAt: null,
-                eta: picked,
-              ),
+            await context.read<InventoryService>().rollbackReceivePurchase(
+              po.id,
+              eta: picked,
             );
+
             await _reload();
           }
           return;

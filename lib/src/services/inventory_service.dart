@@ -371,6 +371,43 @@ class InventoryService {
     await purchases.updatePurchaseOrderStatus(po.id, PurchaseOrderStatus.received);
   }
 
+ /// 입고예정으로 변경시 재고 롤백
+  Future<void> rollbackReceivePurchase(
+      String purchaseId, {
+        DateTime? eta,
+      }) async {
+    final po = await purchases.getPurchaseOrderById(purchaseId);
+    if (po == null) return;
+
+    if (po.status != PurchaseOrderStatus.received) return;
+
+    final lines = await purchases.getLines(po.id);
+
+    for (final line in lines) {
+      final intQty = _asIntQty(line.qty);
+      if (intQty <= 0) continue;
+
+      await txns.addOutActual(
+        itemId: line.itemId,
+        qty: intQty,
+        refType: 'purchase',
+        refId: po.id,
+        note: 'rollback purchase receive',
+      );
+    }
+
+    /// 🔥 여기까지 동일
+
+    /// 🔥 이 부분을 업그레이드
+    await purchases.updatePurchaseOrder(
+      po.copyWith(
+        status: PurchaseOrderStatus.ordered,
+        receivedAt: null,
+        eta: eta,
+      ),
+    );
+  }
+
   /// 취소: planned 롤백(가능하면) + 상태 전환
   Future<void> cancelPurchase(String purchaseId) async {
     final po = await purchases.getPurchaseOrderById(purchaseId);
