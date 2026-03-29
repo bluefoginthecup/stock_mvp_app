@@ -13,9 +13,12 @@ class CommonCalendarView extends StatefulWidget {
     this.onEventTap, // 👈 추가
   });
 
+
+
   @override
   State<CommonCalendarView> createState() => _CommonCalendarViewState();
 }
+
 
 class _CommonCalendarViewState extends State<CommonCalendarView> {
   DateTime _focusedDay = DateTime.now();
@@ -44,6 +47,44 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
     final selectedEvents =
     _getEventsForDay(_selectedDay ?? _focusedDay);
 
+    Color _colorForType(CalendarEventType type) {
+      switch (type) {
+        case CalendarEventType.purchaseOrderDate:
+          return Colors.blue;      // 발주
+        case CalendarEventType.purchaseEta:
+          return Colors.green;     // 입고예정
+        case CalendarEventType.paymentDate:
+          return Colors.orange;    // 결제
+        case CalendarEventType.vatInvoiceDate:
+          return Colors.purple;    // 세금계산서
+        default:
+          return Colors.grey;
+      }
+    }
+
+    calendarBuilders: CalendarBuilders(
+      markerBuilder: (context, date, events) {
+        if (events.isEmpty) return const SizedBox();
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: events.take(3).map((e) {
+            final event = e as CalendarEvent;
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 1),
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: _colorForType(event.type),
+                shape: BoxShape.circle,
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+
     return Column(
       children: [
         /// 📅 캘린더
@@ -68,6 +109,30 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
           },
 
           eventLoader: _getEventsForDay,
+
+    calendarBuilders: CalendarBuilders(
+    markerBuilder: (context, date, events) {
+    if (events.isEmpty) return const SizedBox();
+
+    return Row(
+    mainAxisAlignment: MainAxisAlignment.center,
+    children: events.take(3).map((e) {
+    final event = e as CalendarEvent;
+
+    return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 1),
+    width: 6,
+    height: 6,
+    decoration: BoxDecoration(
+    color: _colorForType(event.type),
+    shape: BoxShape.circle,
+    ),
+    );
+    }).toList(),
+    );
+    },
+    ),
+
 
           calendarStyle: const CalendarStyle(
             todayDecoration: BoxDecoration(
@@ -96,15 +161,20 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
             itemBuilder: (_, i) {
               final e = selectedEvents[i];
 
-              return ListTile(
-                leading: Icon(_iconForType(e.type)),
-                title: Text(e.title),
-                subtitle: Text(_typeLabel(e.type)),
-                onTap: () {
-                  if (widget.onEventTap != null) {
-                    widget.onEventTap!(e);
-                  }
-                },
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _colorForType(e.type).withOpacity(0.1), // 👈 핵심
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ListTile(
+                  leading: Icon(
+                    _iconForType(e.type),
+                    color: _colorForType(e.type),
+                  ),
+                  title: Text(e.title),
+                  subtitle: Text(_typeLabel(e.type)),
+                ),
               );
             },
           ),
@@ -116,24 +186,31 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
   /// 아이콘
   IconData _iconForType(CalendarEventType type) {
     switch (type) {
-      case CalendarEventType.purchase:
+      case CalendarEventType.purchaseOrderDate:
         return Icons.shopping_cart;
-      case CalendarEventType.inbound:
-        return Icons.inventory;
-      case CalendarEventType.memo:
-        return Icons.note;
+      case CalendarEventType.purchaseEta:
+        return Icons.local_shipping;
+      case CalendarEventType.paymentDate:
+        return Icons.payments;
+      case CalendarEventType.vatInvoiceDate:
+        return Icons.receipt;
+      default:
+        return Icons.event;
     }
   }
 
-  /// 라벨
   String _typeLabel(CalendarEventType type) {
     switch (type) {
-      case CalendarEventType.purchase:
+      case CalendarEventType.purchaseOrderDate:
         return '발주';
-      case CalendarEventType.inbound:
-        return '입출고';
-      case CalendarEventType.memo:
-        return '메모';
+      case CalendarEventType.purchaseEta:
+        return '입고예정';
+      case CalendarEventType.paymentDate:
+        return '결제';
+      case CalendarEventType.vatInvoiceDate:
+        return '세금계산서';
+      default:
+        return '';
     }
   }
 }

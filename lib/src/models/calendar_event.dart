@@ -1,5 +1,8 @@
 enum CalendarEventType {
-  purchase,
+  purchaseOrderDate,   // 발주일
+  purchaseEta,         // 입고 예정일
+  paymentDate,         // 결제일
+  vatInvoiceDate,         // 세금계산서
   inbound,
   memo,
 }
