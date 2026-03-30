@@ -14,6 +14,7 @@ class CalendarEvent {
   final String refId;
   final bool? isPaid;
   final String? subtitle;
+  final String? searchText;
 
   const CalendarEvent({
     required this.date,
@@ -22,6 +23,7 @@ class CalendarEvent {
     this.subtitle,
     required this.refId,
     this.isPaid,
+    this.searchText,
 
   });
 

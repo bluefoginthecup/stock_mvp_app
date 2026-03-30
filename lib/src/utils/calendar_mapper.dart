@@ -22,12 +22,15 @@ List<CalendarEvent> mapPurchaseToEvents(
 
       final lines = linesMap[p.id] ?? [];
       // 📦 발주일
+      final searchText = lines.map((l) => l.name).join(' ').toLowerCase();
+
       events.add(CalendarEvent(
         date: p.createdAt,
         type: CalendarEventType.purchaseOrderDate,
         title: '발주 - ${p.supplierName}',
         subtitle: buildSubtitle(lines),
         refId: p.id,
+        searchText: searchText, // 🔥 추가
       ));
 
       // 🚚 입고 예정일

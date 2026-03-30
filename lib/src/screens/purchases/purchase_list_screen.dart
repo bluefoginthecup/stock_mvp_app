@@ -194,13 +194,15 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
 
                 if (_query.isNotEmpty) {
                   final matchedEvents = events.where((e) {
-                    // 🔥 발주 이벤트만
                     if (e.type != CalendarEventType.purchaseOrderDate) return false;
 
                     final title = e.title.toLowerCase();
                     final subtitle = (e.subtitle ?? '').toLowerCase();
+                    final search = (e.searchText ?? '');
 
-                    return title.contains(_query) || subtitle.contains(_query);
+                    return title.contains(_query) ||
+                        subtitle.contains(_query) ||
+                        search.contains(_query);
                   }).toList();
 
                   if (matchedEvents.isNotEmpty) {
