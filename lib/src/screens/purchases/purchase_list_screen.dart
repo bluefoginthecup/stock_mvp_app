@@ -8,6 +8,8 @@ import '../purchases/purchase_detail_screen.dart'; // 경로는 프로젝트 구
 import '../../ui/common/common_calendar_view.dart';
 import '../../utils/calendar_mapper.dart';
 import 'widgets/purchase_timeline_preview.dart';
+import '../../models/calendar_event.dart';
+import 'dart:async';
 
 class PurchaseListScreen extends StatefulWidget {
   const PurchaseListScreen({super.key});
@@ -20,14 +22,87 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
   bool isCalendarView = true;
   String _query = '';
 
+  DateTime? _focusedDay; // 🔥 추가
+  Timer? _debounce;      // 🔥 추가
+  // 👇 추가 (점 필터)
+  Set<CalendarEventType> _eventTypeFilter = {
+    CalendarEventType.purchaseOrderDate,
+  };
+  final _controller = TextEditingController();
+
+  Widget _buildFilterChip(String label, CalendarEventType type) {
+    final selected = _eventTypeFilter.contains(type);
+
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: FilterChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: _colorForType(type),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(label),
+          ],
+        ),
+        selected: selected,
+
+        // 👇 핵심
+        showCheckmark: false,
+
+        // 선택 시 색
+        selectedColor: _colorForType(type).withOpacity(0.2),
+
+        // 비선택 시 흐리게
+        backgroundColor: Colors.grey.shade200,
+
+        onSelected: (_) {
+          setState(() {
+            if (selected) {
+              _eventTypeFilter.remove(type);
+            } else {
+              _eventTypeFilter.add(type);
+            }
+          });
+        },
+      )
+    );
+  }
+
+   @override
+   void initState() {
+      super.initState();
+
+      _controller.addListener(() {
+          if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+          _debounce = Timer(const Duration(milliseconds: 300), () {
+            final text = _controller.text.trim().toLowerCase();
+
+            setState(() {
+              _query = text;
+            });
+          });
+        });
+    }
+
   @override
   Widget build(BuildContext context) {
     final poRepo = context.read<PurchaseOrderRepo>();
     final inv = context.read<InventoryService>();
+    final itemRepo = context.read<ItemRepo>();
 
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
+        title:TextField(
+          controller: _controller,
           decoration: InputDecoration(
             hintText: '거래처 / 상품 검색',
             border: InputBorder.none,
@@ -36,18 +111,12 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                 ? IconButton(
               icon: Icon(Icons.clear),
               onPressed: () {
-                setState(() {
-                  _query = '';
-                });
+                _controller.clear();
               },
             )
                 : null,
+
           ),
-          onChanged: (v) {
-            setState(() {
-              _query = v.trim().toLowerCase();
-            });
-          },
         ),
         actions: [
           IconButton(
@@ -91,14 +160,19 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                 final supplier =
                 (p.supplierName ?? '').toLowerCase();
 
+
+                /// 🔹 아이템 이름 검색
                 final lines = linesMap[p.id] ?? [];
 
-                final hasItem = false;
-                // final hasItem = lines.any((l) =>
-                //     (l.itemName ?? '')
-                //         .toLowerCase()
-                //         .contains(_query));
-               // return supplier.contains(_query) || hasItem;
+                final hasItem = lines.any((l) {
+                  final item = itemRepo.getCachedItem(l.itemId);
+                  final name = (item?.name ?? '').toLowerCase();
+                  return name.contains(_query);
+                });
+
+
+
+               return supplier.contains(_query) || hasItem;
 
                 return supplier.contains(_query);
 
@@ -114,8 +188,58 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
               if (isCalendarView) {
                 final events = mapPurchaseToEvents(list, linesMap);
 
-                return CommonCalendarView(
-                  events: events,
+                final filteredEvents = events.where((e) {
+                  return _eventTypeFilter.contains(e.type);
+                }).toList();
+
+                if (_query.isNotEmpty) {
+                  final matchedEvents = events.where((e) {
+                    // 🔥 발주 이벤트만
+                    if (e.type != CalendarEventType.purchaseOrderDate) return false;
+
+                    final title = e.title.toLowerCase();
+                    final subtitle = (e.subtitle ?? '').toLowerCase();
+
+                    return title.contains(_query) || subtitle.contains(_query);
+                  }).toList();
+
+                  if (matchedEvents.isNotEmpty) {
+                    matchedEvents.sort((a, b) => b.date.compareTo(a.date));
+                    final newDate = matchedEvents.first.date;
+                    print('[DEBUG] newDate = $newDate / focused = $_focusedDay');
+
+
+                    if (_focusedDay != newDate) {
+                   WidgetsBinding.instance.addPostFrameCallback((_) {
+                     if (!mounted) return;
+                     setState(() {
+                       _focusedDay = newDate;
+                     });
+                   });
+                 }
+              }
+              }
+
+                return Column(
+                  children: [
+
+                  /// 👇 필터 버튼
+                  SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('발주', CalendarEventType.purchaseOrderDate),
+                      _buildFilterChip('입고', CalendarEventType.purchaseEta),
+                      _buildFilterChip('결제', CalendarEventType.paymentDate),
+                      _buildFilterChip('계산서', CalendarEventType.vatInvoiceDate),
+                    ],
+                  ),
+                ),
+
+              Expanded(
+              child: CommonCalendarView(
+              events: filteredEvents,
+                focusedDay: _focusedDay,
                   onEventTap: (e) {
                     Navigator.push(
                       context,
@@ -143,6 +267,9 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                       },
                     );
                   },
+                )
+              )
+                  ]
                 );
               }
 
@@ -247,5 +374,20 @@ extension CardWithButtonBar on Card {
         ),
       ],
     );
+  }
+}
+
+Color _colorForType(CalendarEventType type) {
+  switch (type) {
+    case CalendarEventType.purchaseOrderDate:
+      return Colors.blue;      // 발주
+    case CalendarEventType.purchaseEta:
+      return Colors.green;    // 입고
+    case CalendarEventType.paymentDate:
+      return Colors.orange;       // 결제
+    case CalendarEventType.vatInvoiceDate:
+      return Colors.purple;     // 계산서
+    default:
+      return Colors.grey; // 👈 추가
   }
 }

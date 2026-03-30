@@ -31,6 +31,8 @@ abstract class ItemRepo {
   /// 단건 조회 (UI 시트/상세에서 사용)
   Future<Item?> getItemById(String id);
 
+  Item? getCachedItem(String id);
+
   /// 메타 업데이트 (이름/표시이름/단위/속성/공급처 등)
   Future<void> updateItemMeta(Item item);
 

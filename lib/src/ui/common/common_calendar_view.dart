@@ -5,6 +5,7 @@ import '../../models/calendar_event.dart';
 
 class CommonCalendarView extends StatefulWidget {
   final List<CalendarEvent> events;
+  final DateTime? focusedDay;
   final void Function(CalendarEvent event)? onEventTap;
   final Widget Function(CalendarEvent e)? expandedBuilder;
 
@@ -13,6 +14,7 @@ class CommonCalendarView extends StatefulWidget {
     required this.events,
     this.onEventTap, // 👈 추가
     this.expandedBuilder,
+    this.focusedDay,
   });
 
 
@@ -24,8 +26,31 @@ class CommonCalendarView extends StatefulWidget {
 
 class _CommonCalendarViewState extends State<CommonCalendarView> {
   int _expandedIndex = -1;
-  DateTime _focusedDay = DateTime.now();
+  DateTime? _focusedDay;
+
+
+  @override
+  void didUpdateWidget(covariant CommonCalendarView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+      if (widget.focusedDay != null &&
+          !_isSameDate(widget.focusedDay, _focusedDay)) {
+      setState(() {
+        _focusedDay = widget.focusedDay!;
+        _selectedDay = widget.focusedDay!;
+        _expandedIndex = -1;
+      });
+    }
+  }
+
   DateTime? _selectedDay;
+
+    bool _isSameDate(DateTime? a, DateTime? b) {
+        if (a == null || b == null) return false;
+        return a.year == b.year &&
+            a.month == b.month &&
+            a.day == b.day;
+      }
 
   DateTime _normalize(DateTime d) =>
       DateTime(d.year, d.month, d.day);
@@ -42,13 +67,15 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
   @override
   void initState() {
     super.initState();
+    _focusedDay = widget.focusedDay ?? DateTime.now();
     _selectedDay = _focusedDay;
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedEvents =
-    _getEventsForDay(_selectedDay ?? _focusedDay);
+    _getEventsForDay(_selectedDay ?? _focusedDay ?? DateTime.now());
+
 
     Color colorForEvent(CalendarEvent e) {
 
@@ -75,7 +102,7 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
         TableCalendar<CalendarEvent>(
           firstDay: DateTime(2020),
           lastDay: DateTime(2100),
-          focusedDay: _focusedDay,
+          focusedDay: _focusedDay ?? DateTime.now(),
           // 👇 이거 추가
           headerStyle: const HeaderStyle(
             formatButtonVisible: false,

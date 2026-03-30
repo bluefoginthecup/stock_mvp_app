@@ -238,6 +238,9 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return it;
   }
 
+  Item? getCachedItem(String id) {
+    return _itemsById[id];
+  }
     @override
     Future<void> upsertItem(Item item) async {
       await db.transaction(() async {

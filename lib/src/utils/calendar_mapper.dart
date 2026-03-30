@@ -2,6 +2,16 @@ import '../models/calendar_event.dart';
 import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
 
+String buildSubtitle(List<PurchaseLine> lines) {
+  if (lines.isEmpty) return '';
+
+  if (lines.length == 1) {
+    return lines.first.name;
+  }
+
+  return '${lines.first.name} 외 ${lines.length - 1}건';
+}
+
 List<CalendarEvent> mapPurchaseToEvents(
     List<PurchaseOrder> list,
     Map<String, List<PurchaseLine>> linesMap,
@@ -16,7 +26,7 @@ List<CalendarEvent> mapPurchaseToEvents(
         date: p.createdAt,
         type: CalendarEventType.purchaseOrderDate,
         title: '발주 - ${p.supplierName}',
-        subtitle: lines.map((i) => i.name).join(', '),
+        subtitle: buildSubtitle(lines),
         refId: p.id,
       ));
 
@@ -25,6 +35,7 @@ List<CalendarEvent> mapPurchaseToEvents(
         date: p.eta,
         type: CalendarEventType.purchaseEta,
         title: '입고예정 - ${p.supplierName}',
+        subtitle: buildSubtitle(lines),
         refId: p.id,
       ));
 
@@ -36,6 +47,7 @@ List<CalendarEvent> mapPurchaseToEvents(
         title: isPaid
             ? '결제완료 - ${p.supplierName}'
             : '미결제 - ${p.supplierName}',
+        subtitle: buildSubtitle(lines),
         refId: p.id,
         isPaid: p.paidAt != null, // 🔥 핵심
       ));
@@ -46,6 +58,7 @@ List<CalendarEvent> mapPurchaseToEvents(
           date: p.vatInvoiceIssuedAt!,
           type: CalendarEventType.vatInvoiceDate,
           title: '계산서 - ${p.supplierName}',
+          subtitle: buildSubtitle(lines),
           refId: p.id,
         ));
       }
