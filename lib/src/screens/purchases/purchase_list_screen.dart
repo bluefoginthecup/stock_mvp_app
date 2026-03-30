@@ -194,7 +194,7 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
 
                 if (_query.isNotEmpty) {
                   final matchedEvents = events.where((e) {
-                    if (e.type != CalendarEventType.purchaseOrderDate) return false;
+                    if (!_eventTypeFilter.contains(e.type)) return false;
 
                     final title = e.title.toLowerCase();
                     final subtitle = (e.subtitle ?? '').toLowerCase();

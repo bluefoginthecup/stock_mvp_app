@@ -40,6 +40,7 @@ List<CalendarEvent> mapPurchaseToEvents(
         title: '입고예정 - ${p.supplierName}',
         subtitle: buildSubtitle(lines),
         refId: p.id,
+        searchText: searchText,
       ));
 
       final isPaid = p.paidAt != null;
@@ -53,6 +54,7 @@ List<CalendarEvent> mapPurchaseToEvents(
         subtitle: buildSubtitle(lines),
         refId: p.id,
         isPaid: p.paidAt != null, // 🔥 핵심
+        searchText: searchText,
       ));
 
       // 🧾 세금계산서
@@ -63,6 +65,7 @@ List<CalendarEvent> mapPurchaseToEvents(
           title: '계산서 - ${p.supplierName}',
           subtitle: buildSubtitle(lines),
           refId: p.id,
+          searchText: searchText,
         ));
       }
     }
