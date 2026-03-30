@@ -93,7 +93,7 @@ class PurchaseTimelinePreview extends StatelessWidget {
                     done: isPaid,
                   ),
                   _step(
-                    label: isVat ? '세금계산서 발행완료' : '세금계산서 발행예정',
+                    label: isVat ? '부가세 발행완료' : '부가세 발행예정',
                     date: isVat ? p.vatInvoiceIssuedAt : p.vatInvoiceDueAt,
                     done: isVat,
                   ),

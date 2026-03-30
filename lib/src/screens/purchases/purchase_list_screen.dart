@@ -1,4 +1,3 @@
-
 import 'package:provider/provider.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase_order.dart'; // ✅
@@ -18,15 +17,38 @@ class PurchaseListScreen extends StatefulWidget {
 }
 
 class _PurchaseListScreenState extends State<PurchaseListScreen> {
-  bool isCalendarView = false;
+  bool isCalendarView = true;
+  String _query = '';
 
   @override
   Widget build(BuildContext context) {
     final poRepo = context.read<PurchaseOrderRepo>();
-    final inv    = context.read<InventoryService>();
+    final inv = context.read<InventoryService>();
 
     return Scaffold(
-      appBar: AppBar(title: Text(context.t.dashboard_purchases),
+      appBar: AppBar(
+        title: TextField(
+          decoration: InputDecoration(
+            hintText: '거래처 / 상품 검색',
+            border: InputBorder.none,
+            prefixIcon: Icon(Icons.search),
+            suffixIcon: _query.isNotEmpty
+                ? IconButton(
+              icon: Icon(Icons.clear),
+              onPressed: () {
+                setState(() {
+                  _query = '';
+                });
+              },
+            )
+                : null,
+          ),
+          onChanged: (v) {
+            setState(() {
+              _query = v.trim().toLowerCase();
+            });
+          },
+        ),
         actions: [
           IconButton(
             icon: Icon(
@@ -38,32 +60,58 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
               });
             },
           ),
-        ],),
-      body: StreamBuilder<List<PurchaseOrder>>(
-        stream: poRepo.watchAllPurchaseOrders(),
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
+        ],
+      ),
+
+      body: FutureBuilder<Map<String, List<PurchaseLine>>>(
+        future: poRepo.getLinesMap(), // 🔥 한 번만 가져옴
+        builder: (context, linesSnap) {
+          if (!linesSnap.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snap.hasError) {
-            return Center(child: Text('불러오기 실패: ${snap.error}'));
-          }
-          final list = snap.data ?? const <PurchaseOrder>[];
-          if (list.isEmpty) {
-            return Center(child: Text(context.t.purchases_list_empty));
-          }
 
-// 👇 여기 추가
-          if (isCalendarView) {
-            return FutureBuilder<Map<String, List<PurchaseLine>>>(
-              future: poRepo.getLinesMap(),
-              builder: (context, snap2) {
-                if (!snap2.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+          final linesMap = linesSnap.data!;
 
-                final linesMap = snap2.data!;
+          return StreamBuilder<List<PurchaseOrder>>(
+            stream: poRepo.watchAllPurchaseOrders(),
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snap.hasError) {
+                return Center(child: Text('불러오기 실패: ${snap.error}'));
+              }
 
+              final rawList = snap.data ?? const <PurchaseOrder>[];
+
+              // 🔥🔥 검색 필터 핵심
+              final list = rawList.where((p) {
+                if (_query.isEmpty) return true;
+
+                final supplier =
+                (p.supplierName ?? '').toLowerCase();
+
+                final lines = linesMap[p.id] ?? [];
+
+                final hasItem = false;
+                // final hasItem = lines.any((l) =>
+                //     (l.itemName ?? '')
+                //         .toLowerCase()
+                //         .contains(_query));
+               // return supplier.contains(_query) || hasItem;
+
+                return supplier.contains(_query);
+
+              }).toList();
+
+              if (list.isEmpty) {
+                return Center(child: Text('\"$_query\" 검색 결과 없음'));
+              }
+
+              /// ============================
+              /// 🔵 캘린더 뷰
+              /// ============================
+              if (isCalendarView) {
                 final events = mapPurchaseToEvents(list, linesMap);
 
                 return CommonCalendarView(
@@ -96,64 +144,75 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                     );
                   },
                 );
-              },
-            );
-          }
-          return ListView.builder(
-            itemCount: list.length,
-            itemBuilder: (_, i) {
-              final p = list[i];
+              }
 
+              /// ============================
+              /// 🟢 리스트 뷰
+              /// ============================
+              return ListView.builder(
+                itemCount: list.length,
+                itemBuilder: (_, i) {
+                  final p = list[i];
 
-                            // 간단 ETA 포맷터 (intl 없이)
-                            String fmtDate(DateTime? d) {
-                                if (d == null) return '-';
-                                final m = d.month.toString().padLeft(2, '0');
-                                final day = d.day.toString().padLeft(2, '0');
-                                return '${d.year}-$m-$day';
-                              }
+                  String fmtDate(DateTime? d) {
+                    if (d == null) return '-';
+                    final m = d.month.toString().padLeft(2, '0');
+                    final day = d.day.toString().padLeft(2, '0');
+                    return '${d.year}-$m-$day';
+                  }
 
-                            // 상태 라벨
-                            String statusLabel() {
-                                final n = p.status.name; // draft/ordered/received/canceled …
-                                switch (n) {
-                                  case 'draft': return '임시저장';
-                                  case 'ordered': return '발주완료';
-                                  case 'received': return '입고완료';
-                                  case 'canceled': return '취소';
-                                  default: return n;
-                                }
-                              }
+                  String statusLabel() {
+                    switch (p.status.name) {
+                      case 'draft':
+                        return '임시저장';
+                      case 'ordered':
+                        return '발주완료';
+                      case 'received':
+                        return '입고완료';
+                      case 'canceled':
+                        return '취소';
+                      default:
+                        return p.status.name;
+                    }
+                  }
 
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: ListTile(
-                  title: Text('발주: ${p.supplierName?.trim().isEmpty == true ? '(미지정)' : p.supplierName}'),
-                  subtitle: Text('상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => PurchaseDetailScreen(
-                          repo: context.read<PurchaseOrderRepo>(),
-                          orderId: p.id, // ✅ 최신 방식
-                        ),
-                      ),
-                    );
-                  },
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                ),
-              ).copyWithButtonBar(context, p, poRepo, inv); // ✅ 인터페이스 주입
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    child: ListTile(
+                      title: Text(
+                          '발주: ${p.supplierName?.trim().isEmpty == true ? '(미지정)' : p.supplierName}'),
+                      subtitle: Text(
+                          '상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PurchaseDetailScreen(
+                              repo: context.read<PurchaseOrderRepo>(),
+                              orderId: p.id,
+                            ),
+                          ),
+                        );
+                      },
+                      contentPadding:
+                      const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                    ),
+                  ).copyWithButtonBar(
+                      context, p, poRepo, inv);
+                },
+              );
             },
           );
-
         },
       ),
     );
   }
 }
-extension on Card {
+
+extension CardWithButtonBar on Card {
   Widget copyWithButtonBar(
       BuildContext context,
       PurchaseOrder p,
@@ -163,7 +222,7 @@ extension on Card {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        this, // 원래 카드 내용
+        this,
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           child: Row(
@@ -172,41 +231,14 @@ extension on Card {
               if (p.status == PurchaseOrderStatus.draft)
                 FilledButton.tonal(
                   onPressed: () async {
-    try {
-                          // ✅ planned 입고 생성  상태 전환까지 서비스가 처리
-                          await inv.orderPurchase(p.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('발주완료: 예정 입고 기록 생성됨')),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('처리 실패: $e')));
-                          }
-                        }
-    },
+                    await inv.orderPurchase(p.id);
+                  },
                   child: const Text('발주완료'),
                 ),
               if (p.status == PurchaseOrderStatus.ordered)
                 FilledButton(
                   onPressed: () async {
-                    try {
-                      // ✅ actual 입고 + 상태 전환까지 서비스가 처리
-                      await inv.receivePurchase(p.id);
-
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('상태: 입고완료로 변경됨 (재고 반영됨)')),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('입고 처리 실패: $e')),
-                        );
-                      }
-                    }
+                    await inv.receivePurchase(p.id);
                   },
                   child: const Text('입고완료'),
                 ),
