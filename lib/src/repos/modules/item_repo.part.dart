@@ -352,24 +352,16 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   }
   @override
   Future<void> updateItemMeta(Item item) async {
-
     final keys = buildItemSearchKeys(item);
-
     print('DB 저장 직전: ${item.defaultPurchasePrice} / ${item.defaultSalePrice}');
 
-    await (db.update(db.items)
-      ..where((t) => t.id.equals(item.id)))
-        .write(
-      ItemsCompanion(
-        // 🔥 필요한 것만 직접 넣어
-        searchNormalized: Value(keys.nameNorm),
-        searchInitials: Value(keys.initials),
-        searchFullNormalized: Value(keys.fullNorm),
-
-        defaultPurchasePrice: Value(item.defaultPurchasePrice),
-        defaultSalePrice: Value(item.defaultSalePrice),
-      ),
+    final updated = item.toCompanion().copyWith(
+      searchNormalized: Value(keys.nameNorm),
+      searchInitials: Value(keys.initials),
+      searchFullNormalized: Value(keys.fullNorm),
     );
+
+    await db.update(db.items).replace(updated);
 
     final check = await getItem(item.id);
     print('DB 저장 후: ${check?.defaultPurchasePrice} / ${check?.defaultSalePrice}');
