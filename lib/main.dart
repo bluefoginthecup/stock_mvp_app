@@ -11,6 +11,7 @@ import 'src/repos/repo_interfaces.dart';
 import 'src/services/inventory_service.dart';
 import 'src/services/bom_service.dart';
 import 'src/services/shortage_service.dart';
+import 'src/services/folder_service.dart';
 
 import 'src/utils/item_presentation.dart';
 import 'src/ui/nav/item_detail_opener.dart';
@@ -108,6 +109,10 @@ Future<void> main() async {
             itemRepo: ctx.read<ItemRepo>(),
             folderRepo: ctx.read<FolderTreeRepo>(),
           ),
+        ),
+        Provider<FolderService>(
+          create: (context) =>
+              FolderService(context.read<DriftUnifiedRepo>()),
         ),
         Provider<TimelineRepo>(
           create: (_) => TimelineRepo(

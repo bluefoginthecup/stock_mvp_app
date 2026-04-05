@@ -152,6 +152,8 @@ class FolderService {
     print('👉 newL1=$newL1, newL2=$newL2, newL3=$newL3');
   }
 
+
+
   /// 🔍 itemPaths 조회
   Future<(String?, String?, String?)> _getItemPath(String itemId) async {
     final row = await (repo.db.select(repo.db.itemPaths)
@@ -161,5 +163,13 @@ class FolderService {
     if (row == null) return (null, null, null);
 
     return (row.l1Id, row.l2Id, row.l3Id);
+  }
+
+  Future<void> copySingleItem(String itemId) async {
+    final item = await repo.getItem(itemId);
+    if (item == null) return;
+
+    // 현재 폴더 매핑 없음 → 그대로 복사
+    await _copyItemWithMapping(item, {});
   }
 }

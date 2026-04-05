@@ -9,6 +9,7 @@ class StockMultiSelectBar extends StatelessWidget {
   final VoidCallback onClear;
   final VoidCallback onMove;
   final VoidCallback onTrash;                // 🗑️ 추가
+  final VoidCallback onCopy;
   final bool allSelectedAreFavorite;         // ⭐ 추가
   final VoidCallback onToggleFavoriteAll;    // ⭐ 추가
 
@@ -23,7 +24,8 @@ class StockMultiSelectBar extends StatelessWidget {
     required this.onClear,
     required this.onMove,
   required this.onTrash,
-      required this.allSelectedAreFavorite,
+    required this.onCopy,
+    required this.allSelectedAreFavorite,
       required this.onToggleFavoriteAll,
 
 });
@@ -99,6 +101,19 @@ class StockMultiSelectBar extends StatelessWidget {
                       constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                     ),
                   ),
+
+          // 📋 복사
+              Tooltip(
+                    message: '복사',
+                    child: IconButton(
+                  onPressed: selectedCount == 0 ? null : onCopy,
+                      icon: const Icon(Icons.copy),
+                  iconSize: 20,
+                  padding: const EdgeInsets.all(6),
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          ),
+        ),
 
 
     // 담기(강조) — 아이콘만, Material 3이면 filled 변형 사용 가능
