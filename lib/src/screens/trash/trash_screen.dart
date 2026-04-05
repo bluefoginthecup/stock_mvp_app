@@ -5,6 +5,8 @@ import '../../repos/repo_interfaces.dart'; // TrashRepo
 import '../../models/trash_entry.dart';
 import '../../ui/common/selection/multi_select_bar.dart';
 import '../../ui/common/selection/item_selection_controller.dart';
+import '../../utils/navigation_utils.dart';
+import '../../app/main_tab_controller.dart';
 
 
 class TrashScreen extends StatefulWidget {
@@ -93,8 +95,35 @@ class _TrashScreenState extends State<TrashScreen> {
 
     if (!ctx.mounted) return;
 
-    ScaffoldMessenger.of(ctx)
-        .showSnackBar(const SnackBar(content: Text('복구되었습니다')));
+// 🔥 extra에서 path 꺼내기
+    final path = [
+      e.extra?['l1Id'],
+      e.extra?['l2Id'],
+      e.extra?['l3Id'],
+    ].whereType<String>().toList();
+
+    final rootNav = Navigator.of(ctx, rootNavigator: true);
+
+    ScaffoldMessenger.of(ctx).showSnackBar(
+      SnackBar(
+        content: const Text('복구되었습니다'),
+        action: path.isEmpty
+            ? null
+            : SnackBarAction(
+          label: '위치 보기',
+          onPressed: () {
+            // 1. 재고 탭으로 이동
+            ctx.read<MainTabController>().setIndex(2);
+
+            // 2. 휴지통 닫기
+            rootNav.pop();
+
+            // 3. 경로 이동 (이건 우리가 다음에 연결)
+            openStockAndJump(rootNav, path);
+          },
+        ),
+      ),
+    );
 
     setState(() {});
   }

@@ -42,7 +42,13 @@ part 'stock_browser_helpers.part.dart';
 
 class StockBrowserScreen extends StatefulWidget {
   final bool showLowStockOnly;
-  const StockBrowserScreen({super.key, this.showLowStockOnly = false});
+  final List<String>? initialPath;
+
+  const StockBrowserScreen({
+    super.key,
+    this.showLowStockOnly = false,
+    this.initialPath,
+  });
 
   @override
   State<StockBrowserScreen> createState() => _StockBrowserScreenState();
@@ -64,8 +70,17 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   @override
   void initState() {
     super.initState();
+
     _lowOnly = widget.showLowStockOnly;
 
+    // 🔥 추가
+    if (widget.initialPath != null) {
+      final path = widget.initialPath!;
+
+      _l1Id = path.isNotEmpty ? path[0] : null;
+      _l2Id = path.length > 1 ? path[1] : null;
+      _l3Id = path.length > 2 ? path[2] : null;
+    }
   }
 
   @override

@@ -15,6 +15,7 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
           entityType: 'item',
           title: r.displayName ?? r.name,
           deletedAt: DateTime.parse(r.deletedAt!),
+          extra: r.extra != null ? jsonDecode(r.extra!) : null, // 🔥 추가
         )));
 
     //folders
@@ -28,6 +29,7 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
           entityType: 'folder',
           title: r.name,
           deletedAt: DateTime.parse(r.deletedAt!),
+          extra: r.extra != null ? jsonDecode(r.extra!) : null,
         )));
 
     // orders
