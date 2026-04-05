@@ -20,7 +20,7 @@ import 'src/services/db_auto_backup_service.dart';
 
 // 탭/선택 컨트롤러
 import 'src/app/main_tab_controller.dart';
-import 'src/screens/stock/widgets/item_selection_controller.dart';
+import 'src/ui/common/selection/item_selection_controller.dart';
 
 // ✅ 추가: Auth & Gate
 import 'src/services/auth_service.dart';

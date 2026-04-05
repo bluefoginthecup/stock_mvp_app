@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../repos/repo_interfaces.dart'; // TrashRepo
 import '../../models/trash_entry.dart';
-import '../../ui/common/multi_select_bar.dart';
-import '../../screens/stock/widgets/item_selection_controller.dart';
+import '../../ui/common/selection/multi_select_bar.dart';
+import '../../ui/common/selection/item_selection_controller.dart';
 
 
 class TrashScreen extends StatefulWidget {

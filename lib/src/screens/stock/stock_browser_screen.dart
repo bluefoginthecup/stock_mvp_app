@@ -16,12 +16,12 @@ import 'stock_item_detail_screen.dart';
 import '../../services/export_service.dart';
 import '../../ui/common/qty_set_sheet.dart';
 import '../../repos/repo_interfaces.dart';
-import 'widgets/item_selection_controller.dart';
+import '../../ui/common/selection/item_selection_controller.dart';
 import 'widgets/stock_item_select_tile.dart';
 import 'widgets/stock_multi_select_bar.dart';
 import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
-import '../../ui/common/multi_select_bar.dart';
+import '../../ui/common/selection/multi_select_bar.dart';
 
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
