@@ -11,28 +11,72 @@ String _friendlyDeleteError(Object e) {
   if (s.contains('referenced by items')) return '아이템이 포함되어 있어서 삭제할 수 없습니다.';
   return '삭제할 수 없습니다: $s';
 }
-
-// ───────────────────────── 폴더 삭제(에러=스낵바) ─────────────────────────
 Future<void> _tryDeleteFolder(
-    BuildContext context, FolderNode n, VoidCallback onRefresh) async {
+    BuildContext context,
+    FolderNode n,
+    VoidCallback onRefresh,
+    ) async {
   final repo = context.read<FolderTreeRepo>();
+
   try {
     await repo.deleteFolderNode(n.id);
+
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('폴더가 삭제되었습니다.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('폴더가 휴지통으로 이동되었습니다.')),
+    );
     onRefresh();
+
   } on StateError catch (e) {
     if (!context.mounted) return;
+
+    final msg = e.message?.toString();
+
+    // 🔥 핵심: 막혔을 때 처리
+    if (msg == 'HAS_CHILDREN' || msg == 'HAS_ITEMS') {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('폴더 삭제'),
+          content: const Text(
+            '하위 폴더 또는 아이템이 있습니다.\n모두 함께 휴지통으로 이동할까요?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('이동'),
+            ),
+          ],
+        ),
+      );
+
+      if (ok == true) {
+        await repo.deleteFolderNode(n.id, force: true);
+
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('폴더가 휴지통으로 이동되었습니다.')),
+        );
+        onRefresh();
+      }
+
+      return;
+    }
+
+    // 기존 에러
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(_friendlyDeleteError(e))));
+
   } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(_friendlyDeleteError(e))));
   }
 }
-
 // ───────────────────────── 새 폴더 생성 ─────────────────────────
 Future<void> _createFolder(
     BuildContext context, FolderTreeRepo repo, String? parentId) async {

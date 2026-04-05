@@ -15,6 +15,18 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
       deletedAt: DateTime.parse(r.deletedAt!),
     )));
 
+    //folders
+    final df = await (db.select(db.folders)
+      ..where((t) => t.isDeleted.equals(true)))
+        .get();
+
+    all.addAll(df.where((r) => r.deletedAt != null).map((r) => TrashEntry(
+      id: r.id,
+      entityType: 'folder',
+      title: r.name,
+      deletedAt: DateTime.parse(r.deletedAt!),
+    )));
+
     // orders
     final dor = await (db.select(db.orders)..where((t) => t.isDeleted.equals(true))).get();
     all.addAll(dor.where((r) => r.deletedAt != null).map((r) => TrashEntry(
@@ -63,6 +75,16 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
           const ItemsCompanion(isDeleted: Value(false), deletedAt: Value(null)),
         );
         break;
+
+      case 'folder':
+        await (db.update(db.folders)..where((t) => t.id.equals(id))).write(
+          const FoldersCompanion(
+            isDeleted: Value(false),
+            deletedAt: Value(null),
+          ),
+        );
+        break;
+
       case 'order':
         await (db.update(db.orders)..where((t) => t.id.equals(id))).write(
           const OrdersCompanion(isDeleted: Value(false), deletedAt: Value(null)),
@@ -92,6 +114,9 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     switch (entityType) {
       case 'item':
         await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
+        break;
+      case 'folder':
+        await (db.delete(db.folders)..where((t) => t.id.equals(id))).go();
         break;
       case 'order':
         await (db.delete(db.orders)..where((t) => t.id.equals(id))).go(); // lines는 CASCADE 가정

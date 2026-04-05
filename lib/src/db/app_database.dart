@@ -111,6 +111,9 @@ class Folders extends Table {
       text().withDefault(const Constant(''))();
   TextColumn get searchInitials =>
       text().withDefault(const Constant(''))();
+  // 휴지통 관련
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get deletedAt => text().nullable()();
 
 
   @override
@@ -461,7 +464,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 15; //
+  int get schemaVersion => 16; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -622,6 +625,12 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
             'ALTER TABLE purchase_orders ADD COLUMN vat_invoice_due_at TEXT'
         );
+      }
+      if (from < 16) {
+        await m.alterTable(TableMigration(
+          folders,
+          newColumns: [folders.isDeleted, folders.deletedAt],
+        ));
       }
 
     },

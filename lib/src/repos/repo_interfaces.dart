@@ -371,7 +371,7 @@ abstract class FolderTreeRepo extends ChangeNotifier {
     required String newName,
   });
 
-  Future<void> deleteFolderNode(String id);
+  Future<void> deleteFolderNode(String id, {bool force = false});
 
   /// 폴더/아이템 공통 이동 (기존 moveEntityToPath 그대로)
   Future<void> moveEntityToPath(MoveRequest req);

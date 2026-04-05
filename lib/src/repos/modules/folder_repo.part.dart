@@ -25,8 +25,10 @@ Future<void> upsertFolderNode(FolderNode node) async {
 @override
 Future<List<FolderNode>> listFolderChildren(String? parentId) async {
   final q = db.select(db.folders)
-    ..where((tbl) => parentId == null ? tbl.parentId.isNull() : tbl.parentId.equals(parentId));
-
+  ..where((tbl) =>
+  (parentId == null ? tbl.parentId.isNull() : tbl.parentId.equals(parentId)) &
+  tbl.isDeleted.equals(false)
+  );
   if (_sortMode == FolderSortMode.name) {
     q.orderBy([(t) => OrderingTerm.asc(t.name)]);
   } else {
@@ -61,7 +63,14 @@ Stream<List<FolderNode>> watchFolderSearch(String keyword) {
     } else {
       final norm = normalizeForSearch(qRaw);
       final like = '%${_escapeLike(norm)}%';
-      return t.searchNormalized.like(like, escapeChar: r'\');
+      return (
+          t.isDeleted.equals(false) &
+          (
+              looksLikeChosungQuery(qRaw)
+                  ? t.searchInitials.like(like, escapeChar: r'\')
+                  : t.searchNormalized.like(like, escapeChar: r'\')
+          )
+      );
     }
   });
 
@@ -82,7 +91,11 @@ Stream<List<FolderNode>> watchFolderSearch(String keyword) {
 
 @override
 Future<FolderNode?> folderById(String id) async {
-  final row = await (db.select(db.folders)..where((t) => t.id.equals(id))).getSingleOrNull();
+  final row = await (db.select(db.folders)
+    ..where((t) => t.id.equals(id) & t.isDeleted.equals(false))
+  )
+      .getSingleOrNull();
+
   return row?.toDomain();
 }
 
@@ -118,20 +131,54 @@ Future<void> renameFolderNode({required String id, required String newName}) asy
   await (db.update(db.folders)..where((t) => t.id.equals(id)))
       .write(FoldersCompanion(name: Value(newName)));
 }
+//
+// @override
+// Future<void> deleteFolderNode(String id) async {
+//   final hasChildren =
+//   await (db.select(db.folders)..where((t) => t.parentId.equals(id))).get();
+//   if (hasChildren.isNotEmpty) throw StateError('subfolders exist');
+//
+//   final containsItems = await (db.select(db.itemPaths)
+//     ..where((t) => t.l1Id.equals(id) | t.l2Id.equals(id) | t.l3Id.equals(id)))
+//       .get();
+//   if (containsItems.isNotEmpty) throw StateError('referenced by items');
+//
+//   await (db.delete(db.folders)..where((t) => t.id.equals(id))).go();
+// }
+//
 
-@override
-Future<void> deleteFolderNode(String id) async {
-  final hasChildren =
-  await (db.select(db.folders)..where((t) => t.parentId.equals(id))).get();
-  if (hasChildren.isNotEmpty) throw StateError('subfolders exist');
+  @override
+  Future<void> deleteFolderNode(String id, {bool force = false}) async {
+    final now = DateTime.now().toIso8601String();
 
-  final containsItems = await (db.select(db.itemPaths)
-    ..where((t) => t.l1Id.equals(id) | t.l2Id.equals(id) | t.l3Id.equals(id)))
-      .get();
-  if (containsItems.isNotEmpty) throw StateError('referenced by items');
+    final children =
+    await (db.select(db.folders)..where((t) => t.parentId.equals(id))).get();
 
-  await (db.delete(db.folders)..where((t) => t.id.equals(id))).go();
-}
+    final items = await (db.select(db.itemPaths)
+      ..where((t) =>
+      t.l1Id.equals(id) |
+      t.l2Id.equals(id) |
+      t.l3Id.equals(id)))
+        .get();
+
+    if (!force) {
+      if (children.isNotEmpty) throw StateError('HAS_CHILDREN');
+      if (items.isNotEmpty) throw StateError('HAS_ITEMS');
+    }
+
+    // 🔥 하위 폴더도 같이 soft delete
+    for (final c in children) {
+      await deleteFolderNode(c.id, force: true);
+    }
+
+    // 🔥 폴더 soft delete
+    await (db.update(db.folders)..where((t) => t.id.equals(id))).write(
+      FoldersCompanion(
+        isDeleted: const Value(true),
+        deletedAt: Value(now),
+      ),
+    );
+  }
 
 Future<void> _ensureFolderPath({
   required String l1,
@@ -172,7 +219,10 @@ Future<(List<FolderNode>, List<Item>)> searchAll({
   bool recursive = true,
 }) async {
   final kw = '%${keyword.trim()}%';
-  final folderRows = await (db.select(db.folders)..where((t) => t.name.like(kw))).get();
+  final folderRows =
+  await (db.select(db.folders)
+    ..where((t) => t.name.like(kw) & t.isDeleted.equals(false))
+  ).get();
   final folderNodes = folderRows.map((r) => r.toDomain()).toList();
 
   final join = db.select(db.items).join([
