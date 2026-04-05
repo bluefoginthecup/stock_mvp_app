@@ -75,7 +75,13 @@ class _MainTabScreenState extends State<MainTabScreen> {
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: idx,
-          onDestinationSelected: (i) => context.read<MainTabController>().setIndex(i),
+          onDestinationSelected: (i) {
+            context.read<MainTabController>().setIndex(i);
+
+            // 🔥 핵심 (현재 탭 navigator 정리)
+            final key = _keyOf(i);
+            key.currentState?.popUntil((route) => route.isFirst);
+          },
           destinations: const [
             NavigationDestination(icon: Icon(Icons.dashboard),     label: '대시보드'),
             NavigationDestination(icon: Icon(Icons.receipt_long),  label: '주문'),

@@ -119,7 +119,7 @@ Widget _buildFolderTile(
         case EntityAction.delete:
           final ok = await showDeleteConfirm(
             context,
-            message: '"${n.name}" 폴더를 삭제하시겠어요?',
+            message: '"${n.name}" 폴더를 휴지통으로 보낼까요?',
           );
           if (ok == true) await onDelete(n);
           break;

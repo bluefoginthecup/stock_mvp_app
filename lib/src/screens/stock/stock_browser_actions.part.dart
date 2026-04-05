@@ -22,8 +22,13 @@ Future<void> _tryDeleteFolder(
     await repo.deleteFolderNode(n.id);
 
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('폴더가 휴지통으로 이동되었습니다.')),
+    showGoSnack(
+      context,
+      message: '폴더가 휴지통으로 이동되었습니다.',
+      actionText: '휴지통 열기',
+      onAction: (_) => openTrashFromNav(
+        Navigator.of(context, rootNavigator: true),
+      ),
     );
     onRefresh();
 
@@ -58,8 +63,13 @@ Future<void> _tryDeleteFolder(
         await repo.deleteFolderNode(n.id, force: true);
 
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('폴더가 휴지통으로 이동되었습니다.')),
+        showGoSnack(
+          context,
+          message: '폴더가 휴지통으로 이동되었습니다.',
+          actionText: '휴지통 열기',
+          onAction: (_) => openTrashFromNav(
+            Navigator.of(context, rootNavigator: true),
+          ),
         );
         onRefresh();
       }

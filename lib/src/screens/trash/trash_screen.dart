@@ -137,7 +137,15 @@ class _TrashScreenState extends State<TrashScreen> {
           return Scaffold(
             appBar: AppBar(
               title: const Text('통합 휴지통'),
-
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: '새로고침',
+                  onPressed: () async {
+                    setState(() {}); // FutureBuilder 다시 실행됨
+                  },
+                ),
+              ],
             ),
             body: Column(
               children: [
@@ -191,7 +199,7 @@ class _TrashScreenState extends State<TrashScreen> {
 
                       if (items.isEmpty) {
                         return const Center(
-                            child: Text('삭제된 항목이 없습니다.'));
+                            child: Text('휴지통이 텅 비었습니다'));
                       }
 
                       final keys = items

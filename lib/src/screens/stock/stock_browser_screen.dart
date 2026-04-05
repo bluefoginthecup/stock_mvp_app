@@ -27,6 +27,7 @@ import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
 import '../../services/stock_service.dart';
 import '../../services/folder_service.dart';
+import '../../utils/navigation_utils.dart';
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';
@@ -485,7 +486,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               context,
               message: '${sel.selected.length}개 이동 완료',
               actionText: '휴지통 열기',
-              onAction: (_) => Navigator.of(context).pushNamed('/trash'),
+              onAction: (_) => openTrashFromNav(Navigator.of(context, rootNavigator: true)),
             );
 
             sel.exit();

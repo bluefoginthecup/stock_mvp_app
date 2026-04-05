@@ -17,7 +17,6 @@ import 'stock_item_edit_sheet.dart';
 import 'stock_item_full_edit_screen.dart';
 import 'widgets/item_meta_overview.dart';
 import '../../ui/common/qty_set_sheet.dart';
-import '../../utils/unit_converter.dart';
 import '../../ui/common/inout_flow.dart';
 import '../../ui/common/path_picker.dart';
 
@@ -25,7 +24,7 @@ import '../../dev/bom_debug.dart';             // 콘솔 덤프 유틸
 import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
 import '../../services/stock_service.dart';
-
+import '../../utils/navigation_utils.dart';
 
 class StockItemDetailScreen extends StatefulWidget {
   final String itemId;
@@ -149,24 +148,26 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       note: 'Detail:setQty ${_item!.qty} → $newQty',
     );
   }
-
   Future<bool> _confirm(BuildContext context, String message) async {
     return (await showDialog<bool>(
       context: context,
-      builder: (_) =>
-          AlertDialog(
-            title: const Text('확인'),
-            content: Text(message),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false),
-                  child: const Text('취소')),
-              FilledButton(onPressed: () => Navigator.pop(context, true),
-                  child: const Text('확인')),
-            ],
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('확인'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false), // ✅ 변경
+            child: const Text('취소'),
           ),
-    )) ??
-        false;
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogCtx, true), // ✅ 변경
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    )) ?? false;
   }
+
     Future<void> _toggleFavorite() async {
       final it = _item;
       if (it == null) return;
@@ -219,16 +220,21 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       try {
         await context.read<ItemRepo>().moveItemToTrash(it.id);
         if (!context.mounted) return;
+
+        final rootNav = Navigator.of(context, rootNavigator: true);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('"${it.displayName ?? it.name}"을 휴지통으로 이동했습니다.'),
+            content: Text('휴지통 이동됨'),
             action: SnackBarAction(
-              label: '휴지통 열기',
-              onPressed: () => Navigator.of(context).pushNamed('/trash'),
+              label: '열기',
+              onPressed: () => openTrashFromNav(rootNav),
             ),
           ),
         );
-        Navigator.of(context).pop(); // 상세 닫기
+
+// 👉 그 다음 pop
+        Navigator.of(context).pop();
       } catch (e) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
