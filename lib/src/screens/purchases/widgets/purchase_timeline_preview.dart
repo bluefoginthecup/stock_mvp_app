@@ -56,9 +56,6 @@ class PurchaseTimelinePreview extends StatelessWidget {
         final paidDate = isPaid ? p.paidAt : p.paymentDueAt;
         final vatDate = isVat ? p.vatInvoiceIssuedAt : p.vatInvoiceDueAt;
 
-        print('STREAM REBUILD: ${p.updatedAt}');
-        print('status: ${p.status}');
-        print('receivedAt: ${p.receivedAt}');
         return InkWell(
             onTap: onTap,
           child:

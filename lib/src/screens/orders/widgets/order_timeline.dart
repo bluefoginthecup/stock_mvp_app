@@ -167,8 +167,8 @@ class _TimelinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paintBar = Paint()..color = laneColor.withOpacity(0.85);
-    final paintToday = Paint()..color = Colors.grey.withOpacity(0.6)..strokeWidth = 1;
+    final paintBar = Paint()..color = laneColor.withValues(alpha:0.85);
+    final paintToday = Paint()..color = Colors.grey.withValues(alpha:0.6)..strokeWidth = 1;
 
     final today = DateTime.now();
     final todayLocal = DateTime(today.year, today.month, today.day);
@@ -208,7 +208,7 @@ class _TimelinePainter extends CustomPainter {
       // 마커들
       for (final m in b.markers) {
         final mx = _x(m.date);
-        final markerPaint = Paint()..color = Colors.black.withOpacity(0.9);
+        final markerPaint = Paint()..color = Colors.black.withValues(alpha:0.9);
         // 간단 원 마커
         canvas.drawCircle(Offset(mx, top + rowH / 2), 3.0, markerPaint);
       }

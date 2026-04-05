@@ -14,7 +14,7 @@ import '../../../ui/common/delete_more_menu.dart';
 // 로깅 유틸
 // ────────────────────────────────────────────────────────────
 void _d(String msg) {
-  if (kDebugMode) debugPrint('[TxnRow] $msg');
+  // if (kDebugMode) debugPrint('[TxnRow] $msg');
 }
 
 // Provider 안전 읽기 (provider 버전 이슈로 maybeOf 사용 불가 → try/catch)

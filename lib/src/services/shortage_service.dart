@@ -150,12 +150,6 @@ class ShortageService {
     );
 
     // 🔍 3) BOM explode 결과 요약
-    print('[ShortageService] explode2Levels 결과: '
-        'semiNeed=${ex.semiNeed.length}, '
-        'finishedRaw=${ex.finishedRaw.length}, '
-        'rawFromSemi=${ex.rawFromSemi.length}, '
-        'finishedSub=${ex.finishedSub.length}, '
-        'subFromSemi=${ex.subFromSemi.length}');
 
     Map<String, double> _merge(Map<String, double> a, Map<String, double> b) {
       final r = <String, double>{}..addAll(a);
@@ -172,7 +166,6 @@ class ShortageService {
       need.forEach((id, n) {
         final st = _availableByItemUnit(id);
         final lack = n - st;
-        print('[ShortageService] lackByItemUnit: id=$id need=$n stock=$st lack=$lack');
         if (lack > 0) m[id] = lack;
       });
       return m;
@@ -182,7 +175,6 @@ class ShortageService {
     ex.semiNeed.forEach((id, n) {
       final st = _availableByItemUnit(id);
       final lack = n - st;
-      print('[ShortageService] semiShort: id=$id need=$n stock=$st lack=$lack');
       if (lack > 0) semiShort[id] = lack;
     });
 
@@ -197,19 +189,10 @@ class ShortageService {
       subShortage: _lackByItemUnit(subNeed),
     );
 
-    // 🔍 4) 최종 결과 요약
-    print('[ShortageService] RESULT: '
-        'finishedShortage=${result.finishedShortage}, '
-        'semiShortage=${result.semiShortage.length}, '
-        'rawShortage=${result.rawShortage.length}, '
-        'subShortage=${result.subShortage.length}');
-    print('======== [ShortageService] compute END ========');
 
     return result;
   }
   Shortage2L computeForMake({required String finishedId, required int makeQty}) {
-    print('======== [ShortageService] computeForMake START ========');
-    print('[ShortageService] finishedId=$finishedId, makeQty=$makeQty');
 
     final double make = makeQty.toDouble();
     if (make <= 0) {
@@ -247,8 +230,7 @@ class ShortageService {
       need.forEach((id, n) {
         final st = _availableByItemUnit(id);
         final lack = n - st;
-        print('[ShortageService] lackByItemUnit: id=$id need=$n stock=$st lack=$lack');
-        if (lack > 0) m[id] = lack;
+       if (lack > 0) m[id] = lack;
       });
       return m;
     }
@@ -257,8 +239,7 @@ class ShortageService {
     ex.semiNeed.forEach((id, n) {
       final st = _availableByItemUnit(id);
       final lack = n - st;
-      print('[ShortageService] semiShort: id=$id need=$n stock=$st lack=$lack');
-      if (lack > 0) semiShort[id] = lack;
+     if (lack > 0) semiShort[id] = lack;
     });
     final finStock = _availableByItemUnit(finishedId);
 
@@ -272,12 +253,6 @@ class ShortageService {
       subNeed: subNeed,
       subShortage: _lackByItemUnit(subNeed),
     );
-
-    print('[ShortageService] RESULT(make): '
-        'semiShortage=${result.semiShortage.length}, '
-        'rawShortage=${result.rawShortage.length}, '
-        'subShortage=${result.subShortage.length}');
-    print('======== [ShortageService] computeForMake END ========');
 
     return result;
   }

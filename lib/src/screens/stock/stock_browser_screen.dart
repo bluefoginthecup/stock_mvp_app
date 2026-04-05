@@ -3,6 +3,7 @@ library stock_browser;
 
 import 'dart:async';
 import 'package:provider/provider.dart';
+import '../../repos/drift_unified_repo.dart';
 import '../../ui/common/ui.dart';
 import '../../models/folder_node.dart';
 import '../../models/item.dart';
@@ -24,11 +25,13 @@ import '../../ui/common/cart_add.dart';
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
 import '../../services/stock_service.dart';
+import '../../services/folder_service.dart';
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';
 part 'stock_browser_slivers.part.dart';
 part 'stock_browser_helpers.part.dart';
+
 
 
 // ============================================================================
@@ -60,6 +63,14 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   void initState() {
     super.initState();
     _lowOnly = widget.showLowStockOnly;
+    // ✅ 여기 추가
+    // Future.microtask(() async {
+    //   final repo = context.read<FolderTreeRepo>() as dynamic;
+    //   await repo.debugPrintAllFolders();
+    //
+    //   final itemRepo = context.read<ItemRepo>() as dynamic;
+    //   await itemRepo.debugPrintAllItemPaths();
+    // });
   }
 
   @override
@@ -145,6 +156,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       );
     }
 
+
+
   // ───────────────────────── Browser 본문 ─────────────────────────
   Widget buildBrowserContent(
       BuildContext context,
@@ -163,6 +176,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             onChanged: (_) => _debouncedRebuild(),
           ),
         ),
+
+
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           child: Row(
@@ -177,6 +192,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   minimumSize: const Size(40, 36),
                   padding: const EdgeInsets.all(8),
                 ),
+
               ),
               FilterChip(
                 label: const Text('필터:임계치'),

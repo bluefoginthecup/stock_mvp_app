@@ -2,6 +2,7 @@
 part of 'stock_browser_screen.dart';
 
 
+
 // ───────────────────────── Sliver builders ─────────────────────────
 SliverList _buildFolderSliver(
     BuildContext context,
@@ -121,6 +122,20 @@ Widget _buildFolderTile(
             message: '"${n.name}" 폴더를 삭제하시겠어요?',
           );
           if (ok == true) await onDelete(n);
+          break;
+
+        case EntityAction.copy:
+          final service = FolderService(context.read<DriftUnifiedRepo>());
+
+          await service.copyFolderTree(n.id);
+
+          if (!context.mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('"${n.name}" 복사 완료')),
+          );
+
+          setState(() {});
           break;
       }
     },

@@ -34,17 +34,26 @@ class ExportService {
       'items': items.map((it) => it.toJson()).toList(),
     };
 
+
+
+    final folderMap = {
+      for (final f in folders) f.id: f
+    };
+
     final foldersPayload = {
       'version': 1,
-      'folders': folders
-          .map((f) => {
-        'id': f.id,
-        'name': f.name,
-        if (f.parentId != null) 'parentId': f.parentId,
-        if (f.depth != null) 'depth': f.depth,
-        if (f.order != null) 'order': f.order,
-      })
-          .toList(),
+      'folders': folders.map((f) {
+        final parent = folderMap[f.parentId];
+
+        return {
+          'id': f.id,
+          'name': f.name,
+          if (f.parentId != null) 'parentId': f.parentId,
+          if (parent != null) 'parentName': parent.name, // ⭐ 여기
+          if (f.depth != null) 'depth': f.depth,
+          if (f.order != null) 'order': f.order,
+        };
+      }).toList(),
     };
 
     final dir = await getApplicationDocumentsDirectory();

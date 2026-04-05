@@ -37,6 +37,14 @@ Future<List<FolderNode>> listFolderChildren(String? parentId) async {
   return rows.map((r) => r.toDomain()).toList();
 }
 
+Future<List<FolderNode>> getChildren(String parentId) async {
+  return await listFolderChildren(parentId);
+}
+
+Future<FolderNode?> getFolder(String id) async {
+  return await folderById(id);
+}
+
 @override
 Stream<List<FolderNode>> watchFolderSearch(String keyword) {
   final qRaw = keyword.trim();
@@ -229,18 +237,20 @@ Future<void> debugPrintAllFolders() async {
   final rows = await (db.select(db.folders)
     ..orderBy([(t) => OrderingTerm.asc(t.depth), (t) => OrderingTerm.asc(t.name)]))
       .get();
-  debugPrint('===== FOLDERS TABLE DUMP =====');
+  //debugPrint('===== FOLDERS TABLE DUMP =====');
   for (final r in rows) {
-    debugPrint('[Folder] id=${r.id}, name=${r.name}, parentId=${r.parentId}, depth=${r.depth}, order=${r.order}');
+    //debugPrint('[Folder] id=${r.id}, name=${r.name}, parentId=${r.parentId}, depth=${r.depth}, order=${r.order}');
   }
 
   final roots = await (db.select(db.folders)
     ..where((t) => t.parentId.isNull())
     ..orderBy([(t) => OrderingTerm.asc(t.name)]))
       .get();
-  debugPrint('===== ROOT FOLDERS (parentId IS NULL) =====');
+  //debugPrint('===== ROOT FOLDERS (parentId IS NULL) =====');
   for (final r in roots) {
-    debugPrint('[Root] id=${r.id}, name=${r.name}, depth=${r.depth}');
+    //debugPrint('[Root] id=${r.id}, name=${r.name}, depth=${r.depth}');
   }
 }
+
+
 }

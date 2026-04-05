@@ -58,7 +58,7 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
         showCheckmark: false,
 
         // 선택 시 색
-        selectedColor: _colorForType(type).withOpacity(0.2),
+        selectedColor: _colorForType(type).withValues(alpha:0.2),
 
         // 비선택 시 흐리게
         backgroundColor: Colors.grey.shade200,
@@ -173,8 +173,6 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
 
 
                return supplier.contains(_query) || hasItem;
-
-                return supplier.contains(_query);
 
               }).toList();
 

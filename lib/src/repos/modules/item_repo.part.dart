@@ -229,6 +229,28 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return list;
   }
 
+
+  Future<List<Item>> getItemsByFolderId(String folderId) async {
+    final join = db.select(db.items).join([
+      innerJoin(db.itemPaths, db.itemPaths.itemId.equalsExp(db.items.id)),
+    ]);
+
+    join.where(db.items.isDeleted.equals(false));
+
+    // 🔥 핵심: 어느 depth든 포함
+    join.where(
+      db.itemPaths.l1Id.equals(folderId) |
+      db.itemPaths.l2Id.equals(folderId) |
+      db.itemPaths.l3Id.equals(folderId),
+    );
+
+    final rows = await join.get();
+    final list = rows.map((r) => r.readTable(db.items).toDomain()).toList();
+    _cacheItems(list);
+    return list;
+  }
+
+
   @override
   Future<Item?> getItem(String id) async {
     final row = await (db.select(db.items)

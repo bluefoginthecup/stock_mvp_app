@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// 엔터티 공통 액션
-enum EntityAction { rename, move, delete }
+enum EntityAction { rename, move, delete, copy }
 
 /// 하단 액션 시트: 필요한 버튼만 보여주기
 Future<EntityAction?> showEntityActionsSheet(
@@ -27,6 +27,11 @@ Future<EntityAction?> showEntityActionsSheet(
               nav.pop(EntityAction.rename);
             },
   ),
+        ListTile(
+          leading: Icon(Icons.copy),
+          title: Text('복사'),
+          onTap: () => Navigator.pop(context, EntityAction.copy),
+        ),
         if (enableMove)
           ListTile(
             leading: const Icon(Icons.drive_file_move),
