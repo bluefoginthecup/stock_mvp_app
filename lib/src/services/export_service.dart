@@ -130,6 +130,10 @@ class ExportService {
 
     debugPrint("🟢 DB 복원 완료");
 
+    // 🔥 DB 재생성 (싱글톤 다시 초기화)
+    final db = AppDatabase(); // 새로 생성해야 함
+      debugPrint("🟢 DB 재오픈 완료");
+
     return true;
   }
 

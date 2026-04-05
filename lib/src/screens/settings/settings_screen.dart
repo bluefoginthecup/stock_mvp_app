@@ -263,11 +263,8 @@ class SettingsScreen extends StatelessWidget {
               if (!context.mounted) return;
 
               if (ok) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('DB 복원이 완료되었습니다.\n앱을 다시 실행해주세요.'),
-                  ),
-                );
+                // 🔥 UI 강제 리로드 (핵심)
+                Navigator.of(context).pop();
               }
 
             },

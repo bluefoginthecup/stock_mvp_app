@@ -639,9 +639,16 @@ class AppDatabase extends _$AppDatabase {
       }
 
       if (from < 17) {
-        await m.addColumn(items, items.extra);
-        await m.addColumn(folders, folders.extra);
-          }
+        final exists = await _columnExists('items', 'extra');
+        if (!exists) {
+          await m.addColumn(items, items.extra);
+        }
+
+        final exists2 = await _columnExists('folders', 'extra');
+        if (!exists2) {
+          await m.addColumn(folders, folders.extra);
+        }
+      }
 
     },
   );Future<void> _backfillItemSearchKeys() async {
