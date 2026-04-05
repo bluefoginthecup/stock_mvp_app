@@ -343,6 +343,7 @@ abstract class TrashRepo {
   Future<List<TrashEntry>> listTrash();
   Future<void> restore(String entityType, String id);
   Future<void> hardDelete(String entityType, String id);
+
 }
 
 

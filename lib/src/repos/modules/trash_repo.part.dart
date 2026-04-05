@@ -112,12 +112,53 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
   @override
   Future<void> hardDelete(String entityType, String id) async {
     switch (entityType) {
+
       case 'item':
+    // 🔥 RESTRICT 테이블 먼저 삭제
+     await (db.delete(db.orderLines)
+       ..where((t) => t.itemId.equals(id)))
+       .go();
+
+     await (db.delete(db.purchaseLines)
+       ..where((t) => t.itemId.equals(id)))
+       .go();
+
+     await (db.delete(db.works)
+       ..where((t) => t.itemId.equals(id)))
+       .go();
+
+
+    // 🔥 1. 참조 데이터 먼저 삭제
+         await (db.delete(db.txns)
+           ..where((t) => t.itemId.equals(id)))
+           .go();
+
+         await (db.delete(db.works)
+           ..where((t) => t.itemId.equals(id)))
+           .go();
+
+        // 🔥 2. 마지막에 item 삭제
         await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
         break;
-      case 'folder':
-        await (db.delete(db.folders)..where((t) => t.id.equals(id))).go();
-        break;
+
+    case 'folder':
+     // 🔥 1. 이 폴더에 속한 item 찾기
+     final items = await (db.select(db.itemPaths)
+       ..where((t) =>
+           t.l1Id.equals(id) |
+           t.l2Id.equals(id) |
+           t.l3Id.equals(id)))
+       .get();
+
+     // 🔥 2. 해당 item 전부 삭제
+     for (final p in items) {
+       await hardDelete('item', p.itemId);
+     }
+
+     // 🔥 3. 마지막에 폴더 삭제
+    await (db.delete(db.folders)..where((t) => t.id.equals(id))).go();
+    break;
+
       case 'order':
         await (db.delete(db.orders)..where((t) => t.id.equals(id))).go(); // lines는 CASCADE 가정
         break;
@@ -133,4 +174,10 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     }
     notifyListeners();
   }
+
+
+
 }
+
+
+
