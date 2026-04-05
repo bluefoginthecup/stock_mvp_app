@@ -193,6 +193,11 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
   late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
       'deleted_at', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _extraMeta = const VerificationMeta('extra');
+  @override
+  late final GeneratedColumn<String> extra = GeneratedColumn<String>(
+      'extra', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -222,7 +227,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
         defaultSalePrice,
         isFavorite,
         isDeleted,
-        deletedAt
+        deletedAt,
+        extra
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -383,6 +389,10 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
     }
+    if (data.containsKey('extra')) {
+      context.handle(
+          _extraMeta, extra.isAcceptableOrUnknown(data['extra']!, _extraMeta));
+    }
     return context;
   }
 
@@ -450,6 +460,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
+      extra: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}extra']),
     );
   }
 
@@ -488,6 +500,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
   final bool isFavorite;
   final bool isDeleted;
   final String? deletedAt;
+  final String? extra;
   const ItemRow(
       {required this.id,
       required this.name,
@@ -516,7 +529,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       this.defaultSalePrice,
       required this.isFavorite,
       required this.isDeleted,
-      this.deletedAt});
+      this.deletedAt,
+      this.extra});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -571,6 +585,9 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     map['is_deleted'] = Variable<bool>(isDeleted);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    if (!nullToAbsent || extra != null) {
+      map['extra'] = Variable<String>(extra);
     }
     return map;
   }
@@ -627,6 +644,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      extra:
+          extra == null && nullToAbsent ? const Value.absent() : Value(extra),
     );
   }
 
@@ -664,6 +683,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+      extra: serializer.fromJson<String?>(json['extra']),
     );
   }
   @override
@@ -698,6 +718,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
+      'extra': serializer.toJson<String?>(extra),
     };
   }
 
@@ -729,7 +750,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           Value<double?> defaultSalePrice = const Value.absent(),
           bool? isFavorite,
           bool? isDeleted,
-          Value<String?> deletedAt = const Value.absent()}) =>
+          Value<String?> deletedAt = const Value.absent(),
+          Value<String?> extra = const Value.absent()}) =>
       ItemRow(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -769,6 +791,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         isFavorite: isFavorite ?? this.isFavorite,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        extra: extra.present ? extra.value : this.extra,
       );
   ItemRow copyWithCompanion(ItemsCompanion data) {
     return ItemRow(
@@ -826,6 +849,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      extra: data.extra.present ? data.extra.value : this.extra,
     );
   }
 
@@ -859,7 +883,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           ..write('defaultSalePrice: $defaultSalePrice, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('extra: $extra')
           ..write(')'))
         .toString();
   }
@@ -893,7 +918,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         defaultSalePrice,
         isFavorite,
         isDeleted,
-        deletedAt
+        deletedAt,
+        extra
       ]);
   @override
   bool operator ==(Object other) =>
@@ -926,7 +952,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           other.defaultSalePrice == this.defaultSalePrice &&
           other.isFavorite == this.isFavorite &&
           other.isDeleted == this.isDeleted &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.extra == this.extra);
 }
 
 class ItemsCompanion extends UpdateCompanion<ItemRow> {
@@ -958,6 +985,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
   final Value<bool> isFavorite;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
+  final Value<String?> extra;
   final Value<int> rowid;
   const ItemsCompanion({
     this.id = const Value.absent(),
@@ -988,6 +1016,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.isFavorite = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.extra = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ItemsCompanion.insert({
@@ -1019,6 +1048,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.isFavorite = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.extra = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -1054,6 +1084,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     Expression<bool>? isFavorite,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
+    Expression<String>? extra,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1087,6 +1118,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (extra != null) 'extra': extra,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1120,6 +1152,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       Value<bool>? isFavorite,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
+      Value<String?>? extra,
       Value<int>? rowid}) {
     return ItemsCompanion(
       id: id ?? this.id,
@@ -1150,6 +1183,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       isFavorite: isFavorite ?? this.isFavorite,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
+      extra: extra ?? this.extra,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1243,6 +1277,9 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<String>(deletedAt.value);
     }
+    if (extra.present) {
+      map['extra'] = Variable<String>(extra.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1280,6 +1317,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
           ..write('isFavorite: $isFavorite, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('extra: $extra, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1354,6 +1392,11 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
   late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
       'deleted_at', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _extraMeta = const VerificationMeta('extra');
+  @override
+  late final GeneratedColumn<String> extra = GeneratedColumn<String>(
+      'extra', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1364,7 +1407,8 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
         searchNormalized,
         searchInitials,
         isDeleted,
-        deletedAt
+        deletedAt,
+        extra
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1421,6 +1465,10 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
     }
+    if (data.containsKey('extra')) {
+      context.handle(
+          _extraMeta, extra.isAcceptableOrUnknown(data['extra']!, _extraMeta));
+    }
     return context;
   }
 
@@ -1448,6 +1496,8 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
+      extra: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}extra']),
     );
   }
 
@@ -1467,6 +1517,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
   final String searchInitials;
   final bool isDeleted;
   final String? deletedAt;
+  final String? extra;
   const FolderRow(
       {required this.id,
       required this.name,
@@ -1476,7 +1527,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       required this.searchNormalized,
       required this.searchInitials,
       required this.isDeleted,
-      this.deletedAt});
+      this.deletedAt,
+      this.extra});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1492,6 +1544,9 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
     map['is_deleted'] = Variable<bool>(isDeleted);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    if (!nullToAbsent || extra != null) {
+      map['extra'] = Variable<String>(extra);
     }
     return map;
   }
@@ -1511,6 +1566,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      extra:
+          extra == null && nullToAbsent ? const Value.absent() : Value(extra),
     );
   }
 
@@ -1527,6 +1584,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       searchInitials: serializer.fromJson<String>(json['searchInitials']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+      extra: serializer.fromJson<String?>(json['extra']),
     );
   }
   @override
@@ -1542,6 +1600,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       'searchInitials': serializer.toJson<String>(searchInitials),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
+      'extra': serializer.toJson<String?>(extra),
     };
   }
 
@@ -1554,7 +1613,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           String? searchNormalized,
           String? searchInitials,
           bool? isDeleted,
-          Value<String?> deletedAt = const Value.absent()}) =>
+          Value<String?> deletedAt = const Value.absent(),
+          Value<String?> extra = const Value.absent()}) =>
       FolderRow(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -1565,6 +1625,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
         searchInitials: searchInitials ?? this.searchInitials,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        extra: extra.present ? extra.value : this.extra,
       );
   FolderRow copyWithCompanion(FoldersCompanion data) {
     return FolderRow(
@@ -1581,6 +1642,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           : this.searchInitials,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      extra: data.extra.present ? data.extra.value : this.extra,
     );
   }
 
@@ -1595,14 +1657,15 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           ..write('searchNormalized: $searchNormalized, ')
           ..write('searchInitials: $searchInitials, ')
           ..write('isDeleted: $isDeleted, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('extra: $extra')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, name, parentId, depth, order,
-      searchNormalized, searchInitials, isDeleted, deletedAt);
+      searchNormalized, searchInitials, isDeleted, deletedAt, extra);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1615,7 +1678,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           other.searchNormalized == this.searchNormalized &&
           other.searchInitials == this.searchInitials &&
           other.isDeleted == this.isDeleted &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.extra == this.extra);
 }
 
 class FoldersCompanion extends UpdateCompanion<FolderRow> {
@@ -1628,6 +1692,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
   final Value<String> searchInitials;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
+  final Value<String?> extra;
   final Value<int> rowid;
   const FoldersCompanion({
     this.id = const Value.absent(),
@@ -1639,6 +1704,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.searchInitials = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.extra = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   FoldersCompanion.insert({
@@ -1651,6 +1717,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.searchInitials = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.extra = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name),
@@ -1665,6 +1732,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     Expression<String>? searchInitials,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
+    Expression<String>? extra,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1677,6 +1745,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       if (searchInitials != null) 'search_initials': searchInitials,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (extra != null) 'extra': extra,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1691,6 +1760,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       Value<String>? searchInitials,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
+      Value<String?>? extra,
       Value<int>? rowid}) {
     return FoldersCompanion(
       id: id ?? this.id,
@@ -1702,6 +1772,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       searchInitials: searchInitials ?? this.searchInitials,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
+      extra: extra ?? this.extra,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1736,6 +1807,9 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<String>(deletedAt.value);
     }
+    if (extra.present) {
+      map['extra'] = Variable<String>(extra.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1754,6 +1828,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
           ..write('searchInitials: $searchInitials, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('extra: $extra, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7492,6 +7567,7 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<bool> isFavorite,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
+  Value<String?> extra,
   Value<int> rowid,
 });
 typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
@@ -7523,6 +7599,7 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<bool> isFavorite,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
+  Value<String?> extra,
   Value<int> rowid,
 });
 
@@ -7716,6 +7793,9 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get extra => $composableBuilder(
+      column: $table.extra, builder: (column) => ColumnFilters(column));
 
   Expression<bool> itemPathsRefs(
       Expression<bool> Function($$ItemPathsTableFilterComposer f) f) {
@@ -7948,6 +8028,9 @@ class $$ItemsTableOrderingComposer
 
   ColumnOrderings<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get extra => $composableBuilder(
+      column: $table.extra, builder: (column) => ColumnOrderings(column));
 }
 
 class $$ItemsTableAnnotationComposer
@@ -8042,6 +8125,9 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<String> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get extra =>
+      $composableBuilder(column: $table.extra, builder: (column) => column);
 
   Expression<T> itemPathsRefs<T extends Object>(
       Expression<T> Function($$ItemPathsTableAnnotationComposer a) f) {
@@ -8227,6 +8313,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<bool> isFavorite = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> extra = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ItemsCompanion(
@@ -8258,6 +8345,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             isFavorite: isFavorite,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
+            extra: extra,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8289,6 +8377,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<bool> isFavorite = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> extra = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ItemsCompanion.insert(
@@ -8320,6 +8409,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             isFavorite: isFavorite,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
+            extra: extra,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -8452,6 +8542,7 @@ typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
   Value<String> searchInitials,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
+  Value<String?> extra,
   Value<int> rowid,
 });
 typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
@@ -8464,6 +8555,7 @@ typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
   Value<String> searchInitials,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
+  Value<String?> extra,
   Value<int> rowid,
 });
 
@@ -8521,6 +8613,9 @@ class $$FoldersTableFilterComposer
   ColumnFilters<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get extra => $composableBuilder(
+      column: $table.extra, builder: (column) => ColumnFilters(column));
+
   $$FoldersTableFilterComposer get parentId {
     final $$FoldersTableFilterComposer composer = $composerBuilder(
         composer: this,
@@ -8577,6 +8672,9 @@ class $$FoldersTableOrderingComposer
   ColumnOrderings<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get extra => $composableBuilder(
+      column: $table.extra, builder: (column) => ColumnOrderings(column));
+
   $$FoldersTableOrderingComposer get parentId {
     final $$FoldersTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -8631,6 +8729,9 @@ class $$FoldersTableAnnotationComposer
   GeneratedColumn<String> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
+  GeneratedColumn<String> get extra =>
+      $composableBuilder(column: $table.extra, builder: (column) => column);
+
   $$FoldersTableAnnotationComposer get parentId {
     final $$FoldersTableAnnotationComposer composer = $composerBuilder(
         composer: this,
@@ -8684,6 +8785,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<String> searchInitials = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> extra = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion(
@@ -8696,6 +8798,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             searchInitials: searchInitials,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
+            extra: extra,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8708,6 +8811,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<String> searchInitials = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
+            Value<String?> extra = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion.insert(
@@ -8720,6 +8824,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             searchInitials: searchInitials,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
+            extra: extra,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

@@ -79,6 +79,8 @@ class Items extends Table {
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
 
+  // 🔥 추가 (복구용 스냅샷)
+  TextColumn get extra => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -115,6 +117,9 @@ class Folders extends Table {
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()();
 
+
+// 🔥 추가 (복구용 스냅샷)
+  TextColumn get extra => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -464,7 +469,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 16; //
+  int get schemaVersion => 17; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -632,6 +637,11 @@ class AppDatabase extends _$AppDatabase {
           newColumns: [folders.isDeleted, folders.deletedAt],
         ));
       }
+
+      if (from < 17) {
+        await m.addColumn(items, items.extra);
+        await m.addColumn(folders, folders.extra);
+          }
 
     },
   );Future<void> _backfillItemSearchKeys() async {

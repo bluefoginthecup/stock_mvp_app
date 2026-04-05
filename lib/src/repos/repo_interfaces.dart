@@ -14,6 +14,7 @@ import '../models/trash_entry.dart';
 
 
 
+
 /// 공통 규칙:
 /// - 모든 Repo는 비동기(Future) 시그니처를 기본으로 함.
 /// - "표준 인터페이스"는 최소 메서드만 강제.

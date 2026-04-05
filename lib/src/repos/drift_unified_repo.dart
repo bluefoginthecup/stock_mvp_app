@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart'; // ChangeNotifier
 import 'package:drift/drift.dart';
 import 'dart:async';
+import 'dart:convert';
 
 // DB
 import '../db/app_database.dart';

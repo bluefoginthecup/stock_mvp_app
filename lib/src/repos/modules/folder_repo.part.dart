@@ -161,6 +161,10 @@ Future<void> renameFolderNode({required String id, required String newName}) asy
       t.l3Id.equals(id)))
         .get();
 
+    for (final p in items) {
+      await (this as ItemRepo).moveItemToTrash(p.itemId);
+    }
+
     if (!force) {
       if (children.isNotEmpty) throw StateError('HAS_CHILDREN');
       if (items.isNotEmpty) throw StateError('HAS_ITEMS');
@@ -172,10 +176,19 @@ Future<void> renameFolderNode({required String id, required String newName}) asy
     }
 
     // 🔥 폴더 soft delete
+    final folder = await (db.select(db.folders)
+      ..where((t) => t.id.equals(id)))
+        .getSingle();
+
+    final extra = {
+      'parentId': folder.parentId,
+    };
+
     await (db.update(db.folders)..where((t) => t.id.equals(id))).write(
       FoldersCompanion(
         isDeleted: const Value(true),
         deletedAt: Value(now),
+        extra: Value(jsonEncode(extra)), // 🔥 추가
       ),
     );
   }

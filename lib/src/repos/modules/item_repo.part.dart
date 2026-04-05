@@ -576,35 +576,73 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return v ?? 0;
   }
 
-  @override
+
   Future<void> moveItemToTrash(String id, {String? reason}) async {
+    final path = await (db.select(db.itemPaths)
+      ..where((t) => t.itemId.equals(id)))
+        .getSingleOrNull();
+
+    final extra = {
+      'l1Id': path?.l1Id,
+      'l2Id': path?.l2Id,
+      'l3Id': path?.l3Id,
+    };
+
     await (db.update(db.items)
       ..where((t) => t.id.equals(id))).write(
       ItemsCompanion(
         isDeleted: const Value(true),
-        // deletedAt을 TextColumn(ISO8601)로 통일했으니 문자열 저장
         deletedAt: Value(DateTime.now().toIso8601String()),
+        extra: Value(jsonEncode(extra)), // 🔥 이거 추가
       ),
     );
+
     notifyListeners();
   }
+  //
+  // @override
+  // Future<void> moveItemsToTrash(List<String> ids, {String? reason}) async {
+  //   if (ids.isEmpty) return;
+  //
+  //   await db.transaction(() async {
+  //     final now = DateTime.now().toIso8601String();
+  //     for (final id in ids) {
+  //       await (db.update(db.items)
+  //         ..where((t) => t.id.equals(id))).write(
+  //         ItemsCompanion(
+  //           isDeleted: const Value(true),
+  //           deletedAt: Value(now),
+  //         ),
+  //       );
+  //     }
+  //   });
+  //
+  //   notifyListeners();
+  // }
 
-  @override
   Future<void> moveItemsToTrash(List<String> ids, {String? reason}) async {
-    if (ids.isEmpty) return;
+    final now = DateTime.now().toIso8601String();
 
-    await db.transaction(() async {
-      final now = DateTime.now().toIso8601String();
-      for (final id in ids) {
-        await (db.update(db.items)
-          ..where((t) => t.id.equals(id))).write(
-          ItemsCompanion(
-            isDeleted: const Value(true),
-            deletedAt: Value(now),
-          ),
-        );
-      }
-    });
+    for (final id in ids) {
+      final path = await (db.select(db.itemPaths)
+        ..where((t) => t.itemId.equals(id)))
+          .getSingleOrNull();
+
+      final extra = {
+        'l1Id': path?.l1Id,
+        'l2Id': path?.l2Id,
+        'l3Id': path?.l3Id,
+      };
+
+      await (db.update(db.items)
+        ..where((t) => t.id.equals(id))).write(
+        ItemsCompanion(
+          isDeleted: const Value(true),
+          deletedAt: Value(now),
+          extra: Value(jsonEncode(extra)),
+        ),
+      );
+    }
 
     notifyListeners();
   }
