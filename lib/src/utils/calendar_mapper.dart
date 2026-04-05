@@ -18,8 +18,6 @@ List<CalendarEvent> mapPurchaseToEvents(
     ) {
     final events = <CalendarEvent>[];
     for (final p in list) {
-      print('DEBUG 결제상태 → id: ${p.id}, paidAt: ${p.paidAt}');
-
       final lines = linesMap[p.id] ?? [];
       // 📦 발주일
       final searchText = lines.map((l) => l.name).join(' ').toLowerCase();

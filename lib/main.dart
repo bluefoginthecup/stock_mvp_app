@@ -46,6 +46,17 @@ Future<void> main() async {
 
   final db = AppDatabase();
 
+  print('schemaVersion: ${db.schemaVersion}');
+
+  final result = await db.customSelect(
+      "PRAGMA table_info(items)"
+  ).get();
+
+  print('items columns:');
+  for (final row in result) {
+    print(row.data['name']);
+  }
+
   await DbAutoBackupService.run();
 
   // 2) 통합 Drift Repo (Item / Txn / Order / Work / Purchase / Supplier / Paths 모두 포함)

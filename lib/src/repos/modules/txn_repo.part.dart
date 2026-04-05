@@ -165,12 +165,17 @@ Future<void> addInActual({
 }) async {
   if (qty <= 0) return; // 🔒 최후방어
   final rt = RefTypeX.fromString(refType);
+
+  final item = await getItem(itemId);
+  final rate = item?.conversionRate ?? 1.0;
+  final convertedQty = (qty * rate).round();
+
   await db.transaction(() async {
     await db.into(db.txns).insert(
       Txn.in_(
         id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
         itemId: itemId,
-        qty: qty,
+        qty: convertedQty,
         refType: rt,
         refId: refId,
         status: TxnStatus.actual,
@@ -180,7 +185,7 @@ Future<void> addInActual({
 
     final row = await (db.select(db.items)..where((t) => t.id.equals(itemId))).getSingleOrNull();
     final before = row?.qty ?? 0;
-    final after = before + qty;
+    final after = before + convertedQty; // 🔥 여기
     await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
       ItemsCompanion(qty: Value(after)),
     );
@@ -227,13 +232,14 @@ Future<void> addOutActual({
   if (qty <= 0) return; // 🔒 최후방어
   final rt = RefTypeX.fromString(refType);
   await db.transaction(() async {
-    print('[TXN] addOutActual itemId=$itemId qty=$qty refType=$refType refId=$refId note=$note');
-
+    final item = await getItem(itemId);
+    final rate = item?.conversionRate ?? 1.0;
+    final convertedQty = (qty * rate).round();
     await db.into(db.txns).insert(
       Txn.out_(
         id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
         itemId: itemId,
-        qty: qty,
+        qty: convertedQty,
         refType: rt,
         refId: refId,
         status: TxnStatus.actual,
@@ -244,7 +250,7 @@ Future<void> addOutActual({
 
     final row = await (db.select(db.items)..where((t) => t.id.equals(itemId))).getSingleOrNull();
     final before = row?.qty ?? 0;
-    final after = before - qty;
+    final after = before - convertedQty;
     await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
       ItemsCompanion(qty: Value(after)),
 
@@ -321,10 +327,11 @@ Future<void> adjustQty({
 }) async {
   if (delta == 0) return; // 🔒 0 조정은 기록/반영하지 않음
   final now = DateTime.now();
+
   await db.transaction(() async {
     final row = await (db.select(db.items)..where((t) => t.id.equals(itemId))).getSingleOrNull();
-    if (row == null) return;
 
+    if (row == null) return;
     await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
       ItemsCompanion(qty: Value((row.qty) + delta)),
     );

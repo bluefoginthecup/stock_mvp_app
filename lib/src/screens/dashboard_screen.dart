@@ -4,6 +4,8 @@ import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 
 import '../repos/repo_interfaces.dart';
 import '../ui/common/ui.dart';
+import '../screens/memo/memo_screen.dart';
+
 import '../screens/stock/stock_browser_screen.dart';
 import '../app/main_tab_controller.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
@@ -14,7 +16,9 @@ import '../screens/shortage/shortage_calc_screen.dart';
 
 
 enum QuickActionType {
-  orders, stock, txns, works, purchases, settings, suppliers, receipts,trash,shortage,
+  orders, stock, txns,
+  works, purchases, settings,
+  suppliers, receipts,trash,shortage,memo,
 }
 
 class DashboardScreen extends StatefulWidget {
@@ -51,6 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       QuickActionType.receipts,
       QuickActionType.trash,
       QuickActionType.shortage, // ✅ 여기
+      QuickActionType.memo,
     ];
 
     // 2) DB에서 저장된 순서 로드 (화면 뜬 뒤)
@@ -77,6 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         QuickActionType.receipts,
         QuickActionType.trash, // 새로 추가된 액션 포함
         QuickActionType.shortage, // ✅ 여기
+        QuickActionType.memo,
       ];
 
       // 2) 저장된 목록을 enum으로 변환(알 수 없는 값/구버전 값은 걸러냄)
@@ -217,6 +223,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
             },
           );
+        case QuickActionType.memo:
+          return _QuickAction(
+            key: const ValueKey('memo'),
+            icon: Icons.note_alt_outlined,
+            label: '메모',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MemoScreen()),
+              );
+            },
+          );
 
       }
     }
@@ -284,6 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
 
                 const SizedBox(height: 24),
+
                 Text('빠른 실행 (${_order.length})', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 12),
 

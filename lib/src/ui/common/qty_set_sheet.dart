@@ -7,16 +7,15 @@ import '../common/ui.dart';
 /// 사용처에서는 반환값(int?)으로 새 수량을 받아 delta 계산만 하면 됨.
 Future<int?> showQtySetSheet(
     BuildContext context, {
-      required int initial,
-      String? title,
-      String? applyLabel,
-      String? cancelLabel,
-      String? unit,        // 예: 'EA', 'm' 표시용(선택)
-      int? minQtyHint,     // 예: 임계치 배지 출력(선택)
+required int initial,
+String? title,
+String? applyLabel,
+String? cancelLabel,
+int? minQtyHint,     // 예: 임계치 배지 출력(선택)
     }) {
   int localQty = initial;
 
-  return showModalBottomSheet<int>(
+  return showModalBottomSheet<int?>(
     context: context,
     useSafeArea: true,
     isScrollControlled: true,
@@ -42,7 +41,7 @@ Future<int?> showQtySetSheet(
                       style: theme.textTheme.titleMedium,
                     ),
                     const Spacer(),
-                    if (unit != null) Chip(label: Text(unit)),
+
                     if (minQtyHint != null) ...[
                       const SizedBox(width: 6),
                       Chip(
@@ -89,7 +88,6 @@ Future<int?> showQtySetSheet(
 Future<bool> runQtySetFlow(
     BuildContext context, {
       required int currentQty,
-      String? unit,
       int? minQtyHint,
       String? title,
       String? applyLabel,
@@ -97,8 +95,7 @@ Future<bool> runQtySetFlow(
 
       /// 실제 반영 로직(예: repo.adjustQty)
       /// delta = newQty - currentQty
-      required Future<void> Function(int delta, int newQty) apply,
-
+      required Future<void> Function(int finalDelta) apply,
       /// 성공 시 후처리(예: setState, reload)
       VoidCallback? onSuccess,
 
@@ -107,22 +104,24 @@ Future<bool> runQtySetFlow(
       String? errorPrefix,
     }) async {
   // 1) 바텀시트로 새 수량 입력
-  final newQty = await showQtySetSheet(
-    context,
-    initial: currentQty,
-    unit: unit,
-    minQtyHint: minQtyHint,
-    title: title,
-    applyLabel: applyLabel,
-    cancelLabel: cancelLabel,
-  );
+   final result = await showQtySetSheet(
+     context,
+     initial: currentQty,
+   );
 
-  if (newQty == null || newQty == currentQty) return false;
+   if (result == null) return false;
+
+   final newQty = result;
+
+  if (newQty == currentQty) return false;
+
+   final finalDelta= newQty - currentQty;
+
+
 
   // 2) 적용
   try {
-    final delta = newQty - currentQty;
-    await apply(delta, newQty);
+    await apply(finalDelta);
 
     // 3) 성공 스낵바 + 후처리
     if (!context.mounted) return true;

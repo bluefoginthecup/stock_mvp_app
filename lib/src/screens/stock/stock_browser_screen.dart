@@ -23,11 +23,13 @@ import '../../ui/common/cart_add.dart';
 
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
+import '../../services/stock_service.dart';
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';
 part 'stock_browser_slivers.part.dart';
 part 'stock_browser_helpers.part.dart';
+
 
 // ============================================================================
 //  Explorer-style Stock browser: L1 (roots) -> L2 -> L3 -> Items

@@ -1,6 +1,7 @@
 // lib/src/screens/stock/stock_browser_slivers.part.dart
 part of 'stock_browser_screen.dart';
 
+
 // ───────────────────────── Sliver builders ─────────────────────────
 SliverList _buildFolderSliver(
     BuildContext context,
@@ -155,16 +156,9 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
             await runQtySetFlow(
               context,
               currentQty: it.qty,
-              unit: it.unit,
               minQtyHint: it.minQty,
-              apply: (delta, newQty) async {
-                await itemRepo.adjustQty(
-                  itemId: it.id,
-                  delta: delta,
-                  refType: 'MANUAL',
-                  note: 'Browser:setQty ${it.qty} → $newQty',
-                );
-              },
+              apply: (finalDelta) =>
+                  StockService.applyItemQtyChange(context, it, finalDelta),
               onSuccess: () async {},
               successMessage: context.t.btn_save,
               errorPrefix: context.t.common_error,

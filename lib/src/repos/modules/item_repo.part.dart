@@ -359,6 +359,8 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       searchNormalized: Value(keys.nameNorm),
       searchInitials: Value(keys.initials),
       searchFullNormalized: Value(keys.fullNorm),
+      defaultPurchasePrice: Value(item.defaultPurchasePrice),
+      defaultSalePrice: Value(item.defaultSalePrice),
     );
 
     await db.update(db.items).replace(updated);

@@ -17,12 +17,14 @@ import 'stock_item_edit_sheet.dart';
 import 'stock_item_full_edit_screen.dart';
 import 'widgets/item_meta_overview.dart';
 import '../../ui/common/qty_set_sheet.dart';
+import '../../utils/unit_converter.dart';
 import '../../ui/common/inout_flow.dart';
 import '../../ui/common/path_picker.dart';
 
 import '../../dev/bom_debug.dart';             // 콘솔 덤프 유틸
 import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
+import '../../services/stock_service.dart';
 
 
 class StockItemDetailScreen extends StatefulWidget {
@@ -262,16 +264,10 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       await runQtySetFlow(
         context,
         currentQty: it.qty,
-        unit: it.unit,
         minQtyHint: it.minQty,
-        apply: (delta, newQty) async {
-          await itemRepo.adjustQty(
-            itemId: it.id,
-            delta: delta,
-            refType: 'MANUAL',
-            note: 'Detail:setQty ${it.qty} → $newQty',
-          );
-        },
+        apply: (finalDelta) =>
+            StockService.applyItemQtyChange(context, it, finalDelta),
+
         onSuccess: () async {
           await _load(); // 상세 화면 값 리프레시
         },

@@ -98,7 +98,6 @@ class TxnRow extends StatelessWidget {
 
   void _goPurchaseDetail(BuildContext context, String poId) {
     _d('tap -> purchase detail: $poId');
-      debugPrint('[TxnRow] Navigating to /purchases/detail with orderId=$poId');
     Navigator.of(context, rootNavigator: true).pushNamed(
       '/purchases/detail',
       arguments: poId,
