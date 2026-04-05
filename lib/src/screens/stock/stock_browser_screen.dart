@@ -21,6 +21,7 @@ import 'widgets/stock_item_select_tile.dart';
 import 'widgets/stock_multi_select_bar.dart';
 import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
+import '../../ui/common/multi_select_bar.dart';
 
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
@@ -63,14 +64,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   void initState() {
     super.initState();
     _lowOnly = widget.showLowStockOnly;
-    // ✅ 여기 추가
-    // Future.microtask(() async {
-    //   final repo = context.read<FolderTreeRepo>() as dynamic;
-    //   await repo.debugPrintAllFolders();
-    //
-    //   final itemRepo = context.read<ItemRepo>() as dynamic;
-    //   await itemRepo.debugPrintAllItemPaths();
-    // });
+
   }
 
   @override
@@ -419,113 +413,239 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     required ItemSelectionController sel,
     required List<Item> items,
   }) {
-    return StockMultiSelectBar(
+
+    return CommonMultiSelectBar(
       selectedCount: sel.selected.length,
       totalCount: items.length,
-      onSelectAll: () => sel.selectAll(items.map((e) => e.id).toList()),
-      onClear: sel.exit,
-      onMove: sel.selected.isEmpty
-          ? () {}
-          : () async {
-        final dest = await showPathPicker(
-          context,
-          childrenProvider:
-          pathChildrenFromFolderRepo(context.read<FolderTreeRepo>()),
-          title: '아이템 이동..',
-          maxDepth: 3,
-        );
-        if (dest == null || dest.isEmpty) return;
-        final moved = await context.read<FolderTreeRepo>().moveItemsToPath(
-          itemIds: sel.selected.toList(),
-          pathIds: dest,
-        );
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('아이템 $moved개 이동')),
-        );
-        sel.exit();
-      },
-      onAddToCart: () async {
-        if (sel.selected.isEmpty) return;
-        final picked = items.where((it) => sel.selected.contains(it.id)).toList();
-        final cart = context.read<CartManager>();
-        addItemsToCart(cart, picked);
 
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${picked.length}개를 장바구니에 담았습니다.'),
-            action: SnackBarAction(
-              label: '보기',
-              onPressed: () {
-                Navigator.of(context, rootNavigator: true).pushNamed('/cart');
-              },
-            ),
-          ),
-        );
-      },
-      onTrash: () async {
-        if (sel.selected.isEmpty) return;
-        final ok = await showDeleteConfirm(
-          context,
-          message: '선택한 ${sel.selected.length}개를 휴지통으로 보낼까요?',
-        );
-        if (ok != true) return;
-        try {
-          final repo = context.read<ItemRepo>();
-          await repo.moveItemsToTrash(sel.selected.toList());
-          if (!context.mounted) return;
-          showGoSnack(
-            context,
-            message: '${sel.selected.length}개를 휴지통으로 이동했습니다.',
-            actionText: '휴지통 열기',
-            onAction: (_) => Navigator.of(context).pushNamed('/trash'),
-          );
-          sel.exit();
-        } catch (e) {
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('이동 실패: $e')),
-          );
+      // ✅ 기존 기능 그대로 유지
+      onSelectAll: () {
+        final allIds = items.map((e) => e.id).toList();
+
+        final isAllSelected =
+            sel.selected.length == items.length && items.isNotEmpty;
+
+        if (isAllSelected) {
+          sel.clear(); // ✅ 모드 유지
+        } else {
+          sel.selectAll(allIds);
         }
       },
-      allSelectedAreFavorite: (() {
-        final picked = items.where((it) => sel.selected.contains(it.id)).toList();
-        return picked.isNotEmpty && picked.every((it) => it.isFavorite == true);
-      })(),
-      onToggleFavoriteAll: () async {
-        final picked = items.where((it) => sel.selected.contains(it.id)).toList();
-        if (picked.isEmpty) return;
-        final repo = context.read<ItemRepo>();
-        final ids = picked.map((e) => e.id).toList();
-        final allFav = picked.every((it) => it.isFavorite == true);
-        final next = !allFav;
+      actions: [
+        // ⭐ 즐겨찾기
+        MultiSelectAction(
+          icon: Icons.star,
+          tooltip: '즐겨찾기',
+          onPressed: () async {
+            final picked = items.where((it) => sel.selected.contains(it.id)).toList();
+            if (picked.isEmpty) return;
 
-        try {
-          final dyn = repo as dynamic;
-          if (dyn.setFavoritesBulk is Function) {
-            await dyn.setFavoritesBulk(ids: ids, value: next);
-          } else {
-            for (final id in ids) {
-              await repo.setFavorite(itemId: id, value: next);
+            final repo = context.read<ItemRepo>();
+            final ids = picked.map((e) => e.id).toList();
+            final allFav = picked.every((it) => it.isFavorite == true);
+            final next = !allFav;
+
+            final dyn = repo as dynamic;
+            if (dyn.setFavoritesBulk is Function) {
+              await dyn.setFavoritesBulk(ids: ids, value: next);
+            } else {
+              for (final id in ids) {
+                await repo.setFavorite(itemId: id, value: next);
+              }
             }
-          }
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                next ? '선택한 ${ids.length}개 즐겨찾기 추가' : '선택한 ${ids.length}개 즐겨찾기 해제',
-              ),
-            ),
-          );
-        } catch (e) {
-          if (!context.mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('처리 실패: $e')),
-          );
-        }
-      },
+
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(next
+                  ? '선택한 ${ids.length}개 즐겨찾기 추가'
+                  : '선택한 ${ids.length}개 즐겨찾기 해제')),
+            );
+          },
+        ),
+
+        // 🗑 휴지통
+        MultiSelectAction(
+          icon: Icons.delete_outline,
+          tooltip: '휴지통',
+          color: Colors.redAccent,
+          onPressed: () async {
+            if (sel.selected.isEmpty) return;
+
+            final ok = await showDeleteConfirm(
+              context,
+              message: '선택한 ${sel.selected.length}개를 휴지통으로 보낼까요?',
+            );
+            if (ok != true) return;
+
+            final repo = context.read<ItemRepo>();
+            await repo.moveItemsToTrash(sel.selected.toList());
+
+            if (!context.mounted) return;
+            showGoSnack(
+              context,
+              message: '${sel.selected.length}개 이동 완료',
+              actionText: '휴지통 열기',
+              onAction: (_) => Navigator.of(context).pushNamed('/trash'),
+            );
+
+            sel.exit();
+          },
+        ),
+
+        // 이동
+        MultiSelectAction(
+          icon: Icons.drive_file_move,
+          tooltip: '이동',
+          onPressed: () async {
+            final dest = await showPathPicker(
+              context,
+              childrenProvider:
+              pathChildrenFromFolderRepo(context.read<FolderTreeRepo>()),
+              title: '아이템 이동..',
+              maxDepth: 3,
+            );
+            if (dest == null || dest.isEmpty) return;
+
+            final moved = await context.read<FolderTreeRepo>().moveItemsToPath(
+              itemIds: sel.selected.toList(),
+              pathIds: dest,
+            );
+
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('아이템 $moved개 이동')),
+            );
+
+            sel.exit();
+          },
+        ),
+
+        // 장바구니
+        MultiSelectAction(
+          icon: Icons.add_shopping_cart,
+          tooltip: '담기',
+          onPressed: () {
+            final picked =
+            items.where((it) => sel.selected.contains(it.id)).toList();
+
+            final cart = context.read<CartManager>();
+            addItemsToCart(cart, picked);
+
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${picked.length}개 담기 완료')),
+            );
+          },
+        ),
+      ],
     );
+    // return StockMultiSelectBar(
+    //   selectedCount: sel.selected.length,
+    //   totalCount: items.length,
+    //   onSelectAll: () => sel.selectAll(items.map((e) => e.id).toList()),
+    //   onClear: sel.exit,
+    //   onMove: sel.selected.isEmpty
+    //       ? () {}
+    //       : () async {
+    //     final dest = await showPathPicker(
+    //       context,
+    //       childrenProvider:
+    //       pathChildrenFromFolderRepo(context.read<FolderTreeRepo>()),
+    //       title: '아이템 이동..',
+    //       maxDepth: 3,
+    //     );
+    //     if (dest == null || dest.isEmpty) return;
+    //     final moved = await context.read<FolderTreeRepo>().moveItemsToPath(
+    //       itemIds: sel.selected.toList(),
+    //       pathIds: dest,
+    //     );
+    //     if (!context.mounted) return;
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       SnackBar(content: Text('아이템 $moved개 이동')),
+    //     );
+    //     sel.exit();
+    //   },
+    //   onAddToCart: () async {
+    //     if (sel.selected.isEmpty) return;
+    //     final picked = items.where((it) => sel.selected.contains(it.id)).toList();
+    //     final cart = context.read<CartManager>();
+    //     addItemsToCart(cart, picked);
+    //
+    //     if (!context.mounted) return;
+    //     ScaffoldMessenger.of(context).showSnackBar(
+    //       SnackBar(
+    //         content: Text('${picked.length}개를 장바구니에 담았습니다.'),
+    //         action: SnackBarAction(
+    //           label: '보기',
+    //           onPressed: () {
+    //             Navigator.of(context, rootNavigator: true).pushNamed('/cart');
+    //           },
+    //         ),
+    //       ),
+    //     );
+    //   },
+    //   onTrash: () async {
+    //     if (sel.selected.isEmpty) return;
+    //     final ok = await showDeleteConfirm(
+    //       context,
+    //       message: '선택한 ${sel.selected.length}개를 휴지통으로 보낼까요?',
+    //     );
+    //     if (ok != true) return;
+    //     try {
+    //       final repo = context.read<ItemRepo>();
+    //       await repo.moveItemsToTrash(sel.selected.toList());
+    //       if (!context.mounted) return;
+    //       showGoSnack(
+    //         context,
+    //         message: '${sel.selected.length}개를 휴지통으로 이동했습니다.',
+    //         actionText: '휴지통 열기',
+    //         onAction: (_) => Navigator.of(context).pushNamed('/trash'),
+    //       );
+    //       sel.exit();
+    //     } catch (e) {
+    //       if (!context.mounted) return;
+    //       ScaffoldMessenger.of(context).showSnackBar(
+    //         SnackBar(content: Text('이동 실패: $e')),
+    //       );
+    //     }
+    //   },
+    //   allSelectedAreFavorite: (() {
+    //     final picked = items.where((it) => sel.selected.contains(it.id)).toList();
+    //     return picked.isNotEmpty && picked.every((it) => it.isFavorite == true);
+    //   })(),
+    //   onToggleFavoriteAll: () async {
+    //     final picked = items.where((it) => sel.selected.contains(it.id)).toList();
+    //     if (picked.isEmpty) return;
+    //     final repo = context.read<ItemRepo>();
+    //     final ids = picked.map((e) => e.id).toList();
+    //     final allFav = picked.every((it) => it.isFavorite == true);
+    //     final next = !allFav;
+    //
+    //     try {
+    //       final dyn = repo as dynamic;
+    //       if (dyn.setFavoritesBulk is Function) {
+    //         await dyn.setFavoritesBulk(ids: ids, value: next);
+    //       } else {
+    //         for (final id in ids) {
+    //           await repo.setFavorite(itemId: id, value: next);
+    //         }
+    //       }
+    //       if (!context.mounted) return;
+    //       ScaffoldMessenger.of(context).showSnackBar(
+    //         SnackBar(
+    //           content: Text(
+    //             next ? '선택한 ${ids.length}개 즐겨찾기 추가' : '선택한 ${ids.length}개 즐겨찾기 해제',
+    //           ),
+    //         ),
+    //       );
+    //     } catch (e) {
+    //       if (!context.mounted) return;
+    //       ScaffoldMessenger.of(context).showSnackBar(
+    //         SnackBar(content: Text('처리 실패: $e')),
+    //       );
+    //     }
+    //   },
+    // );
   }
 
   //------빌드 스택 위드 리스트 ------//
