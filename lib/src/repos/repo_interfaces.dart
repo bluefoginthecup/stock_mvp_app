@@ -343,7 +343,11 @@ class MoveRequest {
 abstract class TrashRepo {
   Future<List<TrashEntry>> listTrash();
   Future<void> restore(String entityType, String id);
+  Future<int> getRestoreImpactCount(String folderId);
+
   Future<void> hardDelete(String entityType, String id);
+  Future<({String? name, bool willRestore})>
+  getParentFolderInfo(String itemId);
 
 }
 

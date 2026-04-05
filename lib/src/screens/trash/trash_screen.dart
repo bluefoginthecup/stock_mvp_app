@@ -29,12 +29,73 @@ class _TrashScreenState extends State<TrashScreen> {
         e.id.toLowerCase().contains(q))
         .toList();
   }
-
   Future<void> _restore(BuildContext ctx, TrashEntry e) async {
-    await ctx.read<TrashRepo>().restore(e.entityType, e.id);
-    if (!mounted) return;
+    final repo = ctx.read<TrashRepo>();
+
+    // 🔥 폴더일 때만 confirm
+    if (e.entityType == 'folder') {
+      final count = await repo.getRestoreImpactCount(e.id);
+
+      final ok = await showDialog<bool>(
+        context: ctx,
+        builder: (d) => AlertDialog(
+          title: const Text('폴더 복구'),
+          content: Text('하위 $count개 항목이 함께 복구됩니다'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(d, false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(d, true),
+              child: const Text('복구'),
+            ),
+          ],
+        ),
+      );
+
+      if (ok != true) return;
+    }
+
+    // 🔥 아이템 복구 (dialog 추가)
+    if (e.entityType == 'item') {
+      final info = await repo.getParentFolderInfo(e.id);
+
+      // 🔥 부모가 실제로 복구될 때만 dialog
+      if (info.willRestore) {
+        final msg = info.name != null
+            ? '폴더 "${info.name}"가 함께 복구됩니다'
+            : '부모 폴더가 함께 복구됩니다';
+
+        final ok = await showDialog<bool>(
+          context: ctx,
+          builder: (d) => AlertDialog(
+            title: const Text('아이템 복구'),
+            content: Text(msg),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(d, false),
+                child: const Text('취소'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(d, true),
+                child: const Text('복구'),
+              ),
+            ],
+          ),
+        );
+
+        if (ok != true) return;
+      }
+    }
+    // 🔥 실제 복구 실행
+    await repo.restore(e.entityType, e.id);
+
+    if (!ctx.mounted) return;
+
     ScaffoldMessenger.of(ctx)
         .showSnackBar(const SnackBar(content: Text('복구되었습니다')));
+
     setState(() {});
   }
 

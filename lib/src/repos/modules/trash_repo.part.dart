@@ -295,5 +295,95 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     }
   }
 
+  Future<int> _countDescendants(String folderId) async {
+    int count = 0;
 
+    // 🔥 1. 하위 item 개수
+    final items = await (db.select(db.items)
+      ..where((t) => t.isDeleted.equals(true)))
+        .get();
+
+    for (final item in items) {
+      final extra = jsonDecode(item.extra ?? '{}');
+
+      if (extra['l1Id'] == folderId ||
+          extra['l2Id'] == folderId ||
+          extra['l3Id'] == folderId) {
+        count++;
+      }
+    }
+
+    // 🔥 2. 하위 폴더 개수 (재귀)
+    final children = await (db.select(db.folders)
+      ..where((t) =>
+      t.isDeleted.equals(true) &
+      t.parentId.equals(folderId)))
+        .get();
+
+    for (final child in children) {
+      count++; // 폴더 자체
+      count += await _countDescendants(child.id);
+    }
+
+    return count;
+  }
+  Future<int> getRestoreImpactCount(String folderId) async {
+    return await _countDescendants(folderId);
+  }
+
+  Future<String?> getParentFolderName(String itemId) async {
+    final item = await (db.select(db.items)
+      ..where((t) => t.id.equals(itemId)))
+        .getSingleOrNull();
+
+    if (item == null) return null;
+
+    final extra = jsonDecode(item.extra ?? '{}');
+
+    final l3 = extra['l3Id'];
+    final l2 = extra['l2Id'];
+    final l1 = extra['l1Id'];
+
+    // 🔥 가장 깊은 폴더부터 찾기
+    final targetId = l3 ?? l2 ?? l1;
+    if (targetId == null) return null;
+
+    final folder = await (db.select(db.folders)
+      ..where((t) => t.id.equals(targetId)))
+        .getSingleOrNull();
+
+    return folder?.name;
+  }
+  Future<({String? name, bool willRestore})>
+  getParentFolderInfo(String itemId) async {
+    final item = await (db.select(db.items)
+      ..where((t) => t.id.equals(itemId)))
+        .getSingleOrNull();
+
+    if (item == null) return (name: null, willRestore: false);
+
+    final extra = jsonDecode(item.extra ?? '{}');
+
+    final l3 = extra['l3Id'];
+    final l2 = extra['l2Id'];
+    final l1 = extra['l1Id'];
+
+    final targetId = l3 ?? l2 ?? l1;
+    if (targetId == null) {
+      return (name: null, willRestore: false);
+    }
+
+    final folder = await (db.select(db.folders)
+      ..where((t) => t.id.equals(targetId)))
+        .getSingleOrNull();
+
+    if (folder == null) {
+      return (name: null, willRestore: false);
+    }
+
+    return (
+    name: folder.name,
+    willRestore: folder.isDeleted == true
+    );
+  }
 }
