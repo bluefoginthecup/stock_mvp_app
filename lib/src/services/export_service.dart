@@ -101,8 +101,7 @@ class ExportService {
     debugPrint("🟡 importDatabase() 시작");
 
     final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['db'],
+      type: FileType.any,
     );
 
     if (result == null) return false;

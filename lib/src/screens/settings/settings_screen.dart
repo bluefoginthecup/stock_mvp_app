@@ -262,9 +262,9 @@ class SettingsScreen extends StatelessWidget {
 
               if (!context.mounted) return;
 
+
               if (ok) {
-                // 🔥 UI 강제 리로드 (핵심)
-                Navigator.of(context).pop();
+                exit(0);
               }
 
             },
