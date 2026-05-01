@@ -1,9 +1,11 @@
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase_order.dart'; // ✅
 import '../../models/purchase_line.dart';
 import '../../models/suppliers.dart';
 import '../../services/inventory_service.dart';
+import '../../ui/common/draggable_fab.dart';
 import '../../ui/common/ui.dart';
 import '../purchases/purchase_detail_screen.dart'; // 경로는 프로젝트 구조에 맞게
 import '../../ui/common/common_calendar_view.dart';
@@ -22,6 +24,7 @@ class PurchaseListScreen extends StatefulWidget {
 class _PurchaseListScreenState extends State<PurchaseListScreen> {
   bool isCalendarView = true;
   String _query = '';
+  bool _creatingPurchase = false;
 
   DateTime? _focusedDay; // 🔥 추가
   Timer? _debounce;      // 🔥 추가
@@ -93,6 +96,52 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
           });
         });
     }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _createBlankPurchaseOrder(PurchaseOrderRepo repo) async {
+    if (_creatingPurchase) return;
+    setState(() => _creatingPurchase = true);
+
+    final id = const Uuid().v4();
+    final now = DateTime.now();
+    final po = PurchaseOrder(
+      id: id,
+      supplierName: '',
+      eta: now,
+      status: PurchaseOrderStatus.draft,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    try {
+      await repo.createPurchaseOrder(po);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PurchaseDetailScreen(
+            repo: repo,
+            orderId: id,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('새 발주서를 만들지 못했습니다: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _creatingPurchase = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -370,6 +419,23 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
             },
           );
         },
+      ),
+      floatingActionButton: DraggableFab(
+        storageKey: 'fab_offset_purchase_list',
+        child: FloatingActionButton.extended(
+          heroTag: 'fab-purchases',
+          onPressed: _creatingPurchase
+              ? null
+              : () => _createBlankPurchaseOrder(poRepo),
+          icon: _creatingPurchase
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.add),
+          label: const Text('새 발주'),
+        ),
       ),
     );
   }
