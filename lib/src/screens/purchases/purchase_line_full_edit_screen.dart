@@ -1,11 +1,15 @@
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../models/item.dart';
 import '../../models/purchase_line.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/item_picker_sheet.dart';
+import '../../ui/common/suggestion_panel.dart';
 import '../../ui/common/ui.dart';
-import 'package:provider/provider.dart';
 
 
 class PurchaseLineFullEditScreen extends StatefulWidget {
@@ -39,6 +43,10 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
 
   late final bool isEdit;
   late final String lineId;
+  Timer? _itemSearchDebounce;
+  bool _itemSearching = false;
+  bool _suppressItemSearch = false;
+  List<Item> _itemResults = <Item>[];
 
   @override
   void initState() {
@@ -61,6 +69,7 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
 
   @override
   void dispose() {
+    _itemSearchDebounce?.cancel();
     itemIdC.dispose();
     nameC.dispose();
     unitC.dispose();
@@ -126,19 +135,104 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
 
     if (!mounted) return;
 
+    if (item != null) {
+      _applyItem(item);
+    } else {
+      setState(() => itemIdC.text = pickedId);
+    }
+  }
+
+  void _applyItem(Item item) {
+    _suppressItemSearch = true;
     setState(() {
-      itemIdC.text = pickedId;
-
-      if (item == null) return;
-
+      itemIdC.text = item.id;
       nameC.text = item.displayName ?? item.name;
       unitC.text = item.unitIn.isNotEmpty ? item.unitIn : item.unit;
+      _itemResults = [];
+      _itemSearching = false;
 
       final purchasePrice = item.defaultPurchasePrice ?? item.defaultPrice;
       if (purchasePrice != null && purchasePrice > 0) {
         priceC.text = purchasePrice.toString();
       }
     });
+    _suppressItemSearch = false;
+  }
+
+  void _onItemNameChanged(String value) {
+    if (_suppressItemSearch) return;
+
+    itemIdC.clear();
+    _itemSearchDebounce?.cancel();
+
+    final query = value.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _itemResults = [];
+        _itemSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _itemSearching = true);
+    _itemSearchDebounce = Timer(const Duration(milliseconds: 250), () async {
+      final itemRepo = context.read<ItemRepo>();
+      final results = await itemRepo.searchItemsGlobal(query);
+      if (!mounted || nameC.text.trim() != query) return;
+      setState(() {
+        _itemResults = results;
+        _itemSearching = false;
+      });
+    });
+  }
+
+  Future<void> _createTemporaryItemFromLine() async {
+    final itemName = nameC.text.trim();
+    if (itemName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('아이템명을 입력하세요')),
+      );
+      return;
+    }
+
+    final itemRepo = context.read<ItemRepo>();
+    final po = await widget.repo.getPurchaseOrderById(widget.orderId);
+    final unit = unitC.text.trim().isEmpty ? 'EA' : unitC.text.trim();
+    final price = double.tryParse(priceC.text.trim());
+    final now = DateTime.now().toIso8601String();
+
+    final item = Item(
+      id: const Uuid().v4(),
+      name: itemName,
+      displayName: null,
+      sku: '',
+      unit: unit,
+      folder: 'uncategorized',
+      subfolder: null,
+      subsubfolder: null,
+      minQty: 0,
+      qty: 0,
+      supplierName: po?.supplierName.trim().isNotEmpty == true
+          ? po!.supplierName.trim()
+          : null,
+      defaultPurchasePrice: price != null && price > 0 ? price : null,
+      attrs: {
+        'temporary': true,
+        'status': 'needsReview',
+        'source': 'purchaseLine',
+        'createdFromPurchaseOrderId': widget.orderId,
+        'createdAt': now,
+        if (po?.supplierId != null && po!.supplierId!.isNotEmpty)
+          'supplierId': po.supplierId,
+      },
+    );
+
+    await itemRepo.upsertItem(item);
+    if (!mounted) return;
+    _applyItem(item);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('정식등록 필요 아이템으로 추가했어요')),
+    );
   }
 
   Future<void> _delete() async {
@@ -165,6 +259,54 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
 
   InputDecoration _dec(String label, {String? hint}) =>
       InputDecoration(labelText: label, hintText: hint);
+
+  Widget _buildInlineItemResults() {
+    final query = nameC.text.trim();
+    if (_itemSearching) return const LinearProgressIndicator();
+
+    if (_itemResults.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: SuggestionPanel<Item>(
+          items: _itemResults,
+          rowHeight: 56,
+          maxRows: 5,
+          itemBuilder: (_, item) => ListTile(
+            title: Text(item.displayName ?? item.name),
+            subtitle: item.sku.isNotEmpty ? Text(item.sku) : null,
+            onTap: () => _applyItem(item),
+          ),
+        ),
+      );
+    }
+
+    if (query.isEmpty || itemIdC.text.trim().isNotEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(
+        borderRadius: BorderRadius.circular(8),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('새 아이템으로 추가할까요?'),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _createTemporaryItemFromLine,
+                icon: const Icon(Icons.add),
+                label: const Text('+ 새 아이템 추가'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -195,22 +337,20 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
               Text('필수', style: text.titleSmall),
               const SizedBox(height: 8),
               TextFormField(
-                controller: itemIdC,
-                readOnly: true,
-                decoration: _dec('아이템', hint: '검색해서 선택하세요').copyWith(
+                controller: nameC,
+                decoration: _dec('아이템명', hint: '입력하면 기존 아이템을 검색합니다').copyWith(
                   suffixIcon: IconButton(
                     tooltip: '아이템 검색',
                     icon: const Icon(Icons.search),
                     onPressed: _pickItem,
                   ),
                 ),
-                onTap: _pickItem,
-                validator: (v) => (v == null || v.trim().isEmpty) ? '아이템을 선택하세요' : null,
+                onChanged: _onItemNameChanged,
+                validator: (_) => itemIdC.text.trim().isEmpty
+                    ? '기존 아이템을 선택하거나 새 아이템으로 추가하세요'
+                    : null,
               ),
-              TextFormField(
-                controller: nameC,
-                decoration: _dec('name (표시명, 선택)'),
-              ),
+              _buildInlineItemResults(),
               Row(
                 children: [
                   Expanded(
