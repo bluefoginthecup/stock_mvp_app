@@ -5,10 +5,12 @@ import '../../models/extensions/payment_status_ext.dart';
 import '../../models/extensions/vat_invoice_status_ext.dart';
 import '../../models/purchase_line.dart';
 import '../../models/purchase_order.dart';
+import '../../models/suppliers.dart';
 import '../../models/types.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/delete_more_menu.dart';
+import '../../ui/common/supplier_picker_sheet.dart';
 import '../../ui/common/ui.dart';
 import 'purchase_line_full_edit_screen.dart';
 import 'widgets/purchase_print_action.dart';
@@ -76,6 +78,44 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   String _fmt(num v) => v.toStringAsFixed(0);
+
+  Future<Supplier?> _supplierFor(PurchaseOrder po) async {
+    final supplierId = po.supplierId;
+    if (supplierId == null || supplierId.isEmpty) return null;
+    return context.read<SupplierRepo>().get(supplierId);
+  }
+
+  String _fallbackSupplierName(PurchaseOrder po) {
+    final name = po.supplierName.trim();
+    return name.isEmpty ? '(거래처 미지정)' : name;
+  }
+
+  Future<void> _changeSupplier() async {
+    final po = _po;
+    if (po == null) return;
+
+    final selected = await showSupplierPickerSheet(
+      context,
+      initialQuery: po.supplierName.trim(),
+      title: '발주 거래처 연결',
+    );
+    if (selected == null) return;
+
+    await widget.repo.updatePurchaseOrder(
+      po.copyWith(
+        supplierId: selected.id,
+        supplierName: selected.name,
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    await _reload();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${selected.name} 거래처로 연결되었습니다')),
+    );
+  }
 
   Future<String?> _editText({
     required String title,
@@ -565,12 +605,61 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            po.supplierName.isEmpty ? '(거래처 미지정)' : po.supplierName,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          child: FutureBuilder<Supplier?>(
+                            future: _supplierFor(po),
+                            builder: (context, supplierSnap) {
+                              final supplier = supplierSnap.data;
+                              final isLinked = po.supplierId != null &&
+                                  po.supplierId!.isNotEmpty &&
+                                  supplier != null;
+                              final name =
+                                  supplier?.name ?? _fallbackSupplierName(po);
+
+                              return InkWell(
+                                onTap: _changeSupplier,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.edit_outlined,
+                                            size: 18,
+                                          ),
+                                        ],
+                                      ),
+                                      if (!isLinked)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 4),
+                                          child: Text(
+                                            '거래처 연결 필요',
+                                            style: TextStyle(
+                                              color: Colors.orange.shade800,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                         Chip(

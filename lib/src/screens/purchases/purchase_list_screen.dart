@@ -2,6 +2,7 @@ import 'package:provider/provider.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase_order.dart'; // ✅
 import '../../models/purchase_line.dart';
+import '../../models/suppliers.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/ui.dart';
 import '../purchases/purchase_detail_screen.dart'; // 경로는 프로젝트 구조에 맞게
@@ -98,6 +99,7 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
     final poRepo = context.read<PurchaseOrderRepo>();
     final inv = context.read<InventoryService>();
     final itemRepo = context.read<ItemRepo>();
+    final supplierRepo = context.read<SupplierRepo>();
 
     return Scaffold(
       appBar: AppBar(
@@ -141,9 +143,34 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
 
           final linesMap = linesSnap.data!;
 
-          return StreamBuilder<List<PurchaseOrder>>(
-            stream: poRepo.watchAllPurchaseOrders(),
-            builder: (context, snap) {
+          return FutureBuilder<List<Supplier>>(
+            future: supplierRepo.list(onlyActive: false),
+            builder: (context, supplierSnap) {
+              final suppliers = supplierSnap.data ?? const [];
+              final supplierNameById = {
+                for (final s in suppliers) s.id: s.name,
+              };
+
+              String supplierNameFor(PurchaseOrder p) {
+                final supplierId = p.supplierId;
+                final linkedName = supplierId == null || supplierId.isEmpty
+                    ? null
+                    : supplierNameById[supplierId];
+                final fallback = p.supplierName.trim();
+                return linkedName ??
+                    (fallback.isEmpty ? '(거래처 미지정)' : fallback);
+              }
+
+              bool needsSupplierLink(PurchaseOrder p) {
+                final supplierId = p.supplierId;
+                return supplierId == null ||
+                    supplierId.isEmpty ||
+                    !supplierNameById.containsKey(supplierId);
+              }
+
+              return StreamBuilder<List<PurchaseOrder>>(
+                stream: poRepo.watchAllPurchaseOrders(),
+                builder: (context, snap) {
               if (snap.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
@@ -157,8 +184,7 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
               final list = rawList.where((p) {
                 if (_query.isEmpty) return true;
 
-                final supplier =
-                (p.supplierName ?? '').toLowerCase();
+                final supplier = supplierNameFor(p).toLowerCase();
 
 
                 /// 🔹 아이템 이름 검색
@@ -184,7 +210,11 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
               /// 🔵 캘린더 뷰
               /// ============================
               if (isCalendarView) {
-                final events = mapPurchaseToEvents(list, linesMap);
+                final events = mapPurchaseToEvents(
+                  list,
+                  linesMap,
+                  supplierNameOf: supplierNameFor,
+                );
 
                 final filteredEvents = events.where((e) {
                   return _eventTypeFilter.contains(e.type);
@@ -280,6 +310,8 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                 itemCount: list.length,
                 itemBuilder: (_, i) {
                   final p = list[i];
+                  final supplierName = supplierNameFor(p);
+                  final needsLink = needsSupplierLink(p);
 
                   String fmtDate(DateTime? d) {
                     if (d == null) return '-';
@@ -307,10 +339,12 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                     margin: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 4),
                     child: ListTile(
-                      title: Text(
-                          '발주: ${p.supplierName?.trim().isEmpty == true ? '(미지정)' : p.supplierName}'),
+                      title: Text('발주: $supplierName'),
                       subtitle: Text(
-                          '상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}'),
+                        needsLink
+                            ? '거래처 연결 필요 • 상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}'
+                            : '상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}',
+                      ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.push(
@@ -329,6 +363,8 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                     ),
                   ).copyWithButtonBar(
                       context, p, poRepo, inv);
+                },
+              );
                 },
               );
             },

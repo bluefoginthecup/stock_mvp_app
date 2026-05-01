@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../models/suppliers.dart';
 import '../../repos/repo_interfaces.dart';
@@ -6,7 +7,8 @@ import 'package:uuid/uuid.dart';
 
 class SupplierFormScreen extends StatefulWidget {
   final String? supplierId; // null이면 새로 만들기
-  const SupplierFormScreen({super.key, this.supplierId});
+  final String? initialName;
+  const SupplierFormScreen({super.key, this.supplierId, this.initialName});
 
   @override
   State<SupplierFormScreen> createState() => _SupplierFormScreenState();
@@ -20,6 +22,7 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
   final _emailC = TextEditingController();
   final _addrC = TextEditingController();
   final _memoC = TextEditingController();
+  String? _supplierId;
   bool _isActive = true;
   bool _loading = true;
 
@@ -34,6 +37,7 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
     if (widget.supplierId != null) {
       final s = await repo.get(widget.supplierId!);
       if (s != null) {
+        _supplierId = s.id;
         _nameC.text = s.name;
         _contactC.text = s.contactName ?? '';
         _phoneC.text = s.phone ?? '';
@@ -42,6 +46,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
         _memoC.text = s.memo ?? '';
         _isActive = s.isActive;
       }
+    } else if ((widget.initialName ?? '').trim().isNotEmpty) {
+      _nameC.text = widget.initialName!.trim();
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -146,6 +152,27 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
               title: const Text('활성 상태'),
               subtitle: const Text('비활성 시 기본 선택 목록에서 제외'),
             ),
+            if (isEdit && _supplierId != null) ...[
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('내부 ID'),
+                subtitle: SelectableText(_supplierId!),
+                trailing: IconButton(
+                  tooltip: 'ID 복사',
+                  icon: const Icon(Icons.copy),
+                  onPressed: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: _supplierId!),
+                    );
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('거래처 ID를 복사했어요')),
+                    );
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             FilledButton.icon(
               onPressed: _save,

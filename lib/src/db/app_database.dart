@@ -309,7 +309,7 @@ class Works extends Table {
 class PurchaseOrders extends Table {
   TextColumn get id => text()(); // uuid
   TextColumn get supplierName => text()(); // 상호
-  IntColumn get supplierId => integer().nullable()();
+  TextColumn get supplierId => text().nullable()();
 
   RealColumn get shippingCost => real().withDefault(const Constant(0))();
   RealColumn get extraCost => real().withDefault(const Constant(0))();
@@ -481,7 +481,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 18; //
+  int get schemaVersion => 19; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -663,6 +663,11 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 18) {
         await m.createTable(memos);
+      }
+      if (from < 19) {
+        // supplier_id used to be declared INTEGER. Existing rows are mostly
+        // null/name-only, and SQLite can store UUID text in the existing
+        // column, so no destructive table rewrite is required here.
       }
 
     },

@@ -92,7 +92,7 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
         TrashEntry(
           id: r.id,
           entityType: 'po',
-          title: _purchaseSupplierTitle(r.supplierName),
+          title: await _purchaseSupplierTitle(r.supplierId, r.supplierName),
           deletedAt: DateTime.parse(r.deletedAt!),
           extra: {
             'itemSummary': itemSummary,
@@ -117,9 +117,20 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     return '$name 외 ${extraCount}건';
   }
 
-  String _purchaseSupplierTitle(String supplierName) {
-    final title = supplierName.trim();
-    if (title.isNotEmpty) return title;
+  Future<String> _purchaseSupplierTitle(
+    String? supplierId,
+    String supplierName,
+  ) async {
+    if (supplierId != null && supplierId.isNotEmpty) {
+      final supplier = await (db.select(db.suppliers)
+            ..where((t) => t.id.equals(supplierId)))
+          .getSingleOrNull();
+      final linkedName = supplier?.name.trim() ?? '';
+      if (linkedName.isNotEmpty) return linkedName;
+    }
+
+    final fallback = supplierName.trim();
+    if (fallback.isNotEmpty) return fallback;
     return '(거래처 미지정)';
   }
 

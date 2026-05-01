@@ -4646,9 +4646,9 @@ class $PurchaseOrdersTable extends PurchaseOrders
   static const VerificationMeta _supplierIdMeta =
       const VerificationMeta('supplierId');
   @override
-  late final GeneratedColumn<int> supplierId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> supplierId = GeneratedColumn<String>(
       'supplier_id', aliasedName, true,
-      type: DriftSqlType.int, requiredDuringInsert: false);
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _shippingCostMeta =
       const VerificationMeta('shippingCost');
   @override
@@ -4957,7 +4957,7 @@ class $PurchaseOrdersTable extends PurchaseOrders
       supplierName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}supplier_name'])!,
       supplierId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}supplier_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}supplier_id']),
       shippingCost: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}shipping_cost'])!,
       extraCost: attachedDatabase.typeMapping
@@ -5011,7 +5011,7 @@ class PurchaseOrderRow extends DataClass
     implements Insertable<PurchaseOrderRow> {
   final String id;
   final String supplierName;
-  final int? supplierId;
+  final String? supplierId;
   final double shippingCost;
   final double extraCost;
   final double vat;
@@ -5062,7 +5062,7 @@ class PurchaseOrderRow extends DataClass
     map['id'] = Variable<String>(id);
     map['supplier_name'] = Variable<String>(supplierName);
     if (!nullToAbsent || supplierId != null) {
-      map['supplier_id'] = Variable<int>(supplierId);
+      map['supplier_id'] = Variable<String>(supplierId);
     }
     map['shipping_cost'] = Variable<double>(shippingCost);
     map['extra_cost'] = Variable<double>(extraCost);
@@ -5152,7 +5152,7 @@ class PurchaseOrderRow extends DataClass
     return PurchaseOrderRow(
       id: serializer.fromJson<String>(json['id']),
       supplierName: serializer.fromJson<String>(json['supplierName']),
-      supplierId: serializer.fromJson<int?>(json['supplierId']),
+      supplierId: serializer.fromJson<String?>(json['supplierId']),
       shippingCost: serializer.fromJson<double>(json['shippingCost']),
       extraCost: serializer.fromJson<double>(json['extraCost']),
       vat: serializer.fromJson<double>(json['vat']),
@@ -5182,7 +5182,7 @@ class PurchaseOrderRow extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'supplierName': serializer.toJson<String>(supplierName),
-      'supplierId': serializer.toJson<int?>(supplierId),
+      'supplierId': serializer.toJson<String?>(supplierId),
       'shippingCost': serializer.toJson<double>(shippingCost),
       'extraCost': serializer.toJson<double>(extraCost),
       'vat': serializer.toJson<double>(vat),
@@ -5209,7 +5209,7 @@ class PurchaseOrderRow extends DataClass
   PurchaseOrderRow copyWith(
           {String? id,
           String? supplierName,
-          Value<int?> supplierId = const Value.absent(),
+          Value<String?> supplierId = const Value.absent(),
           double? shippingCost,
           double? extraCost,
           double? vat,
@@ -5393,7 +5393,7 @@ class PurchaseOrderRow extends DataClass
 class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<String> id;
   final Value<String> supplierName;
-  final Value<int?> supplierId;
+  final Value<String?> supplierId;
   final Value<double> shippingCost;
   final Value<double> extraCost;
   final Value<double> vat;
@@ -5475,7 +5475,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   static Insertable<PurchaseOrderRow> custom({
     Expression<String>? id,
     Expression<String>? supplierName,
-    Expression<int>? supplierId,
+    Expression<String>? supplierId,
     Expression<double>? shippingCost,
     Expression<double>? extraCost,
     Expression<double>? vat,
@@ -5530,7 +5530,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   PurchaseOrdersCompanion copyWith(
       {Value<String>? id,
       Value<String>? supplierName,
-      Value<int?>? supplierId,
+      Value<String?>? supplierId,
       Value<double>? shippingCost,
       Value<double>? extraCost,
       Value<double>? vat,
@@ -5590,7 +5590,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       map['supplier_name'] = Variable<String>(supplierName.value);
     }
     if (supplierId.present) {
-      map['supplier_id'] = Variable<int>(supplierId.value);
+      map['supplier_id'] = Variable<String>(supplierId.value);
     }
     if (shippingCost.present) {
       map['shipping_cost'] = Variable<double>(shippingCost.value);
@@ -11569,7 +11569,7 @@ typedef $$PurchaseOrdersTableCreateCompanionBuilder = PurchaseOrdersCompanion
     Function({
   required String id,
   required String supplierName,
-  Value<int?> supplierId,
+  Value<String?> supplierId,
   Value<double> shippingCost,
   Value<double> extraCost,
   Value<double> vat,
@@ -11596,7 +11596,7 @@ typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
     Function({
   Value<String> id,
   Value<String> supplierName,
-  Value<int?> supplierId,
+  Value<String?> supplierId,
   Value<double> shippingCost,
   Value<double> extraCost,
   Value<double> vat,
@@ -11656,7 +11656,7 @@ class $$PurchaseOrdersTableFilterComposer
   ColumnFilters<String> get supplierName => $composableBuilder(
       column: $table.supplierName, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get supplierId => $composableBuilder(
+  ColumnFilters<String> get supplierId => $composableBuilder(
       column: $table.supplierId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get shippingCost => $composableBuilder(
@@ -11760,7 +11760,7 @@ class $$PurchaseOrdersTableOrderingComposer
       column: $table.supplierName,
       builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get supplierId => $composableBuilder(
+  ColumnOrderings<String> get supplierId => $composableBuilder(
       column: $table.supplierId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<double> get shippingCost => $composableBuilder(
@@ -11845,7 +11845,7 @@ class $$PurchaseOrdersTableAnnotationComposer
   GeneratedColumn<String> get supplierName => $composableBuilder(
       column: $table.supplierName, builder: (column) => column);
 
-  GeneratedColumn<int> get supplierId => $composableBuilder(
+  GeneratedColumn<String> get supplierId => $composableBuilder(
       column: $table.supplierId, builder: (column) => column);
 
   GeneratedColumn<double> get shippingCost => $composableBuilder(
@@ -11956,7 +11956,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> supplierName = const Value.absent(),
-            Value<int?> supplierId = const Value.absent(),
+            Value<String?> supplierId = const Value.absent(),
             Value<double> shippingCost = const Value.absent(),
             Value<double> extraCost = const Value.absent(),
             Value<double> vat = const Value.absent(),
@@ -12008,7 +12008,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String supplierName,
-            Value<int?> supplierId = const Value.absent(),
+            Value<String?> supplierId = const Value.absent(),
             Value<double> shippingCost = const Value.absent(),
             Value<double> extraCost = const Value.absent(),
             Value<double> vat = const Value.absent(),

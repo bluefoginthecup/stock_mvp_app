@@ -13,7 +13,7 @@ enum VatType {
 class PurchaseOrder {
   final String id;
   final String supplierName;
-  final int? supplierId;
+  final String? supplierId;
   final DateTime eta;                 // 예상 입고(2단계 점선에 사용)
   final PurchaseOrderStatus status;
   final DateTime createdAt;
@@ -76,7 +76,7 @@ class PurchaseOrder {
     String? memo,
     String? orderId,
     DateTime? receivedAt,
-    int? supplierId,
+    String? supplierId,
     double? shippingCost,
     double? extraCost,
     VatType? vatType,
@@ -123,7 +123,7 @@ class PurchaseOrder {
     receivedAt: (j['receivedAt'] as String?) != null          // ✅
         ? DateTime.parse(j['receivedAt'])
         : null,
-    supplierId: (j['supplierId'] as num?)?.toInt(),
+    supplierId: j['supplierId']?.toString(),
     shippingCost: (j['shippingCost'] as num?)?.toDouble() ?? 0,
     extraCost: (j['extraCost'] as num?)?.toDouble() ?? 0,
     vatType: VatType.values[j['vatType'] ?? 0],

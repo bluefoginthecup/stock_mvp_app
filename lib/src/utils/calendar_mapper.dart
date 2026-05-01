@@ -15,17 +15,19 @@ String buildSubtitle(List<PurchaseLine> lines) {
 List<CalendarEvent> mapPurchaseToEvents(
     List<PurchaseOrder> list,
     Map<String, List<PurchaseLine>> linesMap,
+    {String Function(PurchaseOrder purchase)? supplierNameOf}
     ) {
     final events = <CalendarEvent>[];
     for (final p in list) {
       final lines = linesMap[p.id] ?? [];
+      final supplierName = supplierNameOf?.call(p) ?? p.supplierName;
       // 📦 발주일
       final searchText = lines.map((l) => l.name).join(' ').toLowerCase();
 
       events.add(CalendarEvent(
         date: p.createdAt,
         type: CalendarEventType.purchaseOrderDate,
-        title: '발주 - ${p.supplierName}',
+        title: '발주 - $supplierName',
         subtitle: buildSubtitle(lines),
         refId: p.id,
         searchText: searchText, // 🔥 추가
@@ -35,7 +37,7 @@ List<CalendarEvent> mapPurchaseToEvents(
       events.add(CalendarEvent(
         date: p.eta,
         type: CalendarEventType.purchaseEta,
-        title: '입고예정 - ${p.supplierName}',
+        title: '입고예정 - $supplierName',
         subtitle: buildSubtitle(lines),
         refId: p.id,
         searchText: searchText,
@@ -47,8 +49,8 @@ List<CalendarEvent> mapPurchaseToEvents(
         date: p.eta, // 👉 입고예정일 기준
         type: CalendarEventType.paymentDate,
         title: isPaid
-            ? '결제완료 - ${p.supplierName}'
-            : '미결제 - ${p.supplierName}',
+            ? '결제완료 - $supplierName'
+            : '미결제 - $supplierName',
         subtitle: buildSubtitle(lines),
         refId: p.id,
         isPaid: p.paidAt != null, // 🔥 핵심
@@ -60,7 +62,7 @@ List<CalendarEvent> mapPurchaseToEvents(
         events.add(CalendarEvent(
           date: p.vatInvoiceIssuedAt!,
           type: CalendarEventType.vatInvoiceDate,
-          title: '계산서 - ${p.supplierName}',
+          title: '계산서 - $supplierName',
           subtitle: buildSubtitle(lines),
           refId: p.id,
           searchText: searchText,
