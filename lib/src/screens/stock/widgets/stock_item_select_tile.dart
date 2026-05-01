@@ -23,6 +23,9 @@ class StockItemSelectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = item.displayName ?? item.name;
+    final needsReview = _isNeedsReviewItem(item);
+    final subtitle = '재고: ${item.qty} ${item.unit}'
+        '${needsReview ? ' · 정식등록 필요' : ''}';
 
     return ListTile(
       leading: selectionMode
@@ -32,9 +35,9 @@ class StockItemSelectTile extends StatelessWidget {
         fontSize: 16,        // ← 기존보다 +2 정도
         fontWeight: FontWeight.w500,
       ),),
-      subtitle: Text('재고: ${item.qty} ${item.unit}', style: const TextStyle(
+      subtitle: Text(subtitle, style: TextStyle(
         fontSize: 14,        // 기본 12~13 -> 14로
-        color: Colors.black54,
+        color: needsReview ? Colors.deepOrange.shade700 : Colors.black54,
       ),
       ),
       dense: true,
@@ -44,4 +47,10 @@ class StockItemSelectTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
     );
   }
+}
+
+bool _isNeedsReviewItem(Item item) {
+  final attrs = item.attrs;
+  if (attrs == null || attrs.isEmpty) return false;
+  return attrs['temporary'] == true || attrs['status'] == 'needsReview';
 }

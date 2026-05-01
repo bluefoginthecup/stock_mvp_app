@@ -61,6 +61,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   final _searchC = TextEditingController();
   bool _lowOnly = false;
   bool _showFavoriteOnly = false;
+  bool _needsReviewOnly = false;
 
   String? get _selectedId => _l3Id ?? _l2Id ?? _l1Id;
   int get _selectedDepth =>
@@ -189,32 +190,41 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-          child: Row(
-            spacing: 2,
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              IconButton(
-                tooltip: sel.selectionMode ? '선택 취소' : '멀티 선택',
-                icon: Icon(sel.selectionMode ? Icons.close : Icons.checklist),
-                onPressed: sel.selectionMode ? sel.exit : sel.enter,
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(40, 36),
-                  padding: const EdgeInsets.all(8),
-                ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              spacing: 2,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                IconButton(
+                  tooltip: sel.selectionMode ? '선택 취소' : '멀티 선택',
+                  icon: Icon(sel.selectionMode ? Icons.close : Icons.checklist),
+                  onPressed: sel.selectionMode ? sel.exit : sel.enter,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(40, 36),
+                    padding: const EdgeInsets.all(8),
+                  ),
 
-              ),
-              FilterChip(
-                label: const Text('필터:임계치'),
-                selected: _lowOnly,
-                onSelected: (v) => setState(() => _lowOnly = v),
-                avatar: const Icon(Icons.warning_amber_rounded, size: 18),
-              ),
-              FilterChip(
-                label: const Text('즐겨찾기'),
-                selected: _showFavoriteOnly,
-                onSelected: (v) => setState(() => _showFavoriteOnly = v),
-              ),
-            ],
+                ),
+                FilterChip(
+                  label: const Text('필터:임계치'),
+                  selected: _lowOnly,
+                  onSelected: (v) => setState(() => _lowOnly = v),
+                  avatar: const Icon(Icons.warning_amber_rounded, size: 18),
+                ),
+                FilterChip(
+                  label: const Text('즐겨찾기'),
+                  selected: _showFavoriteOnly,
+                  onSelected: (v) => setState(() => _showFavoriteOnly = v),
+                ),
+                FilterChip(
+                  label: const Text('정식등록 필요'),
+                  selected: _needsReviewOnly,
+                  onSelected: (v) => setState(() => _needsReviewOnly = v),
+                  avatar: const Icon(Icons.assignment_late_outlined, size: 18),
+                ),
+              ],
+            ),
           ),
         ),
         const Divider(height: 1),
@@ -228,7 +238,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               keyword: _searchC.text.trim().isNotEmpty ? _searchC.text.trim() : null,
               recursive: _searchC.text.trim().isNotEmpty
                   ? true
-                  : (_selectedDepth == 0 && (_lowOnly || _showFavoriteOnly)),
+                  : (_selectedDepth == 0 &&
+                      (_lowOnly || _showFavoriteOnly || _needsReviewOnly)),
               lowOnly: _lowOnly,
               favoritesOnly: _showFavoriteOnly,
             ),
@@ -244,6 +255,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 snap.data ?? const <Item>[],
                 lowOnly: _lowOnly,
                 showFavoriteOnly: _showFavoriteOnly,
+                needsReviewOnly: _needsReviewOnly,
               );
               final hasKeyword = _searchC.text.trim().isNotEmpty;
               final keyword = _searchC.text.trim();
@@ -311,7 +323,9 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
                   final slivers = <Widget>[];
                   slivers.add(_sliverBreadcrumb(context, setState));
-                  if (depth == 0 && !hasKeyword && (_lowOnly || _showFavoriteOnly)) {
+                  if (depth == 0 &&
+                      !hasKeyword &&
+                      (_lowOnly || _showFavoriteOnly || _needsReviewOnly)) {
                     if (items.isEmpty) {
                       return const Center(child: Text('조건에 맞는 아이템이 없습니다.'));
                     }

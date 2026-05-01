@@ -3,7 +3,11 @@ part of 'stock_browser_screen.dart';
 
 // ───────────────────────── 공통 필터 로직 ─────────────────────────
 List<Item> _applyFilters(List<Item> items,
-    {required bool lowOnly, required bool showFavoriteOnly}) {
+    {
+      required bool lowOnly,
+      required bool showFavoriteOnly,
+      required bool needsReviewOnly,
+    }) {
   var filtered = items;
   if (lowOnly) {
     filtered = filtered.where((it) => it.minQty > 0 && it.qty <= it.minQty).toList();
@@ -11,7 +15,16 @@ List<Item> _applyFilters(List<Item> items,
   if (showFavoriteOnly) {
     filtered = filtered.where((it) => it.isFavorite == true).toList();
   }
+  if (needsReviewOnly) {
+    filtered = filtered.where(_isNeedsReviewItem).toList();
+  }
   return filtered;
+}
+
+bool _isNeedsReviewItem(Item item) {
+  final attrs = item.attrs;
+  if (attrs == null || attrs.isEmpty) return false;
+  return attrs['temporary'] == true || attrs['status'] == 'needsReview';
 }
 
 // ───────────────────────── PathPicker용 provider ─────────────────────────
@@ -61,4 +74,3 @@ _ChildrenProvider pathChildrenFromFolderRepo(FolderTreeRepo repo) {
           .toList();
     };
   }
-
