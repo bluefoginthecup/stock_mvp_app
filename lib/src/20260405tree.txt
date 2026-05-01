@@ -1,0 +1,288 @@
+.
+├── 20260405tree.txt
+├── app
+│   ├── compare.dart
+│   ├── desktop_home.dart
+│   ├── lang_controller.dart
+│   ├── main_tab_controller.dart
+│   └── main_tab_screen.dart
+├── app.dart
+├── build
+│   └── ios
+│       └── XCBuildData
+│           └── PIFCache
+│               ├── project
+│               │   └── PROJECT@v11_mod=d228ac45564342bd0bf964e4d8b918cd_hash=bfdfe7dc352907fc980b868725387e98plugins=1OJSG6M1FOV3XYQCBH7Z29RZ0FPR9XDE1-json
+│               ├── target
+│               │   ├── TARGET@v11_hash=009a9268225c2860065dd34b85a74ee1-json
+│               │   ├── TARGET@v11_hash=02d13c4a0d7d0dd84925706d64b3a7d5-json
+│               │   ├── TARGET@v11_hash=03c6256b1d2f81d407dcaf8d955dd78a-json
+│               │   ├── TARGET@v11_hash=0555b017996f21d337a25d15c4f3067a-json
+│               │   ├── TARGET@v11_hash=055e4af362b37b117b899604aec0dc01-json
+│               │   ├── TARGET@v11_hash=05d54f4d3cff7287640f3e6f5869ea31-json
+│               │   ├── TARGET@v11_hash=075ec86a62900ecf86ef61db84a8e081-json
+│               │   ├── TARGET@v11_hash=080728d4b3207369fa82417de4f1ea8c-json
+│               │   ├── TARGET@v11_hash=084d07e29ad8b8c0db7a864cb09f9cfe-json
+│               │   ├── TARGET@v11_hash=09cd4aafc93c3b1f112ad37c72318b9c-json
+│               │   ├── TARGET@v11_hash=0b53222e0d70c3434da1ecf02f263570-json
+│               │   ├── TARGET@v11_hash=12abc0fd39a54fa643a7395a8592f984-json
+│               │   ├── TARGET@v11_hash=1606a09476d12c9ec2295a991e4d621c-json
+│               │   ├── TARGET@v11_hash=1986b9547df5ee4849a16434a271c248-json
+│               │   ├── TARGET@v11_hash=1be401e1c2d5fe122e4daa15d5d75b3e-json
+│               │   ├── TARGET@v11_hash=1c5960b38f11699eb15033bb9a49f83d-json
+│               │   ├── TARGET@v11_hash=2012f663662bb9bde9da37ab387ae613-json
+│               │   ├── TARGET@v11_hash=2208646f50b006b6e1ecffa8550be18a-json
+│               │   ├── TARGET@v11_hash=25b8e30372d60a970bf9b89555455eed-json
+│               │   ├── TARGET@v11_hash=2b3983a7936e443e4195d2687d71160b-json
+│               │   ├── TARGET@v11_hash=2e44fb8593e6e697035fc5ed6cefd795-json
+│               │   ├── TARGET@v11_hash=2fe488f09a9ca348ce9febdd903c9681-json
+│               │   ├── TARGET@v11_hash=339ffb235ebe8c382f18cb329fa55e77-json
+│               │   ├── TARGET@v11_hash=33cb0dfe3e3dcdf305e7aadb02d8897e-json
+│               │   ├── TARGET@v11_hash=3489dc2fe27c8e492b11838e114a225e-json
+│               │   ├── TARGET@v11_hash=387ffaae8930495c1929a8dbb7d394a9-json
+│               │   ├── TARGET@v11_hash=38b88c6c9bd5a8e7c01a686e504e0016-json
+│               │   ├── TARGET@v11_hash=400b150b12b116d42f534debc0ac191e-json
+│               │   ├── TARGET@v11_hash=4ac1373b316ea6838e4adcc2a446c09f-json
+│               │   ├── TARGET@v11_hash=555eb172e9cfb9115e5bc67e8a9fe9aa-json
+│               │   ├── TARGET@v11_hash=561f2a22e0be0452917b4881f001ac65-json
+│               │   ├── TARGET@v11_hash=57fe5ccfc129667e8cb0a5d7f7528cb7-json
+│               │   ├── TARGET@v11_hash=5badd7b19ea1a7e10ff9ff8bb1c5b727-json
+│               │   ├── TARGET@v11_hash=5d0db3ec4a5eca97571b7778a88af872-json
+│               │   ├── TARGET@v11_hash=6011e8858b979f2170ac8ee447df9e06-json
+│               │   ├── TARGET@v11_hash=62d2e65f0ca96ea67085038adce8fe55-json
+│               │   ├── TARGET@v11_hash=66069b5183c24377b5e40ea2f6c0cb5c-json
+│               │   ├── TARGET@v11_hash=675e7091fbfa4613bd5c977eb773a0a5-json
+│               │   ├── TARGET@v11_hash=6ca3564a3542a8882747e019fba60fb4-json
+│               │   ├── TARGET@v11_hash=6d185705a9023ffbe3c2bedf8799ad11-json
+│               │   ├── TARGET@v11_hash=6e439d43bb1c55b7574ccd80118bb30c-json
+│               │   ├── TARGET@v11_hash=707bb22d1ebc2c6b7d18e470babd5802-json
+│               │   ├── TARGET@v11_hash=7c21f9c42bde233288a577be24cc93b9-json
+│               │   ├── TARGET@v11_hash=808f9160ab1bbbd6558e45633c3c8a0a-json
+│               │   ├── TARGET@v11_hash=80ec0ac95b0139c1bec1865f9472b80b-json
+│               │   ├── TARGET@v11_hash=89ada28a5d52ad72bf8d8b7ee9af164b-json
+│               │   ├── TARGET@v11_hash=89b6a7c50af7047b0737390dbf0fb041-json
+│               │   ├── TARGET@v11_hash=95576dedffcf6345186eebd7f7c52190-json
+│               │   ├── TARGET@v11_hash=9624bcd314e4e45ec70a04686006a315-json
+│               │   ├── TARGET@v11_hash=978d82e4d075430fc8c3f85df2a07243-json
+│               │   ├── TARGET@v11_hash=9aaebc16331e18c55fb4087cc3ed0ef8-json
+│               │   ├── TARGET@v11_hash=9ccb49c4eca51e91e30b9ec48e3ba5bc-json
+│               │   ├── TARGET@v11_hash=a74655608ecfb83271948375a305e9d9-json
+│               │   ├── TARGET@v11_hash=b58f7b9705f08635a914131105f3afe5-json
+│               │   ├── TARGET@v11_hash=b95be6b7cb9e54723ecccdb740a71516-json
+│               │   ├── TARGET@v11_hash=bb7003430831cfc5bf08a184ea45d98b-json
+│               │   ├── TARGET@v11_hash=be38095e81a1db042503e359e89f61bd-json
+│               │   ├── TARGET@v11_hash=bf1b7c277f1c34a0dd44531731756cc0-json
+│               │   ├── TARGET@v11_hash=bf3ef7cd711e69efa93daadc3983e201-json
+│               │   ├── TARGET@v11_hash=c83de0430d13cc87c8f2c16f7475e33c-json
+│               │   ├── TARGET@v11_hash=c9306decb50b1938f49839985bbb2c74-json
+│               │   ├── TARGET@v11_hash=cbf17e2fdd8f2d88ad5ed55eddfc0c94-json
+│               │   ├── TARGET@v11_hash=cd3740d739349c701b9757fdff646ca2-json
+│               │   ├── TARGET@v11_hash=d10c18a4d39fd7157b5d07e7e38f1714-json
+│               │   ├── TARGET@v11_hash=d8ffc641c5b09babb283b5f28cbc63a9-json
+│               │   ├── TARGET@v11_hash=da406c94ec4427865e52a20efaade6fe-json
+│               │   ├── TARGET@v11_hash=dab43629f48f13b55579650c4f5fcd59-json
+│               │   ├── TARGET@v11_hash=db88718da8e2e43837a1da3046190ac5-json
+│               │   ├── TARGET@v11_hash=dd7743f01054a072c8220959fae305a6-json
+│               │   ├── TARGET@v11_hash=e15c2d1e787877dc6412e5ff1b6686b1-json
+│               │   ├── TARGET@v11_hash=e1f12f4169b015ab37350cf2fa7619d9-json
+│               │   ├── TARGET@v11_hash=e7265678a7e33404f88bf7cfa3fc4a04-json
+│               │   ├── TARGET@v11_hash=ed94434cd2ff1ab3309f5fe9ae8b1ec7-json
+│               │   ├── TARGET@v11_hash=f0e3aafe17d9b37f8ff8c8e43d3849b1-json
+│               │   ├── TARGET@v11_hash=fc4dfc9cd78fb6c1e3047d1457748143-json
+│               │   └── TARGET@v11_hash=ffc663246ca26220d339cfbcd364285a-json
+│               └── workspace
+│                   └── WORKSPACE@v11_hash=(null)_subobjects=08ebf1b43626b204927eebe54f2a2df2-json
+├── db
+│   ├── app_database.dart
+│   ├── app_database.g.dart
+│   ├── compare.dart
+│   ├── quick_actions_order_dao.dart
+│   └── quick_actions_order_dao.g.dart
+├── dev
+│   └── bom_debug.dart
+├── l10n
+│   ├── l10n.dart
+│   ├── l10n_en.dart
+│   ├── l10n_es.dart
+│   ├── l10n_ko.dart
+│   ├── l10n_x.dart
+│   └── labels.dart
+├── metrics
+│   └── stock_metrics.dart
+├── models
+│   ├── bom.dart
+│   ├── calendar_event.dart
+│   ├── cart_item.dart
+│   ├── compare.dart
+│   ├── drag_data.dart
+│   ├── extensions
+│   │   ├── payment_status_ext.dart
+│   │   └── vat_invoice_status_ext.dart
+│   ├── folder_node.dart
+│   ├── item.dart
+│   ├── lot.dart
+│   ├── order.dart
+│   ├── purchase.dart
+│   ├── purchase_line.dart
+│   ├── purchase_order.dart
+│   ├── state_guard.dart
+│   ├── suppliers.dart
+│   ├── trash_entry.dart
+│   ├── txn.dart
+│   ├── types.dart
+│   └── work.dart
+├── providers
+│   ├── cart_manager.dart
+│   └── compare.dart
+├── repos
+│   ├── compare.dart
+│   ├── drift_unified_repo.dart
+│   ├── modules
+│   │   ├── bom_repo.part.dart
+│   │   ├── compare.dart
+│   │   ├── folder_repo.part.dart
+│   │   ├── item_repo.part.dart
+│   │   ├── lot_repo.part.dart
+│   │   ├── memo_repo.dart
+│   │   ├── order_repo.part.dart
+│   │   ├── purchase_repo.part.dart
+│   │   ├── supplier_repo.part.dart
+│   │   ├── trash_repo.part.dart
+│   │   ├── txn_repo.part.dart
+│   │   └── work_repo.part.dart
+│   ├── repo_interfaces.dart
+│   ├── repo_sourcekey_ext.dart
+│   └── timeline_repo.dart
+├── screens
+│   ├── auth
+│   │   └── launch_gate.dart
+│   ├── bom
+│   │   ├── bom_row_editor.dart
+│   │   ├── compare.dart
+│   │   ├── component_picker.dart
+│   │   ├── finished_bom_edit_screen.dart
+│   │   ├── order_shortage_result_screen.dart
+│   │   ├── semi_bom_edit_screen.dart
+│   │   ├── shortage_result_screen.dart
+│   │   └── shortage_test_screen.dart
+│   ├── cart
+│   │   └── cart_screen.dart
+│   ├── dashboard_screen.dart
+│   ├── dashboards
+│   ├── memo
+│   │   └── memo_screen.dart
+│   ├── orders
+│   │   ├── compare.dart
+│   │   ├── order_detail_screen.dart
+│   │   ├── order_form_screen.dart
+│   │   ├── order_from_cart.dart
+│   │   ├── order_line_edit_sheet.dart
+│   │   ├── order_list_screen.dart
+│   │   └── widgets
+│   │       └── order_timeline.dart
+│   ├── purchases
+│   │   ├── compare.dart
+│   │   ├── pd.dart
+│   │   ├── purchase_detail_screen.dart
+│   │   ├── purchase_line_full_edit_screen.dart
+│   │   ├── purchase_list_screen.dart
+│   │   ├── purchase_order_full_edit_screen.dart
+│   │   ├── purchase_order_print_view.dart
+│   │   └── widgets
+│   │       ├── purchase_print_action.dart
+│   │       └── purchase_timeline_preview.dart
+│   ├── receipts
+│   │   ├── receipt_create_screen.dart
+│   │   └── receipts_home_screen.dart
+│   ├── settings
+│   │   ├── language_settings_screen.dart
+│   │   └── settings_screen.dart
+│   ├── shortage
+│   │   └── shortage_calc_screen.dart
+│   ├── stock
+│   │   ├── compare.dart
+│   │   ├── sheet_new_folder.dart
+│   │   ├── stock_browser_actions.part.dart
+│   │   ├── stock_browser_header.part.dart
+│   │   ├── stock_browser_helpers.part.dart
+│   │   ├── stock_browser_screen.dart
+│   │   ├── stock_browser_slivers.part.dart
+│   │   ├── stock_inout_dialog.dart
+│   │   ├── stock_item_detail_screen.dart
+│   │   ├── stock_item_edit_sheet.dart
+│   │   ├── stock_item_full_edit_screen.dart
+│   │   ├── stock_list_screen.dart
+│   │   ├── stock_new_item_sheet.dart
+│   │   └── widgets
+│   │       ├── item_meta_overview.dart
+│   │       ├── item_selection_controller.dart
+│   │       ├── new_item_result.dart
+│   │       ├── stock_item_select_tile.dart
+│   │       └── stock_multi_select_bar.dart
+│   ├── suppliers
+│   │   ├── supplier_form_screen.dart
+│   │   └── supplier_list_screen.dart
+│   ├── trash
+│   │   └── trash_screen.dart
+│   ├── txns
+│   │   ├── adjust_form.dart
+│   │   ├── compare.dart
+│   │   ├── txn_list_screen.dart
+│   │   └── widgets
+│   │       └── txn_row.dart
+│   └── works
+│       ├── _work_detail_screen.dart
+│       ├── compare.dart
+│       ├── steps.md
+│       ├── widgets
+│       │   └── work_row.dart
+│       ├── work_action_view.dart
+│       ├── work_detail_screen.dart
+│       ├── work_detail_view.dart
+│       ├── work_edit_sheet.dart
+│       └── work_list_screen.dart
+├── services
+│   ├── auth_service.dart
+│   ├── bom_service.dart
+│   ├── compare.dart
+│   ├── db_auto_backup_service.dart
+│   ├── export_service.dart
+│   ├── inventory_service.dart
+│   ├── order_planning_service.dart
+│   ├── seed_importer.dart
+│   ├── shortage_service.dart
+│   └── stock_service.dart
+├── ui
+│   ├── common
+│   │   ├── cart_add.dart
+│   │   ├── common_calendar_view.dart
+│   │   ├── compare.dart
+│   │   ├── delete_more_menu.dart
+│   │   ├── draggable_fab.dart
+│   │   ├── entity_actions.dart
+│   │   ├── go_snack.dart
+│   │   ├── inout_flow.dart
+│   │   ├── item_picker_sheet.dart
+│   │   ├── path_picker.dart
+│   │   ├── qty_badge.dart
+│   │   ├── qty_control.dart
+│   │   ├── qty_set_sheet.dart
+│   │   ├── scroll_capped_list.dart
+│   │   ├── search_field.dart
+│   │   ├── suggestion_panel.dart
+│   │   └── ui.dart
+│   ├── fmt.dart
+│   ├── nav
+│   │   └── item_detail_opener.dart
+│   └── ui_utils.dart
+└── utils
+    ├── calendar_mapper.dart
+    ├── compare.dart
+    ├── debounce.dart
+    ├── invoice_parser.dart
+    ├── item_presentation.dart
+    ├── item_search_keys.dart
+    ├── korean_search.dart
+    └── unit_converter.dart
+
+44 directories, 242 files

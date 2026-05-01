@@ -1,15 +1,33 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../db/app_database.dart';
+import 'package:drift/drift.dart';
 
 class MemoRepo {
-  static const _key = 'dashboard_memo';
+  final db = AppDatabase.instance;
 
   Future<String> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_key) ?? '';
+    final memo = await db.select(db.memos).getSingleOrNull();
+    return memo?.content ?? '';
   }
 
   Future<void> save(String text) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_key, text);
+    final existing = await db.select(db.memos).getSingleOrNull();
+
+    if (existing == null) {
+      await db.into(db.memos).insert(
+        MemosCompanion(
+          content: Value(text),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    } else {
+      await (db.update(db.memos)
+        ..where((t) => t.id.equals(existing.id)))
+          .write(
+        MemosCompanion(
+          content: Value(text),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+    }
   }
 }

@@ -412,6 +412,17 @@ class Lots extends Table {
 }
 
 /// =======================
+///  Memos (대시보드 메모)
+/// =======================
+
+@DataClassName('MemoRow')
+class Memos extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get content => text()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+}
+
+/// =======================
 ///  AppDatabase
 /// =======================
 // ➊ 빠른실행 순서 저장 테이블
@@ -439,6 +450,7 @@ class QuickActionOrders extends Table {
     PurchaseLines,
     Suppliers,
     Lots,
+    Memos,
     QuickActionOrders, // ➋ 등록
   ],
 )
@@ -469,7 +481,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 17; //
+  int get schemaVersion => 18; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -648,6 +660,9 @@ class AppDatabase extends _$AppDatabase {
         if (!exists2) {
           await m.addColumn(folders, folders.extra);
         }
+      }
+      if (from < 18) {
+        await m.createTable(memos);
       }
 
     },

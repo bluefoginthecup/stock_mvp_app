@@ -18,6 +18,10 @@ class _MemoScreenState extends State<MemoScreen> {
   void initState() {
     super.initState();
     _load();
+    // 🔥 추가 (붙여넣기 대응)
+    _controller.addListener(() {
+      _onChanged(_controller.text);
+    });
   }
 
   Future<void> _load() async {
@@ -32,9 +36,14 @@ class _MemoScreenState extends State<MemoScreen> {
     });
   }
 
+
   @override
   void dispose() {
     _debounce?.cancel();
+
+    // 🔥 마지막 저장
+    _repo.save(_controller.text);
+
     _controller.dispose();
     super.dispose();
   }

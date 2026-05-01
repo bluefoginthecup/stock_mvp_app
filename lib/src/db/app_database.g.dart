@@ -7215,6 +7215,225 @@ class LotsCompanion extends UpdateCompanion<LotRow> {
   }
 }
 
+class $MemosTable extends Memos with TableInfo<$MemosTable, MemoRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MemosTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+      'id', aliasedName, false,
+      hasAutoIncrement: true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+  static const VerificationMeta _contentMeta =
+      const VerificationMeta('content');
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+      'content', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [id, content, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'memos';
+  @override
+  VerificationContext validateIntegrity(Insertable<MemoRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('content')) {
+      context.handle(_contentMeta,
+          content.isAcceptableOrUnknown(data['content']!, _contentMeta));
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MemoRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MemoRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+      content: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}content'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
+    );
+  }
+
+  @override
+  $MemosTable createAlias(String alias) {
+    return $MemosTable(attachedDatabase, alias);
+  }
+}
+
+class MemoRow extends DataClass implements Insertable<MemoRow> {
+  final int id;
+  final String content;
+  final DateTime? updatedAt;
+  const MemoRow({required this.id, required this.content, this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['content'] = Variable<String>(content);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  MemosCompanion toCompanion(bool nullToAbsent) {
+    return MemosCompanion(
+      id: Value(id),
+      content: Value(content),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory MemoRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MemoRow(
+      id: serializer.fromJson<int>(json['id']),
+      content: serializer.fromJson<String>(json['content']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'content': serializer.toJson<String>(content),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  MemoRow copyWith(
+          {int? id,
+          String? content,
+          Value<DateTime?> updatedAt = const Value.absent()}) =>
+      MemoRow(
+        id: id ?? this.id,
+        content: content ?? this.content,
+        updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+      );
+  MemoRow copyWithCompanion(MemosCompanion data) {
+    return MemoRow(
+      id: data.id.present ? data.id.value : this.id,
+      content: data.content.present ? data.content.value : this.content,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MemoRow(')
+          ..write('id: $id, ')
+          ..write('content: $content, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, content, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MemoRow &&
+          other.id == this.id &&
+          other.content == this.content &&
+          other.updatedAt == this.updatedAt);
+}
+
+class MemosCompanion extends UpdateCompanion<MemoRow> {
+  final Value<int> id;
+  final Value<String> content;
+  final Value<DateTime?> updatedAt;
+  const MemosCompanion({
+    this.id = const Value.absent(),
+    this.content = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  MemosCompanion.insert({
+    this.id = const Value.absent(),
+    required String content,
+    this.updatedAt = const Value.absent(),
+  }) : content = Value(content);
+  static Insertable<MemoRow> custom({
+    Expression<int>? id,
+    Expression<String>? content,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (content != null) 'content': content,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  MemosCompanion copyWith(
+      {Value<int>? id, Value<String>? content, Value<DateTime?>? updatedAt}) {
+    return MemosCompanion(
+      id: id ?? this.id,
+      content: content ?? this.content,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MemosCompanion(')
+          ..write('id: $id, ')
+          ..write('content: $content, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $QuickActionOrdersTable extends QuickActionOrders
     with TableInfo<$QuickActionOrdersTable, QuickActionOrder> {
   @override
@@ -7426,6 +7645,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PurchaseLinesTable purchaseLines = $PurchaseLinesTable(this);
   late final $SuppliersTable suppliers = $SuppliersTable(this);
   late final $LotsTable lots = $LotsTable(this);
+  late final $MemosTable memos = $MemosTable(this);
   late final $QuickActionOrdersTable quickActionOrders =
       $QuickActionOrdersTable(this);
   @override
@@ -7445,6 +7665,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         purchaseLines,
         suppliers,
         lots,
+        memos,
         quickActionOrders
       ];
   @override
@@ -12894,6 +13115,134 @@ typedef $$LotsTableProcessedTableManager = ProcessedTableManager<
     (LotRow, $$LotsTableReferences),
     LotRow,
     PrefetchHooks Function({bool itemId})>;
+typedef $$MemosTableCreateCompanionBuilder = MemosCompanion Function({
+  Value<int> id,
+  required String content,
+  Value<DateTime?> updatedAt,
+});
+typedef $$MemosTableUpdateCompanionBuilder = MemosCompanion Function({
+  Value<int> id,
+  Value<String> content,
+  Value<DateTime?> updatedAt,
+});
+
+class $$MemosTableFilterComposer extends Composer<_$AppDatabase, $MemosTable> {
+  $$MemosTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$MemosTableOrderingComposer
+    extends Composer<_$AppDatabase, $MemosTable> {
+  $$MemosTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get content => $composableBuilder(
+      column: $table.content, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$MemosTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MemosTable> {
+  $$MemosTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$MemosTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $MemosTable,
+    MemoRow,
+    $$MemosTableFilterComposer,
+    $$MemosTableOrderingComposer,
+    $$MemosTableAnnotationComposer,
+    $$MemosTableCreateCompanionBuilder,
+    $$MemosTableUpdateCompanionBuilder,
+    (MemoRow, BaseReferences<_$AppDatabase, $MemosTable, MemoRow>),
+    MemoRow,
+    PrefetchHooks Function()> {
+  $$MemosTableTableManager(_$AppDatabase db, $MemosTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MemosTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MemosTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MemosTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<String> content = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+          }) =>
+              MemosCompanion(
+            id: id,
+            content: content,
+            updatedAt: updatedAt,
+          ),
+          createCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            required String content,
+            Value<DateTime?> updatedAt = const Value.absent(),
+          }) =>
+              MemosCompanion.insert(
+            id: id,
+            content: content,
+            updatedAt: updatedAt,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$MemosTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $MemosTable,
+    MemoRow,
+    $$MemosTableFilterComposer,
+    $$MemosTableOrderingComposer,
+    $$MemosTableAnnotationComposer,
+    $$MemosTableCreateCompanionBuilder,
+    $$MemosTableUpdateCompanionBuilder,
+    (MemoRow, BaseReferences<_$AppDatabase, $MemosTable, MemoRow>),
+    MemoRow,
+    PrefetchHooks Function()>;
 typedef $$QuickActionOrdersTableCreateCompanionBuilder
     = QuickActionOrdersCompanion Function({
   required String action,
@@ -13050,6 +13399,8 @@ class $AppDatabaseManager {
   $$SuppliersTableTableManager get suppliers =>
       $$SuppliersTableTableManager(_db, _db.suppliers);
   $$LotsTableTableManager get lots => $$LotsTableTableManager(_db, _db.lots);
+  $$MemosTableTableManager get memos =>
+      $$MemosTableTableManager(_db, _db.memos);
   $$QuickActionOrdersTableTableManager get quickActionOrders =>
       $$QuickActionOrdersTableTableManager(_db, _db.quickActionOrders);
 }

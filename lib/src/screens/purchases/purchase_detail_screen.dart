@@ -8,6 +8,7 @@ import '../../models/purchase_order.dart';
 import '../../models/types.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/inventory_service.dart';
+import '../../ui/common/delete_more_menu.dart';
 import '../../ui/common/ui.dart';
 import 'purchase_line_full_edit_screen.dart';
 import 'widgets/purchase_print_action.dart';
@@ -532,6 +533,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       appBar: AppBar(
         title: Text('발주상세'),
         actions: [
+                DeleteMoreMenu<PurchaseOrder>(
+                  entity: po,
+                      onChanged: () {
+                  if (!mounted) return;
+                  Navigator.of(context).maybePop();
+                },
+                  ),
           PurchasePrintAction(poId: widget.orderId),
         ],
       ),
