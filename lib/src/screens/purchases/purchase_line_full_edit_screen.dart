@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/purchase_line.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../ui/common/item_picker_sheet.dart';
 import '../../ui/common/ui.dart';
 import 'package:provider/provider.dart';
 
@@ -111,6 +112,35 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
     Navigator.pop(context, newLine);
   }
 
+  Future<void> _pickItem() async {
+    final currentItemId = itemIdC.text.trim();
+    final pickedId = await showItemPickerSheet(
+      context,
+      initialItemId: currentItemId.isEmpty ? null : currentItemId,
+      title: '발주 품목 검색',
+    );
+    if (pickedId == null || pickedId.isEmpty) return;
+
+    final itemRepo = context.read<ItemRepo>();
+    final item = await itemRepo.getItem(pickedId);
+
+    if (!mounted) return;
+
+    setState(() {
+      itemIdC.text = pickedId;
+
+      if (item == null) return;
+
+      nameC.text = item.displayName ?? item.name;
+      unitC.text = item.unitIn.isNotEmpty ? item.unitIn : item.unit;
+
+      final purchasePrice = item.defaultPurchasePrice ?? item.defaultPrice;
+      if (purchasePrice != null && purchasePrice > 0) {
+        priceC.text = purchasePrice.toString();
+      }
+    });
+  }
+
   Future<void> _delete() async {
     if (!isEdit) return;
     final ok = await showDialog<bool>(
@@ -166,8 +196,16 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
               const SizedBox(height: 8),
               TextFormField(
                 controller: itemIdC,
-                decoration: _dec('itemId', hint: '예: it_rouen_gray_cc_50'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'itemId를 입력하세요' : null,
+                readOnly: true,
+                decoration: _dec('아이템', hint: '검색해서 선택하세요').copyWith(
+                  suffixIcon: IconButton(
+                    tooltip: '아이템 검색',
+                    icon: const Icon(Icons.search),
+                    onPressed: _pickItem,
+                  ),
+                ),
+                onTap: _pickItem,
+                validator: (v) => (v == null || v.trim().isEmpty) ? '아이템을 선택하세요' : null,
               ),
               TextFormField(
                 controller: nameC,
