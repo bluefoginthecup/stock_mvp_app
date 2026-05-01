@@ -2,100 +2,94 @@ part of '../drift_unified_repo.dart';
 
 enum ItemSearchScope {
   nameOnly, // 주문상세 등: 아이템명 기준
-  full,     // 재고브라우저: 아이템명 + SKU + 폴더명
+  full, // 재고브라우저: 아이템명 + SKU + 폴더명
 }
 
-
 mixin ItemRepoMixin on _RepoCore implements ItemRepo {
+  // ---------- Search helpers ----------
+  String _escapeLike(String s) {
+    return s
+        .replaceAll('\\', '\\\\')
+        .replaceAll('%', r'\%')
+        .replaceAll('_', r'\_');
+  }
 
-    // ---------- Search helpers ----------
-    String _escapeLike(String s) {
-      return s
-          .replaceAll('\\', '\\\\')
-          .replaceAll('%', r'\%')
-          .replaceAll('_', r'\_');
-    }
+  String _buildFullNormalized({
+    required String name,
+    required String sku,
+    String? folder,
+    String? subfolder,
+    String? subsubfolder,
+  }) {
+    final src = [
+      name,
+      sku,
+      if (folder != null) folder,
+      if (subfolder != null) subfolder,
+      if (subsubfolder != null) subsubfolder,
+    ].join(' ');
+    return normalizeForSearch(src);
+  }
 
+  Expression<bool> _keywordExpr(
+    Items i,
+    String raw, {
+    ItemSearchScope scope = ItemSearchScope.nameOnly,
+  }) {
+    final splitter = RegExp(r'[\s,|/]+');
+    final q = raw.trim();
+    if (q.isEmpty) return const Constant(true);
 
-
-
-    String _buildFullNormalized({
-      required String name,
-      required String sku,
-      String? folder,
-      String? subfolder,
-      String? subsubfolder,
-    }) {
-      final src = [
-        name,
-        sku,
-        if (folder != null) folder,
-        if (subfolder != null) subfolder,
-        if (subsubfolder != null) subsubfolder,
-      ].join(' ');
-      return normalizeForSearch(src);
-    }
-
-    Expression<bool> _keywordExpr(
-        Items i,
-        String raw, {
-          ItemSearchScope scope = ItemSearchScope.nameOnly,
-        }) {
-      final splitter = RegExp(r'[\s,|/]+');
-      final q = raw.trim();
-      if (q.isEmpty) return const Constant(true);
-
-      final hasSpace = q.contains(RegExp(r'\s'));
-      final qNoSpace = q.replaceAll(RegExp(r'\s+'), '');
+    final hasSpace = q.contains(RegExp(r'\s'));
+    final qNoSpace = q.replaceAll(RegExp(r'\s+'), '');
 
 // ✅ 공백 포함한 원문으로 판정해야 "공백 있을 때만 fuzzy"가 가능
-      final isCho = looksLikeChosungQuery(q);
+    final isCho = looksLikeChosungQuery(q);
 
-      List<String> parts(String s) => s
-          .split(splitter)
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .toList();
+    List<String> parts(String s) => s
+        .split(splitter)
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
 // ── 1) 초성 검색 (항상 "이름 초성"만 사용)
-      if (isCho) {
-        if (!hasSpace) {
-          // ✅ 공백 없으면: 연속 포함(건너뛰기 금지)
-          final key = qNoSpace;
-          final like = '%${_escapeLike(key)}%';
-          return i.searchInitials.like(like, escapeChar: '\\');
-        } else {
-          // ✅ 공백 있으면: 토큰 단위 fuzzy(건너뛰기 허용)
-          final ps = parts(q);
-          if (ps.isEmpty) return const Constant(false);
+    if (isCho) {
+      if (!hasSpace) {
+        // ✅ 공백 없으면: 연속 포함(건너뛰기 금지)
+        final key = qNoSpace;
+        final like = '%${_escapeLike(key)}%';
+        return i.searchInitials.like(like, escapeChar: '\\');
+      } else {
+        // ✅ 공백 있으면: 토큰 단위 fuzzy(건너뛰기 허용)
+        final ps = parts(q);
+        if (ps.isEmpty) return const Constant(false);
 
-          final tokenPatterns = ps.map((tok) {
-            final chars = tok.replaceAll(RegExp(r'\s+'), '').split('');
-            return chars.map(_escapeLike).join('%'); // ㄹ%ㅇ%ㄱ...
-          }).toList();
+        final tokenPatterns = ps.map((tok) {
+          final chars = tok.replaceAll(RegExp(r'\s+'), '').split('');
+          return chars.map(_escapeLike).join('%'); // ㄹ%ㅇ%ㄱ...
+        }).toList();
 
-          final like = '%${tokenPatterns.join('%')}%';
-          return i.searchInitials.like(like, escapeChar: '\\');
-        }
+        final like = '%${tokenPatterns.join('%')}%';
+        return i.searchInitials.like(like, escapeChar: '\\');
       }
-
-      // ── 2) 일반 검색 (scope에 따라 컬럼 선택)
-      final tokens = parts(q);
-      if (tokens.isEmpty) return const Constant(false);
-
-      final col = (scope == ItemSearchScope.full)
-          ? i.searchFullNormalized
-          : i.searchNormalized;
-
-      Expression<bool> expr = const Constant(true);
-      for (final t in tokens) {
-        final key = normalizeForSearch(t);
-        if (key.isEmpty) return const Constant(false);
-        expr = expr & col.like('%${_escapeLike(key)}%', escapeChar: '\\');
-      }
-      return expr;
-
     }
+
+    // ── 2) 일반 검색 (scope에 따라 컬럼 선택)
+    final tokens = parts(q);
+    if (tokens.isEmpty) return const Constant(false);
+
+    final col = (scope == ItemSearchScope.full)
+        ? i.searchFullNormalized
+        : i.searchNormalized;
+
+    Expression<bool> expr = const Constant(true);
+    for (final t in tokens) {
+      final key = normalizeForSearch(t);
+      if (key.isEmpty) return const Constant(false);
+      expr = expr & col.like('%${_escapeLike(key)}%', escapeChar: '\\');
+    }
+    return expr;
+  }
 
 //--3)폴더검색 --//
   Expression<bool> _folderKeywordExpr(Folders f, String raw) {
@@ -114,9 +108,6 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return f.searchNormalized.like(like, escapeChar: r'\');
   }
 
-
-
-
   @override
   Future<List<Item>> listItems({String? folder, String? keyword}) async {
     final q = db.select(db.items);
@@ -124,17 +115,15 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     // 휴지통(소프트삭제) 제외
     q.where((t) => t.isDeleted.equals(false));
 
-
     if (folder != null && folder.isNotEmpty) {
       q.where((tbl) => tbl.folder.equals(folder));
     }
 
     if (keyword != null && keyword.trim().isNotEmpty) {
-      q.where((t) =>
-          _keywordExpr(t, keyword, scope: ItemSearchScope.nameOnly),
+      q.where(
+        (t) => _keywordExpr(t, keyword, scope: ItemSearchScope.nameOnly),
       );
     }
-
 
     final rows = await q.get();
     final list = rows.map((r) => r.toDomain()).toList();
@@ -142,24 +131,23 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return list;
   }
 
-    @override
-    Future<List<Item>> searchItemsGlobal(String keyword) async {
-      final raw = keyword.trim();
-      if (raw.isEmpty) return [];
+  @override
+  Future<List<Item>> searchItemsGlobal(String keyword) async {
+    final raw = keyword.trim();
+    if (raw.isEmpty) return [];
 
-      final q = db.select(db.items)
-        ..where((t) => t.isDeleted.equals(false))
-        ..where((t) =>
-            _keywordExpr(t, raw, scope: ItemSearchScope.nameOnly),
-        )
-        ..limit(80);
+    final q = db.select(db.items)
+      ..where((t) => t.isDeleted.equals(false))
+      ..where(
+        (t) => _keywordExpr(t, raw, scope: ItemSearchScope.nameOnly),
+      )
+      ..limit(80);
 
-      final rows = await q.get();
-      final list = rows.map((e) => e.toDomain()).toList();
-      _cacheItems(list);
-      return list;
-    }
-
+    final rows = await q.get();
+    final list = rows.map((e) => e.toDomain()).toList();
+    _cacheItems(list);
+    return list;
+  }
 
   @override
   Future<List<Item>> searchItemsByPath({
@@ -176,17 +164,14 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     // 휴지통 제외
     joinQuery.where(db.items.isDeleted.equals(false));
 
-
     if (l1 != null) joinQuery.where(db.itemPaths.l1Id.equals(l1));
     if (l2 != null) joinQuery.where(db.itemPaths.l2Id.equals(l2));
     if (l3 != null) joinQuery.where(db.itemPaths.l3Id.equals(l3));
 
-
-      // ✅ searchNormalized/searchInitials 기반 검색으로 교체
+    // ✅ searchNormalized/searchInitials 기반 검색으로 교체
     joinQuery.where(
       _keywordExpr(db.items, keyword, scope: ItemSearchScope.nameOnly),
     );
-
 
     final rows = await joinQuery.get();
     final list = rows.map((r) => r.readTable(db.items).toDomain()).toList();
@@ -218,8 +203,9 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       } else if (l1 != null) {
         join.where(db.itemPaths.l2Id.isNull() & db.itemPaths.l3Id.isNull());
       } else {
-        join.where(db.itemPaths.l1Id.isNull() & db.itemPaths.l2Id.isNull() & db
-            .itemPaths.l3Id.isNull());
+        join.where(db.itemPaths.l1Id.isNull() &
+            db.itemPaths.l2Id.isNull() &
+            db.itemPaths.l3Id.isNull());
       }
     }
 
@@ -228,7 +214,6 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     _cacheItems(list);
     return list;
   }
-
 
   Future<List<Item>> getItemsByFolderId(String folderId) async {
     final join = db.select(db.items).join([
@@ -240,8 +225,8 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     // 🔥 핵심: 어느 depth든 포함
     join.where(
       db.itemPaths.l1Id.equals(folderId) |
-      db.itemPaths.l2Id.equals(folderId) |
-      db.itemPaths.l3Id.equals(folderId),
+          db.itemPaths.l2Id.equals(folderId) |
+          db.itemPaths.l3Id.equals(folderId),
     );
 
     final rows = await join.get();
@@ -250,11 +235,10 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return list;
   }
 
-
   @override
   Future<Item?> getItem(String id) async {
-    final row = await (db.select(db.items)
-      ..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (db.select(db.items)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
     final it = row?.toDomain();
     if (it != null) _cacheItem(it);
     return it;
@@ -263,30 +247,30 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   Item? getCachedItem(String id) {
     return _itemsById[id];
   }
-    @override
-    Future<void> upsertItem(Item item) async {
-      await db.transaction(() async {
-        final keys = buildItemSearchKeys(item);
 
-        await db.into(db.items).insertOnConflictUpdate(
-          item.toCompanion().copyWith(
-            searchNormalized: Value(keys.nameNorm),
-            searchInitials: Value(keys.initials),
-            searchFullNormalized: Value(keys.fullNorm),
-            defaultPurchasePrice: Value(item.defaultPurchasePrice), // ⭐ 여기
-            defaultSalePrice: Value(item.defaultSalePrice),         // ⭐ 여기
+  @override
+  Future<void> upsertItem(Item item) async {
+    await db.transaction(() async {
+      final keys = buildItemSearchKeys(item);
 
-          ),
-        );
+      await db.into(db.items).insertOnConflictUpdate(
+            item.toCompanion().copyWith(
+                  searchNormalized: Value(keys.nameNorm),
+                  searchInitials: Value(keys.initials),
+                  searchFullNormalized: Value(keys.fullNorm),
+                  defaultPurchasePrice:
+                      Value(item.defaultPurchasePrice), // ⭐ 여기
+                  defaultSalePrice: Value(item.defaultSalePrice), // ⭐ 여기
+                ),
+          );
+    });
 
-      });
+    final fresh = await getItem(item.id);
+    if (fresh != null) _cacheItem(fresh);
+  }
 
-      final fresh = await getItem(item.id);
-      if (fresh != null) _cacheItem(fresh);
-    }
-
-  Future<void> upsertItemWithPath(Item item, String? l1, String? l2,
-      String? l3) async {
+  Future<void> upsertItemWithPath(
+      Item item, String? l1, String? l2, String? l3) async {
     await db.transaction(() async {
       // 1) 경로는 오직 인자로 받은 ID만 사용 (UI 플레이스홀더/문자열 경로 무시)
       final effL1 = (l1 != null && l1.isNotEmpty) ? l1 : null;
@@ -301,37 +285,36 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
       // 2) 폴더 존재 검증 (필요 시 더 엄격히: 없으면 throw)
       final l1Node = await (db.select(db.folders)
-        ..where((t) => t.id.equals(effL1))).getSingleOrNull();
+            ..where((t) => t.id.equals(effL1)))
+          .getSingleOrNull();
       if (l1Node == null || l1Node.parentId != null) {
         throw StateError('Invalid root folder id: $effL1');
       }
       FolderRow? l2Node, l3Node;
       if (effL2 != null) {
-        l2Node = await (db.select(db.folders)
-          ..where((t) => t.id.equals(effL2))).getSingleOrNull();
+        l2Node = await (db.select(db.folders)..where((t) => t.id.equals(effL2)))
+            .getSingleOrNull();
         if (l2Node == null || l2Node.parentId != l1Node.id) {
           throw StateError('Invalid L2 folder id: $effL2 (parent mismatch)');
         }
       }
       if (effL3 != null) {
-        l3Node = await (db.select(db.folders)
-          ..where((t) => t.id.equals(effL3))).getSingleOrNull();
+        l3Node = await (db.select(db.folders)..where((t) => t.id.equals(effL3)))
+            .getSingleOrNull();
         if (l3Node == null || l2Node == null || l3Node.parentId != l2Node.id) {
           throw StateError('Invalid L3 folder id: $effL3 (parent mismatch)');
         }
       }
-      final baseName =
-                (item.displayName?.trim().isNotEmpty == true)
-                    ? item.displayName!.trim()
-                    : item.name;
-            final keys = buildItemSearchKeysRaw(
-              name: baseName,
-              sku: item.sku,
-              folder: l1Node.name,
-              subfolder: l2Node?.name,
-              subsubfolder: l3Node?.name,
-            );
-
+      final baseName = (item.displayName?.trim().isNotEmpty == true)
+          ? item.displayName!.trim()
+          : item.name;
+      final keys = buildItemSearchKeysRaw(
+        name: baseName,
+        sku: item.sku,
+        folder: l1Node.name,
+        subfolder: l2Node?.name,
+        subsubfolder: l3Node?.name,
+      );
 
       final base = item.toCompanion();
       final comp = base.copyWith(
@@ -343,22 +326,20 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
         searchInitials: Value(keys.initials),
         searchFullNormalized: Value(keys.fullNorm),
         defaultPurchasePrice: Value(item.defaultPurchasePrice), // ⭐ 추가
-        defaultSalePrice: Value(item.defaultSalePrice),         // ⭐ 추가
-
+        defaultSalePrice: Value(item.defaultSalePrice), // ⭐ 추가
       );
-
 
       await db.into(db.items).insertOnConflictUpdate(comp);
 
       // 4) item_paths 싱크
       await db.into(db.itemPaths).insertOnConflictUpdate(
-        ItemPathsCompanion(
-          itemId: Value(item.id),
-          l1Id: Value(effL1),
-          l2Id: Value(effL2),
-          l3Id: Value(effL3),
-        ),
-      );
+            ItemPathsCompanion(
+              itemId: Value(item.id),
+              l1Id: Value(effL1),
+              l2Id: Value(effL2),
+              l3Id: Value(effL3),
+            ),
+          );
     });
 
     // 5) 캐시 리프레시
@@ -368,34 +349,93 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
   @override
   Future<Item?> getItemById(String id) async {
-    final row = await (db.select(db.items)
-      ..where((t) => t.id.equals(id))).getSingleOrNull();
+    final row = await (db.select(db.items)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
     return row?.toDomain();
   }
+
   @override
   Future<void> updateItemMeta(Item item) async {
     final keys = buildItemSearchKeys(item);
     print('DB 저장 직전: ${item.defaultPurchasePrice} / ${item.defaultSalePrice}');
 
     final updated = item.toCompanion().copyWith(
-      searchNormalized: Value(keys.nameNorm),
-      searchInitials: Value(keys.initials),
-      searchFullNormalized: Value(keys.fullNorm),
-      defaultPurchasePrice: Value(item.defaultPurchasePrice),
-      defaultSalePrice: Value(item.defaultSalePrice),
-    );
+          searchNormalized: Value(keys.nameNorm),
+          searchInitials: Value(keys.initials),
+          searchFullNormalized: Value(keys.fullNorm),
+          defaultPurchasePrice: Value(item.defaultPurchasePrice),
+          defaultSalePrice: Value(item.defaultSalePrice),
+        );
 
     await db.update(db.items).replace(updated);
 
     final check = await getItem(item.id);
-    print('DB 저장 후: ${check?.defaultPurchasePrice} / ${check?.defaultSalePrice}');
+    print(
+        'DB 저장 후: ${check?.defaultPurchasePrice} / ${check?.defaultSalePrice}');
   }
-    @override
+
+  @override
+  Future<List<String>> registrationMissingFields(String itemId) async {
+    final item = await getItem(itemId);
+    if (item == null || !isNeedsRegistrationItem(item)) return const [];
+
+    final missing = <String>[];
+    final displayOrName = (item.displayName?.trim().isNotEmpty == true)
+        ? item.displayName!.trim()
+        : item.name.trim();
+    if (displayOrName.isEmpty) {
+      missing.add('아이템명 필요');
+    }
+    if (item.unit.trim().isEmpty) {
+      missing.add('단위 필요');
+    }
+
+    final path = await (db.select(db.itemPaths)
+          ..where((t) => t.itemId.equals(itemId)))
+        .getSingleOrNull();
+    final l1Id = path?.l1Id;
+    FolderRow? l1;
+    if (l1Id != null && l1Id.trim().isNotEmpty) {
+      l1 = await (db.select(db.folders)
+            ..where((t) => t.id.equals(l1Id) & t.isDeleted.equals(false)))
+          .getSingleOrNull();
+    }
+
+    if (l1 == null ||
+        isTemporaryFolderToken(l1.id) ||
+        isTemporaryFolderToken(l1.name)) {
+      missing.add('폴더 경로 필요');
+    }
+
+    return missing;
+  }
+
+  @override
+  Future<bool> tryFinalizeRegistration(String itemId) async {
+    final item = await getItem(itemId);
+    if (item == null || !isNeedsRegistrationItem(item)) return false;
+
+    final missing = await registrationMissingFields(itemId);
+    if (missing.isNotEmpty) return false;
+
+    final cleanedAttrs = cleanupRegistrationAttrs(item.attrs);
+    await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+      ItemsCompanion(
+        attrsJson: Value(
+          cleanedAttrs == null ? null : jsonEncode(cleanedAttrs),
+        ),
+      ),
+    );
+    final fresh = await getItem(itemId);
+    if (fresh != null) _cacheItem(fresh);
+    notifyListeners();
+    return true;
+  }
+
+  @override
   Future<void> deleteItem(String id) async {
-    await (db.delete(db.items)
-      ..where((t) => t.id.equals(id))).go();
-    await (db.delete(db.itemPaths)
-      ..where((t) => t.itemId.equals(id))).go();
+    await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
+    await (db.delete(db.itemPaths)..where((t) => t.itemId.equals(id))).go();
     _itemsById.remove(id);
     _stockCache.remove(id);
   }
@@ -403,8 +443,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   @override
   Future<void> setFavorite(
       {required String itemId, required bool value}) async {
-    await (db.update(db.items)
-      ..where((t) => t.id.equals(itemId))).write(
+    await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
       ItemsCompanion(isFavorite: Value(value)),
     );
     final fresh = await getItem(itemId);
@@ -417,8 +456,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     if (ids.isEmpty) return;
     await db.transaction(() async {
       for (final id in ids) {
-        await (db.update(db.items)
-          ..where((t) => t.id.equals(id)))
+        await (db.update(db.items)..where((t) => t.id.equals(id)))
             .write(ItemsCompanion(isFavorite: Value(value)));
       }
     });
@@ -437,16 +475,14 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     bool recursive = false,
     bool lowOnly = false,
     bool favoritesOnly = false,
-
   }) {
     final i = db.items;
     final p = db.itemPaths;
-    final join = db.select(i).join(
-        [leftOuterJoin(p, p.itemId.equalsExp(i.id))]);
+    final join =
+        db.select(i).join([leftOuterJoin(p, p.itemId.equalsExp(i.id))]);
 
     // 휴지통 제외
     join.where(i.isDeleted.equals(false));
-
 
     if (l1 != null && l1.isNotEmpty) {
       join.where(p.l1Id.equals(l1));
@@ -462,13 +498,12 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       }
     }
 
-  // ✅ 검색 교체
+    // ✅ 검색 교체
     if (keyword != null && keyword.trim().isNotEmpty) {
       join.where(
         _keywordExpr(i, keyword, scope: ItemSearchScope.full),
       );
     }
-
 
     if (lowOnly) {
       join.where(
@@ -503,12 +538,8 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       lowOnly: false,
       favoritesOnly: false,
     ).map((all) {
-      final low = all
-          .where((e) => e.minQty > 0 && e.qty <= e.minQty)
-          .length;
-      final fav = all
-          .where((e) => e.isFavorite == true)
-          .length;
+      final low = all.where((e) => e.minQty > 0 && e.qty <= e.minQty).length;
+      final fav = all.where((e) => e.isFavorite == true).length;
       return (low: low, fav: fav);
     });
   }
@@ -516,13 +547,14 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   @override
   Future<List<String>> itemPathNames(String itemId) async {
     final pathRow = await (db.select(db.itemPaths)
-      ..where((t) => t.itemId.equals(itemId))).getSingleOrNull();
+          ..where((t) => t.itemId.equals(itemId)))
+        .getSingleOrNull();
     if (pathRow == null) return [];
 
     Future<String?> getFolderName(String? id) async {
       if (id == null) return null;
-      final row = await (db.select(db.folders)
-        ..where((f) => f.id.equals(id))).getSingleOrNull();
+      final row = await (db.select(db.folders)..where((f) => f.id.equals(id)))
+          .getSingleOrNull();
       return row?.name;
     }
 
@@ -538,8 +570,8 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
   @override
   Future<String?> nameOf(String itemId) async {
-    final row = await (db.select(db.items)
-      ..where((t) => t.id.equals(itemId))).getSingleOrNull();
+    final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
+        .getSingleOrNull();
     return row?.name;
   }
 
@@ -576,10 +608,9 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return v ?? 0;
   }
 
-
   Future<void> moveItemToTrash(String id, {String? reason}) async {
     final path = await (db.select(db.itemPaths)
-      ..where((t) => t.itemId.equals(id)))
+          ..where((t) => t.itemId.equals(id)))
         .getSingleOrNull();
 
     final extra = {
@@ -588,8 +619,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       'l3Id': path?.l3Id,
     };
 
-    await (db.update(db.items)
-      ..where((t) => t.id.equals(id))).write(
+    await (db.update(db.items)..where((t) => t.id.equals(id))).write(
       ItemsCompanion(
         isDeleted: const Value(true),
         deletedAt: Value(DateTime.now().toIso8601String()),
@@ -625,7 +655,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
     for (final id in ids) {
       final path = await (db.select(db.itemPaths)
-        ..where((t) => t.itemId.equals(id)))
+            ..where((t) => t.itemId.equals(id)))
           .getSingleOrNull();
 
       final extra = {
@@ -634,8 +664,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
         'l3Id': path?.l3Id,
       };
 
-      await (db.update(db.items)
-        ..where((t) => t.id.equals(id))).write(
+      await (db.update(db.items)..where((t) => t.id.equals(id))).write(
         ItemsCompanion(
           isDeleted: const Value(true),
           deletedAt: Value(now),
@@ -649,8 +678,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
   @override
   Future<void> restoreItemFromTrash(String id) async {
-    await (db.update(db.items)
-      ..where((t) => t.id.equals(id))).write(
+    await (db.update(db.items)..where((t) => t.id.equals(id))).write(
       const ItemsCompanion(
         isDeleted: Value(false),
         deletedAt: Value(null),
@@ -662,15 +690,13 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   @override
   Future<void> purgeItem(String id) async {
     // 자식 테이블(FK) 정리 필요 시 여기서 먼저 처리하거나 FK를 CASCADE로
-    await (db.delete(db.items)
-      ..where((t) => t.id.equals(id))).go();
+    await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
     notifyListeners();
   }
 
   @override
   Future<int> getCurrentQty(String itemId) async {
-    final row = await (db.select(db.items)
-      ..where((t) => t.id.equals(itemId)))
+    final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
         .getSingleOrNull();
     final qty = row?.qty ?? 0;
     // 캐시도 갱신해 두면 UI가 즉시 반영되기 쉬움
@@ -684,7 +710,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     // qty + :delta >= 0 인 경우에만 업데이트
     final updatedCount = await db.customUpdate(
       'UPDATE items SET qty = qty + ? '
-          'WHERE id = ? AND is_deleted = 0 AND (qty + ?) >= 0',
+      'WHERE id = ? AND is_deleted = 0 AND (qty + ?) >= 0',
       variables: [
         Variable.withInt(delta),
         Variable.withString(itemId),
@@ -743,13 +769,12 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       }
     }
 
-      // ✅ 키워드 필터(목록과 동일 조건)
-      if (keyword != null && keyword.trim().isNotEmpty) {
-        join.where(
-          _keywordExpr(i, keyword, scope: ItemSearchScope.full),
-        );
-
-      }
+    // ✅ 키워드 필터(목록과 동일 조건)
+    if (keyword != null && keyword.trim().isNotEmpty) {
+      join.where(
+        _keywordExpr(i, keyword, scope: ItemSearchScope.full),
+      );
+    }
 
     // 즐겨찾기만
     if (favoritesOnly) {
@@ -780,6 +805,4 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       favoritesOnly: favoritesOnly,
     ).first;
   }
-
 }
-

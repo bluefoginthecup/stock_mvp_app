@@ -27,13 +27,12 @@ import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
 import '../../services/stock_service.dart';
 import '../../services/folder_service.dart';
 import '../../utils/navigation_utils.dart';
+import '../../utils/item_registration.dart';
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';
 part 'stock_browser_slivers.part.dart';
 part 'stock_browser_helpers.part.dart';
-
-
 
 // ============================================================================
 //  Explorer-style Stock browser: L1 (roots) -> L2 -> L3 -> Items
@@ -64,8 +63,13 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   bool _needsReviewOnly = false;
 
   String? get _selectedId => _l3Id ?? _l2Id ?? _l1Id;
-  int get _selectedDepth =>
-      _l3Id != null ? 3 : _l2Id != null ? 2 : _l1Id != null ? 1 : 0;
+  int get _selectedDepth => _l3Id != null
+      ? 3
+      : _l2Id != null
+          ? 2
+          : _l1Id != null
+              ? 1
+              : 0;
 
   @override
   void initState() {
@@ -93,91 +97,85 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   void _debouncedRebuild() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
-
       if (mounted) setState(() {});
     });
   }
 
-
-
-
   @override
-    Widget build(BuildContext context) {
-      final folderRepo = context.read<FolderTreeRepo>();
-      final itemRepo = context.read<ItemRepo>();
+  Widget build(BuildContext context) {
+    final folderRepo = context.read<FolderTreeRepo>();
+    final itemRepo = context.read<ItemRepo>();
 
-      // ✅ 화면 전반 간격 압축 테마
-      final base = Theme.of(context);
-      final compact = base.copyWith(
-        visualDensity: VisualDensity.compact,                       // 대부분 위젯 간격 ↓
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,    // 탭 타겟 축소
-        appBarTheme: base.appBarTheme.copyWith(
-          toolbarHeight: 44,                                        // AppBar 높이 ↓ (필요 시 조절)
-          titleSpacing: 8,
-        ),
-        inputDecorationTheme: base.inputDecorationTheme.copyWith(
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        ),
-        chipTheme: base.chipTheme.copyWith(
+    // ✅ 화면 전반 간격 압축 테마
+    final base = Theme.of(context);
+    final compact = base.copyWith(
+      visualDensity: VisualDensity.compact, // 대부분 위젯 간격 ↓
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap, // 탭 타겟 축소
+      appBarTheme: base.appBarTheme.copyWith(
+        toolbarHeight: 44, // AppBar 높이 ↓ (필요 시 조절)
+        titleSpacing: 8,
+      ),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      ),
+      chipTheme: base.chipTheme.copyWith(
+        padding: EdgeInsets.zero,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
+      listTileTheme: base.listTileTheme.copyWith(
+        dense: true,
+        visualDensity: VisualDensity.compact,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      ),
+      bottomNavigationBarTheme: base.bottomNavigationBarTheme.copyWith(
+        selectedLabelStyle: const TextStyle(fontSize: 11),
+        unselectedLabelStyle: const TextStyle(fontSize: 10),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
           padding: EdgeInsets.zero,
-          labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+          minimumSize: const Size(32, 32), // 기본 48→32
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
-        listTileTheme: base.listTileTheme.copyWith(
-          dense: true,
-          visualDensity: VisualDensity.compact,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-        ),
-        bottomNavigationBarTheme: base.bottomNavigationBarTheme.copyWith(
-          selectedLabelStyle: const TextStyle(fontSize: 11),
-          unselectedLabelStyle: const TextStyle(fontSize: 10),
-        ),
-        iconButtonTheme: IconButtonThemeData(
-          style: IconButton.styleFrom(
-            padding: EdgeInsets.zero,
-            minimumSize: const Size(32, 32),                         // 기본 48→32
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
-      );
+      ),
+    );
 
-      return ChangeNotifierProvider(
-        create: (_) => ItemSelectionController(),
-        child: Builder(
-          builder: (context) {
-            final sel = context.watch<ItemSelectionController>();
-            return Theme(                                  // ✅ 여기서 감싼다
-              data: compact,
-              child: Scaffold(
-                appBar: buildAppBar(context, folderRepo, itemRepo),
-                body: Stack(
-                  children: [
-                    buildBrowserContent(context, sel, folderRepo, itemRepo),
-                    DraggableFab(
-                      storageKey: 'fab_offset_stock',
-                      child: buildFloatingButton(context, _selectedDepth),
-                    ),
-                  ],
-                ),
+    return ChangeNotifierProvider(
+      create: (_) => ItemSelectionController(),
+      child: Builder(
+        builder: (context) {
+          final sel = context.watch<ItemSelectionController>();
+          return Theme(
+            // ✅ 여기서 감싼다
+            data: compact,
+            child: Scaffold(
+              appBar: buildAppBar(context, folderRepo, itemRepo),
+              body: Stack(
+                children: [
+                  buildBrowserContent(context, sel, folderRepo, itemRepo),
+                  DraggableFab(
+                    storageKey: 'fab_offset_stock',
+                    child: buildFloatingButton(context, _selectedDepth),
+                  ),
+                ],
               ),
-            );
-          },
-        ),
-      );
-    }
-
-
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   // ───────────────────────── Browser 본문 ─────────────────────────
   Widget buildBrowserContent(
-      BuildContext context,
-      ItemSelectionController sel,
-      FolderTreeRepo folderRepo,
-      ItemRepo itemRepo,
-      ) {
+    BuildContext context,
+    ItemSelectionController sel,
+    FolderTreeRepo folderRepo,
+    ItemRepo itemRepo,
+  ) {
     return Column(
       children: [
-
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           child: AppSearchField(
@@ -186,8 +184,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             onChanged: (_) => _debouncedRebuild(),
           ),
         ),
-
-
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
           child: SingleChildScrollView(
@@ -204,7 +200,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                     minimumSize: const Size(40, 36),
                     padding: const EdgeInsets.all(8),
                   ),
-
                 ),
                 FilterChip(
                   label: const Text('필터:임계치'),
@@ -228,14 +223,20 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           ),
         ),
         const Divider(height: 1),
-
         Expanded(
           child: StreamBuilder<List<Item>>(
             stream: itemRepo.watchItems(
-              l1: _searchC.text.trim().isNotEmpty ? null : (_selectedDepth == 0 ? null : _l1Id),
-              l2: _searchC.text.trim().isNotEmpty ? null : (_selectedDepth <= 1 ? null : _l2Id),
-              l3: _searchC.text.trim().isNotEmpty ? null : (_selectedDepth <= 2 ? null : _l3Id),
-              keyword: _searchC.text.trim().isNotEmpty ? _searchC.text.trim() : null,
+              l1: _searchC.text.trim().isNotEmpty
+                  ? null
+                  : (_selectedDepth == 0 ? null : _l1Id),
+              l2: _searchC.text.trim().isNotEmpty
+                  ? null
+                  : (_selectedDepth <= 1 ? null : _l2Id),
+              l3: _searchC.text.trim().isNotEmpty
+                  ? null
+                  : (_selectedDepth <= 2 ? null : _l3Id),
+              keyword:
+                  _searchC.text.trim().isNotEmpty ? _searchC.text.trim() : null,
               recursive: _searchC.text.trim().isNotEmpty
                   ? true
                   : (_selectedDepth == 0 &&
@@ -244,7 +245,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               favoritesOnly: _showFavoriteOnly,
             ),
             builder: (ctx, snap) {
-              if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+              if (snap.connectionState == ConnectionState.waiting &&
+                  !snap.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snap.hasError) {
@@ -284,8 +286,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                           context,
                           folders,
                           setState,
-                              (n) => _tryDeleteFolder(context, n, () => setState(() {})),
-                              (n) => _jumpToFolderFromSearch(folderRepo: folderRepo, target: n, sel: sel),
+                          (n) => _tryDeleteFolder(
+                              context, n, () => setState(() {})),
+                          (n) => _jumpToFolderFromSearch(
+                              folderRepo: folderRepo, target: n, sel: sel),
                         ),
                       );
                     }
@@ -299,12 +303,11 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       return const Center(child: Text('검색 결과가 없습니다.'));
                     }
 
-                    return _buildStackWithList(sel: sel, items: items, slivers: slivers);
-
+                    return _buildStackWithList(
+                        sel: sel, items: items, slivers: slivers);
                   },
                 );
               }
-
 
               return FutureBuilder<List<FolderNode>>(
                 future: folderRepo.listFolderChildren(_selectedId),
@@ -338,21 +341,23 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                           context,
                           folders,
                           setState,
-                              (n) => _tryDeleteFolder(context, n, () => setState(() {})),
-                        null,
+                          (n) => _tryDeleteFolder(
+                              context, n, () => setState(() {})),
+                          null,
                         ),
                       );
                     }
                     if (items.isNotEmpty) {
-                         slivers.add(_buildItemSliver(context, items));
-                   }
+                      slivers.add(_buildItemSliver(context, items));
+                    }
                   } else if (depth == 0) {
                     slivers.add(
                       _buildFolderSliver(
                         context,
                         folders,
                         setState,
-                            (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                        (n) =>
+                            _tryDeleteFolder(context, n, () => setState(() {})),
                         null,
                       ),
                     );
@@ -363,19 +368,20 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                           context,
                           folders,
                           setState,
-                              (n) => _tryDeleteFolder(context, n, () => setState(() {})),
+                          (n) => _tryDeleteFolder(
+                              context, n, () => setState(() {})),
                           null,
                         ),
                       );
                     }
-                   if (items.isNotEmpty) {
-                     slivers.add(_buildItemSliver(context, items));
-                   }
+                    if (items.isNotEmpty) {
+                      slivers.add(_buildItemSliver(context, items));
+                    }
                   }
 
                   // 리스트 + 멀티선택바
-                  return _buildStackWithList(sel: sel, items: items, slivers: slivers);
-
+                  return _buildStackWithList(
+                      sel: sel, items: items, slivers: slivers);
                 },
               );
             },
@@ -389,8 +395,9 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   Widget buildFloatingButton(BuildContext context, int depth) {
     final folderRepo = context.read<FolderTreeRepo>();
     final itemRepo = context.read<ItemRepo>();
-    final selectedId =
-        context.findAncestorStateOfType<_StockBrowserScreenState>()?._selectedId;
+    final selectedId = context
+        .findAncestorStateOfType<_StockBrowserScreenState>()
+        ?._selectedId;
     final isLeaf = depth >= 3;
 
     return FloatingActionButton(
@@ -410,9 +417,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   leading: const Icon(Icons.create_new_folder),
                   title: Text(isLeaf ? '새 폴더 (소분류에서는 불가)' : '새 폴더'),
                   enabled: !isLeaf,
-                  onTap: isLeaf
-                      ? null
-                      : () => Navigator.pop(context, 'folder'),
+                  onTap: isLeaf ? null : () => Navigator.pop(context, 'folder'),
                 ),
               ],
             ),
@@ -423,13 +428,11 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           await _createFolder(context, folderRepo, selectedId);
           if (!mounted) return;
           setState(() {}); // ✅ 생성 직후 목록 갱신 트리거
-
         }
         if (act == 'item') {
           await _createItem(context, selectedId, folderRepo, itemRepo);
           if (!mounted) return;
           setState(() {}); // ✅ 생성 직후 목록 갱신 트리거
-
         }
       },
       child: const Icon(Icons.add),
@@ -442,7 +445,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     required ItemSelectionController sel,
     required List<Item> items,
   }) {
-
     return CommonMultiSelectBar(
       selectedCount: sel.selected.length,
       totalCount: items.length,
@@ -466,7 +468,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           icon: Icons.star,
           tooltip: '즐겨찾기',
           onPressed: () async {
-            final picked = items.where((it) => sel.selected.contains(it.id)).toList();
+            final picked =
+                items.where((it) => sel.selected.contains(it.id)).toList();
             if (picked.isEmpty) return;
 
             final repo = context.read<ItemRepo>();
@@ -485,9 +488,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(next
-                  ? '선택한 ${ids.length}개 즐겨찾기 추가'
-                  : '선택한 ${ids.length}개 즐겨찾기 해제')),
+              SnackBar(
+                  content: Text(next
+                      ? '선택한 ${ids.length}개 즐겨찾기 추가'
+                      : '선택한 ${ids.length}개 즐겨찾기 해제')),
             );
           },
         ),
@@ -514,7 +518,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               context,
               message: '${sel.selected.length}개 이동 완료',
               actionText: '휴지통 열기',
-              onAction: (_) => openTrashFromNav(Navigator.of(context, rootNavigator: true)),
+              onAction: (_) =>
+                  openTrashFromNav(Navigator.of(context, rootNavigator: true)),
             );
 
             sel.exit();
@@ -529,16 +534,16 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             final dest = await showPathPicker(
               context,
               childrenProvider:
-              pathChildrenFromFolderRepo(context.read<FolderTreeRepo>()),
+                  pathChildrenFromFolderRepo(context.read<FolderTreeRepo>()),
               title: '아이템 이동..',
               maxDepth: 3,
             );
             if (dest == null || dest.isEmpty) return;
 
             final moved = await context.read<FolderTreeRepo>().moveItemsToPath(
-              itemIds: sel.selected.toList(),
-              pathIds: dest,
-            );
+                  itemIds: sel.selected.toList(),
+                  pathIds: dest,
+                );
 
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
@@ -549,33 +554,33 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           },
         ),
 // 📋 복사 🔥 추가
-            MultiSelectAction(
-              icon: Icons.copy,
-              tooltip: '복사',
-              onPressed: () async {
-                if (sel.selected.isEmpty) return;
+        MultiSelectAction(
+          icon: Icons.copy,
+          tooltip: '복사',
+          onPressed: () async {
+            if (sel.selected.isEmpty) return;
 
-                final folderService = context.read<FolderService>();
+            final folderService = context.read<FolderService>();
 
-                for (final id in sel.selected) {
-                  await folderService.copySingleItem(id);
-                }
+            for (final id in sel.selected) {
+              await folderService.copySingleItem(id);
+            }
 
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${sel.selected.length}개 복사됨')),
-                );
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${sel.selected.length}개 복사됨')),
+            );
 
-                sel.exit();
-              },
-            ),
+            sel.exit();
+          },
+        ),
         // 장바구니
         MultiSelectAction(
           icon: Icons.add_shopping_cart,
           tooltip: '담기',
           onPressed: () {
             final picked =
-            items.where((it) => sel.selected.contains(it.id)).toList();
+                items.where((it) => sel.selected.contains(it.id)).toList();
 
             final cart = context.read<CartManager>();
             addItemsToCart(cart, picked);
@@ -603,11 +608,13 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         if (sel.selectionMode)
           Align(
             alignment: Alignment.bottomCenter,
-            child: _buildMultiSelectBar(context: context, sel: sel, items: items),
+            child:
+                _buildMultiSelectBar(context: context, sel: sel, items: items),
           ),
       ],
     );
   }
+
   //----검색결과 나온 폴더로 이동 ----//
 //----검색결과 나온 폴더로 이동 ----//
   Future<void> _jumpToFolderFromSearch({
@@ -645,5 +652,4 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       sel.exit();
     });
   }
-
-  }
+}

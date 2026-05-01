@@ -1,13 +1,13 @@
-
 import 'package:flutter/material.dart';
 import '../../../models/item.dart';
+import '../../../utils/item_registration.dart';
 
 class StockItemSelectTile extends StatelessWidget {
   final Item item;
   final bool selectionMode;
   final bool selected;
-  final VoidCallback onTap;        // 일반 모드 탭(상세로)
-  final VoidCallback onLongPress;  // 롱프레스 → 선택모드 진입
+  final VoidCallback onTap; // 일반 모드 탭(상세로)
+  final VoidCallback onLongPress; // 롱프레스 → 선택모드 진입
   final VoidCallback onTogglePick; // 선택 토글
 
   const StockItemSelectTile({
@@ -23,7 +23,7 @@ class StockItemSelectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = item.displayName ?? item.name;
-    final needsReview = _isNeedsReviewItem(item);
+    final needsReview = isNeedsRegistrationItem(item);
     final subtitle = '재고: ${item.qty} ${item.unit}'
         '${needsReview ? ' · 정식등록 필요' : ''}';
 
@@ -31,14 +31,21 @@ class StockItemSelectTile extends StatelessWidget {
       leading: selectionMode
           ? Checkbox(value: selected, onChanged: (_) => onTogglePick())
           : const Icon(Icons.inventory_2_outlined),
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,style: const TextStyle(
-        fontSize: 16,        // ← 기존보다 +2 정도
-        fontWeight: FontWeight.w500,
-      ),),
-      subtitle: Text(subtitle, style: TextStyle(
-        fontSize: 14,        // 기본 12~13 -> 14로
-        color: needsReview ? Colors.deepOrange.shade700 : Colors.black54,
+      title: Text(
+        title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 16, // ← 기존보다 +2 정도
+          fontWeight: FontWeight.w500,
+        ),
       ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 14, // 기본 12~13 -> 14로
+          color: needsReview ? Colors.deepOrange.shade700 : Colors.black54,
+        ),
       ),
       dense: true,
       // ⭐/⋮ 제거 → trailing 없음
@@ -47,10 +54,4 @@ class StockItemSelectTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
     );
   }
-}
-
-bool _isNeedsReviewItem(Item item) {
-  final attrs = item.attrs;
-  if (attrs == null || attrs.isEmpty) return false;
-  return attrs['temporary'] == true || attrs['status'] == 'needsReview';
 }

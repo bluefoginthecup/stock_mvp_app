@@ -2,29 +2,24 @@
 part of 'stock_browser_screen.dart';
 
 // ───────────────────────── 공통 필터 로직 ─────────────────────────
-List<Item> _applyFilters(List<Item> items,
-    {
-      required bool lowOnly,
-      required bool showFavoriteOnly,
-      required bool needsReviewOnly,
-    }) {
+List<Item> _applyFilters(
+  List<Item> items, {
+  required bool lowOnly,
+  required bool showFavoriteOnly,
+  required bool needsReviewOnly,
+}) {
   var filtered = items;
   if (lowOnly) {
-    filtered = filtered.where((it) => it.minQty > 0 && it.qty <= it.minQty).toList();
+    filtered =
+        filtered.where((it) => it.minQty > 0 && it.qty <= it.minQty).toList();
   }
   if (showFavoriteOnly) {
     filtered = filtered.where((it) => it.isFavorite == true).toList();
   }
   if (needsReviewOnly) {
-    filtered = filtered.where(_isNeedsReviewItem).toList();
+    filtered = filtered.where(isNeedsRegistrationItem).toList();
   }
   return filtered;
-}
-
-bool _isNeedsReviewItem(Item item) {
-  final attrs = item.attrs;
-  if (attrs == null || attrs.isEmpty) return false;
-  return attrs['temporary'] == true || attrs['status'] == 'needsReview';
 }
 
 // ───────────────────────── PathPicker용 provider ─────────────────────────
@@ -48,7 +43,8 @@ Future<double?> _askQty(BuildContext context) async {
         decoration: const InputDecoration(labelText: '수량'),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+        TextButton(
+            onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
         TextButton(
           onPressed: () {
             final v = double.tryParse(c.text.trim());
@@ -65,12 +61,10 @@ Future<double?> _askQty(BuildContext context) async {
 typedef _ChildrenProvider = Future<List<PathNode>> Function(String? parentId);
 
 _ChildrenProvider pathChildrenFromFolderRepo(FolderTreeRepo repo) {
-    return (String? parentId) async {
-      final folders = await repo.listFolderChildren(parentId);
-      return folders
-          .map((f) =>
-              // ⚠️ 당신의 PathNode 생성자에 맞게 'name'/'label' 필드명만 필요 시 바꾸세요.
-              PathNode(f.id, f.name))
-          .toList();
-    };
-  }
+  return (String? parentId) async {
+    final folders = await repo.listFolderChildren(parentId);
+    return folders.map((f) =>
+        // ⚠️ 당신의 PathNode 생성자에 맞게 'name'/'label' 필드명만 필요 시 바꾸세요.
+        PathNode(f.id, f.name)).toList();
+  };
+}

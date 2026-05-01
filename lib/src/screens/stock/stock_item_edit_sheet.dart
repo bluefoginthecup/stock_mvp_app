@@ -17,6 +17,7 @@ class _StockItemEditSheetState extends State<StockItemEditSheet> {
   late final TextEditingController _minQtyC;
 
   late Future<Item?> _itemFuture;
+  late Future<List<String>> _registrationMissingFuture;
   Item? _loaded; // 저장 시 원본 보관
 
   @override
@@ -27,6 +28,7 @@ class _StockItemEditSheetState extends State<StockItemEditSheet> {
 
     final repo = context.read<ItemRepo>();
     _itemFuture = repo.getItemById(widget.itemId);
+    _registrationMissingFuture = repo.registrationMissingFields(widget.itemId);
   }
 
   @override
@@ -66,10 +68,15 @@ class _StockItemEditSheetState extends State<StockItemEditSheet> {
       conversionMode: item.conversionMode,
       stockHints: item.stockHints,
       supplierName: item.supplierName,
+      defaultSupplierId: item.defaultSupplierId,
+      defaultPrice: item.defaultPrice,
+      defaultPurchasePrice: item.defaultPurchasePrice,
+      defaultSalePrice: item.defaultSalePrice,
       isFavorite: item.isFavorite,
     );
 
     await repo.updateItemMeta(updated);
+    await repo.tryFinalizeRegistration(item.id);
     if (mounted) Navigator.pop(context, true);
   }
 
@@ -104,8 +111,9 @@ class _StockItemEditSheetState extends State<StockItemEditSheet> {
               // 최초 한 번만 컨트롤러에 값 채우기
               if (_loaded == null) {
                 _loaded = it;
-                _displayNameC.text =
-                (it.displayName?.trim().isNotEmpty == true) ? it.displayName! : it.name;
+                _displayNameC.text = (it.displayName?.trim().isNotEmpty == true)
+                    ? it.displayName!
+                    : it.name;
                 _minQtyC.text = it.minQty.toString();
               }
 
@@ -118,7 +126,8 @@ class _StockItemEditSheetState extends State<StockItemEditSheet> {
                       children: [
                         const Icon(Icons.edit),
                         const SizedBox(width: 8),
-                        Text('간단 편집', style: Theme.of(context).textTheme.titleMedium),
+                        Text('간단 편집',
+                            style: Theme.of(context).textTheme.titleMedium),
                         const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.close),
@@ -127,15 +136,27 @@ class _StockItemEditSheetState extends State<StockItemEditSheet> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _displayNameC,
-                      decoration: const InputDecoration(labelText: '표시 이름 (displayName)'),
-                      maxLength: 80,
+                    FutureBuilder<List<String>>(
+                      future: _registrationMissingFuture,
+                      builder: (context, missingSnap) {
+                        final missing = missingSnap.data ?? const <String>[];
+                        return TextFormField(
+                          controller: _displayNameC,
+                          decoration: InputDecoration(
+                            labelText: '표시 이름 (displayName)',
+                            helperText: missing.contains('아이템명 필요')
+                                ? '필수값을 입력해주세요'
+                                : null,
+                          ),
+                          maxLength: 80,
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _minQtyC,
-                      decoration: const InputDecoration(labelText: '임계치 (minQty)'),
+                      decoration:
+                          const InputDecoration(labelText: '임계치 (minQty)'),
                       keyboardType: TextInputType.number,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return null;

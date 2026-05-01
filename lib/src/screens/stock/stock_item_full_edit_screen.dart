@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/path_picker.dart';
+import '../../utils/item_registration.dart';
 
 class StockItemFullEditScreen extends StatefulWidget {
   final String itemId;
@@ -42,6 +43,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
   late TextEditingController salePriceC;
 
   late Future<Item?> _itemFuture;
+  late Future<List<String>> _registrationMissingFuture;
   Item? _loaded; // 로드된 원본 아이템 보관(저장 시 기반)
 
   @override
@@ -69,6 +71,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     // 2) 아이템은 비동기로 로드
     final repo = context.read<ItemRepo>();
     _itemFuture = repo.getItemById(widget.itemId);
+    _registrationMissingFuture = repo.registrationMissingFields(widget.itemId);
   }
 
   @override
@@ -149,14 +152,23 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       supplierName: supplierC.text.trim().isEmpty
           ? i.supplierName
           : supplierC.text.trim(),
+      defaultSupplierId: i.defaultSupplierId,
+      defaultPrice: i.defaultPrice,
       isFavorite: i.isFavorite,
       defaultPurchasePrice: purchasePrice ?? i.defaultPurchasePrice,
       defaultSalePrice: salePrice ?? i.defaultSalePrice,
     );
 
     await repo.updateItemMeta(updated);
+    final finalized = await repo.tryFinalizeRegistration(i.id);
 
     print('저장 price: $purchasePrice / $salePrice');
+    if (!mounted) return;
+    if (finalized) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('정식등록 완료')),
+      );
+    }
     Navigator.pop(context, true);
   }
 
@@ -181,13 +193,17 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
         itemIds: [item.id],
         pathIds: dest,
       );
+      final finalized =
+          await context.read<ItemRepo>().tryFinalizeRegistration(item.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('아이템 $moved개 이동')),
+        SnackBar(content: Text(finalized ? '정식등록 완료' : '아이템 $moved개 이동')),
       );
       setState(() {
         _loaded = null;
         _itemFuture = context.read<ItemRepo>().getItemById(widget.itemId);
+        _registrationMissingFuture =
+            context.read<ItemRepo>().registrationMissingFields(widget.itemId);
       });
     } catch (e) {
       if (!mounted) return;
@@ -199,6 +215,47 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
 
   InputDecoration _dec(String label, {String? hint}) =>
       InputDecoration(labelText: label, hintText: hint);
+
+  Widget _buildRegistrationNotice(List<String> missing) {
+    final items = missing.isEmpty ? const ['필수값 확인 필요'] : missing;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        border: Border.all(color: Colors.orange.shade200),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.assignment_late_outlined,
+                  size: 18, color: Colors.orange.shade800),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '정식등록 필요 아이템입니다. 필수값을 입력해주세요.',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange.shade900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...items.map(
+            (text) => Padding(
+              padding: const EdgeInsets.only(left: 26, top: 2),
+              child: Text('- $text'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -260,15 +317,35 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  if (isNeedsRegistrationItem(item))
+                    FutureBuilder<List<String>>(
+                      future: _registrationMissingFuture,
+                      builder: (context, missingSnap) {
+                        final missing = missingSnap.data ?? const <String>[];
+                        return _buildRegistrationNotice(missing);
+                      },
+                    ),
+                  if (isNeedsRegistrationItem(item)) const SizedBox(height: 16),
                   Text('식별/표시', style: text.titleSmall),
                   const SizedBox(height: 8),
                   TextFormField(
                       controller: nameC,
                       decoration: _dec('name'),
                       readOnly: true),
-                  TextFormField(
-                      controller: displayNameC,
-                      decoration: _dec('displayName')),
+                  FutureBuilder<List<String>>(
+                    future: _registrationMissingFuture,
+                    builder: (context, missingSnap) {
+                      final missing = missingSnap.data ?? const <String>[];
+                      return TextFormField(
+                        controller: displayNameC,
+                        decoration: _dec('displayName').copyWith(
+                          helperText: missing.contains('아이템명 필요')
+                              ? '필수값을 입력해주세요'
+                              : null,
+                        ),
+                      );
+                    },
+                  ),
                   TextFormField(
                       controller: skuC,
                       decoration: _dec('sku'),
@@ -277,29 +354,48 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
                   const SizedBox(height: 16),
                   Text('단위/경로', style: text.titleSmall),
                   const SizedBox(height: 8),
-                  TextFormField(
-                      controller: unitC,
-                      decoration: _dec('unit (EA/SET/ROLL...)')),
+                  FutureBuilder<List<String>>(
+                    future: _registrationMissingFuture,
+                    builder: (context, missingSnap) {
+                      final missing = missingSnap.data ?? const <String>[];
+                      return TextFormField(
+                        controller: unitC,
+                        decoration: _dec('unit (EA/SET/ROLL...)').copyWith(
+                          helperText:
+                              missing.contains('단위 필요') ? '필수값을 입력해주세요' : null,
+                        ),
+                      );
+                    },
+                  ),
                   FutureBuilder<List<String>>(
                     future: context.read<ItemRepo>().itemPathNames(item.id),
                     builder: (context, pathSnap) {
                       final pathNames = pathSnap.data ?? const <String>[];
                       final pathText =
                           pathNames.isEmpty ? '경로 없음' : pathNames.join(' / ');
-                      return TextFormField(
-                        key: ValueKey(pathText),
-                        initialValue: pathText,
-                        readOnly: true,
-                        decoration: _dec(
-                          'folder path',
-                          hint: '폴더 이동 버튼으로 변경',
-                        ).copyWith(
-                          suffixIcon: IconButton(
-                            tooltip: '폴더 이동',
-                            icon: const Icon(Icons.drive_file_move),
-                            onPressed: _moveThisItem,
-                          ),
-                        ),
+                      return FutureBuilder<List<String>>(
+                        future: _registrationMissingFuture,
+                        builder: (context, missingSnap) {
+                          final missing = missingSnap.data ?? const <String>[];
+                          return TextFormField(
+                            key: ValueKey(pathText),
+                            initialValue: pathText,
+                            readOnly: true,
+                            decoration: _dec(
+                              'folder path',
+                              hint: '폴더 이동 버튼으로 변경',
+                            ).copyWith(
+                              helperText: missing.contains('폴더 경로 필요')
+                                  ? '폴더 이동 버튼으로 실제 폴더를 선택해주세요'
+                                  : null,
+                              suffixIcon: IconButton(
+                                tooltip: '폴더 이동',
+                                icon: const Icon(Icons.drive_file_move),
+                                onPressed: _moveThisItem,
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
