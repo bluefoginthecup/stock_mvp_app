@@ -11,7 +11,6 @@ import '../../ui/common/item_picker_sheet.dart';
 import '../../ui/common/suggestion_panel.dart';
 import '../../ui/common/ui.dart';
 
-
 class PurchaseLineFullEditScreen extends StatefulWidget {
   final PurchaseOrderRepo repo;
   final String orderId;
@@ -25,10 +24,12 @@ class PurchaseLineFullEditScreen extends StatefulWidget {
   });
 
   @override
-  State<PurchaseLineFullEditScreen> createState() => _PurchaseLineFullEditScreenState();
+  State<PurchaseLineFullEditScreen> createState() =>
+      _PurchaseLineFullEditScreenState();
 }
 
-class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen> {
+class _PurchaseLineFullEditScreenState
+    extends State<PurchaseLineFullEditScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // controllers
@@ -55,13 +56,13 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
     lineId = widget.initial?.id ?? const Uuid().v4();
 
     final i = widget.initial;
-    itemIdC  = TextEditingController(text: i?.itemId ?? '');
-    nameC    = TextEditingController(text: i?.name ?? '');
-    unitC    = TextEditingController(text: i?.unit ?? 'EA');
-    qtyC     = TextEditingController(text: (i?.qty ?? 1).toString());
+    itemIdC = TextEditingController(text: i?.itemId ?? '');
+    nameC = TextEditingController(text: i?.name ?? '');
+    unitC = TextEditingController(text: i?.unit ?? 'EA');
+    qtyC = TextEditingController(text: (i?.qty ?? 1).toString());
     colorNoC = TextEditingController(text: i?.colorNo ?? '');
-    noteC    = TextEditingController(text: i?.note ?? '');
-    memoC    = TextEditingController(text: i?.memo ?? '');
+    noteC = TextEditingController(text: i?.note ?? '');
+    memoC = TextEditingController(text: i?.memo ?? '');
     priceC = TextEditingController(
       text: (i?.unitPrice ?? 0).toString(),
     );
@@ -86,7 +87,8 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
 
     final qty = double.tryParse(qtyC.text.trim());
     if (qty == null || qty <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('수량은 0보다 큰 숫자여야 합니다')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('수량은 0보다 큰 숫자여야 합니다')));
       return;
     }
     double price = double.tryParse(priceC.text.trim()) ?? 0;
@@ -227,12 +229,31 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
       },
     );
 
-    await itemRepo.upsertItem(item);
+    final uncategorizedRootId = await _findUncategorizedRootId();
+    final dyn = itemRepo as dynamic;
+    if (uncategorizedRootId != null && dyn.upsertItemWithPath is Function) {
+      await dyn.upsertItemWithPath(item, uncategorizedRootId, null, null);
+    } else {
+      await itemRepo.upsertItem(item);
+    }
     if (!mounted) return;
     _applyItem(item);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('정식등록 필요 아이템으로 추가했어요')),
     );
+  }
+
+  Future<String?> _findUncategorizedRootId() async {
+    final folderRepo = context.read<FolderTreeRepo>();
+    final roots = await folderRepo.listFolderChildren(null);
+    for (final root in roots) {
+      final id = root.id.trim().toLowerCase();
+      final name = root.name.trim().toLowerCase();
+      if (id == 'uncategorized' || name == 'uncategorized') {
+        return root.id;
+      }
+    }
+    return null;
   }
 
   Future<void> _delete() async {
@@ -241,10 +262,15 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
       context: context,
       builder: (_) => AlertDialog(
         title: Text(context.t.common_delete),
-        content: Text('${nameC.text.trim().isNotEmpty ? nameC.text.trim() : itemIdC.text.trim()} 삭제할까요?'),
+        content: Text(
+            '${nameC.text.trim().isNotEmpty ? nameC.text.trim() : itemIdC.text.trim()} 삭제할까요?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(context.t.common_cancel)),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(context.t.common_delete)),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(context.t.common_cancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(context.t.common_delete)),
         ],
       ),
     );
@@ -364,7 +390,8 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
                     child: TextFormField(
                       controller: qtyC,
                       decoration: _dec('qty'),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return '수량';
                         final d = double.tryParse(v);
@@ -377,23 +404,23 @@ class _PurchaseLineFullEditScreenState extends State<PurchaseLineFullEditScreen>
                     child: TextFormField(
                       controller: priceC,
                       decoration: _dec('단가'),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 16),
               Text('옵션', style: text.titleSmall),
               const SizedBox(height: 8),
-              TextFormField(controller: colorNoC, decoration: _dec('colorNo (선택)')),
+              TextFormField(
+                  controller: colorNoC, decoration: _dec('colorNo (선택)')),
               TextFormField(controller: noteC, decoration: _dec('note (선택)')),
               TextFormField(
                 controller: memoC,
                 decoration: _dec('memo (선택)'),
                 maxLines: 3,
               ),
-
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _save,

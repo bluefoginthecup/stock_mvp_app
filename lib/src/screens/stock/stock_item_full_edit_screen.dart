@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../ui/common/path_picker.dart';
 
 class StockItemFullEditScreen extends StatefulWidget {
   final String itemId;
   const StockItemFullEditScreen({super.key, required this.itemId});
 
   @override
-  State<StockItemFullEditScreen> createState() => _StockItemFullEditScreenState();
+  State<StockItemFullEditScreen> createState() =>
+      _StockItemFullEditScreenState();
 }
 
 class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
@@ -39,35 +41,34 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
   late TextEditingController purchasePriceC;
   late TextEditingController salePriceC;
 
-
-    late Future<Item?> _itemFuture;
-    Item? _loaded; // 로드된 원본 아이템 보관(저장 시 기반)
+  late Future<Item?> _itemFuture;
+  Item? _loaded; // 로드된 원본 아이템 보관(저장 시 기반)
 
   @override
   void initState() {
     super.initState();
     // 1) 컨트롤러는 빈 값으로 먼저 생성(디스포즈 안전)
-        nameC = TextEditingController();
-        displayNameC = TextEditingController();
-        skuC = TextEditingController();
-        unitC = TextEditingController();
-        folderC = TextEditingController();
-        subfolderC = TextEditingController();
-        subsubfolderC = TextEditingController();
-        minQtyC = TextEditingController();
-        qtyC = TextEditingController();
-        kindC = TextEditingController();
-        attrsC = TextEditingController();
-        unitInC = TextEditingController();
-        unitOutC = TextEditingController();
-        conversionRateC = TextEditingController();
-        supplierC = TextEditingController();
-        purchasePriceC = TextEditingController();
-        salePriceC = TextEditingController();
+    nameC = TextEditingController();
+    displayNameC = TextEditingController();
+    skuC = TextEditingController();
+    unitC = TextEditingController();
+    folderC = TextEditingController();
+    subfolderC = TextEditingController();
+    subsubfolderC = TextEditingController();
+    minQtyC = TextEditingController();
+    qtyC = TextEditingController();
+    kindC = TextEditingController();
+    attrsC = TextEditingController();
+    unitInC = TextEditingController();
+    unitOutC = TextEditingController();
+    conversionRateC = TextEditingController();
+    supplierC = TextEditingController();
+    purchasePriceC = TextEditingController();
+    salePriceC = TextEditingController();
 
-        // 2) 아이템은 비동기로 로드
-        final repo = context.read<ItemRepo>();
-        _itemFuture = repo.getItemById(widget.itemId);
+    // 2) 아이템은 비동기로 로드
+    final repo = context.read<ItemRepo>();
+    _itemFuture = repo.getItemById(widget.itemId);
   }
 
   @override
@@ -112,7 +113,8 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
 
     // 수치 파싱
     final minQty = int.tryParse(minQtyC.text.trim());
-    final qty = int.tryParse(qtyC.text.trim()); // qty는 권장: 별도 Adjust 플로우 사용. 여기선 옵션.
+    final qty =
+        int.tryParse(qtyC.text.trim()); // qty는 권장: 별도 Adjust 플로우 사용. 여기선 옵션.
     final convRate = double.tryParse(conversionRateC.text.trim());
 
     // 경고: qty를 여기서 바꾸면 Txn 없이 점프함(재무 이력 없음).
@@ -124,35 +126,75 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     final salePrice = double.tryParse(salePriceC.text.trim());
 
     // ✅ Item 전체를 만들어 updateItemMeta에 전달
-        final updated = Item(
-          id: i.id,
-          name: i.name,
-          displayName: displayNameC.text.trim().isEmpty ? i.displayName : displayNameC.text.trim(),
-          sku: i.sku,
-          unit: unitC.text.trim().isEmpty ? i.unit : unitC.text.trim(),
-          folder: folderC.text.trim().isEmpty ? i.folder : folderC.text.trim(),
-          subfolder: subfolderC.text.trim().isEmpty ? i.subfolder : subfolderC.text.trim(),
-          subsubfolder: subsubfolderC.text.trim().isEmpty ? i.subsubfolder : subsubfolderC.text.trim(),
-          minQty: minQty ?? i.minQty,
-          qty: i.qty, // 여기선 건드리지 않음 (Adjust 권장)
-          kind: kindC.text.trim().isEmpty ? i.kind : kindC.text.trim(),
-          attrs: parsedAttrs ?? i.attrs,
-          unitIn: unitInC.text.trim().isEmpty ? i.unitIn : unitInC.text.trim(),
-          unitOut: unitOutC.text.trim().isEmpty ? i.unitOut : unitOutC.text.trim(),
-          conversionRate: convRate ?? i.conversionRate,
-          conversionMode: conversionMode,
-          stockHints: i.stockHints,
-          supplierName: supplierC.text.trim().isEmpty ? i.supplierName : supplierC.text.trim(),
-          isFavorite: i.isFavorite,
-          defaultPurchasePrice: purchasePrice ?? i.defaultPurchasePrice,
-          defaultSalePrice: salePrice ?? i.defaultSalePrice,
+    final updated = Item(
+      id: i.id,
+      name: i.name,
+      displayName: displayNameC.text.trim().isEmpty
+          ? i.displayName
+          : displayNameC.text.trim(),
+      sku: i.sku,
+      unit: unitC.text.trim().isEmpty ? i.unit : unitC.text.trim(),
+      folder: i.folder,
+      subfolder: i.subfolder,
+      subsubfolder: i.subsubfolder,
+      minQty: minQty ?? i.minQty,
+      qty: i.qty, // 여기선 건드리지 않음 (Adjust 권장)
+      kind: kindC.text.trim().isEmpty ? i.kind : kindC.text.trim(),
+      attrs: parsedAttrs ?? i.attrs,
+      unitIn: unitInC.text.trim().isEmpty ? i.unitIn : unitInC.text.trim(),
+      unitOut: unitOutC.text.trim().isEmpty ? i.unitOut : unitOutC.text.trim(),
+      conversionRate: convRate ?? i.conversionRate,
+      conversionMode: conversionMode,
+      stockHints: i.stockHints,
+      supplierName: supplierC.text.trim().isEmpty
+          ? i.supplierName
+          : supplierC.text.trim(),
+      isFavorite: i.isFavorite,
+      defaultPurchasePrice: purchasePrice ?? i.defaultPurchasePrice,
+      defaultSalePrice: salePrice ?? i.defaultSalePrice,
+    );
 
-        );
-
-        await repo.updateItemMeta(updated);
+    await repo.updateItemMeta(updated);
 
     print('저장 price: $purchasePrice / $salePrice');
     Navigator.pop(context, true);
+  }
+
+  Future<void> _moveThisItem() async {
+    final item = _loaded;
+    if (item == null) return;
+
+    final folderRepo = context.read<FolderTreeRepo>();
+    final dest = await showPathPicker(
+      context,
+      childrenProvider: (String? parentId) async {
+        final folders = await folderRepo.listFolderChildren(parentId);
+        return folders.map((f) => PathNode(f.id, f.name)).toList();
+      },
+      title: '아이템 이동',
+      maxDepth: 3,
+    );
+    if (dest == null || dest.isEmpty) return;
+
+    try {
+      final moved = await folderRepo.moveItemsToPath(
+        itemIds: [item.id],
+        pathIds: dest,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('아이템 $moved개 이동')),
+      );
+      setState(() {
+        _loaded = null;
+        _itemFuture = context.read<ItemRepo>().getItemById(widget.itemId);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('이동 실패: $e')),
+      );
+    }
   }
 
   InputDecoration _dec(String label, {String? hint}) =>
@@ -161,190 +203,253 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-        return FutureBuilder<Item?>(
-          future: _itemFuture,
-          builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) {
-              return const Scaffold(body: Center(child: CircularProgressIndicator()));
-            }
-            final item = snap.data;
-            if (item == null) {
-              // 없는 아이템이면 뒤로
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) Navigator.pop(context);
-              });
-              return const SizedBox.shrink();
-            }
-            // 최초 로드시에만 컨트롤러 텍스트 채우기 (사용자가 수정한 값 덮어쓰기 방지)
-            if (_loaded == null) {
-              _loaded = item;
-              nameC.text = item.name;
-              displayNameC.text = item.displayName ?? '';
-              skuC.text = item.sku;
-              unitC.text = item.unit;
-              folderC.text = item.folder;
-              subfolderC.text = item.subfolder ?? '';
-              subsubfolderC.text = item.subsubfolder ?? '';
-              minQtyC.text = item.minQty.toString();
-              qtyC.text = item.qty.toString();
-              kindC.text = item.kind ?? '';
-              attrsC.text = (item.attrs == null || item.attrs!.isEmpty)
-                  ? ''
-                  : const JsonEncoder.withIndent('  ').convert(item.attrs);
-              unitInC.text = item.unitIn ?? '';
-              unitOutC.text = item.unitOut ?? '';
-              conversionRateC.text = (item.conversionRate ?? 0).toString();
-              conversionMode = item.conversionMode;
-              supplierC.text = item.supplierName ?? '';
-              purchasePriceC.text = (item.defaultPurchasePrice ?? 0).toString();
-              salePriceC.text = (item.defaultSalePrice ?? 0).toString();
-            }
+    return FutureBuilder<Item?>(
+      future: _itemFuture,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+        final item = snap.data;
+        if (item == null) {
+          // 없는 아이템이면 뒤로
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.pop(context);
+          });
+          return const SizedBox.shrink();
+        }
+        // 최초 로드시에만 컨트롤러 텍스트 채우기 (사용자가 수정한 값 덮어쓰기 방지)
+        if (_loaded == null) {
+          _loaded = item;
+          nameC.text = item.name;
+          displayNameC.text = item.displayName ?? '';
+          skuC.text = item.sku;
+          unitC.text = item.unit;
+          folderC.text = item.folder;
+          subfolderC.text = item.subfolder ?? '';
+          subsubfolderC.text = item.subsubfolder ?? '';
+          minQtyC.text = item.minQty.toString();
+          qtyC.text = item.qty.toString();
+          kindC.text = item.kind ?? '';
+          attrsC.text = (item.attrs == null || item.attrs!.isEmpty)
+              ? ''
+              : const JsonEncoder.withIndent('  ').convert(item.attrs);
+          unitInC.text = item.unitIn ?? '';
+          unitOutC.text = item.unitOut ?? '';
+          conversionRateC.text = (item.conversionRate ?? 0).toString();
+          conversionMode = item.conversionMode;
+          supplierC.text = item.supplierName ?? '';
+          purchasePriceC.text = (item.defaultPurchasePrice ?? 0).toString();
+          salePriceC.text = (item.defaultSalePrice ?? 0).toString();
+        }
 
-            return Scaffold(
-              appBar: AppBar(
-                title: const Text('모든 필드 편집'),
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.save),
-                    onPressed: _save,
-                    tooltip: '저장',
-                  ),
-                ],
-              ),
-              body: SafeArea(
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-              Text('식별/표시', style: text.titleSmall),
-              const SizedBox(height: 8),
-              TextFormField(controller: nameC, decoration: _dec('name'), readOnly: true),
-              TextFormField(controller: displayNameC, decoration: _dec('displayName')),
-              TextFormField(controller: skuC, decoration: _dec('sku'), readOnly: true),
-
-              const SizedBox(height: 16),
-              Text('단위/경로', style: text.titleSmall),
-              const SizedBox(height: 8),
-              TextFormField(controller: unitC, decoration: _dec('unit (EA/SET/ROLL...)')),
-              TextFormField(controller: folderC, decoration: _dec('folder')),
-              TextFormField(controller: subfolderC, decoration: _dec('subfolder')),
-              TextFormField(controller: subsubfolderC, decoration: _dec('subsubfolder')),
-
-              const SizedBox(height: 16),
-              Text('재고/임계치', style: text.titleSmall),
-                      const SizedBox(height: 16),
-                      Text('가격', style: text.titleSmall),
-                      const SizedBox(height: 8),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: purchasePriceC,
-                              decoration: _dec('기본 입고가'),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: salePriceC,
-                              decoration: _dec('기본 출고가'),
-                              keyboardType: TextInputType.number,
-                            ),
-                          ),
-                        ],
-                      ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: minQtyC,
-                decoration: _dec('minQty'),
-                keyboardType: TextInputType.number,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  final n = int.tryParse(v);
-                  if (n == null || n < 0) return '0 이상의 정수';
-                  return null;
-                },
-              ),
-              TextFormField(
-                controller: qtyC,
-                readOnly: true, // 운영권장: Adjust 플로우 사용
-                decoration: _dec('qty (권장: Adjust 사용)', hint: '롱프레스 or 하단 버튼 사용'),
-                keyboardType: TextInputType.number,
-              ),
-
-              const SizedBox(height: 16),
-              Text('분류/속성', style: text.titleSmall),
-              const SizedBox(height: 8),
-              TextFormField(controller: kindC, decoration: _dec('kind (Finished / SemiFinished / Sub ...)')),
-              // 아이템 편집 화면
-              // build 안
-              TextFormField(
-                controller: supplierC,
-                decoration: const InputDecoration(labelText: '공급처(상호)'),
-              ),
-              TextFormField(
-                controller: attrsC,
-                decoration: _dec('attrs (JSON)'),
-                maxLines: 6,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  try {
-                    final parsed = json.decode(v);
-                    if (parsed is! Map) return 'JSON Map 형태여야 합니다';
-                  } catch (e) {
-                    return 'JSON 파싱 오류: $e';
-                  }
-                  return null;
-                },
-              ),
-
-              const SizedBox(height: 16),
-              Text('환산/모드', style: text.titleSmall),
-              const SizedBox(height: 8),
-              TextFormField(controller: unitInC, decoration: _dec('unit_in')),
-              TextFormField(controller: unitOutC, decoration: _dec('unit_out')),
-              TextFormField(
-                controller: conversionRateC,
-                decoration: _dec('conversion_rate'),
-                keyboardType: TextInputType.number,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  final d = double.tryParse(v);
-                  if (d == null || d <= 0) return '0보다 큰 숫자';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  const Text('conversion_mode:'),
-                  const SizedBox(width: 12),
-                  DropdownButton<String>(
-                    value: conversionMode,
-                    items: const [
-                      DropdownMenuItem(value: 'fixed', child: Text('fixed')),
-                      DropdownMenuItem(value: 'lot', child: Text('lot')),
-                    ],
-                    onChanged: (v) => setState(() => conversionMode = v ?? 'fixed'),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: _save,
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('모든 필드 편집'),
+            actions: [
+              IconButton(
                 icon: const Icon(Icons.save),
-                label: const Text('저장'),
+                onPressed: _save,
+                tooltip: '저장',
               ),
+            ],
+          ),
+          body: SafeArea(
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text('식별/표시', style: text.titleSmall),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                      controller: nameC,
+                      decoration: _dec('name'),
+                      readOnly: true),
+                  TextFormField(
+                      controller: displayNameC,
+                      decoration: _dec('displayName')),
+                  TextFormField(
+                      controller: skuC,
+                      decoration: _dec('sku'),
+                      readOnly: true),
+
+                  const SizedBox(height: 16),
+                  Text('단위/경로', style: text.titleSmall),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                      controller: unitC,
+                      decoration: _dec('unit (EA/SET/ROLL...)')),
+                  FutureBuilder<List<String>>(
+                    future: context.read<ItemRepo>().itemPathNames(item.id),
+                    builder: (context, pathSnap) {
+                      final pathNames = pathSnap.data ?? const <String>[];
+                      final pathText =
+                          pathNames.isEmpty ? '경로 없음' : pathNames.join(' / ');
+                      return TextFormField(
+                        key: ValueKey(pathText),
+                        initialValue: pathText,
+                        readOnly: true,
+                        decoration: _dec(
+                          'folder path',
+                          hint: '폴더 이동 버튼으로 변경',
+                        ).copyWith(
+                          suffixIcon: IconButton(
+                            tooltip: '폴더 이동',
+                            icon: const Icon(Icons.drive_file_move),
+                            onPressed: _moveThisItem,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  TextFormField(
+                    controller: folderC,
+                    readOnly: true,
+                    decoration: _dec('folder (동기화 표시)'),
+                  ),
+                  TextFormField(
+                    controller: subfolderC,
+                    readOnly: true,
+                    decoration: _dec('subfolder (동기화 표시)'),
+                  ),
+                  TextFormField(
+                    controller: subsubfolderC,
+                    readOnly: true,
+                    decoration: _dec('subsubfolder (동기화 표시)'),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.drive_file_move),
+                      label: const Text('폴더 이동'),
+                      onPressed: _moveThisItem,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  Text('재고/임계치', style: text.titleSmall),
+                  const SizedBox(height: 16),
+                  Text('가격', style: text.titleSmall),
+                  const SizedBox(height: 8),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: purchasePriceC,
+                          decoration: _dec('기본 입고가'),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: salePriceC,
+                          decoration: _dec('기본 출고가'),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ),
                     ],
-                                    ),
-                                ),
-                            ),
-                        );
-                  },
-                );
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: minQtyC,
+                    decoration: _dec('minQty'),
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final n = int.tryParse(v);
+                      if (n == null || n < 0) return '0 이상의 정수';
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: qtyC,
+                    readOnly: true, // 운영권장: Adjust 플로우 사용
+                    decoration:
+                        _dec('qty (권장: Adjust 사용)', hint: '롱프레스 or 하단 버튼 사용'),
+                    keyboardType: TextInputType.number,
+                  ),
+
+                  const SizedBox(height: 16),
+                  Text('분류/속성', style: text.titleSmall),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                      controller: kindC,
+                      decoration:
+                          _dec('kind (Finished / SemiFinished / Sub ...)')),
+                  // 아이템 편집 화면
+                  // build 안
+                  TextFormField(
+                    controller: supplierC,
+                    decoration: const InputDecoration(labelText: '공급처(상호)'),
+                  ),
+                  TextFormField(
+                    controller: attrsC,
+                    decoration: _dec('attrs (JSON)'),
+                    maxLines: 6,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      try {
+                        final parsed = json.decode(v);
+                        if (parsed is! Map) return 'JSON Map 형태여야 합니다';
+                      } catch (e) {
+                        return 'JSON 파싱 오류: $e';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+                  Text('환산/모드', style: text.titleSmall),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                      controller: unitInC, decoration: _dec('unit_in')),
+                  TextFormField(
+                      controller: unitOutC, decoration: _dec('unit_out')),
+                  TextFormField(
+                    controller: conversionRateC,
+                    decoration: _dec('conversion_rate'),
+                    keyboardType: TextInputType.number,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final d = double.tryParse(v);
+                      if (d == null || d <= 0) return '0보다 큰 숫자';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Text('conversion_mode:'),
+                      const SizedBox(width: 12),
+                      DropdownButton<String>(
+                        value: conversionMode,
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'fixed', child: Text('fixed')),
+                          DropdownMenuItem(value: 'lot', child: Text('lot')),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => conversionMode = v ?? 'fixed'),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: _save,
+                    icon: const Icon(Icons.save),
+                    label: const Text('저장'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
