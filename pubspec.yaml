@@ -32,6 +32,7 @@ dependencies:
   firebase_core: ^3.10.0
   firebase_auth: ^5.3.0
   table_calendar: ^3.0.9
+  flutter_contacts: ^1.1.9+2
 
 
 dev_dependencies:
@@ -50,4 +51,3 @@ flutter:
     - assets/seeds/2025-10-26/items.json
     - assets/seeds/2025-10-26/bom.json
     - assets/seeds/2025-10-26/lots.json
-

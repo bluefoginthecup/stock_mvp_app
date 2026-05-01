@@ -481,12 +481,15 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 19; //
+  int get schemaVersion => 21; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _ensureSupplierBusinessColumns();
+      await _ensureSupplierContactsTable();
+      await _ensureSupplierAccountsTable();
     },
     onUpgrade: (m, from, to) async {
       // v1 → v2: Orders.deletedAt 추가
@@ -669,6 +672,13 @@ class AppDatabase extends _$AppDatabase {
         // null/name-only, and SQLite can store UUID text in the existing
         // column, so no destructive table rewrite is required here.
       }
+      if (from < 20) {
+        await _ensureSupplierBusinessColumns();
+        await _ensureSupplierContactsTable();
+      }
+      if (from < 21) {
+        await _ensureSupplierAccountsTable();
+      }
 
     },
   );Future<void> _backfillItemSearchKeys() async {
@@ -753,6 +763,65 @@ class AppDatabase extends _$AppDatabase {
     ).get();
 
     return result.any((row) => row.data['name'] == column);
+  }
+
+  Future<void> _addColumnIfMissing(
+    String table,
+    String column,
+    String definition,
+  ) async {
+    if (await _columnExists(table, column)) return;
+    await customStatement('ALTER TABLE $table ADD COLUMN $column $definition');
+  }
+
+  Future<void> _ensureSupplierBusinessColumns() async {
+    await _addColumnIfMissing('suppliers', 'fax', 'TEXT');
+    await _addColumnIfMissing('suppliers', 'business_number', 'TEXT');
+    await _addColumnIfMissing('suppliers', 'representative', 'TEXT');
+    await _addColumnIfMissing('suppliers', 'business_type', 'TEXT');
+    await _addColumnIfMissing('suppliers', 'business_item', 'TEXT');
+  }
+
+  Future<void> _ensureSupplierContactsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS supplier_contacts (
+        id TEXT PRIMARY KEY NOT NULL,
+        supplier_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        role_or_memo TEXT NULL,
+        phone TEXT NULL,
+        fax TEXT NULL,
+        email TEXT NULL,
+        address TEXT NULL,
+        is_primary INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_supplier_contacts_supplier '
+      'ON supplier_contacts(supplier_id, sort_order)',
+    );
+  }
+
+  Future<void> _ensureSupplierAccountsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS supplier_accounts (
+        id TEXT PRIMARY KEY NOT NULL,
+        supplier_id TEXT NOT NULL,
+        bank_name TEXT NOT NULL,
+        account_number TEXT NOT NULL,
+        account_holder TEXT NULL,
+        memo TEXT NULL,
+        is_primary INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_supplier_accounts_supplier '
+      'ON supplier_accounts(supplier_id, sort_order)',
+    );
   }
   Future<void> resetDatabase() async {
     final db = this;

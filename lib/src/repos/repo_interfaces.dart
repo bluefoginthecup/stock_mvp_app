@@ -322,6 +322,11 @@ abstract class SupplierRepo {
   Future<String> upsert(Supplier s);
   Future<void> softDelete(String id); // 필요 시 실제 삭제로 교체 가능
   Future<void> toggleActive(String id, bool isActive);
+
+  Future<List<SupplierContact>> listContacts(String supplierId);
+  Future<void> replaceContacts(String supplierId, List<SupplierContact> contacts);
+  Future<List<SupplierAccount>> listAccounts(String supplierId);
+  Future<void> replaceAccounts(String supplierId, List<SupplierAccount> accounts);
 }
 // 맨 아래 부분만 이렇게 정리 👇
 
