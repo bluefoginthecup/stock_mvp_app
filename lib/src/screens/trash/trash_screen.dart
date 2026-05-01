@@ -28,6 +28,7 @@ class _TrashScreenState extends State<TrashScreen> {
     return all
         .where((e) =>
     e.title.toLowerCase().contains(q) ||
+        (e.extra?['itemSummary'] as String? ?? '').toLowerCase().contains(q) ||
         e.id.toLowerCase().contains(q))
         .toList();
   }
@@ -251,6 +252,11 @@ class _TrashScreenState extends State<TrashScreen> {
                                   .substring(0, 19)
                                   .replaceFirst('T', ' ');
 
+                              final subtitle = _subtitleFor(
+                                e,
+                                deletedAtStr,
+                              );
+
                               return ListTile(
                                 onTap: () {
                                   if (sel.selectionMode) {
@@ -273,8 +279,7 @@ class _TrashScreenState extends State<TrashScreen> {
                                     : Icon(
                                     _iconFor(e.entityType)),
                                 title: Text(e.title),
-                                subtitle: Text(
-                                    '${_labelFor(e.entityType)} • ${e.id} • $deletedAtStr'),
+                                subtitle: Text(subtitle),
                                 trailing:
                                 PopupMenuButton<String>(
                                   onSelected: (v) {
@@ -315,6 +320,35 @@ class _TrashScreenState extends State<TrashScreen> {
         },
       ),
     );
+  }
+
+  String _subtitleFor(
+    TrashEntry e,
+    String deletedAtStr,
+  ) {
+    if (e.entityType != 'po') {
+      return '${_labelFor(e.entityType)} • ${e.id} • $deletedAtStr';
+    }
+
+    final itemSummary = e.extra?['itemSummary'] as String? ?? '품목 없음';
+    final totalAmount = (e.extra?['totalAmount'] as num?)?.toDouble() ?? 0;
+
+    return '$itemSummary • 총금액 ₩ ${_money(totalAmount)} • $deletedAtStr';
+  }
+
+  String _money(num value) {
+    final rounded = value.round().toString();
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < rounded.length; i++) {
+      final remaining = rounded.length - i;
+      buffer.write(rounded[i]);
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+
+    return buffer.toString();
   }
 
   /// 아이콘

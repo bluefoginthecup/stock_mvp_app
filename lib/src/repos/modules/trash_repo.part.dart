@@ -68,16 +68,66 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     // purchase orders
     final dpo = await (db.select(db.purchaseOrders)
       ..where((t) => t.isDeleted.equals(true))).get();
-    all.addAll(dpo.where((r) => r.deletedAt != null).map((r) =>
+    for (final r in dpo.where((r) => r.deletedAt != null)) {
+      final lines = await (db.select(db.purchaseLines)
+            ..where((l) => l.orderId.equals(r.id)))
+          .get();
+
+      final itemSummary = _purchaseItemSummary(lines);
+      final itemsTotal = lines.fold<double>(
+        0,
+        (sum, l) => sum + (l.qty * l.unitPrice),
+      );
+      final vatType = _vatTypeFromIndex(r.vatType);
+      final vat = switch (vatType) {
+        VatType.exempt => 0.0,
+        VatType.inclusive => itemsTotal / 11,
+        VatType.exclusive => itemsTotal * 0.1,
+      };
+      final total = vatType == VatType.inclusive
+          ? itemsTotal + r.shippingCost + r.extraCost
+          : itemsTotal + vat + r.shippingCost + r.extraCost;
+
+      all.add(
         TrashEntry(
           id: r.id,
           entityType: 'po',
-          title: r.supplierName ?? r.id,
+          title: _purchaseSupplierTitle(r.supplierName),
           deletedAt: DateTime.parse(r.deletedAt!),
-        )));
+          extra: {
+            'itemSummary': itemSummary,
+            'totalAmount': total,
+          },
+        ),
+      );
+    }
 
     all.sort((a, b) => b.deletedAt.compareTo(a.deletedAt));
     return all;
+  }
+
+  String _purchaseItemSummary(List<PurchaseLineRow> lines) {
+    if (lines.isEmpty) return '품목 없음';
+
+    final first = lines.first;
+    final name = first.name.trim().isEmpty ? first.itemId : first.name.trim();
+    final extraCount = lines.length - 1;
+
+    if (extraCount <= 0) return name;
+    return '$name 외 ${extraCount}건';
+  }
+
+  String _purchaseSupplierTitle(String supplierName) {
+    final title = supplierName.trim();
+    if (title.isNotEmpty) return title;
+    return '(거래처 미지정)';
+  }
+
+  VatType _vatTypeFromIndex(int index) {
+    if (index < 0 || index >= VatType.values.length) {
+      return VatType.exclusive;
+    }
+    return VatType.values[index];
   }
 
   @override

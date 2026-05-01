@@ -54,6 +54,7 @@ Future<void> softDeletePurchaseOrder(String id) async {
   await (db.update(db.purchaseOrders)..where((t) => t.id.equals(id))).write(
     PurchaseOrdersCompanion(
       isDeleted: const Value(true),
+      deletedAt: Value(nowIso),
       updatedAt: Value(nowIso),
     ),
   );
