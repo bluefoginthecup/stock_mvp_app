@@ -1,10 +1,19 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../models/extensions/payment_status_ext.dart';
 import '../../models/extensions/vat_invoice_status_ext.dart';
 import '../../models/purchase_line.dart';
 import '../../models/purchase_order.dart';
+import '../../models/purchase_receipt.dart';
 import '../../models/suppliers.dart';
 import '../../models/types.dart';
 import '../../repos/repo_interfaces.dart';
@@ -32,7 +41,10 @@ class PurchaseDetailScreen extends StatefulWidget {
 class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   PurchaseOrder? _po;
   List<PurchaseLine> _lines = const [];
+  List<PurchaseReceipt> _receipts = const [];
   bool _loading = true;
+  bool _addingReceipt = false;
+  final _uuid = const Uuid();
 
   @override
   void initState() {
@@ -48,12 +60,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     try {
       final po = await widget.repo.getPurchaseOrderById(widget.orderId);
       final lines = await widget.repo.getLines(widget.orderId);
+      final receipts = await widget.repo.getPurchaseReceipts(widget.orderId);
 
       if (!mounted) return;
 
       setState(() {
         _po = po;
         _lines = lines;
+        _receipts = receipts;
         _loading = false;
       });
     } catch (e) {
@@ -78,6 +92,268 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   String _fmt(num v) => v.toStringAsFixed(0);
+
+  String _mimeFor(String fileName, {String? explicit}) {
+    if (explicit != null && explicit.trim().isNotEmpty) return explicit;
+    final ext = p.extension(fileName).toLowerCase();
+    switch (ext) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      case '.gif':
+        return 'image/gif';
+      case '.webp':
+        return 'image/webp';
+      case '.heic':
+        return 'image/heic';
+      case '.pdf':
+        return 'application/pdf';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  String _safeFileName(String name) {
+    final trimmed = name.trim().isEmpty ? 'receipt' : name.trim();
+    return trimmed.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+  }
+
+  Future<String?> _editMemo({String initial = ''}) {
+    return _editText(title: '첨부 메모', initial: initial);
+  }
+
+  Future<void> _addReceiptFromFile({
+    required String sourcePath,
+    required String fileName,
+    String? mimeType,
+  }) async {
+    final po = _po;
+    if (po == null) return;
+
+    final memo = await _editMemo();
+    if (memo == null) return;
+
+    final dir = await getApplicationSupportDirectory();
+    final receiptDir = Directory(p.join(dir.path, 'purchase_receipts', po.id));
+    if (!await receiptDir.exists()) {
+      await receiptDir.create(recursive: true);
+    }
+
+    final safeName = _safeFileName(fileName);
+    final destName = '${DateTime.now().microsecondsSinceEpoch}_$safeName';
+    final destPath = p.join(receiptDir.path, destName);
+    await File(sourcePath).copy(destPath);
+
+    await widget.repo.addPurchaseReceipt(
+      PurchaseReceipt(
+        id: _uuid.v4(),
+        purchaseOrderId: po.id,
+        fileName: safeName,
+        filePath: destPath,
+        mimeType: _mimeFor(safeName, explicit: mimeType),
+        createdAt: DateTime.now(),
+        memo: memo.trim().isEmpty ? null : memo.trim(),
+      ),
+    );
+
+    await _reload();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('첨부파일을 저장했습니다')),
+    );
+  }
+
+  Future<void> _pickReceipt() async {
+    if (_addingReceipt) return;
+
+    final action = await showModalBottomSheet<_ReceiptPickAction>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('사진 촬영'),
+              onTap: () => Navigator.pop(context, _ReceiptPickAction.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('사진 선택'),
+              onTap: () => Navigator.pop(context, _ReceiptPickAction.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.attach_file),
+              title: const Text('파일 선택'),
+              onTap: () => Navigator.pop(context, _ReceiptPickAction.file),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == null) return;
+
+    setState(() => _addingReceipt = true);
+    try {
+      if (action == _ReceiptPickAction.file) {
+        final result = await FilePicker.platform.pickFiles(
+          allowMultiple: false,
+          withData: false,
+        );
+        final file = result?.files.single;
+        final path = file?.path;
+        if (file == null || path == null) return;
+
+        await _addReceiptFromFile(
+          sourcePath: path,
+          fileName: file.name,
+        );
+      } else {
+        final image = await ImagePicker().pickImage(
+          source: action == _ReceiptPickAction.camera
+              ? ImageSource.camera
+              : ImageSource.gallery,
+          imageQuality: 92,
+        );
+        if (image == null) return;
+
+        await _addReceiptFromFile(
+          sourcePath: image.path,
+          fileName: image.name,
+          mimeType: image.mimeType,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('첨부파일 저장에 실패했습니다: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _addingReceipt = false);
+    }
+  }
+
+  Future<void> _openReceipt(PurchaseReceipt receipt) async {
+    if (receipt.isImage) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: InteractiveViewer(
+            child: Image.file(
+              File(receipt.filePath),
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('이미지를 열 수 없습니다.'),
+              ),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    await Share.shareXFiles(
+      [
+        XFile(receipt.filePath,
+            mimeType: receipt.mimeType, name: receipt.fileName)
+      ],
+      text: receipt.fileName,
+    );
+  }
+
+  Future<void> _deleteReceipt(PurchaseReceipt receipt) async {
+    final confirmed = await confirmDelete(
+      context,
+      title: '첨부파일 삭제',
+      message: '${receipt.fileName} 파일을 삭제할까요?',
+      confirmLabel: '삭제',
+    );
+    if (!confirmed) return;
+
+    await widget.repo.deletePurchaseReceipt(receipt.id);
+    try {
+      final file = File(receipt.filePath);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // 파일 정리 실패는 DB 삭제를 되돌리지 않는다.
+    }
+
+    await _reload();
+  }
+
+  Future<void> _editReceiptMemo(PurchaseReceipt receipt) async {
+    final memo = await _editMemo(initial: receipt.memo ?? '');
+    if (memo == null) return;
+
+    await widget.repo.addPurchaseReceipt(
+      receipt.copyWith(memo: memo.trim().isEmpty ? null : memo.trim()),
+    );
+    await _reload();
+  }
+
+  Widget _buildReceiptsSection() {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '영수증 / 거래명세서',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: '첨부 추가',
+                  onPressed: _addingReceipt ? null : _pickReceipt,
+                  icon: _addingReceipt
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.add_photo_alternate_outlined),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_receipts.isEmpty)
+              Text(
+                '첨부된 파일이 없습니다.',
+                style: TextStyle(color: Colors.grey.shade600),
+              )
+            else
+              Column(
+                children: _receipts.map((receipt) {
+                  return _ReceiptTile(
+                    receipt: receipt,
+                    onOpen: () => _openReceipt(receipt),
+                    onEditMemo: () => _editReceiptMemo(receipt),
+                    onDelete: () => _deleteReceipt(receipt),
+                  );
+                }).toList(),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<Supplier?> _supplierFor(PurchaseOrder po) async {
     final supplierId = po.supplierId;
@@ -170,7 +446,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         initialDate = po.paidAt ?? po.paymentDueAt ?? DateTime.now();
         break;
       case 3:
-        initialDate = po.vatInvoiceIssuedAt ?? po.vatInvoiceDueAt ?? DateTime.now();
+        initialDate =
+            po.vatInvoiceIssuedAt ?? po.vatInvoiceDueAt ?? DateTime.now();
         break;
       default:
         initialDate = DateTime.now();
@@ -362,9 +639,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           if (picked == null) return;
 
           await context.read<InventoryService>().rollbackReceivePurchase(
-            po.id,
-            eta: picked,
-          );
+                po.id,
+                eta: picked,
+              );
           await _reload();
           return;
         }
@@ -553,7 +830,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     final itemsTotal = _lines.fold<double>(
       0,
-          (sum, l) => sum + (l.qty * l.unitPrice),
+      (sum, l) => sum + (l.qty * l.unitPrice),
     );
 
     final vat = switch (po.vatType) {
@@ -573,13 +850,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       appBar: AppBar(
         title: Text('발주상세'),
         actions: [
-                DeleteMoreMenu<PurchaseOrder>(
-                  entity: po,
-                      onChanged: () {
-                  if (!mounted) return;
-                  Navigator.of(context).maybePop();
-                },
-                  ),
+          DeleteMoreMenu<PurchaseOrder>(
+            entity: po,
+            onChanged: () {
+              if (!mounted) return;
+              Navigator.of(context).maybePop();
+            },
+          ),
           PurchasePrintAction(poId: widget.orderId),
         ],
       ),
@@ -707,28 +984,31 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
             const SizedBox(height: 12),
             _lines.isEmpty
                 ? const Card(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('발주 품목이 없습니다.'),
-              ),
-            )
-                : Card(
-              child: Column(
-                children: _lines.map((ln) {
-                  final lineTotal = ln.qty * ln.unitPrice;
-                  final name = ln.name.trim().isEmpty ? ln.itemId : ln.name;
-
-                  return ListTile(
-                    title: Text('$name × ${ln.qty}'),
-                    subtitle: Text(
-                      '단가 ${_fmt(ln.unitPrice)} / 합계 ${_fmt(lineTotal)}',
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('발주 품목이 없습니다.'),
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _openLineFull(ln),
-                  );
-                }).toList(),
-              ),
-            ),
+                  )
+                : Card(
+                    child: Column(
+                      children: _lines.map((ln) {
+                        final lineTotal = ln.qty * ln.unitPrice;
+                        final name =
+                            ln.name.trim().isEmpty ? ln.itemId : ln.name;
+
+                        return ListTile(
+                          title: Text('$name × ${ln.qty}'),
+                          subtitle: Text(
+                            '단가 ${_fmt(ln.unitPrice)} / 합계 ${_fmt(lineTotal)}',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => _openLineFull(ln),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+            const SizedBox(height: 8),
+            _buildReceiptsSection(),
             const SizedBox(height: 8),
             Card(
               shape: RoundedRectangleBorder(
@@ -782,7 +1062,7 @@ class PurchaseTimeline extends StatelessWidget {
 
   bool get isOrdered =>
       po.status == PurchaseOrderStatus.ordered ||
-          po.status == PurchaseOrderStatus.received;
+      po.status == PurchaseOrderStatus.received;
 
   bool get isReceived => po.status == PurchaseOrderStatus.received;
 
@@ -921,6 +1201,112 @@ class _Step {
 
   _Step(this.label, this.done, this.date);
 }
+
+enum _ReceiptPickAction { camera, gallery, file }
+
+class _ReceiptTile extends StatelessWidget {
+  final PurchaseReceipt receipt;
+  final VoidCallback onOpen;
+  final VoidCallback onEditMemo;
+  final VoidCallback onDelete;
+
+  const _ReceiptTile({
+    required this.receipt,
+    required this.onOpen,
+    required this.onEditMemo,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final created = receipt.createdAt;
+    final memo = receipt.memo?.trim();
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: receipt.isImage
+              ? Image.file(
+                  File(receipt.filePath),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _fileIcon(),
+                )
+              : _fileIcon(),
+        ),
+      ),
+      title: Text(
+        receipt.fileName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        [
+          '${created.year}.${created.month}.${created.day}',
+          if (memo != null && memo.isNotEmpty) memo,
+        ].join(' · '),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      onTap: onOpen,
+      trailing: PopupMenuButton<_ReceiptAction>(
+        tooltip: '첨부 메뉴',
+        onSelected: (action) {
+          switch (action) {
+            case _ReceiptAction.open:
+              onOpen();
+              break;
+            case _ReceiptAction.memo:
+              onEditMemo();
+              break;
+            case _ReceiptAction.delete:
+              onDelete();
+              break;
+          }
+        },
+        itemBuilder: (_) => const [
+          PopupMenuItem(
+            value: _ReceiptAction.open,
+            child: ListTile(
+              leading: Icon(Icons.open_in_new),
+              title: Text('보기'),
+            ),
+          ),
+          PopupMenuItem(
+            value: _ReceiptAction.memo,
+            child: ListTile(
+              leading: Icon(Icons.edit_note),
+              title: Text('메모 수정'),
+            ),
+          ),
+          PopupMenuDivider(),
+          PopupMenuItem(
+            value: _ReceiptAction.delete,
+            child: ListTile(
+              leading: Icon(Icons.delete_outline),
+              title: Text('삭제'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fileIcon() {
+    final icon = receipt.mimeType == 'application/pdf'
+        ? Icons.picture_as_pdf_outlined
+        : Icons.insert_drive_file_outlined;
+    return ColoredBox(
+      color: Colors.grey.shade200,
+      child: Icon(icon, color: Colors.grey.shade700),
+    );
+  }
+}
+
+enum _ReceiptAction { open, memo, delete }
 
 Widget _calcItem(String label, double value) {
   return Column(

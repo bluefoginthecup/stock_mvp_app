@@ -6,6 +6,7 @@ import '../models/bom.dart';
 import '../models/work.dart';
 import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
+import '../models/purchase_receipt.dart';
 import '../models/types.dart';
 import '../models/suppliers.dart';
 import '../models/folder_node.dart';
@@ -317,6 +318,12 @@ abstract class PurchaseOrderRepo {
   Future<void> upsertLines(String orderId, List<PurchaseLine> lines);
   Future<List<PurchaseLine>> getLines(String orderId);
   Future<Map<String, List<PurchaseLine>>> getLinesMap();
+
+  // Receipts / 거래명세서 첨부
+  Future<void> addPurchaseReceipt(PurchaseReceipt receipt);
+  Future<List<PurchaseReceipt>> getPurchaseReceipts(String purchaseOrderId);
+  Stream<List<PurchaseReceipt>> watchPurchaseReceipts(String purchaseOrderId);
+  Future<void> deletePurchaseReceipt(String id);
 }
 
 abstract class SupplierRepo {

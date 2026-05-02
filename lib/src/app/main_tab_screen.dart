@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -10,8 +12,8 @@ import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_detail_screen.dart';
 
 import 'package:stockapp_mvp/src/repos/repo_interfaces.dart';
+import 'package:stockapp_mvp/src/screens/dashboard/dashboard_quick_panel.dart';
 import 'main_tab_controller.dart';
-
 
 class MainTabScreen extends StatefulWidget {
   const MainTabScreen({super.key});
@@ -21,26 +23,44 @@ class MainTabScreen extends StatefulWidget {
 }
 
 class _MainTabScreenState extends State<MainTabScreen> {
-  // 탭별 Navigator 키
-  final _dashKey     = GlobalKey<NavigatorState>();
-  final _orderKey    = GlobalKey<NavigatorState>();
-  final _stockKey    = GlobalKey<NavigatorState>();
-  final _txnKey      = GlobalKey<NavigatorState>();
-  final _workKey     = GlobalKey<NavigatorState>();
-  final _purchaseKey = GlobalKey<NavigatorState>();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  // 탭별 Navigator 키
+  final _dashKey = GlobalKey<NavigatorState>();
+  final _orderKey = GlobalKey<NavigatorState>();
+  final _stockKey = GlobalKey<NavigatorState>();
+  final _txnKey = GlobalKey<NavigatorState>();
+  final _workKey = GlobalKey<NavigatorState>();
+  final _purchaseKey = GlobalKey<NavigatorState>();
 
   // 현재 탭의 navigator 키 얻기
   GlobalKey<NavigatorState> _keyOf(int index) {
     switch (index) {
-      case 0: return _dashKey;
-      case 1: return _orderKey;
-      case 2: return _stockKey;
-      case 3: return _txnKey;
-      case 4: return _workKey;
-      case 5: return _purchaseKey;
+      case 0:
+        return _dashKey;
+      case 1:
+        return _orderKey;
+      case 2:
+        return _stockKey;
+      case 3:
+        return _txnKey;
+      case 4:
+        return _workKey;
+      case 5:
+        return _purchaseKey;
 
-      default: return _dashKey;
+      default:
+        return _dashKey;
+    }
+  }
+
+  void _openDashboardQuickPanel() {
+    _scaffoldKey.currentState?.openDrawer();
+  }
+
+  void _closeDashboardQuickPanel() {
+    if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+      Navigator.of(context).pop();
     }
   }
 
@@ -54,6 +74,11 @@ class _MainTabScreenState extends State<MainTabScreen> {
     return WillPopScope(
       // 내부 스택이 남아있으면 pop만 하고 앱은 안나가도록
       onWillPop: () async {
+        if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+          Navigator.of(context).pop();
+          return false;
+        }
+
         final key = _keyOf(idx);
         if (key.currentState?.canPop() == true) {
           key.currentState!.pop();
@@ -62,6 +87,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         return true;
       },
       child: Scaffold(
+        key: _scaffoldKey,
         body: IndexedStack(
           index: idx,
           children: [
@@ -76,6 +102,11 @@ class _MainTabScreenState extends State<MainTabScreen> {
         bottomNavigationBar: NavigationBar(
           selectedIndex: idx,
           onDestinationSelected: (i) {
+            if (i == 0) {
+              _openDashboardQuickPanel();
+              return;
+            }
+
             context.read<MainTabController>().setIndex(i);
 
             // 🔥 핵심 (현재 탭 navigator 정리)
@@ -83,14 +114,20 @@ class _MainTabScreenState extends State<MainTabScreen> {
             key.currentState?.popUntil((route) => route.isFirst);
           },
           destinations: const [
-            NavigationDestination(icon: Icon(Icons.dashboard),     label: '대시보드'),
-            NavigationDestination(icon: Icon(Icons.receipt_long),  label: '주문'),
-            NavigationDestination(icon: Icon(Icons.inventory_2),   label: '재고'),
-            NavigationDestination(icon: Icon(Icons.swap_vert),     label: '입출고기록'),
-            NavigationDestination(icon: Icon(Icons.handyman),      label: '작업'),
-            NavigationDestination(icon: Icon(Icons.local_shipping),label: '발주'),
-
+            NavigationDestination(icon: Icon(Icons.dashboard), label: '대시보드'),
+            NavigationDestination(icon: Icon(Icons.receipt_long), label: '주문'),
+            NavigationDestination(icon: Icon(Icons.inventory_2), label: '재고'),
+            NavigationDestination(icon: Icon(Icons.swap_vert), label: '입출고기록'),
+            NavigationDestination(icon: Icon(Icons.handyman), label: '작업'),
+            NavigationDestination(
+                icon: Icon(Icons.local_shipping), label: '발주'),
           ],
+        ),
+        drawer: Drawer(
+          width: math.min(360, MediaQuery.of(context).size.width * 0.88),
+          child: DashboardQuickPanel(
+            onClose: _closeDashboardQuickPanel,
+          ),
         ),
       ),
     );
@@ -156,7 +193,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
       onGenerateRoute: (settings) {
         if (settings.name == '/detail') {
           final String poId = settings.arguments as String;
-          final repo = context.read<PurchaseOrderRepo>(); // PurchaseDetailScreen이 요구
+          final repo =
+              context.read<PurchaseOrderRepo>(); // PurchaseDetailScreen이 요구
           return MaterialPageRoute(
             builder: (_) => PurchaseDetailScreen(repo: repo, orderId: poId),
             settings: settings,

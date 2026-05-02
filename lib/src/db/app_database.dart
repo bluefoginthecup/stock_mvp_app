@@ -22,7 +22,6 @@ import '../models/lot.dart';
 import '../models/types.dart';
 import '../utils/korean_search.dart';
 
-
 // drift가 생성해줄 파일
 part 'app_database.g.dart';
 
@@ -32,18 +31,18 @@ part 'app_database.g.dart';
 
 @DataClassName('ItemRow') // 도메인 Item과 이름 충돌 방지
 class Items extends Table {
-  TextColumn get id => text()();                // it_xxx
-  TextColumn get name => text()();              // name
+  TextColumn get id => text()(); // it_xxx
+  TextColumn get name => text()(); // name
   TextColumn get displayName => text().nullable()();
   TextColumn get sku => text()();
-  TextColumn get unit => text()();              // EA, SET, ROLL...
+  TextColumn get unit => text()(); // EA, SET, ROLL...
   TextColumn get searchNormalized => text().withDefault(const Constant(''))();
   TextColumn get searchInitials => text().withDefault(const Constant(''))();
-  TextColumn get searchFullNormalized => text().withDefault(const Constant(''))();
-
+  TextColumn get searchFullNormalized =>
+      text().withDefault(const Constant(''))();
 
   // 레거시 폴더 필드
-  TextColumn get folder => text()();            // 레거시 L1
+  TextColumn get folder => text()(); // 레거시 L1
   TextColumn get subfolder => text().nullable()();
   TextColumn get subsubfolder => text().nullable()();
 
@@ -60,9 +59,9 @@ class Items extends Table {
   TextColumn get unitIn => text().withDefault(const Constant('EA'))();
   TextColumn get unitOut => text().withDefault(const Constant('EA'))();
   RealColumn get conversionRate =>
-      real().withDefault(const Constant(1.0))();             // 1 unitIn = rate * unitOut
+      real().withDefault(const Constant(1.0))(); // 1 unitIn = rate * unitOut
   TextColumn get conversionMode =>
-      text().withDefault(const Constant('fixed'))();          // fixed | lot
+      text().withDefault(const Constant('fixed'))(); // fixed | lot
 
   // stockHints도 JSON으로 보관 (레거시 폴백용)
   TextColumn get stockHintsJson => text().nullable()();
@@ -85,12 +84,11 @@ class Items extends Table {
   @override
   Set<Column> get primaryKey => {id};
   @override
-    List<Index> get indexes => [
-      Index('idx_items_search', 'searchNormalized'),
-      Index('idx_items_search_full', 'searchFullNormalized'),
-      Index('idx_items_initials', 'searchInitials'),
-    ];
-
+  List<Index> get indexes => [
+        Index('idx_items_search', 'searchNormalized'),
+        Index('idx_items_search_full', 'searchFullNormalized'),
+        Index('idx_items_initials', 'searchInitials'),
+      ];
 }
 
 /// =======================
@@ -101,22 +99,17 @@ class Items extends Table {
 class Folders extends Table {
   TextColumn get id => text()(); // FolderNode.id (결정적 해시)
   TextColumn get name => text()();
-  TextColumn get parentId => text()
-      .nullable()
-      .references(Folders, #id, onDelete: KeyAction.setNull)();
+  TextColumn get parentId =>
+      text().nullable().references(Folders, #id, onDelete: KeyAction.setNull)();
   IntColumn get depth => integer()(); // 1,2,3
-  IntColumn get order =>
-      integer().withDefault(const Constant(0))(); // 형제 순서
+  IntColumn get order => integer().withDefault(const Constant(0))(); // 형제 순서
 
   // ✅ 검색 키
-  TextColumn get searchNormalized =>
-      text().withDefault(const Constant(''))();
-  TextColumn get searchInitials =>
-      text().withDefault(const Constant(''))();
+  TextColumn get searchNormalized => text().withDefault(const Constant(''))();
+  TextColumn get searchInitials => text().withDefault(const Constant(''))();
   // 휴지통 관련
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()();
-
 
 // 🔥 추가 (복구용 스냅샷)
   TextColumn get extra => text().nullable()();
@@ -145,11 +138,11 @@ class ItemPaths extends Table {
   Set<Column> get primaryKey => {itemId};
 
   @override
-    List<Index> get indexes => [
-      Index('idx_itempaths_l1', 'l1Id'),
-      Index('idx_itempaths_l2', 'l2Id'),
-      Index('idx_itempaths_l3', 'l3Id'),
-    ];
+  List<Index> get indexes => [
+        Index('idx_itempaths_l1', 'l1Id'),
+        Index('idx_itempaths_l2', 'l2Id'),
+        Index('idx_itempaths_l3', 'l3Id'),
+      ];
 }
 
 /// =======================
@@ -167,7 +160,7 @@ class Txns extends Table {
   IntColumn get qty => integer()(); // > 0
 
   TextColumn get refType => text()(); // RefType.name
-  TextColumn get refId => text()();   // 원본 id
+  TextColumn get refId => text()(); // 원본 id
 
   TextColumn get note => text().nullable()();
   TextColumn get memo => text().nullable()();
@@ -176,15 +169,13 @@ class Txns extends Table {
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
 
-
-
   @override
   Set<Column> get primaryKey => {id};
   @override
-    List<Index> get indexes => [
-      Index('idx_txn_item', 'itemId'),
-      Index('idx_txn_ts', 'ts'),
-    ];
+  List<Index> get indexes => [
+        Index('idx_txn_item', 'itemId'),
+        Index('idx_txn_ts', 'ts'),
+      ];
 }
 
 /// =======================
@@ -201,12 +192,10 @@ class BomRows extends Table {
       text().references(Items, #id, onDelete: KeyAction.cascade)();
   TextColumn get kind => text()(); // 'semi' | 'raw' | 'sub'
   RealColumn get qtyPer => real()(); // >0
-  RealColumn get wastePct =>
-      real().withDefault(const Constant(0.0))(); // 0..1
+  RealColumn get wastePct => real().withDefault(const Constant(0.0))(); // 0..1
 
   @override
-  Set<Column> get primaryKey =>
-      {root, parentItemId, componentItemId, kind};
+  Set<Column> get primaryKey => {root, parentItemId, componentItemId, kind};
 }
 
 /// =======================
@@ -220,19 +209,15 @@ class Orders extends Table {
   TextColumn get customer => text()();
   TextColumn get memo => text().nullable()();
   TextColumn get status => text()(); // OrderStatus.name
-  BoolColumn get isDeleted =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get updatedAt => text().nullable()(); // ISO8601
   TextColumn get deletedAt => text().nullable()(); // ISO8601
   // ✅ 신규
-  TextColumn get shippedAt => text().nullable()();  // 실제 출고(완료)일
-  TextColumn get dueDate  => text().nullable()();   // 납기(출고 예정)일
-
-
+  TextColumn get shippedAt => text().nullable()(); // 실제 출고(완료)일
+  TextColumn get dueDate => text().nullable()(); // 납기(출고 예정)일
 
   @override
   Set<Column> get primaryKey => {id};
-
 }
 
 @DataClassName('OrderLineRow')
@@ -247,14 +232,13 @@ class OrderLines extends Table {
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
 
-
   @override
   Set<Column> get primaryKey => {id};
   @override
-    List<Index> get indexes => [
-      Index('idx_orderline_order', 'orderId'),
-      Index('idx_orderline_item', 'itemId'),
-    ];
+  List<Index> get indexes => [
+        Index('idx_orderline_order', 'orderId'),
+        Index('idx_orderline_item', 'itemId'),
+      ];
 }
 
 /// =======================
@@ -269,9 +253,7 @@ class Works extends Table {
   IntColumn get qty => integer()(); // >0
 
   // ✅ 누적 완료 수량 (초과 생산 가능)
-  IntColumn get doneQty =>
-      integer().withDefault(const Constant(0))(); // >= 0
-
+  IntColumn get doneQty => integer().withDefault(const Constant(0))(); // >= 0
 
   TextColumn get orderId =>
       text().nullable().references(Orders, #id, onDelete: KeyAction.setNull)();
@@ -283,22 +265,20 @@ class Works extends Table {
   TextColumn get updatedAt => text().nullable()(); // ISO8601
   TextColumn get sourceKey => text().nullable()();
 
-  BoolColumn get isDeleted =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
 
-  TextColumn get startedAt => text().nullable()();   // 작업 시작(ISO8601)
-  TextColumn get finishedAt => text().nullable()();  // 작업 완료(ISO8601)
-
+  TextColumn get startedAt => text().nullable()(); // 작업 시작(ISO8601)
+  TextColumn get finishedAt => text().nullable()(); // 작업 완료(ISO8601)
 
   @override
   Set<Column> get primaryKey => {id};
   @override
-    List<Index> get indexes => [
-      Index('idx_work_item', 'itemId'),
-      Index('idx_work_order', 'orderId'),
-      Index('idx_work_status', 'status'),
-    ];
+  List<Index> get indexes => [
+        Index('idx_work_item', 'itemId'),
+        Index('idx_work_order', 'orderId'),
+        Index('idx_work_status', 'status'),
+      ];
 }
 
 /// =======================
@@ -314,26 +294,27 @@ class PurchaseOrders extends Table {
   RealColumn get shippingCost => real().withDefault(const Constant(0))();
   RealColumn get extraCost => real().withDefault(const Constant(0))();
   RealColumn get vat => real().withDefault(const Constant(0))();
-  TextColumn get paymentStatus => text().withDefault(const Constant('pending'))();//결제여부
+  TextColumn get paymentStatus =>
+      text().withDefault(const Constant('pending'))(); //결제여부
   TextColumn get paidAt => text().nullable()(); //결제일
   TextColumn get paymentDueAt => text().nullable()();
-  TextColumn get vatInvoiceStatus => text().withDefault(const Constant('pending'))();//
+  TextColumn get vatInvoiceStatus =>
+      text().withDefault(const Constant('pending'))(); //
   TextColumn get vatInvoiceIssuedAt => text().nullable()();
   TextColumn get vatInvoiceDueAt => text().nullable()();
   BoolColumn get vatIncluded => boolean().withDefault(const Constant(false))();
   IntColumn get vatType => integer().withDefault(const Constant(0))();
-   TextColumn get eta => text()(); // ISO8601
+  TextColumn get eta => text()(); // ISO8601
   TextColumn get status => text()(); // PurchaseOrderStatus.name
   TextColumn get createdAt => text()(); // ISO8601
   TextColumn get updatedAt => text()(); // ISO8601
-  BoolColumn get isDeleted =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get memo => text().nullable()();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
   // 🔥 신규 컬럼 2개 (주문 연동/입고일)
-  TextColumn get orderId => text().nullable()();     // 주문 연동 발주면 채움
-  TextColumn get receivedAt => text().nullable()();  // 실제 입고 완료일 (ISO8601 string)
-
+  TextColumn get orderId => text().nullable()(); // 주문 연동 발주면 채움
+  TextColumn get receivedAt =>
+      text().nullable()(); // 실제 입고 완료일 (ISO8601 string)
 
   @override
   Set<Column> get primaryKey => {id};
@@ -357,16 +338,13 @@ class PurchaseLines extends Table {
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
 
-
-
-
   @override
   Set<Column> get primaryKey => {id};
   @override
-    List<Index> get indexes => [
-      Index('idx_purchase_order', 'orderId'),
-      Index('idx_purchase_item', 'itemId'),
-    ];
+  List<Index> get indexes => [
+        Index('idx_purchase_order', 'orderId'),
+        Index('idx_purchase_item', 'itemId'),
+      ];
 }
 
 /// =======================
@@ -382,8 +360,7 @@ class Suppliers extends Table {
   TextColumn get email => text().nullable()();
   TextColumn get addr => text().nullable()();
   TextColumn get memo => text().nullable()();
-  BoolColumn get isActive =>
-      boolean().withDefault(const Constant(true))();
+  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   TextColumn get createdAt => text()(); // ISO8601
   TextColumn get updatedAt => text()(); // ISO8601
 
@@ -427,14 +404,13 @@ class Memos extends Table {
 /// =======================
 // ➊ 빠른실행 순서 저장 테이블
 class QuickActionOrders extends Table {
-    // 액션 ID (enum을 문자열로 저장: 'orders','stock',...)
-    TextColumn get action => text()();
-    // 현재 순서 (0부터 시작)
-    IntColumn get orderIndex => integer()();
-    @override
-    Set<Column> get primaryKey => {action};
-
-  }
+  // 액션 ID (enum을 문자열로 저장: 'orders','stock',...)
+  TextColumn get action => text()();
+  // 현재 순서 (0부터 시작)
+  IntColumn get orderIndex => integer()();
+  @override
+  Set<Column> get primaryKey => {action};
+}
 
 @DriftDatabase(
   tables: [
@@ -454,16 +430,15 @@ class QuickActionOrders extends Table {
     QuickActionOrders, // ➋ 등록
   ],
 )
-
 class AppDatabase extends _$AppDatabase {
   static AppDatabase? _instance;
 
-    factory AppDatabase() {
-        _instance ??= AppDatabase._internal();
-        return _instance!;
-      }
+  factory AppDatabase() {
+    _instance ??= AppDatabase._internal();
+    return _instance!;
+  }
 
-    AppDatabase._internal() : super(_openConnection());
+  AppDatabase._internal() : super(_openConnection());
 
   // 🔥 이것 추가
   static AppDatabase get instance {
@@ -481,216 +456,228 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 21; //
+  int get schemaVersion => 22; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
-      await m.createAll();
-      await _ensureSupplierBusinessColumns();
-      await _ensureSupplierContactsTable();
-      await _ensureSupplierAccountsTable();
-    },
-    onUpgrade: (m, from, to) async {
-      // v1 → v2: Orders.deletedAt 추가
-      if (from < 2) {
-        await m.alterTable(TableMigration(
-          orders,
-          newColumns: [orders.deletedAt],
-        ));
-      }
+        onCreate: (m) async {
+          await m.createAll();
+          await _ensureSupplierBusinessColumns();
+          await _ensureSupplierContactsTable();
+          await _ensureSupplierAccountsTable();
+          await _ensurePurchaseReceiptsTable();
+        },
+        onUpgrade: (m, from, to) async {
+          // v1 → v2: Orders.deletedAt 추가
+          if (from < 2) {
+            await m.alterTable(TableMigration(
+              orders,
+              newColumns: [orders.deletedAt],
+            ));
+          }
 
-      // v2 → v3: Items.isFavorite 추가
-      if (from < 3) {
-        await m.alterTable(TableMigration(
-          items,
-          newColumns: [items.isFavorite],
-        ));
-      }
+          // v2 → v3: Items.isFavorite 추가
+          if (from < 3) {
+            await m.alterTable(TableMigration(
+              items,
+              newColumns: [items.isFavorite],
+            ));
+          }
 
-      // v3 → v4: 통합휴지통 컬럼 일괄 추가
-      if (from < 4) {
-        await m.alterTable(TableMigration(
-          items,
-          newColumns: [items.isDeleted, items.deletedAt],
-        ));
-        await m.alterTable(TableMigration(
-          txns,
-          newColumns: [txns.isDeleted, txns.deletedAt],
-        ));
-        await m.alterTable(TableMigration(
-          orders,
-          newColumns: [orders.isDeleted],
-        ));
-        await m.alterTable(TableMigration(
-          orderLines,
-          newColumns: [orderLines.isDeleted, orderLines.deletedAt],
-        ));
-        await m.alterTable(TableMigration(
-          works,
-          newColumns: [works.isDeleted, works.deletedAt],
-        ));
-        await m.alterTable(TableMigration(
-          purchaseOrders,
-          newColumns: [purchaseOrders.isDeleted, purchaseOrders.deletedAt],
-        ));
-        await m.alterTable(TableMigration(
-          purchaseLines,
-          newColumns: [purchaseLines.isDeleted, purchaseLines.deletedAt],
-        ));
-      }
+          // v3 → v4: 통합휴지통 컬럼 일괄 추가
+          if (from < 4) {
+            await m.alterTable(TableMigration(
+              items,
+              newColumns: [items.isDeleted, items.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              txns,
+              newColumns: [txns.isDeleted, txns.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              orders,
+              newColumns: [orders.isDeleted],
+            ));
+            await m.alterTable(TableMigration(
+              orderLines,
+              newColumns: [orderLines.isDeleted, orderLines.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              works,
+              newColumns: [works.isDeleted, works.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              purchaseOrders,
+              newColumns: [purchaseOrders.isDeleted, purchaseOrders.deletedAt],
+            ));
+            await m.alterTable(TableMigration(
+              purchaseLines,
+              newColumns: [purchaseLines.isDeleted, purchaseLines.deletedAt],
+            ));
+          }
 
-      // 🔥 v4 → v5: 타임라인용 신규 컬럼 추가
-      if (from < 5) {
-        // 1) 발주: 주문 연동/입고완료일
-        await m.alterTable(TableMigration(
-          purchaseOrders,
-          newColumns: [
-            purchaseOrders.orderId,      // nullable
-            purchaseOrders.receivedAt,   // nullable
-          ],
-        ));
+          // 🔥 v4 → v5: 타임라인용 신규 컬럼 추가
+          if (from < 5) {
+            // 1) 발주: 주문 연동/입고완료일
+            await m.alterTable(TableMigration(
+              purchaseOrders,
+              newColumns: [
+                purchaseOrders.orderId, // nullable
+                purchaseOrders.receivedAt, // nullable
+              ],
+            ));
 
-        // 2) 작업: 시작/완료일
-        await m.alterTable(TableMigration(
-          works,
-          newColumns: [
-            works.startedAt,             // nullable
-            works.finishedAt,            // nullable
-          ],
-        ));
+            // 2) 작업: 시작/완료일
+            await m.alterTable(TableMigration(
+              works,
+              newColumns: [
+                works.startedAt, // nullable
+                works.finishedAt, // nullable
+              ],
+            ));
 
-        // 3) 주문: 출고(완료)일 / 납기일
-        await m.alterTable(TableMigration(
-          orders,
-          newColumns: [
-            orders.shippedAt,            // nullable
-            orders.dueDate,              // nullable
-          ],
-        ));
-      }
+            // 3) 주문: 출고(완료)일 / 납기일
+            await m.alterTable(TableMigration(
+              orders,
+              newColumns: [
+                orders.shippedAt, // nullable
+                orders.dueDate, // nullable
+              ],
+            ));
+          }
 
+          if (from < 6) {
+            final exists = await _columnExists('works', 'done_qty');
+            if (!exists) {
+              await m.addColumn(works, works.doneQty);
+            }
+          }
 
-      if (from < 6) {
-        final exists = await _columnExists('works', 'done_qty');
-        if (!exists) {
-          await m.addColumn(works, works.doneQty);
-        }
-      }
+          // v6 → v7 (검색 키 컬럼 + backfill)
+          if (from < 7) {
+            await m.addColumn(items, items.searchNormalized);
+            await m.addColumn(items, items.searchInitials);
+            await _backfillItemSearchKeys();
+          }
 
+          // v7 → v8 (재고브라우저용 full 검색키 컬럼 + backfill)
+          if (from < 8) {
+            await m.addColumn(items, items.searchFullNormalized);
+            await _backfillItemFullSearchKeys();
+          }
+          // v8 → v9(재고 브라우저용 폴더 검색키 컬럼 +backfill)
+          if (from < 9) {
+            await m.alterTable(TableMigration(
+              folders,
+              newColumns: [
+                folders.searchNormalized,
+                folders.searchInitials,
+              ],
+            ));
 
-      // v6 → v7 (검색 키 컬럼 + backfill)
-      if (from < 7) {
-        await m.addColumn(items, items.searchNormalized);
-        await m.addColumn(items, items.searchInitials);
-        await _backfillItemSearchKeys();
-      }
+            await _backfillFolderSearchKeys();
+          }
 
-      // v7 → v8 (재고브라우저용 full 검색키 컬럼 + backfill)
-      if (from < 8) {
-        await m.addColumn(items, items.searchFullNormalized);
-        await _backfillItemFullSearchKeys();
-      }
-      // v8 → v9(재고 브라우저용 폴더 검색키 컬럼 +backfill)
-      if (from < 9) {
-        await m.alterTable(TableMigration(
-          folders,
-          newColumns: [
-            folders.searchNormalized,
-            folders.searchInitials,
-          ],
-        ));
+          if (from < 10) {
+            await m.alterTable(
+              TableMigration(
+                works,
+                newColumns: [works.parentWorkId],
+              ),
+            );
+          }
+          if (from < 11) {
+            await m.addColumn(
+                items, items.defaultSupplierId as GeneratedColumn);
+            await m.addColumn(items, items.defaultPrice as GeneratedColumn);
 
-        await _backfillFolderSearchKeys();
-      }
+            await m.addColumn(
+                purchaseOrders, purchaseOrders.supplierId as GeneratedColumn);
+            await m.addColumn(
+                purchaseOrders, purchaseOrders.shippingCost as GeneratedColumn);
+            await m.addColumn(
+                purchaseOrders, purchaseOrders.extraCost as GeneratedColumn);
+            await m.addColumn(
+                purchaseOrders, purchaseOrders.vat as GeneratedColumn);
 
-      if (from < 10) {
-        await m.alterTable(
-          TableMigration(
-            works,
-            newColumns: [works.parentWorkId],
-          ),
-        );
-      }
-      if (from < 11) {
-        await m.addColumn(items, items.defaultSupplierId as GeneratedColumn);
-        await m.addColumn(items, items.defaultPrice as GeneratedColumn);
+            await m.addColumn(
+                purchaseLines, purchaseLines.unitPrice as GeneratedColumn);
+          }
+          if (from < 12) {
+            await m.addColumn(
+                items, items.defaultPurchasePrice as GeneratedColumn);
+            await m.addColumn(items, items.defaultSalePrice as GeneratedColumn);
+          }
+          if (from < 13) {
+            await m.addColumn(
+                purchaseOrders, purchaseOrders.vatIncluded as GeneratedColumn);
+            await m.addColumn(purchaseOrders,
+                purchaseOrders.paymentStatus as GeneratedColumn);
+            await m.addColumn(
+                purchaseOrders, purchaseOrders.paidAt as GeneratedColumn);
+            await m.addColumn(purchaseOrders,
+                purchaseOrders.vatInvoiceStatus as GeneratedColumn);
+            await m.addColumn(purchaseOrders,
+                purchaseOrders.vatInvoiceIssuedAt as GeneratedColumn);
+          }
+          if (from < 14) {
+            await m.addColumn(purchaseOrders, purchaseOrders.vatType);
+          }
+          if (from < 15) {
+            await customStatement(
+                'ALTER TABLE purchase_orders ADD COLUMN payment_due_at TEXT');
 
-        await m.addColumn(purchaseOrders, purchaseOrders.supplierId as GeneratedColumn);
-        await m.addColumn(purchaseOrders, purchaseOrders.shippingCost as GeneratedColumn);
-        await m.addColumn(purchaseOrders, purchaseOrders.extraCost as GeneratedColumn);
-        await m.addColumn(purchaseOrders, purchaseOrders.vat as GeneratedColumn);
+            await customStatement(
+                'ALTER TABLE purchase_orders ADD COLUMN vat_invoice_due_at TEXT');
+          }
+          if (from < 16) {
+            await m.alterTable(TableMigration(
+              folders,
+              newColumns: [folders.isDeleted, folders.deletedAt],
+            ));
+          }
 
-        await m.addColumn(purchaseLines, purchaseLines.unitPrice as GeneratedColumn);
-      }
-      if (from < 12) {
-        await m.addColumn(items, items.defaultPurchasePrice as GeneratedColumn);
-        await m.addColumn(items, items.defaultSalePrice as GeneratedColumn);
-      }
-      if (from < 13) {
-        await m.addColumn(purchaseOrders, purchaseOrders.vatIncluded as GeneratedColumn);
-        await m.addColumn(purchaseOrders, purchaseOrders.paymentStatus as GeneratedColumn);
-        await m.addColumn(purchaseOrders, purchaseOrders.paidAt as GeneratedColumn);
-        await m.addColumn(purchaseOrders, purchaseOrders.vatInvoiceStatus as GeneratedColumn);
-        await m.addColumn(purchaseOrders, purchaseOrders.vatInvoiceIssuedAt as GeneratedColumn);
-      }
-      if (from < 14) {
-        await m.addColumn(purchaseOrders, purchaseOrders.vatType);
-      }
-      if (from < 15) {
-        await customStatement(
-            'ALTER TABLE purchase_orders ADD COLUMN payment_due_at TEXT'
-        );
+          if (from < 17) {
+            final exists = await _columnExists('items', 'extra');
+            if (!exists) {
+              await m.addColumn(items, items.extra);
+            }
 
-        await customStatement(
-            'ALTER TABLE purchase_orders ADD COLUMN vat_invoice_due_at TEXT'
-        );
-      }
-      if (from < 16) {
-        await m.alterTable(TableMigration(
-          folders,
-          newColumns: [folders.isDeleted, folders.deletedAt],
-        ));
-      }
-
-      if (from < 17) {
-        final exists = await _columnExists('items', 'extra');
-        if (!exists) {
-          await m.addColumn(items, items.extra);
-        }
-
-        final exists2 = await _columnExists('folders', 'extra');
-        if (!exists2) {
-          await m.addColumn(folders, folders.extra);
-        }
-      }
-      if (from < 18) {
-        await m.createTable(memos);
-      }
-      if (from < 19) {
-        // supplier_id used to be declared INTEGER. Existing rows are mostly
-        // null/name-only, and SQLite can store UUID text in the existing
-        // column, so no destructive table rewrite is required here.
-      }
-      if (from < 20) {
-        await _ensureSupplierBusinessColumns();
-        await _ensureSupplierContactsTable();
-      }
-      if (from < 21) {
-        await _ensureSupplierAccountsTable();
-      }
-
-    },
-  );Future<void> _backfillItemSearchKeys() async {
+            final exists2 = await _columnExists('folders', 'extra');
+            if (!exists2) {
+              await m.addColumn(folders, folders.extra);
+            }
+          }
+          if (from < 18) {
+            await m.createTable(memos);
+          }
+          if (from < 19) {
+            // supplier_id used to be declared INTEGER. Existing rows are mostly
+            // null/name-only, and SQLite can store UUID text in the existing
+            // column, so no destructive table rewrite is required here.
+          }
+          if (from < 20) {
+            await _ensureSupplierBusinessColumns();
+            await _ensureSupplierContactsTable();
+          }
+          if (from < 21) {
+            await _ensureSupplierAccountsTable();
+          }
+          if (from < 22) {
+            await _ensurePurchaseReceiptsTable();
+          }
+        },
+      );
+  Future<void> _backfillItemSearchKeys() async {
     final rows = await (select(items)
-      ..where((t) => t.searchNormalized.equals('') | t.searchInitials.equals('')))
+          ..where((t) =>
+              t.searchNormalized.equals('') | t.searchInitials.equals('')))
         .get();
 
     await transaction(() async {
       for (final r in rows) {
-        final base = r.displayName?.trim().isNotEmpty == true
-            ? r.displayName!
-            : r.name;
+        final base =
+            r.displayName?.trim().isNotEmpty == true ? r.displayName! : r.name;
 
         final normalized = normalizeForSearch(base);
         final initials = toChosungString(base);
@@ -704,9 +691,10 @@ class AppDatabase extends _$AppDatabase {
       }
     });
   }
+
   Future<void> _backfillItemFullSearchKeys() async {
     final rows = await (select(items)
-      ..where((t) => t.searchFullNormalized.equals('')))
+          ..where((t) => t.searchFullNormalized.equals('')))
         .get();
 
     await transaction(() async {
@@ -737,25 +725,24 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> _backfillFolderSearchKeys() async {
     final rows = await (select(folders)
-      ..where((t) =>
-      t.searchNormalized.equals('') | t.searchInitials.equals('')))
+          ..where((t) =>
+              t.searchNormalized.equals('') | t.searchInitials.equals('')))
         .get();
     await transaction(() async {
-    for (final r in rows) {
-      final base = r.name.trim();
-      final normalized = normalizeForSearch(base);
-      final initials = toChosungString(base);
+      for (final r in rows) {
+        final base = r.name.trim();
+        final normalized = normalizeForSearch(base);
+        final initials = toChosungString(base);
 
-      await (update(folders)..where((t) => t.id.equals(r.id))).write(
-        FoldersCompanion(
-          searchNormalized: Value(normalized),
-          searchInitials: Value(initials),
-        ),
-      );
-    }
-  });
-        }
-
+        await (update(folders)..where((t) => t.id.equals(r.id))).write(
+          FoldersCompanion(
+            searchNormalized: Value(normalized),
+            searchInitials: Value(initials),
+          ),
+        );
+      }
+    });
+  }
 
   Future<bool> _columnExists(String table, String column) async {
     final result = await customSelect(
@@ -823,6 +810,26 @@ class AppDatabase extends _$AppDatabase {
       'ON supplier_accounts(supplier_id, sort_order)',
     );
   }
+
+  Future<void> _ensurePurchaseReceiptsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS purchase_receipts (
+        id TEXT PRIMARY KEY NOT NULL,
+        purchase_order_id TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        memo TEXT NULL,
+        FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_purchase_receipts_order '
+      'ON purchase_receipts(purchase_order_id, created_at)',
+    );
+  }
+
   Future<void> resetDatabase() async {
     final db = this;
 
@@ -841,10 +848,6 @@ class AppDatabase extends _$AppDatabase {
     _instance = null;
   }
 }
-
-
-
-
 
 /// 실제 SQLite 파일을 여는 부분
 LazyDatabase _openConnection() {
@@ -961,22 +964,22 @@ extension ItemToCompanion on Item {
 
 extension FolderRowMapping on FolderRow {
   FolderNode toDomain() => FolderNode(
-    id: id,
-    name: name,
-    parentId: parentId,
-    depth: depth,
-    order: order,
-  );
+        id: id,
+        name: name,
+        parentId: parentId,
+        depth: depth,
+        order: order,
+      );
 }
 
 extension FolderNodeToCompanion on FolderNode {
   FoldersCompanion toCompanion() => FoldersCompanion(
-    id: Value(id),
-    name: Value(name),
-    parentId: Value(parentId),
-    depth: Value(depth),
-    order: Value(order),
-  );
+        id: Value(id),
+        name: Value(name),
+        parentId: Value(parentId),
+        depth: Value(depth),
+        order: Value(order),
+      );
 }
 
 /// =======================
@@ -985,37 +988,37 @@ extension FolderNodeToCompanion on FolderNode {
 
 extension TxnRowMapping on TxnRow {
   Txn toDomain() => Txn(
-    id: id,
-    ts: DateTime.parse(ts),
-    type:
-    TxnType.values.firstWhere((e) => e.name == type, orElse: () => TxnType.in_),
-    status: TxnStatus.values
-        .firstWhere((e) => e.name == status, orElse: () => TxnStatus.actual),
-    itemId: itemId,
-    qty: qty,
-    refType: RefType.values
-        .firstWhere((e) => e.name == refType, orElse: () => RefType.order),
-    refId: refId,
-    note: note,
-    memo: memo,
-    sourceKey: sourceKey,
-  );
+        id: id,
+        ts: DateTime.parse(ts),
+        type: TxnType.values
+            .firstWhere((e) => e.name == type, orElse: () => TxnType.in_),
+        status: TxnStatus.values.firstWhere((e) => e.name == status,
+            orElse: () => TxnStatus.actual),
+        itemId: itemId,
+        qty: qty,
+        refType: RefType.values
+            .firstWhere((e) => e.name == refType, orElse: () => RefType.order),
+        refId: refId,
+        note: note,
+        memo: memo,
+        sourceKey: sourceKey,
+      );
 }
 
 extension TxnToCompanion on Txn {
   TxnsCompanion toCompanion() => TxnsCompanion(
-    id: Value(id),
-    ts: Value(ts.toIso8601String()),
-    type: Value(type.name),
-    status: Value(status.name),
-    itemId: Value(itemId),
-    qty: Value(qty),
-    refType: Value(refType.name),
-    refId: Value(refId),
-    note: Value(note),
-    memo: Value(memo),
-    sourceKey: Value(sourceKey),
-  );
+        id: Value(id),
+        ts: Value(ts.toIso8601String()),
+        type: Value(type.name),
+        status: Value(status.name),
+        itemId: Value(itemId),
+        qty: Value(qty),
+        refType: Value(refType.name),
+        refId: Value(refId),
+        note: Value(note),
+        memo: Value(memo),
+        sourceKey: Value(sourceKey),
+      );
 }
 
 /// =======================
@@ -1024,24 +1027,24 @@ extension TxnToCompanion on Txn {
 
 extension BomRowDbMapping on BomRowDb {
   BomRow toDomain() => BomRow(
-    root: BomRootX.fromString(root),
-    parentItemId: parentItemId,
-    componentItemId: componentItemId,
-    kind: BomKindX.fromString(kind),
-    qtyPer: qtyPer,
-    wastePct: wastePct,
-  );
+        root: BomRootX.fromString(root),
+        parentItemId: parentItemId,
+        componentItemId: componentItemId,
+        kind: BomKindX.fromString(kind),
+        qtyPer: qtyPer,
+        wastePct: wastePct,
+      );
 }
 
 extension BomRowToCompanion on BomRow {
   BomRowsCompanion toCompanion() => BomRowsCompanion(
-    root: Value(root.name),
-    parentItemId: Value(parentItemId),
-    componentItemId: Value(componentItemId),
-    kind: Value(kind.name),
-    qtyPer: Value(qtyPer),
-    wastePct: Value(wastePct),
-  );
+        root: Value(root.name),
+        parentItemId: Value(parentItemId),
+        componentItemId: Value(componentItemId),
+        kind: Value(kind.name),
+        qtyPer: Value(qtyPer),
+        wastePct: Value(wastePct),
+      );
 }
 
 /// =======================
@@ -1050,52 +1053,50 @@ extension BomRowToCompanion on BomRow {
 
 extension OrderRowMappingExt on OrderRow {
   Order toDomain(List<OrderLine> lines) => Order(
-    id: id,
-    date: DateTime.parse(date),
-    customer: customer,
-    memo: memo,
-    status: OrderStatus.values.firstWhere(
+        id: id,
+        date: DateTime.parse(date),
+        customer: customer,
+        memo: memo,
+        status: OrderStatus.values.firstWhere(
           (e) => e.name == status,
-      orElse: () => OrderStatus.draft,
-    ),
-    lines: lines,
-    isDeleted: isDeleted,
-    updatedAt: updatedAt != null ? DateTime.parse(updatedAt!) : null,
-    deletedAt: deletedAt != null ? DateTime.parse(deletedAt!) : null,
-
-  );
+          orElse: () => OrderStatus.draft,
+        ),
+        lines: lines,
+        isDeleted: isDeleted,
+        updatedAt: updatedAt != null ? DateTime.parse(updatedAt!) : null,
+        deletedAt: deletedAt != null ? DateTime.parse(deletedAt!) : null,
+      );
 }
 
 extension OrderLineRowMapping on OrderLineRow {
   OrderLine toDomain() => OrderLine(
-    id: id,
-    itemId: itemId,
-    qty: qty,
-  );
+        id: id,
+        itemId: itemId,
+        qty: qty,
+      );
 }
 
 extension OrderLineToCompanion on OrderLine {
   OrderLinesCompanion toCompanion(String orderId) => OrderLinesCompanion(
-    id: Value(id),
-    orderId: Value(orderId),
-    itemId: Value(itemId),
-    qty: Value(qty),
-  );
+        id: Value(id),
+        orderId: Value(orderId),
+        itemId: Value(itemId),
+        qty: Value(qty),
+      );
 }
 
 extension OrderToCompanion on Order {
   OrdersCompanion toCompanion() => OrdersCompanion(
-    id: Value(id),
-    date: Value(date.toIso8601String()),
-    customer: Value(customer),
-    memo: Value(memo),
-    status: Value(status.name),
-    isDeleted: Value(isDeleted),
-    updatedAt: Value(updatedAt.toIso8601String()),
-    deletedAt: Value(deletedAt?.toIso8601String()),
-  );
+        id: Value(id),
+        date: Value(date.toIso8601String()),
+        customer: Value(customer),
+        memo: Value(memo),
+        status: Value(status.name),
+        isDeleted: Value(isDeleted),
+        updatedAt: Value(updatedAt.toIso8601String()),
+        deletedAt: Value(deletedAt?.toIso8601String()),
+      );
 }
-
 
 /// =======================
 ///  Row ↔ Work
@@ -1103,39 +1104,42 @@ extension OrderToCompanion on Order {
 
 extension WorkRowMapping on WorkRow {
   Work toDomain() => Work(
-    id: id,
-    itemId: itemId,
-    qty: qty,
-    doneQty: doneQty, // ✅ 추가
-    orderId: orderId,
-    status: WorkStatus.values.firstWhere(
+        id: id,
+        itemId: itemId,
+        qty: qty,
+        doneQty: doneQty, // ✅ 추가
+        orderId: orderId,
+        status: WorkStatus.values.firstWhere(
           (e) => e.name == status,
-      orElse: () => WorkStatus.planned,
-    ),
-    createdAt: DateTime.parse(createdAt),
-    updatedAt: updatedAt != null ? DateTime.parse(updatedAt!) : null,
-    isDeleted: isDeleted,
-    sourceKey: sourceKey,
-    startedAt: startedAt != null ? DateTime.parse(startedAt!) : null,   // ✅ 보완
-    finishedAt: finishedAt != null ? DateTime.parse(finishedAt!) : null, // ✅ 보완
-  );
+          orElse: () => WorkStatus.planned,
+        ),
+        createdAt: DateTime.parse(createdAt),
+        updatedAt: updatedAt != null ? DateTime.parse(updatedAt!) : null,
+        isDeleted: isDeleted,
+        sourceKey: sourceKey,
+        startedAt:
+            startedAt != null ? DateTime.parse(startedAt!) : null, // ✅ 보완
+        finishedAt:
+            finishedAt != null ? DateTime.parse(finishedAt!) : null, // ✅ 보완
+      );
 }
 
 extension WorkToCompanion on Work {
   WorksCompanion toCompanion() => WorksCompanion(
-    id: Value(id),
-    itemId: Value(itemId),
-    qty: Value(qty),
-    orderId: Value(orderId),
-    parentWorkId: parentWorkId == null ? const Value.absent() : Value(parentWorkId!),
-    status: Value(status.name),
-    createdAt: Value(createdAt.toIso8601String()),
-    updatedAt: Value(updatedAt?.toIso8601String()),
-    isDeleted: Value(isDeleted),
-    sourceKey: Value(sourceKey),
-    startedAt: Value(startedAt?.toIso8601String()),   // ✅ 보완
-    finishedAt: Value(finishedAt?.toIso8601String()),
-  );
+        id: Value(id),
+        itemId: Value(itemId),
+        qty: Value(qty),
+        orderId: Value(orderId),
+        parentWorkId:
+            parentWorkId == null ? const Value.absent() : Value(parentWorkId!),
+        status: Value(status.name),
+        createdAt: Value(createdAt.toIso8601String()),
+        updatedAt: Value(updatedAt?.toIso8601String()),
+        isDeleted: Value(isDeleted),
+        sourceKey: Value(sourceKey),
+        startedAt: Value(startedAt?.toIso8601String()), // ✅ 보완
+        finishedAt: Value(finishedAt?.toIso8601String()),
+      );
 }
 
 /// =======================
@@ -1144,102 +1148,94 @@ extension WorkToCompanion on Work {
 
 extension PurchaseOrderRowMapping on PurchaseOrderRow {
   PurchaseOrder toDomain() => PurchaseOrder(
-    id: id,
-    supplierName: supplierName,
-    supplierId: supplierId,
-    shippingCost: shippingCost,
-    extraCost: extraCost,
-    paymentStatus: paymentStatus,
-    paidAt: paidAt != null ? DateTime.parse(paidAt!) : null,
-    paymentDueAt: paymentDueAt != null
-        ? DateTime.parse(paymentDueAt!)
-        : null,
-
-    vatInvoiceStatus: vatInvoiceStatus,
-    vatInvoiceIssuedAt: vatInvoiceIssuedAt != null
-        ? DateTime.parse(vatInvoiceIssuedAt!)
-        : null,
-    vatInvoiceDueAt: vatInvoiceDueAt != null
-        ? DateTime.parse(vatInvoiceDueAt!)
-        : null,
-
-    eta: DateTime.parse(eta),
-    status: PurchaseOrderStatus.values.firstWhere(
+        id: id,
+        supplierName: supplierName,
+        supplierId: supplierId,
+        shippingCost: shippingCost,
+        extraCost: extraCost,
+        paymentStatus: paymentStatus,
+        paidAt: paidAt != null ? DateTime.parse(paidAt!) : null,
+        paymentDueAt:
+            paymentDueAt != null ? DateTime.parse(paymentDueAt!) : null,
+        vatInvoiceStatus: vatInvoiceStatus,
+        vatInvoiceIssuedAt: vatInvoiceIssuedAt != null
+            ? DateTime.parse(vatInvoiceIssuedAt!)
+            : null,
+        vatInvoiceDueAt:
+            vatInvoiceDueAt != null ? DateTime.parse(vatInvoiceDueAt!) : null,
+        eta: DateTime.parse(eta),
+        status: PurchaseOrderStatus.values.firstWhere(
           (e) => e.name == status,
-      orElse: () => PurchaseOrderStatus.draft,
-    ),
-    createdAt: DateTime.parse(createdAt),
-    updatedAt: DateTime.parse(updatedAt),
-    isDeleted: isDeleted,
-    memo: memo,
-    orderId: orderId,
-    receivedAt: receivedAt != null ? DateTime.parse(receivedAt!) : null,
-  );
+          orElse: () => PurchaseOrderStatus.draft,
+        ),
+        createdAt: DateTime.parse(createdAt),
+        updatedAt: DateTime.parse(updatedAt),
+        isDeleted: isDeleted,
+        memo: memo,
+        orderId: orderId,
+        receivedAt: receivedAt != null ? DateTime.parse(receivedAt!) : null,
+      );
 }
 
 extension PurchaseOrderToCompanion on PurchaseOrder {
   PurchaseOrdersCompanion toCompanion() => PurchaseOrdersCompanion(
-    id: Value(id),
-    supplierName: Value(supplierName),
-    supplierId: Value(supplierId),
-
-    shippingCost: Value(shippingCost),
-    extraCost: Value(extraCost),
-    vatType: Value(vatType.index),
-    paymentStatus: Value(paymentStatus),
-    paidAt: Value(paidAt?.toIso8601String()),
-    paymentDueAt: paymentDueAt == null
-        ? const Value.absent()
-        : Value(paymentDueAt!.toIso8601String()),
-    vatInvoiceStatus: Value(vatInvoiceStatus),
-    vatInvoiceIssuedAt: Value(vatInvoiceIssuedAt?.toIso8601String()),
-    vatInvoiceDueAt: vatInvoiceDueAt == null
-        ? const Value.absent()
-        : Value(vatInvoiceDueAt!.toIso8601String()),
-
-    eta: eta == null
-        ? const Value.absent()
-        : Value(eta!.toIso8601String()),
-    status: Value(status.name),
-    createdAt: Value(createdAt.toIso8601String()),
-    updatedAt: updatedAt == null
-        ? const Value.absent()
-        : Value(updatedAt!.toIso8601String()),
-    isDeleted: Value(isDeleted),
-    memo: Value(memo),
-    orderId: Value(orderId),
-    receivedAt: Value(receivedAt?.toIso8601String()),
-  );
+        id: Value(id),
+        supplierName: Value(supplierName),
+        supplierId: Value(supplierId),
+        shippingCost: Value(shippingCost),
+        extraCost: Value(extraCost),
+        vatType: Value(vatType.index),
+        paymentStatus: Value(paymentStatus),
+        paidAt: Value(paidAt?.toIso8601String()),
+        paymentDueAt: paymentDueAt == null
+            ? const Value.absent()
+            : Value(paymentDueAt!.toIso8601String()),
+        vatInvoiceStatus: Value(vatInvoiceStatus),
+        vatInvoiceIssuedAt: Value(vatInvoiceIssuedAt?.toIso8601String()),
+        vatInvoiceDueAt: vatInvoiceDueAt == null
+            ? const Value.absent()
+            : Value(vatInvoiceDueAt!.toIso8601String()),
+        eta: eta == null ? const Value.absent() : Value(eta!.toIso8601String()),
+        status: Value(status.name),
+        createdAt: Value(createdAt.toIso8601String()),
+        updatedAt: updatedAt == null
+            ? const Value.absent()
+            : Value(updatedAt!.toIso8601String()),
+        isDeleted: Value(isDeleted),
+        memo: Value(memo),
+        orderId: Value(orderId),
+        receivedAt: Value(receivedAt?.toIso8601String()),
+      );
 }
 
 extension PurchaseLineRowMapping on PurchaseLineRow {
   PurchaseLine toDomain() => PurchaseLine(
-    id: id,
-    orderId: orderId,
-    itemId: itemId,
-    name: name,
-    unit: unit,
-    qty: qty,
-    note: note,
-    memo: memo,
-    colorNo: colorNo,
-    unitPrice: unitPrice,
-  );
+        id: id,
+        orderId: orderId,
+        itemId: itemId,
+        name: name,
+        unit: unit,
+        qty: qty,
+        note: note,
+        memo: memo,
+        colorNo: colorNo,
+        unitPrice: unitPrice,
+      );
 }
 
 extension PurchaseLineToCompanionExt on PurchaseLine {
   PurchaseLinesCompanion toCompanion() => PurchaseLinesCompanion(
-    id: Value(id),
-    orderId: Value(orderId),
-    itemId: Value(itemId),
-    name: Value(name),
-    unit: Value(unit),
-    qty: Value(qty),
-    note: Value(note),
-    memo: Value(memo),
-    colorNo: Value(colorNo),
-    unitPrice: Value(unitPrice),
-  );
+        id: Value(id),
+        orderId: Value(orderId),
+        itemId: Value(itemId),
+        name: Value(name),
+        unit: Value(unit),
+        qty: Value(qty),
+        note: Value(note),
+        memo: Value(memo),
+        colorNo: Value(colorNo),
+        unitPrice: Value(unitPrice),
+      );
 }
 
 /// =======================
@@ -1248,32 +1244,32 @@ extension PurchaseLineToCompanionExt on PurchaseLine {
 
 extension SupplierRowMapping on SupplierRow {
   Supplier toDomain() => Supplier(
-    id: id,
-    name: name,
-    contactName: contactName,
-    phone: phone,
-    email: email,
-    addr: addr,
-    memo: memo,
-    isActive: isActive,
-    createdAt: DateTime.parse(createdAt),
-    updatedAt: DateTime.parse(updatedAt),
-  );
+        id: id,
+        name: name,
+        contactName: contactName,
+        phone: phone,
+        email: email,
+        addr: addr,
+        memo: memo,
+        isActive: isActive,
+        createdAt: DateTime.parse(createdAt),
+        updatedAt: DateTime.parse(updatedAt),
+      );
 }
 
 extension SupplierToCompanion on Supplier {
   SuppliersCompanion toCompanion() => SuppliersCompanion(
-    id: Value(id),
-    name: Value(name),
-    contactName: Value(contactName),
-    phone: Value(phone),
-    email: Value(email),
-    addr: Value(addr),
-    memo: Value(memo),
-    isActive: Value(isActive),
-    createdAt: Value(createdAt.toIso8601String()),
-    updatedAt: Value(updatedAt.toIso8601String()),
-  );
+        id: Value(id),
+        name: Value(name),
+        contactName: Value(contactName),
+        phone: Value(phone),
+        email: Value(email),
+        addr: Value(addr),
+        memo: Value(memo),
+        isActive: Value(isActive),
+        createdAt: Value(createdAt.toIso8601String()),
+        updatedAt: Value(updatedAt.toIso8601String()),
+      );
 }
 
 /// =======================
@@ -1282,26 +1278,26 @@ extension SupplierToCompanion on Supplier {
 
 extension LotRowMapping on LotRow {
   Lot toDomain() => Lot(
-    //id: id,
-    itemId: itemId,
-    lotNo: lotNo,
-    receivedQtyRoll: receivedQtyRoll,
-    measuredLengthM: measuredLengthM,
-    usableQtyM: usableQtyM,
-    status: status,
-    receivedAt: DateTime.parse(receivedAt),
-  );
+        //id: id,
+        itemId: itemId,
+        lotNo: lotNo,
+        receivedQtyRoll: receivedQtyRoll,
+        measuredLengthM: measuredLengthM,
+        usableQtyM: usableQtyM,
+        status: status,
+        receivedAt: DateTime.parse(receivedAt),
+      );
 }
 
 extension LotToCompanion on Lot {
   LotsCompanion toCompanion() => LotsCompanion(
-    //id: Value(id),
-    itemId: Value(itemId),
-    lotNo: Value(lotNo),
-    receivedQtyRoll: Value(receivedQtyRoll),
-    measuredLengthM: Value(measuredLengthM),
-    usableQtyM: Value(usableQtyM),
-    status: Value(status),
-    receivedAt: Value(receivedAt.toIso8601String()),
-  );
+        //id: Value(id),
+        itemId: Value(itemId),
+        lotNo: Value(lotNo),
+        receivedQtyRoll: Value(receivedQtyRoll),
+        measuredLengthM: Value(measuredLengthM),
+        usableQtyM: Value(usableQtyM),
+        status: Value(status),
+        receivedAt: Value(receivedAt.toIso8601String()),
+      );
 }

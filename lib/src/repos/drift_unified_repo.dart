@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart'; // ChangeNotifier
 import 'package:drift/drift.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 // DB
 import '../db/app_database.dart';
@@ -18,6 +19,7 @@ import '../models/order.dart';
 import '../models/work.dart';
 import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
+import '../models/purchase_receipt.dart';
 import '../models/suppliers.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
