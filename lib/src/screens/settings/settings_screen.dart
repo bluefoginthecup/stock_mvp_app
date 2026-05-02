@@ -116,6 +116,30 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           ListTile(
+            leading: const Icon(Icons.archive_outlined, color: Colors.red),
+            title: const Text(
+              '전체 백업 zip 내보내기',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            subtitle: const Text('DB와 영수증/거래명세서 첨부파일을 zip으로 공유합니다'),
+            onTap: () async {
+              await runWithSpinner(
+                () async {
+                  final result = await fullBackupService.createBackup();
+                  await Share.shareXFiles(
+                    [XFile(result.zipFile.path)],
+                    subject: 'StockApp Full Backup',
+                  );
+                },
+                okMsg: '전체 백업 생성 완료',
+              );
+            },
+          ),
+
+          ListTile(
             leading: const Icon(Icons.folder),
             title: const Text('폴더만 임포트'),
             subtitle: const Text('folders.json만 반영 (트리 리빌드 포함)'),
@@ -247,23 +271,6 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
 
-          ListTile(
-            leading: const Icon(Icons.archive_outlined),
-            title: const Text('전체 백업 내보내기'),
-            subtitle: const Text('DB와 영수증/거래명세서 첨부파일을 zip으로 공유합니다'),
-            onTap: () async {
-              await runWithSpinner(
-                () async {
-                  final result = await fullBackupService.createBackup();
-                  await Share.shareXFiles(
-                    [XFile(result.zipFile.path)],
-                    subject: 'StockApp Full Backup',
-                  );
-                },
-                okMsg: '전체 백업 생성 완료',
-              );
-            },
-          ),
           ListTile(
             leading: const Icon(Icons.save),
             title: const Text('DB 백업'),
