@@ -827,7 +827,8 @@ class _RollPreviewPainter extends CustomPainter {
       canvas.drawRect(remainRect, remainPaint);
       canvas.drawRect(remainRect, border);
       _drawCenteredText(canvas, remainRect,
-          '남은 원단\n${_fmt(result.remainLengthCm)}cm', Colors.black54);
+          '남은 원단\n${_fmt(result.remainLengthCm)}cm', Colors.black54,
+          fontSize: scale >= 3 ? 15 : 11);
     }
 
     for (final lane in result.lanes) {
@@ -847,6 +848,7 @@ class _RollPreviewPainter extends CustomPainter {
             rect,
             '${item.cut.label}\n${_fmt(item.lengthCm)}×${_fmt(item.widthCm)}',
             _readableTextColor(color),
+            fontSize: scale >= 3 ? 15 : 11,
           );
         }
       }
@@ -868,11 +870,17 @@ class _RollPreviewPainter extends CustomPainter {
         '폭 ${_fmt(roll.widthCm)}cm');
   }
 
-  void _drawCenteredText(Canvas canvas, Rect rect, String text, Color color) {
+  void _drawCenteredText(
+    Canvas canvas,
+    Rect rect,
+    String text,
+    Color color, {
+    required double fontSize,
+  }) {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(color: color, fontSize: 9, height: 1.12),
+        style: TextStyle(color: color, fontSize: fontSize, height: 1.12),
       ),
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
@@ -891,7 +899,11 @@ class _RollPreviewPainter extends CustomPainter {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: const TextStyle(color: Colors.black54, fontSize: 10),
+        style: TextStyle(
+          color: Colors.black87,
+          fontSize: scale >= 3 ? 18 : 13,
+          fontWeight: FontWeight.w800,
+        ),
       ),
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: 120);

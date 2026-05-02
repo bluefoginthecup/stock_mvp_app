@@ -92,21 +92,25 @@ class _PieceLayout extends StatelessWidget {
         const SizedBox(height: 8),
         LayoutBuilder(
           builder: (context, constraints) {
-            final maxWidth = constraints.maxWidth;
+            final maxWidth =
+                (constraints.maxWidth - _FabricLayoutPainter.sideLabelWidth)
+                    .clamp(120, double.infinity)
+                    .toDouble();
             final scaleX = maxWidth /
                 pieceResult.requiredLengthCm.clamp(1, double.infinity);
             final scaleY = 230 / result.fabricWidthCm.clamp(1, double.infinity);
             final scale = scaleX < scaleY ? scaleX : scaleY;
             final width = pieceResult.requiredLengthCm * scale;
             final height = result.fabricWidthCm * scale;
+            final canvasWidth = width + _FabricLayoutPainter.sideLabelWidth;
 
             return Center(
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
                 onTap: () => _showFullscreenLayout(context),
                 child: SizedBox(
-                  width: width,
-                  height: height + 24,
+                  width: canvasWidth,
+                  height: height + _FabricLayoutPainter.topOffset + 24,
                   child: CustomPaint(
                     painter: _FabricLayoutPainter(
                       result: result,
@@ -198,8 +202,11 @@ class _FabricFullscreenViewer extends StatelessWidget {
   Widget build(BuildContext context) {
     const detailScale = 4.0;
     final piece = pieceResult.piece;
-    final width = pieceResult.requiredLengthCm * detailScale;
-    final height = result.fabricWidthCm * detailScale + 24;
+    final width = pieceResult.requiredLengthCm * detailScale +
+        _FabricLayoutPainter.sideLabelWidth;
+    final height = result.fabricWidthCm * detailScale +
+        _FabricLayoutPainter.topOffset +
+        24;
 
     return InteractiveViewer(
       constrained: false,
@@ -232,6 +239,9 @@ class _FabricFullscreenViewer extends StatelessWidget {
 }
 
 class _FabricLayoutPainter extends CustomPainter {
+  static const topOffset = 28.0;
+  static const sideLabelWidth = 60.0;
+
   final FabricCuttingResult result;
   final FabricPieceCuttingResult pieceResult;
   final double scale;
@@ -260,7 +270,8 @@ class _FabricLayoutPainter extends CustomPainter {
 
     final rollWidth = pieceResult.requiredLengthCm * scale;
     final rollHeight = result.fabricWidthCm * scale;
-    final outer = Rect.fromLTWH(0, 18, rollWidth, rollHeight);
+    final outer =
+        Rect.fromLTWH(sideLabelWidth, topOffset, rollWidth, rollHeight);
     canvas.drawRect(outer, Paint()..color = Colors.white);
     canvas.drawRect(outer, border);
 
@@ -274,8 +285,9 @@ class _FabricLayoutPainter extends CustomPainter {
           pieceResult.fitsInFabricWidth ? pieceResult.piecesPerColumn : 1;
       for (var row = 0; row < count; row++) {
         final hasPiece = done < result.quantity;
-        final top = 18 + row * pieceHeight;
-        final rect = Rect.fromLTWH(left, top, columnWidth, pieceHeight);
+        final top = topOffset + row * pieceHeight;
+        final rect =
+            Rect.fromLTWH(sideLabelWidth + left, top, columnWidth, pieceHeight);
         canvas.drawRect(rect, hasPiece ? fill : empty);
         canvas.drawRect(rect, border);
         if (hasPiece && columnWidth > 28 && pieceHeight > 18) {
@@ -284,6 +296,7 @@ class _FabricLayoutPainter extends CustomPainter {
             rect,
             '${piece.name}\n${_fmt(piece.lengthCm)}×${_fmt(piece.widthCm)}',
             textColor,
+            fontSize: scale >= 3 ? 15 : 11,
           );
         }
         if (hasPiece) done++;
@@ -291,9 +304,9 @@ class _FabricLayoutPainter extends CustomPainter {
 
       if (pieceResult.remainingWidthCm > 0.01 &&
           pieceResult.fitsInFabricWidth) {
-        final remainTop = 18 + count * pieceHeight;
+        final remainTop = topOffset + count * pieceHeight;
         final remainRect = Rect.fromLTWH(
-          left,
+          sideLabelWidth + left,
           remainTop,
           columnWidth,
           pieceResult.remainingWidthCm * scale,
@@ -303,16 +316,32 @@ class _FabricLayoutPainter extends CustomPainter {
       }
     }
 
-    _drawAxisText(canvas, Offset(0, 0), '길이 ${_fmt(piece.lengthCm)}cm 단위');
-    _drawAxisText(canvas, Offset(rollWidth - 78, rollHeight + 21),
-        '폭 ${_fmt(result.fabricWidthCm)}cm');
+    _drawAxisText(
+      canvas,
+      Offset(sideLabelWidth, 0),
+      '길이 ${_fmt(piece.lengthCm)}cm / ${pieceResult.columnsNeeded}개씩',
+      maxWidth: rollWidth,
+    );
+    _drawAxisText(
+      canvas,
+      Offset(0, topOffset + rollHeight / 2 - 16),
+      '폭\n${_fmt(result.fabricWidthCm)}cm\n${pieceResult.piecesPerColumn}개씩',
+      maxWidth: sideLabelWidth,
+      textAlign: TextAlign.center,
+    );
   }
 
-  void _drawCenteredText(Canvas canvas, Rect rect, String text, Color color) {
+  void _drawCenteredText(
+    Canvas canvas,
+    Rect rect,
+    String text,
+    Color color, {
+    required double fontSize,
+  }) {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(color: color, fontSize: 9, height: 1.15),
+        style: TextStyle(color: color, fontSize: fontSize, height: 1.15),
       ),
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
@@ -327,14 +356,26 @@ class _FabricLayoutPainter extends CustomPainter {
     );
   }
 
-  void _drawAxisText(Canvas canvas, Offset offset, String text) {
+  void _drawAxisText(
+    Canvas canvas,
+    Offset offset,
+    String text, {
+    double maxWidth = 120,
+    TextAlign textAlign = TextAlign.left,
+  }) {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
-        style: const TextStyle(color: Colors.black54, fontSize: 10),
+        style: TextStyle(
+          color: Colors.black87,
+          fontSize: scale >= 3 ? 18 : 13,
+          fontWeight: FontWeight.w800,
+          height: 1.2,
+        ),
       ),
+      textAlign: textAlign,
       textDirection: TextDirection.ltr,
-    )..layout(maxWidth: 120);
+    )..layout(maxWidth: maxWidth);
     painter.paint(canvas, offset);
   }
 

@@ -313,6 +313,14 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 28),
           children: [
+            if (!widget.showAppBar) ...[
+              _ProjectActions(
+                onNew: _reset,
+                onLoad: _load,
+                onSave: _save,
+              ),
+              const SizedBox(height: 12),
+            ],
             _ProductCard(
               productNameC: _productNameC,
               memoC: _memoC,
@@ -349,6 +357,54 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
             FabricLayoutPreview(result: result),
             const SizedBox(height: 12),
             FabricCuttingTable(result: result),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectActions extends StatelessWidget {
+  final VoidCallback onNew;
+  final VoidCallback onLoad;
+  final VoidCallback onSave;
+
+  const _ProjectActions({
+    required this.onNew,
+    required this.onLoad,
+    required this.onSave,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onNew,
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('새 계산'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onLoad,
+                icon: const Icon(Icons.folder_open_outlined),
+                label: const Text('불러오기'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: onSave,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('저장'),
+              ),
+            ),
           ],
         ),
       ),
