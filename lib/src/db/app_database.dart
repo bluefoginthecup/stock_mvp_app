@@ -1,11 +1,8 @@
 // lib/src/db/app_database.dart
-import 'dart:io';
 import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
 
 // 도메인 모델 import
@@ -20,6 +17,7 @@ import '../models/purchase_line.dart';
 import '../models/suppliers.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
+import '../services/app_path_service.dart';
 import '../utils/korean_search.dart';
 
 // drift가 생성해줄 파일
@@ -836,9 +834,7 @@ class AppDatabase extends _$AppDatabase {
     // DB 닫기
     await db.close();
 
-    final dir = await getApplicationSupportDirectory();
-    final dbPath = p.join(dir.path, 'stockapp.db');
-    final file = File(dbPath);
+    final file = await const AppPathService().stockDatabaseFile();
 
     if (await file.exists()) {
       await file.delete();
@@ -852,11 +848,9 @@ class AppDatabase extends _$AppDatabase {
 /// 실제 SQLite 파일을 여는 부분
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final dir = await getApplicationSupportDirectory();
-    final dbPath = p.join(dir.path, 'stockapp.db');
-    final file = File(dbPath);
+    final file = await const AppPathService().stockDatabaseFile();
 
-    debugPrint("DB path: $dbPath");
+    debugPrint("DB path: ${file.path}");
 
     return NativeDatabase(
       file,

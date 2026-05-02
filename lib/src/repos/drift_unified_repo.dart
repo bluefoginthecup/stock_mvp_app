@@ -2,13 +2,13 @@ import 'package:flutter/foundation.dart'; // ChangeNotifier
 import 'package:drift/drift.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 // DB
 import '../db/app_database.dart';
 import '../utils/korean_search.dart';
 import '../utils/item_search_keys.dart';
 import '../utils/item_registration.dart';
+import '../services/app_path_service.dart';
 
 // 도메인 모델
 import '../models/item.dart';

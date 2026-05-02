@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+
+import 'app_path_service.dart';
 
 class StorageUsageFolderSpec {
   final String id;
@@ -46,17 +47,19 @@ class StorageUsageService {
   static const purchaseReceipts = StorageUsageFolderSpec(
     id: 'purchase_receipts',
     label: '영수증/거래명세서',
-    relativeSegments: ['purchase_receipts'],
+    relativeSegments: [AppPathService.purchaseReceiptsRelativeRoot],
   );
 
   const StorageUsageService({
     this.folders = const [purchaseReceipts],
+    this.paths = const AppPathService(),
   });
 
   final List<StorageUsageFolderSpec> folders;
+  final AppPathService paths;
 
   Future<StorageUsageSummary> calculate() async {
-    final baseDir = await getApplicationSupportDirectory();
+    final baseDir = await paths.appSupportDirectory();
     final usages = <StorageFolderUsage>[];
 
     for (final folder in folders) {

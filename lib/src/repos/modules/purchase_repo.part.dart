@@ -60,6 +60,7 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
 
   @override
   Future<void> hardDeletePurchaseOrder(String id) async {
+    const paths = AppPathService();
     final receiptRows = await db.customSelect(
       'SELECT file_path FROM purchase_receipts WHERE purchase_order_id = ?',
       variables: [Variable.withString(id)],
@@ -79,8 +80,11 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
 
     for (final path in receiptPaths) {
       try {
-        final file = File(path);
-        if (await file.exists()) {
+        final file = await paths.resolveExistingPurchaseReceiptFile(
+          purchaseOrderId: id,
+          storedPath: path,
+        );
+        if (file != null && await file.exists()) {
           await file.delete();
         }
       } catch (_) {
@@ -150,6 +154,8 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
 
   @override
   Future<void> addPurchaseReceipt(PurchaseReceipt receipt) async {
+    final filePath =
+        await const AppPathService().normalizeToRelativePath(receipt.filePath);
     await db.customStatement(
       '''
       INSERT OR REPLACE INTO purchase_receipts
@@ -160,7 +166,7 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
         receipt.id,
         receipt.purchaseOrderId,
         receipt.fileName,
-        receipt.filePath,
+        filePath,
         receipt.mimeType,
         receipt.createdAt.toIso8601String(),
         receipt.memo,

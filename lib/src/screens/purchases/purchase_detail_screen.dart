@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
@@ -18,6 +17,7 @@ import '../../models/purchase_receipt.dart';
 import '../../models/suppliers.dart';
 import '../../models/types.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../services/app_path_service.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/delete_more_menu.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
@@ -47,6 +47,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   bool _loading = true;
   bool _addingReceipt = false;
   final _uuid = const Uuid();
+  final _paths = const AppPathService();
 
   @override
   void initState() {
@@ -91,8 +92,19 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     for (final receipt in receipts) {
       final resolved = await _resolveReceiptFile(receipt);
-      if (resolved != null && resolved.path != receipt.filePath) {
-        final updated = receipt.copyWith(filePath: resolved.path);
+      if (resolved != null) {
+        final normalized = await _paths.normalizeToRelativePath(resolved.path);
+        if (normalized != receipt.filePath) {
+          final updated = receipt.copyWith(filePath: normalized);
+          await widget.repo.addPurchaseReceipt(updated);
+          repaired.add(updated);
+          continue;
+        }
+      }
+
+      final normalized = await _paths.normalizeToRelativePath(receipt.filePath);
+      if (normalized != receipt.filePath) {
+        final updated = receipt.copyWith(filePath: normalized);
         await widget.repo.addPurchaseReceipt(updated);
         repaired.add(updated);
       } else {
@@ -104,49 +116,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   Future<File?> _resolveReceiptFile(PurchaseReceipt receipt) async {
-    final stored = File(receipt.filePath);
-    if (await stored.exists()) return stored;
-
-    final supportDir = await getApplicationSupportDirectory();
-    final receiptRoot = p.join(supportDir.path, 'purchase_receipts');
-    final fileName = p.basename(receipt.filePath);
-    final candidates = <String>{
-      p.join(receiptRoot, receipt.purchaseOrderId, fileName),
-    };
-
-    final parts = p.split(receipt.filePath);
-    final receiptFolderIndex = parts.lastIndexOf('purchase_receipts');
-    if (receiptFolderIndex >= 0 && receiptFolderIndex < parts.length - 1) {
-      candidates.add(
-        p.joinAll([
-          receiptRoot,
-          ...parts.skip(receiptFolderIndex + 1),
-        ]),
-      );
-    }
-
-    for (final candidate in candidates) {
-      final file = File(candidate);
-      if (await file.exists()) return file;
-    }
-
-    final orderDir = Directory(p.join(receiptRoot, receipt.purchaseOrderId));
-    final foundInOrder = await _findFileByName(orderDir, fileName);
-    if (foundInOrder != null) return foundInOrder;
-
-    return _findFileByName(Directory(receiptRoot), fileName);
-  }
-
-  Future<File?> _findFileByName(Directory dir, String fileName) async {
-    if (!await dir.exists()) return null;
-
-    await for (final entity in dir.list(recursive: true, followLinks: false)) {
-      if (entity is File && p.basename(entity.path) == fileName) {
-        return entity;
-      }
-    }
-
-    return null;
+    return _paths.resolveExistingPurchaseReceiptFile(
+      purchaseOrderId: receipt.purchaseOrderId,
+      storedPath: receipt.filePath,
+    );
   }
 
   String _statusLabel(PurchaseOrderStatus s) {
@@ -307,8 +280,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     final po = _po;
     if (po == null) return;
 
-    final dir = await getApplicationSupportDirectory();
-    final receiptDir = Directory(p.join(dir.path, 'purchase_receipts', po.id));
+    final receiptDir = await _paths.purchaseReceiptOrderDirectory(po.id);
     if (!await receiptDir.exists()) {
       await receiptDir.create(recursive: true);
     }
@@ -333,12 +305,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       return;
     }
 
+    final storedPath = await _paths.normalizeToRelativePath(stored.filePath);
+
     await widget.repo.addPurchaseReceipt(
       PurchaseReceipt(
         id: _uuid.v4(),
         purchaseOrderId: po.id,
         fileName: stored.fileName,
-        filePath: stored.filePath,
+        filePath: storedPath,
         mimeType: stored.mimeType,
         createdAt: DateTime.now(),
         memo: memo.trim().isEmpty ? null : memo.trim(),
@@ -434,9 +408,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       return;
     }
 
-    if (file.path != receipt.filePath) {
+    final normalized = await _paths.normalizeToRelativePath(file.path);
+    if (normalized != receipt.filePath) {
       await widget.repo
-          .addPurchaseReceipt(receipt.copyWith(filePath: file.path));
+          .addPurchaseReceipt(receipt.copyWith(filePath: normalized));
       await _reload();
     }
 
@@ -462,10 +437,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
 
     await Share.shareXFiles(
-      [
-        XFile(receipt.filePath,
-            mimeType: receipt.mimeType, name: receipt.fileName)
-      ],
+      [XFile(file.path, mimeType: receipt.mimeType, name: receipt.fileName)],
       text: receipt.fileName,
     );
   }
@@ -547,23 +519,31 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               Column(
                 children: _receipts.map((receipt) {
                   final collapsed = _collapsedReceiptIds.contains(receipt.id);
-                  return _ReceiptTile(
-                    receipt: receipt,
-                    collapsed: collapsed,
-                    onOpen: () => _openReceipt(receipt),
-                    onEditMemo: () => _editReceiptMemo(receipt),
-                    onDelete: () => _deleteReceipt(receipt),
-                    onToggleCollapsed: receipt.isImage
-                        ? () {
-                            setState(() {
-                              if (collapsed) {
-                                _collapsedReceiptIds.remove(receipt.id);
-                              } else {
-                                _collapsedReceiptIds.add(receipt.id);
+                  return FutureBuilder<File?>(
+                    future: receipt.canPreviewInApp
+                        ? _resolveReceiptFile(receipt)
+                        : Future<File?>.value(),
+                    builder: (context, snapshot) {
+                      return _ReceiptTile(
+                        receipt: receipt,
+                        previewFile: snapshot.data,
+                        collapsed: collapsed,
+                        onOpen: () => _openReceipt(receipt),
+                        onEditMemo: () => _editReceiptMemo(receipt),
+                        onDelete: () => _deleteReceipt(receipt),
+                        onToggleCollapsed: receipt.canPreviewInApp
+                            ? () {
+                                setState(() {
+                                  if (collapsed) {
+                                    _collapsedReceiptIds.remove(receipt.id);
+                                  } else {
+                                    _collapsedReceiptIds.add(receipt.id);
+                                  }
+                                });
                               }
-                            });
-                          }
-                        : null,
+                            : null,
+                      );
+                    },
                   );
                 }).toList(),
               ),
@@ -1436,6 +1416,7 @@ class _StoredReceiptFile {
 
 class _ReceiptTile extends StatelessWidget {
   final PurchaseReceipt receipt;
+  final File? previewFile;
   final bool collapsed;
   final VoidCallback onOpen;
   final VoidCallback onEditMemo;
@@ -1444,6 +1425,7 @@ class _ReceiptTile extends StatelessWidget {
 
   const _ReceiptTile({
     required this.receipt,
+    required this.previewFile,
     required this.collapsed,
     required this.onOpen,
     required this.onEditMemo,
@@ -1456,6 +1438,7 @@ class _ReceiptTile extends StatelessWidget {
     if (receipt.canPreviewInApp && !collapsed) {
       return _ExpandedImageReceiptTile(
         receipt: receipt,
+        previewFile: previewFile,
         onOpen: onOpen,
         onEditMemo: onEditMemo,
         onDelete: onDelete,
@@ -1473,9 +1456,9 @@ class _ReceiptTile extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: receipt.canPreviewInApp
+          child: receipt.canPreviewInApp && previewFile != null
               ? Image.file(
-                  File(receipt.filePath),
+                  previewFile!,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => _fileIcon(),
                 )
@@ -1523,6 +1506,7 @@ class _ReceiptTile extends StatelessWidget {
 
 class _ExpandedImageReceiptTile extends StatelessWidget {
   final PurchaseReceipt receipt;
+  final File? previewFile;
   final VoidCallback onOpen;
   final VoidCallback onEditMemo;
   final VoidCallback onDelete;
@@ -1530,6 +1514,7 @@ class _ExpandedImageReceiptTile extends StatelessWidget {
 
   const _ExpandedImageReceiptTile({
     required this.receipt,
+    required this.previewFile,
     required this.onOpen,
     required this.onEditMemo,
     required this.onDelete,
@@ -1597,15 +1582,20 @@ class _ExpandedImageReceiptTile extends StatelessWidget {
                 child: Container(
                   width: double.infinity,
                   color: Colors.grey.shade100,
-                  child: Image.file(
-                    File(receipt.filePath),
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(child: Text('이미지를 열 수 없습니다.')),
-                    ),
-                  ),
+                  child: previewFile == null
+                      ? const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: Text('첨부파일을 찾을 수 없습니다.')),
+                        )
+                      : Image.file(
+                          previewFile!,
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(child: Text('이미지를 열 수 없습니다.')),
+                          ),
+                        ),
                 ),
               ),
             ),
