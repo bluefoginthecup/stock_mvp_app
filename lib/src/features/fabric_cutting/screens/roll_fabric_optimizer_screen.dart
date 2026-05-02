@@ -641,8 +641,19 @@ class _RollResultCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _Legend(result: result),
-            const SizedBox(height: 10),
-            _RollPreview(result: result),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _showFullscreenLayout(context),
+                icon: const Icon(Icons.open_in_full, size: 18),
+                label: const Text('전체화면 보기'),
+              ),
+            ),
+            const SizedBox(height: 6),
+            _RollPreview(
+              result: result,
+              onOpen: () => _showFullscreenLayout(context),
+            ),
             const SizedBox(height: 12),
             _ResultTable(result: result),
           ],
@@ -650,12 +661,65 @@ class _RollResultCard extends StatelessWidget {
       ),
     );
   }
+
+  void _showFullscreenLayout(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        return Dialog.fullscreen(
+          backgroundColor: const Color(0xFF111111),
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _RollFullscreenViewer(result: result),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 16,
+                  right: 64,
+                  child: Text(
+                    '${result.roll.name} 배치도',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton.filled(
+                    tooltip: '닫기',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white24,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _RollPreview extends StatelessWidget {
   final RollFabricOptimizationResult result;
+  final VoidCallback onOpen;
 
-  const _RollPreview({required this.result});
+  const _RollPreview({
+    required this.result,
+    required this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -670,15 +734,56 @@ class _RollPreview extends StatelessWidget {
         final height = result.roll.widthCm * scale;
 
         return Center(
-          child: SizedBox(
-            width: width,
-            height: height + 24,
-            child: CustomPaint(
-              painter: _RollPreviewPainter(result: result, scale: scale),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onOpen,
+            child: SizedBox(
+              width: width,
+              height: height + 24,
+              child: CustomPaint(
+                painter: _RollPreviewPainter(result: result, scale: scale),
+              ),
             ),
           ),
         );
       },
+    );
+  }
+}
+
+class _RollFullscreenViewer extends StatelessWidget {
+  final RollFabricOptimizationResult result;
+
+  const _RollFullscreenViewer({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    const detailScale = 4.0;
+    final drawLength = math.max(result.totalLengthCm, result.usedLengthCm);
+    final width = drawLength * detailScale;
+    final height = result.roll.widthCm * detailScale + 24;
+
+    return InteractiveViewer(
+      constrained: false,
+      boundaryMargin: const EdgeInsets.all(900),
+      minScale: 0.15,
+      maxScale: 6,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: CustomPaint(
+              painter: _RollPreviewPainter(result: result, scale: detailScale),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

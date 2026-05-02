@@ -77,8 +77,17 @@ class _PieceLayout extends StatelessWidget {
               ),
             ),
             Text(
-                '${_fmt(pieceResult.requiredLengthCm)}×${_fmt(result.fabricWidthCm)}cm'),
+              '${_fmt(pieceResult.requiredLengthCm)}×${_fmt(result.fabricWidthCm)}cm',
+            ),
           ],
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => _showFullscreenLayout(context),
+            icon: const Icon(Icons.open_in_full, size: 18),
+            label: const Text('전체화면 보기'),
+          ),
         ),
         const SizedBox(height: 8),
         LayoutBuilder(
@@ -92,15 +101,19 @@ class _PieceLayout extends StatelessWidget {
             final height = result.fabricWidthCm * scale;
 
             return Center(
-              child: SizedBox(
-                width: width,
-                height: height + 24,
-                child: CustomPaint(
-                  painter: _FabricLayoutPainter(
-                    result: result,
-                    pieceResult: pieceResult,
-                    scale: scale,
-                    textColor: _readableTextColor(piece.color),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => _showFullscreenLayout(context),
+                child: SizedBox(
+                  width: width,
+                  height: height + 24,
+                  child: CustomPaint(
+                    painter: _FabricLayoutPainter(
+                      result: result,
+                      pieceResult: pieceResult,
+                      scale: scale,
+                      textColor: _readableTextColor(piece.color),
+                    ),
                   ),
                 ),
               ),
@@ -116,6 +129,104 @@ class _PieceLayout extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  void _showFullscreenLayout(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        return Dialog.fullscreen(
+          backgroundColor: const Color(0xFF111111),
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: _FabricFullscreenViewer(
+                    result: result,
+                    pieceResult: pieceResult,
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  left: 16,
+                  right: 64,
+                  child: Text(
+                    '${pieceResult.piece.name} 배치도',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton.filled(
+                    tooltip: '닫기',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white24,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _FabricFullscreenViewer extends StatelessWidget {
+  final FabricCuttingResult result;
+  final FabricPieceCuttingResult pieceResult;
+
+  const _FabricFullscreenViewer({
+    required this.result,
+    required this.pieceResult,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const detailScale = 4.0;
+    final piece = pieceResult.piece;
+    final width = pieceResult.requiredLengthCm * detailScale;
+    final height = result.fabricWidthCm * detailScale + 24;
+
+    return InteractiveViewer(
+      constrained: false,
+      boundaryMargin: const EdgeInsets.all(900),
+      minScale: 0.15,
+      maxScale: 6,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: CustomPaint(
+              painter: _FabricLayoutPainter(
+                result: result,
+                pieceResult: pieceResult,
+                scale: detailScale,
+                textColor: _readableTextColor(piece.color),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
