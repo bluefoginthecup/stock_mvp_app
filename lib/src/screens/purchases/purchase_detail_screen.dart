@@ -43,6 +43,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   PurchaseOrder? _po;
   List<PurchaseLine> _lines = const [];
   List<PurchaseReceipt> _receipts = const [];
+  final Set<String> _collapsedReceiptIds = <String>{};
   bool _loading = true;
   bool _addingReceipt = false;
   final _uuid = const Uuid();
@@ -64,11 +65,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       final receipts = await widget.repo.getPurchaseReceipts(widget.orderId);
 
       if (!mounted) return;
+      final receiptIds = receipts.map((receipt) => receipt.id).toSet();
 
       setState(() {
         _po = po;
         _lines = lines;
         _receipts = receipts;
+        _collapsedReceiptIds.removeWhere((id) => !receiptIds.contains(id));
         _loading = false;
       });
     } catch (e) {
@@ -458,11 +461,24 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
             else
               Column(
                 children: _receipts.map((receipt) {
+                  final collapsed = _collapsedReceiptIds.contains(receipt.id);
                   return _ReceiptTile(
                     receipt: receipt,
+                    collapsed: collapsed,
                     onOpen: () => _openReceipt(receipt),
                     onEditMemo: () => _editReceiptMemo(receipt),
                     onDelete: () => _deleteReceipt(receipt),
+                    onToggleCollapsed: receipt.isImage
+                        ? () {
+                            setState(() {
+                              if (collapsed) {
+                                _collapsedReceiptIds.remove(receipt.id);
+                              } else {
+                                _collapsedReceiptIds.add(receipt.id);
+                              }
+                            });
+                          }
+                        : null,
                   );
                 }).toList(),
               ),
@@ -1335,19 +1351,33 @@ class _StoredReceiptFile {
 
 class _ReceiptTile extends StatelessWidget {
   final PurchaseReceipt receipt;
+  final bool collapsed;
   final VoidCallback onOpen;
   final VoidCallback onEditMemo;
   final VoidCallback onDelete;
+  final VoidCallback? onToggleCollapsed;
 
   const _ReceiptTile({
     required this.receipt,
+    required this.collapsed,
     required this.onOpen,
     required this.onEditMemo,
     required this.onDelete,
+    this.onToggleCollapsed,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (receipt.isImage && !collapsed) {
+      return _ExpandedImageReceiptTile(
+        receipt: receipt,
+        onOpen: onOpen,
+        onEditMemo: onEditMemo,
+        onDelete: onDelete,
+        onCollapse: onToggleCollapsed,
+      );
+    }
+
     final created = receipt.createdAt;
     final memo = receipt.memo?.trim();
 
@@ -1381,46 +1411,17 @@ class _ReceiptTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       onTap: onOpen,
-      trailing: PopupMenuButton<_ReceiptAction>(
-        tooltip: '첨부 메뉴',
-        onSelected: (action) {
-          switch (action) {
-            case _ReceiptAction.open:
-              onOpen();
-              break;
-            case _ReceiptAction.memo:
-              onEditMemo();
-              break;
-            case _ReceiptAction.delete:
-              onDelete();
-              break;
-          }
-        },
-        itemBuilder: (_) => const [
-          PopupMenuItem(
-            value: _ReceiptAction.open,
-            child: ListTile(
-              leading: Icon(Icons.open_in_new),
-              title: Text('보기'),
+      trailing: receipt.isImage
+          ? TextButton.icon(
+              onPressed: onToggleCollapsed,
+              icon: const Icon(Icons.unfold_more),
+              label: const Text('펼치기'),
+            )
+          : _ReceiptActionMenu(
+              onOpen: onOpen,
+              onEditMemo: onEditMemo,
+              onDelete: onDelete,
             ),
-          ),
-          PopupMenuItem(
-            value: _ReceiptAction.memo,
-            child: ListTile(
-              leading: Icon(Icons.edit_note),
-              title: Text('메모 수정'),
-            ),
-          ),
-          PopupMenuDivider(),
-          PopupMenuItem(
-            value: _ReceiptAction.delete,
-            child: ListTile(
-              leading: Icon(Icons.delete_outline),
-              title: Text('삭제'),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1431,6 +1432,157 @@ class _ReceiptTile extends StatelessWidget {
     return ColoredBox(
       color: Colors.grey.shade200,
       child: Icon(icon, color: Colors.grey.shade700),
+    );
+  }
+}
+
+class _ExpandedImageReceiptTile extends StatelessWidget {
+  final PurchaseReceipt receipt;
+  final VoidCallback onOpen;
+  final VoidCallback onEditMemo;
+  final VoidCallback onDelete;
+  final VoidCallback? onCollapse;
+
+  const _ExpandedImageReceiptTile({
+    required this.receipt,
+    required this.onOpen,
+    required this.onEditMemo,
+    required this.onDelete,
+    required this.onCollapse,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final created = receipt.createdAt;
+    final memo = receipt.memo?.trim();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      receipt.fileName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        '${created.year}.${created.month}.${created.day}',
+                        if (memo != null && memo.isNotEmpty) memo,
+                      ].join(' · '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onCollapse,
+                icon: const Icon(Icons.unfold_less),
+                label: const Text('접기'),
+              ),
+              _ReceiptActionMenu(
+                onOpen: onOpen,
+                onEditMemo: onEditMemo,
+                onDelete: onDelete,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: onOpen,
+            borderRadius: BorderRadius.circular(8),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 420),
+                child: Container(
+                  width: double.infinity,
+                  color: Colors.grey.shade100,
+                  child: Image.file(
+                    File(receipt.filePath),
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: Text('이미지를 열 수 없습니다.')),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReceiptActionMenu extends StatelessWidget {
+  final VoidCallback onOpen;
+  final VoidCallback onEditMemo;
+  final VoidCallback onDelete;
+
+  const _ReceiptActionMenu({
+    required this.onOpen,
+    required this.onEditMemo,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<_ReceiptAction>(
+      tooltip: '첨부 메뉴',
+      onSelected: (action) {
+        switch (action) {
+          case _ReceiptAction.open:
+            onOpen();
+            break;
+          case _ReceiptAction.memo:
+            onEditMemo();
+            break;
+          case _ReceiptAction.delete:
+            onDelete();
+            break;
+        }
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: _ReceiptAction.open,
+          child: ListTile(
+            leading: Icon(Icons.open_in_new),
+            title: Text('보기'),
+          ),
+        ),
+        PopupMenuItem(
+          value: _ReceiptAction.memo,
+          child: ListTile(
+            leading: Icon(Icons.edit_note),
+            title: Text('메모 수정'),
+          ),
+        ),
+        PopupMenuDivider(),
+        PopupMenuItem(
+          value: _ReceiptAction.delete,
+          child: ListTile(
+            leading: Icon(Icons.delete_outline),
+            title: Text('삭제'),
+          ),
+        ),
+      ],
     );
   }
 }

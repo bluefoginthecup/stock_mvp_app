@@ -5,21 +5,21 @@ import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'dart:io';
 import '/src/services/export_service.dart';
+import '/src/services/storage_usage_service.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-
   @override
   Widget build(BuildContext context) {
-    final exportService = context.read<ExportService>();  // ← 여기 추가
+    final exportService = context.read<ExportService>(); // ← 여기 추가
 
     // 공통 실행 함수: 진행중 스피너 + 에러/성공 스낵바
     Future<void> runWithSpinner(
-        Future<void> Function() job, {
-          String okMsg = '완료했습니다.',
-        }) async {
+      Future<void> Function() job, {
+      String okMsg = '완료했습니다.',
+    }) async {
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -33,7 +33,8 @@ class SettingsScreen extends StatelessWidget {
       } finally {
         if (context.mounted) {
           Navigator.of(context, rootNavigator: true).pop(); // progress 닫기
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(msg)));
         }
       }
     }
@@ -41,7 +42,7 @@ class SettingsScreen extends StatelessWidget {
     // 개별 파트 임포트 실행기
     Future<void> runPart(SeedPart part, String okMsg) async {
       await runWithSpinner(
-            () => UnifiedSeedImporter.runPart(
+        () => UnifiedSeedImporter.runPart(
           context,
           part: part,
           // 필요 시 에셋 경로 커스터마이즈 가능:
@@ -65,8 +66,11 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.language),
             title: const Text('언어 설정'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context, rootNavigator: true).pushNamed('/settings/language'),
+            onTap: () => Navigator.of(context, rootNavigator: true)
+                .pushNamed('/settings/language'),
           ),
+
+          const _StorageUsageSection(),
 
           const _SectionHeader('데이터'),
 
@@ -80,17 +84,23 @@ class SettingsScreen extends StatelessWidget {
                 context: context,
                 builder: (_) => AlertDialog(
                   title: const Text('시드 임포트(전체)'),
-                  content: const Text('현재 DB에 전체 시드 데이터를 가져올까요?\n기존 데이터와 병합/덮어쓰기는 SeedImporter 로직을 따릅니다.'),
+                  content: const Text(
+                      '현재 DB에 전체 시드 데이터를 가져올까요?\n기존 데이터와 병합/덮어쓰기는 SeedImporter 로직을 따릅니다.'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('가져오기')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('취소')),
+                    FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('가져오기')),
                   ],
                 ),
               );
               if (ok != true) return;
 
               await runWithSpinner(
-                    () => UnifiedSeedImporter.run(context, clearBefore: false, verbose: true),
+                () => UnifiedSeedImporter.run(context,
+                    clearBefore: false, verbose: true),
                 okMsg: '전체 임포트 완료',
               );
             },
@@ -99,7 +109,8 @@ class SettingsScreen extends StatelessWidget {
           // ───────────────── 개별 임포트 (신규)
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text('개별 임포트', style: TextStyle(fontWeight: FontWeight.w600)),
+            child:
+                Text('개별 임포트', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
 
           ListTile(
@@ -113,8 +124,12 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('폴더만 임포트'),
                   content: const Text('folders.json만 임포트합니다. 계속할까요?'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('가져오기')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('취소')),
+                    FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('가져오기')),
                   ],
                 ),
               );
@@ -134,8 +149,12 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('아이템만 임포트'),
                   content: const Text('items.json만 임포트합니다. 계속할까요?'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('가져오기')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('취소')),
+                    FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('가져오기')),
                   ],
                 ),
               );
@@ -155,8 +174,12 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('BOM만 임포트'),
                   content: const Text('bom.json만 임포트합니다. 계속할까요?'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('가져오기')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('취소')),
+                    FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('가져오기')),
                   ],
                 ),
               );
@@ -176,8 +199,12 @@ class SettingsScreen extends StatelessWidget {
                   title: const Text('로트만 임포트'),
                   content: const Text('lots.json만 임포트합니다. 계속할까요?'),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-                    FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('가져오기')),
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('취소')),
+                    FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('가져오기')),
                   ],
                 ),
               );
@@ -185,7 +212,7 @@ class SettingsScreen extends StatelessWidget {
               await runPart(SeedPart.lots, '로트 임포트 완료');
             },
           ),
-            if (kDebugMode && Platform.isMacOS)
+          if (kDebugMode && Platform.isMacOS)
             ListTile(
               leading: const Icon(Icons.delete_forever, color: Colors.red),
               title: const Text('개발용 DB 초기화'),
@@ -224,7 +251,7 @@ class SettingsScreen extends StatelessWidget {
             subtitle: const Text('데이터베이스 파일을 공유합니다'),
             onTap: () async {
               await runWithSpinner(
-                    () => exportService.exportDatabase(),
+                () => exportService.exportDatabase(),
                 okMsg: 'DB 백업 완료',
               );
             },
@@ -234,7 +261,6 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('DB 복원'),
             subtitle: const Text('백업된 DB 파일을 불러옵니다'),
             onTap: () async {
-
               debugPrint("🟢 DB 복원 버튼 눌림");
 
               // 🔥 복원 확인창
@@ -262,11 +288,9 @@ class SettingsScreen extends StatelessWidget {
 
               if (!context.mounted) return;
 
-
               if (ok) {
                 exit(0);
               }
-
             },
           ),
         ],
@@ -275,6 +299,141 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
+class _StorageUsageSection extends StatefulWidget {
+  const _StorageUsageSection();
+
+  @override
+  State<_StorageUsageSection> createState() => _StorageUsageSectionState();
+}
+
+class _StorageUsageSectionState extends State<_StorageUsageSection> {
+  final StorageUsageService _service = const StorageUsageService();
+  StorageUsageSummary? _summary;
+  Object? _error;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final summary = await _service.calculate();
+      if (!mounted) return;
+      setState(() {
+        _summary = summary;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final receiptUsage = _receiptUsage;
+    final bytes = receiptUsage?.bytes ?? 0;
+    final fileCount = receiptUsage?.fileCount ?? 0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      '저장공간 정보',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (_loading)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _StorageUsageRow(
+                label: '영수증/거래명세서',
+                value: StorageUsageService.formatBytes(bytes),
+              ),
+              const SizedBox(height: 8),
+              _StorageUsageRow(
+                label: '파일 개수',
+                value: '$fileCount개',
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '저장공간 정보를 불러오지 못했습니다.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _refresh,
+                icon: const Icon(Icons.refresh),
+                label: const Text('새로고침'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  StorageFolderUsage? get _receiptUsage {
+    final folders = _summary?.folders;
+    if (folders == null) return null;
+    for (final item in folders) {
+      if (item.id == StorageUsageService.purchaseReceipts.id) {
+        return item;
+      }
+    }
+    return null;
+  }
+}
+
+class _StorageUsageRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _StorageUsageRow({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(label)),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
 
 class _SectionHeader extends StatelessWidget {
   final String text;
