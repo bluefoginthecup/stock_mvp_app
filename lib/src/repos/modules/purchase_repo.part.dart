@@ -87,6 +87,8 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
         // DB 삭제가 우선이며, 파일 정리는 실패해도 발주 삭제 흐름을 막지 않는다.
       }
     }
+
+    db.notifyUpdates({const TableUpdate('purchase_receipts')});
   }
 
   @override
@@ -164,6 +166,7 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
         receipt.memo,
       ],
     );
+    db.notifyUpdates({const TableUpdate('purchase_receipts')});
   }
 
   @override
@@ -182,8 +185,16 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
   }
 
   @override
-  Stream<List<PurchaseReceipt>> watchPurchaseReceipts(String purchaseOrderId) {
-    return Stream.fromFuture(getPurchaseReceipts(purchaseOrderId));
+  Stream<List<PurchaseReceipt>> watchPurchaseReceipts(
+      String purchaseOrderId) async* {
+    yield await getPurchaseReceipts(purchaseOrderId);
+
+    final updates = db
+        .tableUpdates(const TableUpdateQuery.onTableName('purchase_receipts'))
+        .map((_) => null);
+    await for (final _ in updates) {
+      yield await getPurchaseReceipts(purchaseOrderId);
+    }
   }
 
   @override
@@ -192,6 +203,7 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
       'DELETE FROM purchase_receipts WHERE id = ?',
       [id],
     );
+    db.notifyUpdates({const TableUpdate('purchase_receipts')});
   }
 
   PurchaseReceipt _purchaseReceiptFromRow(QueryRow row) {

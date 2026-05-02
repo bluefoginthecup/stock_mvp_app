@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -120,6 +121,110 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     return trimmed.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
   }
 
+  bool _isImageFile(String fileName, {String? mimeType}) {
+    if (mimeType != null && mimeType.startsWith('image/')) return true;
+    final ext = p.extension(fileName).toLowerCase();
+    return const {
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.webp',
+      '.heic',
+      '.bmp',
+    }.contains(ext);
+  }
+
+  Future<_StoredReceiptFile> _copyReceiptFileToInternal({
+    required String sourcePath,
+    required String fileName,
+    required Directory receiptDir,
+    String? mimeType,
+  }) async {
+    final safeName = _safeFileName(fileName);
+    if (_isImageFile(safeName, mimeType: mimeType)) {
+      return _copyOptimizedImageToInternal(
+        sourcePath: sourcePath,
+        safeName: safeName,
+        receiptDir: receiptDir,
+        fallbackMimeType: _mimeFor(safeName, explicit: mimeType),
+      );
+    }
+
+    return _copyOriginalFileToInternal(
+      sourcePath: sourcePath,
+      safeName: safeName,
+      receiptDir: receiptDir,
+      mimeType: _mimeFor(safeName, explicit: mimeType),
+    );
+  }
+
+  Future<_StoredReceiptFile> _copyOptimizedImageToInternal({
+    required String sourcePath,
+    required String safeName,
+    required Directory receiptDir,
+    required String fallbackMimeType,
+  }) async {
+    final baseName = p.basenameWithoutExtension(safeName);
+    final destName =
+        '${DateTime.now().microsecondsSinceEpoch}_${_uuid.v4()}_$baseName.jpg';
+    final destPath = p.join(receiptDir.path, destName);
+
+    try {
+      final sourceBytes = await File(sourcePath).readAsBytes();
+      final decoded = img.decodeImage(sourceBytes);
+      if (decoded == null) {
+        throw const FormatException('Unsupported image format');
+      }
+
+      final oriented = img.bakeOrientation(decoded);
+      final longSide =
+          oriented.width > oriented.height ? oriented.width : oriented.height;
+      final resized = longSide > 1600
+          ? img.copyResize(
+              oriented,
+              width: oriented.width >= oriented.height ? 1600 : null,
+              height: oriented.height > oriented.width ? 1600 : null,
+              interpolation: img.Interpolation.average,
+            )
+          : oriented;
+
+      final jpgBytes = img.encodeJpg(resized, quality: 75);
+      await File(destPath).writeAsBytes(jpgBytes, flush: true);
+
+      return _StoredReceiptFile(
+        fileName: '$baseName.jpg',
+        filePath: destPath,
+        mimeType: 'image/jpeg',
+      );
+    } catch (_) {
+      return _copyOriginalFileToInternal(
+        sourcePath: sourcePath,
+        safeName: safeName,
+        receiptDir: receiptDir,
+        mimeType: fallbackMimeType,
+      );
+    }
+  }
+
+  Future<_StoredReceiptFile> _copyOriginalFileToInternal({
+    required String sourcePath,
+    required String safeName,
+    required Directory receiptDir,
+    required String mimeType,
+  }) async {
+    final destName =
+        '${DateTime.now().microsecondsSinceEpoch}_${_uuid.v4()}_$safeName';
+    final destPath = p.join(receiptDir.path, destName);
+    await File(sourcePath).copy(destPath);
+
+    return _StoredReceiptFile(
+      fileName: safeName,
+      filePath: destPath,
+      mimeType: mimeType,
+    );
+  }
+
   Future<String?> _editMemo({String initial = ''}) {
     return _editText(title: '첨부 메모', initial: initial);
   }
@@ -132,27 +237,39 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     final po = _po;
     if (po == null) return;
 
-    final memo = await _editMemo();
-    if (memo == null) return;
-
     final dir = await getApplicationSupportDirectory();
     final receiptDir = Directory(p.join(dir.path, 'purchase_receipts', po.id));
     if (!await receiptDir.exists()) {
       await receiptDir.create(recursive: true);
     }
 
-    final safeName = _safeFileName(fileName);
-    final destName = '${DateTime.now().microsecondsSinceEpoch}_$safeName';
-    final destPath = p.join(receiptDir.path, destName);
-    await File(sourcePath).copy(destPath);
+    final stored = await _copyReceiptFileToInternal(
+      sourcePath: sourcePath,
+      fileName: fileName,
+      receiptDir: receiptDir,
+      mimeType: mimeType,
+    );
+
+    final memo = await _editMemo();
+    if (memo == null) {
+      try {
+        final copied = File(stored.filePath);
+        if (await copied.exists()) {
+          await copied.delete();
+        }
+      } catch (_) {
+        // 사용자가 첨부를 취소한 경우의 복사본 정리 실패는 화면 흐름을 막지 않는다.
+      }
+      return;
+    }
 
     await widget.repo.addPurchaseReceipt(
       PurchaseReceipt(
         id: _uuid.v4(),
         purchaseOrderId: po.id,
-        fileName: safeName,
-        filePath: destPath,
-        mimeType: _mimeFor(safeName, explicit: mimeType),
+        fileName: stored.fileName,
+        filePath: stored.filePath,
+        mimeType: stored.mimeType,
         createdAt: DateTime.now(),
         memo: memo.trim().isEmpty ? null : memo.trim(),
       ),
@@ -1203,6 +1320,18 @@ class _Step {
 }
 
 enum _ReceiptPickAction { camera, gallery, file }
+
+class _StoredReceiptFile {
+  final String fileName;
+  final String filePath;
+  final String mimeType;
+
+  const _StoredReceiptFile({
+    required this.fileName,
+    required this.filePath,
+    required this.mimeType,
+  });
+}
 
 class _ReceiptTile extends StatelessWidget {
   final PurchaseReceipt receipt;
