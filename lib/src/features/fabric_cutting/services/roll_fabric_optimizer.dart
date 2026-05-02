@@ -25,10 +25,11 @@ class RollFabricOptimizer {
     if (cuts.isEmpty) {
       return RollFabricOptimizationResult(
         roll: roll,
-        optimizedByLane: false,
+        mode: RollOptimizationMode.empty,
         possible: true,
         totalLengthCm: roll.totalLengthCm,
         usedLengthCm: 0,
+        groupedLengthCm: 0,
         remainLengthCm: roll.totalLengthCm,
         savedLengthCm: 0,
         laneWidthCm: 0,
@@ -47,7 +48,7 @@ class RollFabricOptimizer {
       if (laneResult != null) return laneResult;
     }
 
-    return _groupByCut(roll, cuts);
+    return _optimizeMixedWidth(roll, cuts);
   }
 
   RollFabricOptimizationResult? _optimizeSameWidth(
@@ -114,15 +115,143 @@ class RollFabricOptimizer {
         .toDouble();
     return RollFabricOptimizationResult(
       roll: roll.copyWith(cuts: cuts),
-      optimizedByLane: true,
+      mode: RollOptimizationMode.sameWidthLane,
       possible: remainCm >= -0.0001,
       totalLengthCm: totalCm,
       usedLengthCm: usedLength,
+      groupedLengthCm: oldGroupedNeed,
       remainLengthCm: remainCm,
       savedLengthCm: math.max(0, oldGroupedNeed - usedLength),
       laneWidthCm: cutWidth,
       laneCount: laneCount,
       widthRemainCm: widthRemain,
+      lanes: lanes,
+      cutSummaries: summaries,
+    );
+  }
+
+  RollFabricOptimizationResult _optimizeMixedWidth(
+    RollFabricPlan roll,
+    List<RollCutItem> cuts,
+  ) {
+    final grouped = _groupByCut(roll, cuts);
+    final pieces = <_MixedPiece>[];
+    for (var cutIndex = 0; cutIndex < cuts.length; cutIndex++) {
+      final cut = cuts[cutIndex];
+      for (var i = 0; i < cut.quantity; i++) {
+        pieces.add(_MixedPiece(cutIndex: cutIndex, cut: cut));
+      }
+    }
+
+    pieces.sort((a, b) {
+      final widthCompare = b.cut.widthCm.compareTo(a.cut.widthCm);
+      if (widthCompare != 0) return widthCompare;
+      return b.cut.lengthCm.compareTo(a.cut.lengthCm);
+    });
+
+    final rows = <_MixedRow>[];
+    for (final piece in pieces) {
+      _MixedRow? bestRow;
+      var bestRemain = double.infinity;
+      var bestLengthPenalty = double.infinity;
+
+      for (final row in rows) {
+        if (!row.canFit(piece, roll.widthCm)) continue;
+        final remain = roll.widthCm - row.widthCm - piece.cut.widthCm;
+        final lengthPenalty =
+            math.max(row.lengthCm, piece.cut.lengthCm) - row.lengthCm;
+        if (remain < bestRemain ||
+            (remain == bestRemain && lengthPenalty < bestLengthPenalty)) {
+          bestRow = row;
+          bestRemain = remain;
+          bestLengthPenalty = lengthPenalty;
+        }
+      }
+
+      if (bestRow == null) {
+        rows.add(_MixedRow(items: [piece]));
+      } else {
+        bestRow.items.add(piece);
+      }
+    }
+
+    rows.sort((a, b) => b.lengthCm.compareTo(a.lengthCm));
+
+    final lanes = <RollLaneResult>[];
+    final placedByCut = List<int>.filled(cuts.length, 0);
+    var x = 0.0;
+    for (final row in rows) {
+      var y = 0.0;
+      final placed = <RollPlacedCut>[];
+      final sortedItems = [...row.items]
+        ..sort((a, b) => b.cut.widthCm.compareTo(a.cut.widthCm));
+      for (final item in sortedItems) {
+        placedByCut[item.cutIndex]++;
+        placed.add(
+          RollPlacedCut(
+            cut: item.cut,
+            cutIndex: item.cutIndex,
+            xCm: x,
+            yCm: y,
+            widthCm: item.cut.widthCm,
+            lengthCm: item.cut.lengthCm,
+          ),
+        );
+        y += item.cut.widthCm;
+      }
+      lanes.add(RollLaneResult(lengthCm: row.lengthCm, items: placed));
+      x += row.lengthCm;
+    }
+
+    final summaries = <RollCutSummary>[];
+    for (var i = 0; i < cuts.length; i++) {
+      final cut = cuts[i];
+      final rowsWithCut =
+          rows.where((row) => row.items.any((item) => item.cutIndex == i));
+      final averageRemain = rowsWithCut.isEmpty
+          ? 0.0
+          : rowsWithCut.fold<double>(
+                0,
+                (sum, row) => sum + (roll.widthCm - row.widthCm),
+              ) /
+              rowsWithCut.length;
+      summaries.add(
+        RollCutSummary(
+          cut: cut,
+          piecesPerColumn: 0,
+          columnsNeeded: rowsWithCut.length,
+          placedQuantity: placedByCut[i],
+          requiredLengthCm: cut.lengthCm * cut.quantity,
+          remainingWidthCm: averageRemain,
+        ),
+      );
+    }
+
+    final totalCm = roll.totalLengthCm;
+    final remainCm = totalCm - x;
+    final saved = math.max(0.0, grouped.usedLengthCm - x);
+    if (saved <= 0.0001) {
+      return grouped;
+    }
+
+    return RollFabricOptimizationResult(
+      roll: roll.copyWith(cuts: cuts),
+      mode: RollOptimizationMode.mixedWidthHeuristic,
+      possible: remainCm >= -0.0001,
+      totalLengthCm: totalCm,
+      usedLengthCm: x,
+      groupedLengthCm: grouped.usedLengthCm,
+      remainLengthCm: remainCm,
+      savedLengthCm: saved,
+      laneWidthCm: 0,
+      laneCount: rows.length,
+      widthRemainCm: rows.isEmpty
+          ? roll.widthCm
+          : rows.fold<double>(
+                0,
+                (sum, row) => sum + (roll.widthCm - row.widthCm),
+              ) /
+              rows.length,
       lanes: lanes,
       cutSummaries: summaries,
     );
@@ -188,10 +317,11 @@ class RollFabricOptimizer {
 
     return RollFabricOptimizationResult(
       roll: roll.copyWith(cuts: cuts),
-      optimizedByLane: false,
+      mode: RollOptimizationMode.grouped,
       possible: remainCm >= -0.0001,
       totalLengthCm: totalCm,
       usedLengthCm: x,
+      groupedLengthCm: x,
       remainLengthCm: remainCm,
       savedLengthCm: 0,
       laneWidthCm: laneWidth,
@@ -324,4 +454,32 @@ class _LaneItem {
   final double lengthCm;
 
   const _LaneItem(this.cutIndex, this.lengthCm);
+}
+
+class _MixedPiece {
+  final int cutIndex;
+  final RollCutItem cut;
+
+  const _MixedPiece({
+    required this.cutIndex,
+    required this.cut,
+  });
+}
+
+class _MixedRow {
+  final List<_MixedPiece> items;
+
+  const _MixedRow({required this.items});
+
+  double get widthCm =>
+      items.fold<double>(0, (sum, item) => sum + item.cut.widthCm);
+
+  double get lengthCm => items.fold<double>(
+        0,
+        (maxLength, item) => math.max(maxLength, item.cut.lengthCm),
+      );
+
+  bool canFit(_MixedPiece piece, double rollWidthCm) {
+    return widthCm + piece.cut.widthCm <= rollWidthCm + 0.0001;
+  }
 }

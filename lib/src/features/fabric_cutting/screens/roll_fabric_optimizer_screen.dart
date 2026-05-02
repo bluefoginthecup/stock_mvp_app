@@ -582,9 +582,14 @@ class _RollResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final remainText = result.remainLengthCm >= 0 ? '남음' : '부족';
-    final note = result.optimizedByLane
-        ? '같은 폭 ${_fmt(result.laneWidthCm)}cm 재단물을 ${result.laneCount}개 레인에 섞어 최소 길이로 배치했습니다.'
-        : '재단 폭이 서로 달라 항목별 묶음 배치로 계산했습니다.';
+    final note = switch (result.mode) {
+      RollOptimizationMode.sameWidthLane =>
+        '같은 폭 ${_fmt(result.laneWidthCm)}cm 재단물을 ${result.laneCount}개 레인에 섞어 최소 길이로 배치했습니다.',
+      RollOptimizationMode.mixedWidthHeuristic =>
+        '폭이 다른 재단물을 같은 길이 구간 안에 혼합 배치했습니다. 각 구간은 원단폭 이하로 조합하고 남는 폭이 적은 위치를 우선 사용합니다.',
+      RollOptimizationMode.grouped => '혼합 배치가 단순 묶음보다 이득이 없어 항목별 묶음 배치를 표시합니다.',
+      RollOptimizationMode.empty => '재단 항목을 추가하면 결과가 표시됩니다.',
+    };
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -614,15 +619,20 @@ class _RollResultCard extends StatelessWidget {
                 _MiniStat(
                     label: '보유', value: '${_fmt(result.totalLengthCm)}cm'),
                 _MiniStat(
-                  label: result.optimizedByLane ? '최소 필요' : '필요',
+                  label: result.optimized ? '최적 필요' : '필요',
                   value: '${_fmt(result.usedLengthCm)}cm',
                 ),
+                if (result.groupedLengthCm > result.usedLengthCm + 0.0001)
+                  _MiniStat(
+                    label: '기존 묶음',
+                    value: '${_fmt(result.groupedLengthCm)}cm',
+                  ),
                 _MiniStat(
                   label: remainText,
                   value: '${_fmt(result.remainLengthCm.abs())}cm',
                   danger: !result.possible,
                 ),
-                if (result.optimizedByLane)
+                if (result.savedLengthCm > 0.0001)
                   _MiniStat(
                     label: '절약',
                     value: '${_fmt(result.savedLengthCm)}cm',
@@ -814,7 +824,7 @@ class _ResultTable extends StatelessWidget {
                 ),
               ),
               Text(
-                result.optimizedByLane
+                result.optimized
                     ? '${summary.placedQuantity}/${summary.cut.quantity}장'
                     : '${summary.piecesPerColumn}장 × ${summary.columnsNeeded}줄',
               ),

@@ -1,12 +1,20 @@
 import 'roll_cut_item.dart';
 import 'roll_fabric_plan.dart';
 
+enum RollOptimizationMode {
+  empty,
+  sameWidthLane,
+  mixedWidthHeuristic,
+  grouped,
+}
+
 class RollFabricOptimizationResult {
   final RollFabricPlan roll;
-  final bool optimizedByLane;
+  final RollOptimizationMode mode;
   final bool possible;
   final double totalLengthCm;
   final double usedLengthCm;
+  final double groupedLengthCm;
   final double remainLengthCm;
   final double savedLengthCm;
   final double laneWidthCm;
@@ -17,10 +25,11 @@ class RollFabricOptimizationResult {
 
   const RollFabricOptimizationResult({
     required this.roll,
-    required this.optimizedByLane,
+    required this.mode,
     required this.possible,
     required this.totalLengthCm,
     required this.usedLengthCm,
+    required this.groupedLengthCm,
     required this.remainLengthCm,
     required this.savedLengthCm,
     required this.laneWidthCm,
@@ -29,6 +38,13 @@ class RollFabricOptimizationResult {
     required this.lanes,
     required this.cutSummaries,
   });
+
+  bool get optimizedByLane => mode == RollOptimizationMode.sameWidthLane;
+
+  bool get optimizedByMixedWidth =>
+      mode == RollOptimizationMode.mixedWidthHeuristic;
+
+  bool get optimized => optimizedByLane || optimizedByMixedWidth;
 }
 
 class RollLaneResult {
