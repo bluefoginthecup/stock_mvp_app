@@ -15,7 +15,12 @@ import '../widgets/fabric_result_summary.dart';
 import 'fabric_cutting_project_list_screen.dart';
 
 class FabricCuttingScreen extends StatefulWidget {
-  const FabricCuttingScreen({super.key});
+  final bool showAppBar;
+
+  const FabricCuttingScreen({
+    super.key,
+    this.showAppBar = true,
+  });
 
   @override
   State<FabricCuttingScreen> createState() => _FabricCuttingScreenState();
@@ -228,26 +233,28 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
     final result = _calculator.calculate(_project);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('배색 원단 재단 계산기'),
-        actions: [
-          IconButton(
-            tooltip: '새 계산',
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: _reset,
-          ),
-          IconButton(
-            tooltip: '불러오기',
-            icon: const Icon(Icons.folder_open_outlined),
-            onPressed: _load,
-          ),
-          IconButton(
-            tooltip: '저장',
-            icon: const Icon(Icons.save_outlined),
-            onPressed: _save,
-          ),
-        ],
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: const Text('배색 원단 재단 계산기'),
+              actions: [
+                IconButton(
+                  tooltip: '새 계산',
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: _reset,
+                ),
+                IconButton(
+                  tooltip: '불러오기',
+                  icon: const Icon(Icons.folder_open_outlined),
+                  onPressed: _load,
+                ),
+                IconButton(
+                  tooltip: '저장',
+                  icon: const Icon(Icons.save_outlined),
+                  onPressed: _save,
+                ),
+              ],
+            )
+          : null,
       body: SafeArea(
         child: ListView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,

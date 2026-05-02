@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stockapp_mvp/src/screens/dashboard_screen.dart';
-import 'package:stockapp_mvp/src/features/fabric_cutting/screens/fabric_cutting_screen.dart';
+import 'package:stockapp_mvp/src/features/fabric_cutting/screens/fabric_cutting_home_screen.dart';
 import 'package:stockapp_mvp/src/screens/orders/order_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/stock/stock_browser_screen.dart';
 import 'package:stockapp_mvp/src/screens/txns/txn_list_screen.dart';
@@ -225,7 +225,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
             screen = const MemoScreen();
             break;
           case '/fabric-cutting':
-            screen = const FabricCuttingScreen();
+            screen = const FabricCuttingHomeScreen();
             break;
           case '/cart':
             screen = const CartScreen();

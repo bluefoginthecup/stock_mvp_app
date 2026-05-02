@@ -26,7 +26,7 @@ import 'screens/suppliers/supplier_form_screen.dart';
 import 'screens/suppliers/supplier_list_screen.dart';
 import 'screens/receipts/receipt_create_screen.dart';
 import 'screens/receipts/receipts_home_screen.dart';
-import 'features/fabric_cutting/screens/fabric_cutting_screen.dart';
+import 'features/fabric_cutting/screens/fabric_cutting_home_screen.dart';
 
 import 'repos/repo_interfaces.dart';
 
@@ -107,7 +107,7 @@ class StockApp extends StatelessWidget {
           '/suppliers': (_) => const SupplierListScreen(),
           '/receipts': (_) => const ReceiptsHomeScreen(),
           '/receipts/new': (_) => const ReceiptCreateScreen(),
-          '/fabric-cutting': (_) => const FabricCuttingScreen(),
+          '/fabric-cutting': (_) => const FabricCuttingHomeScreen(),
 
         },
 
