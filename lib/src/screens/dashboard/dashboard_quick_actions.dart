@@ -3,9 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../app/main_tab_controller.dart';
 import '../../l10n/l10n_x.dart';
-import '../memo/memo_screen.dart';
-import '../shortage/shortage_calc_screen.dart';
-import '../trash/trash_screen.dart';
 
 enum QuickActionType {
   orders,
@@ -137,9 +134,9 @@ DashboardQuickAction buildDashboardQuickAction(
         icon: Icons.settings,
         label: '설정',
         onTap: () {
-          final navigator = Navigator.of(context, rootNavigator: true);
+          final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
-          navigator.pushNamed('/settings');
+          tabs.openShellRoute('/settings');
         },
       );
     case QuickActionType.suppliers:
@@ -148,9 +145,9 @@ DashboardQuickAction buildDashboardQuickAction(
         icon: Icons.business,
         label: '거래처 목록',
         onTap: () {
-          final navigator = Navigator.of(context, rootNavigator: true);
+          final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
-          navigator.pushNamed('/suppliers');
+          tabs.openShellRoute('/suppliers');
         },
       );
     case QuickActionType.receipts:
@@ -159,9 +156,9 @@ DashboardQuickAction buildDashboardQuickAction(
         icon: Icons.receipt_long,
         label: '영수증 관리',
         onTap: () {
-          final navigator = Navigator.of(context, rootNavigator: true);
+          final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
-          navigator.pushNamed('/receipts');
+          tabs.openShellRoute('/receipts');
         },
       );
     case QuickActionType.trash:
@@ -170,11 +167,9 @@ DashboardQuickAction buildDashboardQuickAction(
         icon: Icons.delete_outline,
         label: '통합 휴지통',
         onTap: () async {
-          final navigator = Navigator.of(context);
+          final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
-          final changed = await navigator.push(
-            MaterialPageRoute(builder: (_) => const TrashScreen()),
-          );
+          final changed = await tabs.openShellRoute<bool>('/trash');
           if (changed == true) onChanged?.call();
         },
       );
@@ -184,11 +179,9 @@ DashboardQuickAction buildDashboardQuickAction(
         icon: Icons.rule_folder,
         label: '부족분계산',
         onTap: () {
-          final navigator = Navigator.of(context);
+          final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
-          navigator.push(
-            MaterialPageRoute(builder: (_) => const ShortageCalcScreen()),
-          );
+          tabs.openShellRoute('/shortage');
         },
       );
     case QuickActionType.memo:
@@ -197,11 +190,9 @@ DashboardQuickAction buildDashboardQuickAction(
         icon: Icons.note_alt_outlined,
         label: '메모',
         onTap: () {
-          final navigator = Navigator.of(context);
+          final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
-          navigator.push(
-            MaterialPageRoute(builder: (_) => const MemoScreen()),
-          );
+          tabs.openShellRoute('/memo');
         },
       );
   }

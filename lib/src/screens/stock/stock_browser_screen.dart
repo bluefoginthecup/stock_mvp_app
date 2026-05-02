@@ -21,12 +21,12 @@ import 'widgets/stock_item_select_tile.dart';
 import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
 import '../../ui/common/selection/multi_select_bar.dart';
+import '../../app/main_tab_controller.dart';
 
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
 import '../../services/stock_service.dart';
 import '../../services/folder_service.dart';
-import '../../utils/navigation_utils.dart';
 import '../../utils/item_registration.dart';
 
 part 'stock_browser_header.part.dart';
@@ -519,7 +519,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               message: '${sel.selected.length}개 이동 완료',
               actionText: '휴지통 열기',
               onAction: (_) =>
-                  openTrashFromNav(Navigator.of(context, rootNavigator: true)),
+                  context.read<MainTabController>().openShellRoute('/trash'),
             );
 
             sel.exit();

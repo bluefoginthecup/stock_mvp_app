@@ -10,6 +10,16 @@ import 'package:stockapp_mvp/src/screens/txns/txn_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/works/work_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_detail_screen.dart';
+import 'package:stockapp_mvp/src/screens/cart/cart_screen.dart';
+import 'package:stockapp_mvp/src/screens/memo/memo_screen.dart';
+import 'package:stockapp_mvp/src/screens/receipts/receipt_create_screen.dart';
+import 'package:stockapp_mvp/src/screens/receipts/receipts_home_screen.dart';
+import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
+import 'package:stockapp_mvp/src/screens/settings/settings_screen.dart';
+import 'package:stockapp_mvp/src/screens/shortage/shortage_calc_screen.dart';
+import 'package:stockapp_mvp/src/screens/suppliers/supplier_form_screen.dart';
+import 'package:stockapp_mvp/src/screens/suppliers/supplier_list_screen.dart';
+import 'package:stockapp_mvp/src/screens/trash/trash_screen.dart';
 
 import 'package:stockapp_mvp/src/repos/repo_interfaces.dart';
 import 'package:stockapp_mvp/src/screens/dashboard/dashboard_quick_panel.dart';
@@ -32,6 +42,34 @@ class _MainTabScreenState extends State<MainTabScreen> {
   final _txnKey = GlobalKey<NavigatorState>();
   final _workKey = GlobalKey<NavigatorState>();
   final _purchaseKey = GlobalKey<NavigatorState>();
+  late final Future<Object?> Function(
+    String routeName, {
+    Object? arguments,
+    int tabIndex,
+  }) _shellRouteOpener;
+  MainTabController? _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _shellRouteOpener = _openShellRoute;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final controller = context.read<MainTabController>();
+    if (_tabController == controller) return;
+    _tabController?.detachShellRouteOpener(_shellRouteOpener);
+    _tabController = controller;
+    controller.attachShellRouteOpener(_shellRouteOpener);
+  }
+
+  @override
+  void dispose() {
+    _tabController?.detachShellRouteOpener(_shellRouteOpener);
+    super.dispose();
+  }
 
   // 현재 탭의 navigator 키 얻기
   GlobalKey<NavigatorState> _keyOf(int index) {
@@ -62,6 +100,18 @@ class _MainTabScreenState extends State<MainTabScreen> {
     if (_scaffoldKey.currentState?.isDrawerOpen == true) {
       Navigator.of(context).pop();
     }
+  }
+
+  Future<Object?> _openShellRoute(
+    String routeName, {
+    Object? arguments,
+    int tabIndex = 0,
+  }) async {
+    context.read<MainTabController>().setIndex(tabIndex);
+    final nav = _keyOf(tabIndex).currentState;
+    if (nav == null) return null;
+    nav.popUntil((route) => route.isFirst);
+    return nav.pushNamed(routeName, arguments: arguments);
   }
 
   @override
@@ -139,10 +189,52 @@ class _MainTabScreenState extends State<MainTabScreen> {
   Widget _buildDashboardNav() {
     return Navigator(
       key: _dashKey,
-      onGenerateRoute: (settings) => MaterialPageRoute(
-        builder: (_) => const DashboardScreen(),
-        settings: settings,
-      ),
+      onGenerateRoute: (settings) {
+        Widget screen;
+        switch (settings.name) {
+          case '/settings':
+            screen = const SettingsScreen();
+            break;
+          case '/settings/language':
+            screen = const LanguageSettingsScreen();
+            break;
+          case '/suppliers':
+            screen = const SupplierListScreen();
+            break;
+          case '/suppliers/new':
+            screen = const SupplierFormScreen();
+            break;
+          case '/suppliers/edit':
+            screen =
+                SupplierFormScreen(supplierId: settings.arguments as String);
+            break;
+          case '/receipts':
+            screen = const ReceiptsHomeScreen();
+            break;
+          case '/receipts/new':
+            screen = const ReceiptCreateScreen();
+            break;
+          case '/trash':
+            screen = const TrashScreen();
+            break;
+          case '/shortage':
+            screen = const ShortageCalcScreen();
+            break;
+          case '/memo':
+            screen = const MemoScreen();
+            break;
+          case '/cart':
+            screen = const CartScreen();
+            break;
+          default:
+            screen = const DashboardScreen();
+        }
+
+        return MaterialPageRoute(
+          builder: (_) => screen,
+          settings: settings,
+        );
+      },
     );
   }
 
@@ -159,10 +251,18 @@ class _MainTabScreenState extends State<MainTabScreen> {
   Widget _buildStockNav() {
     return Navigator(
       key: _stockKey,
-      onGenerateRoute: (settings) => MaterialPageRoute(
-        builder: (_) => const StockBrowserScreen(),
-        settings: settings,
-      ),
+      onGenerateRoute: (settings) {
+        final screen = settings.name == '/stock/path'
+            ? StockBrowserScreen(
+                initialPath: (settings.arguments as List).cast<String>(),
+              )
+            : const StockBrowserScreen();
+
+        return MaterialPageRoute(
+          builder: (_) => screen,
+          settings: settings,
+        );
+      },
     );
   }
 

@@ -5,9 +5,7 @@ import '../../repos/repo_interfaces.dart'; // TrashRepo
 import '../../models/trash_entry.dart';
 import '../../ui/common/selection/multi_select_bar.dart';
 import '../../ui/common/selection/item_selection_controller.dart';
-import '../../utils/navigation_utils.dart';
 import '../../app/main_tab_controller.dart';
-
 
 class TrashScreen extends StatefulWidget {
   const TrashScreen({super.key});
@@ -27,11 +25,14 @@ class _TrashScreenState extends State<TrashScreen> {
     final q = _q.toLowerCase();
     return all
         .where((e) =>
-    e.title.toLowerCase().contains(q) ||
-        (e.extra?['itemSummary'] as String? ?? '').toLowerCase().contains(q) ||
-        e.id.toLowerCase().contains(q))
+            e.title.toLowerCase().contains(q) ||
+            (e.extra?['itemSummary'] as String? ?? '')
+                .toLowerCase()
+                .contains(q) ||
+            e.id.toLowerCase().contains(q))
         .toList();
   }
+
   Future<void> _restore(BuildContext ctx, TrashEntry e) async {
     final repo = ctx.read<TrashRepo>();
 
@@ -103,26 +104,23 @@ class _TrashScreenState extends State<TrashScreen> {
       e.extra?['l3Id'],
     ].whereType<String>().toList();
 
-    final rootNav = Navigator.of(ctx, rootNavigator: true);
-
     ScaffoldMessenger.of(ctx).showSnackBar(
       SnackBar(
         content: const Text('복구되었습니다'),
         action: path.isEmpty
             ? null
             : SnackBarAction(
-          label: '위치 보기',
-          onPressed: () {
-            // 1. 재고 탭으로 이동
-            ctx.read<MainTabController>().setIndex(2);
-
-            // 2. 휴지통 닫기
-            rootNav.pop();
-
-            // 3. 경로 이동 (이건 우리가 다음에 연결)
-            openStockAndJump(rootNav, path);
-          },
-        ),
+                label: '위치 보기',
+                onPressed: () {
+                  final tabs = ctx.read<MainTabController>();
+                  Navigator.of(ctx).pop();
+                  tabs.openShellRoute(
+                    '/stock/path',
+                    arguments: path,
+                    tabIndex: 2,
+                  );
+                },
+              ),
       ),
     );
 
@@ -140,8 +138,7 @@ class _TrashScreenState extends State<TrashScreen> {
               onPressed: () => Navigator.pop(d, false),
               child: const Text('취소')),
           TextButton(
-              onPressed: () => Navigator.pop(d, true),
-              child: const Text('삭제')),
+              onPressed: () => Navigator.pop(d, true), child: const Text('삭제')),
         ],
       ),
     );
@@ -219,33 +216,28 @@ class _TrashScreenState extends State<TrashScreen> {
                   child: FutureBuilder<List<TrashEntry>>(
                     future: _load(context),
                     builder: (ctx, snap) {
-                      if (snap.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
+                      if (snap.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
                       }
 
                       final items = snap.data ?? [];
 
                       if (items.isEmpty) {
-                        return const Center(
-                            child: Text('휴지통이 텅 비었습니다'));
+                        return const Center(child: Text('휴지통이 텅 비었습니다'));
                       }
 
-                      final keys = items
-                          .map((e) => '${e.entityType}_${e.id}')
-                          .toList();
+                      final keys =
+                          items.map((e) => '${e.entityType}_${e.id}').toList();
 
                       return Stack(
                         children: [
                           ListView.separated(
                             itemCount: items.length,
                             separatorBuilder: (_, __) =>
-                            const Divider(height: 1),
+                                const Divider(height: 1),
                             itemBuilder: (_, i) {
                               final e = items[i];
-                              final key =
-                                  '${e.entityType}_${e.id}';
+                              final key = '${e.entityType}_${e.id}';
 
                               final deletedAtStr = e.deletedAt
                                   .toIso8601String()
@@ -264,37 +256,29 @@ class _TrashScreenState extends State<TrashScreen> {
                                     print('현재 선택된 것: ${sel.selected}');
                                   }
                                 },
-
                                 leading: sel.selectionMode
                                     ? Checkbox(
-                                  value: sel.selected
-                                      .contains(key),
-                                  onChanged: (_) {
-                                    sel.toggle(key);
+                                        value: sel.selected.contains(key),
+                                        onChanged: (_) {
+                                          sel.toggle(key);
 
-                                    // 🔥 추가
-                                    print('현재 선택된 것: ${sel.selected}');
-                                  },
-                                )
-                                    : Icon(
-                                    _iconFor(e.entityType)),
+                                          // 🔥 추가
+                                          print('현재 선택된 것: ${sel.selected}');
+                                        },
+                                      )
+                                    : Icon(_iconFor(e.entityType)),
                                 title: Text(e.title),
                                 subtitle: Text(subtitle),
-                                trailing:
-                                PopupMenuButton<String>(
+                                trailing: PopupMenuButton<String>(
                                   onSelected: (v) {
-                                    if (v == 'restore')
-                                      _restore(context, e);
-                                    if (v == 'hard')
-                                      _hardDelete(context, e);
+                                    if (v == 'restore') _restore(context, e);
+                                    if (v == 'hard') _hardDelete(context, e);
                                   },
                                   itemBuilder: (_) => const [
                                     PopupMenuItem(
-                                        value: 'restore',
-                                        child: Text('복구')),
+                                        value: 'restore', child: Text('복구')),
                                     PopupMenuItem(
-                                        value: 'hard',
-                                        child: Text('완전 삭제')),
+                                        value: 'hard', child: Text('완전 삭제')),
                                   ],
                                 ),
                               );
@@ -304,10 +288,8 @@ class _TrashScreenState extends State<TrashScreen> {
                           /// 하단 멀티 선택 바
                           if (sel.selectionMode)
                             Align(
-                              alignment:
-                              Alignment.bottomCenter,
-                              child: _buildTrashMultiBar(
-                                  context, sel, items),
+                              alignment: Alignment.bottomCenter,
+                              child: _buildTrashMultiBar(context, sel, items),
                             ),
                         ],
                       );
@@ -389,23 +371,16 @@ class _TrashScreenState extends State<TrashScreen> {
 
   /// 멀티 선택 바
   Widget _buildTrashMultiBar(
-      BuildContext context,
-      ItemSelectionController sel,
-      List<TrashEntry> items,
-      ) {
-    final keys = items
-        .map((e) => '${e.entityType}_${e.id}')
-        .toList();
+    BuildContext context,
+    ItemSelectionController sel,
+    List<TrashEntry> items,
+  ) {
+    final keys = items.map((e) => '${e.entityType}_${e.id}').toList();
 
-    final map = {
-      for (var e in items)
-        '${e.entityType}_${e.id}': e
-    };
+    final map = {for (var e in items) '${e.entityType}_${e.id}': e};
     return CommonMultiSelectBar(
-
-
-     selectedCount: sel.selected.length,
-     totalCount: keys.length,
+      selectedCount: sel.selected.length,
+      totalCount: keys.length,
 
       /// ✅ 전체 선택 토글
       onSelectAll: () {
@@ -427,23 +402,21 @@ class _TrashScreenState extends State<TrashScreen> {
           onPressed: () async {
             final repo = context.read<TrashRepo>();
 
-     final futures = sel.selected.map((key) {
-       final e = map[key];
-       if (e == null) return Future.value();
-       return repo.restore(e.entityType, e.id);
-     });
+            final futures = sel.selected.map((key) {
+              final e = map[key];
+              if (e == null) return Future.value();
+              return repo.restore(e.entityType, e.id);
+            });
 
             await Future.wait(futures);
 
-            sel.exit();        // 선택모드 종료
-            setState(() {});   // 🔥 이거 추가 (핵심)
+            sel.exit(); // 선택모드 종료
+            setState(() {}); // 🔥 이거 추가 (핵심)
 
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('복구 완료')),
             );
-
-
           },
         ),
 
@@ -453,8 +426,6 @@ class _TrashScreenState extends State<TrashScreen> {
           tooltip: '완전 삭제',
           color: Colors.red,
           onPressed: () async {
-
-
             final ok = await showDialog<bool>(
               context: context,
               builder: (dialogCtx) => AlertDialog(
@@ -475,26 +446,23 @@ class _TrashScreenState extends State<TrashScreen> {
 
             final repo = context.read<TrashRepo>();
 
-     final futures = sel.selected.map((key) {
-       final e = map[key];
-       if (e == null) return Future.value();
+            final futures = sel.selected.map((key) {
+              final e = map[key];
+              if (e == null) return Future.value();
 
-
-       print('삭제 시도: ${e.entityType} / ${e.id}');
-       return repo.hardDelete(e.entityType, e.id);
-     });
+              print('삭제 시도: ${e.entityType} / ${e.id}');
+              return repo.hardDelete(e.entityType, e.id);
+            });
 
             await Future.wait(futures);
 
-
-            sel.exit();       // 모드 종료
-            setState(() {});  // 목록 새로고침
+            sel.exit(); // 모드 종료
+            setState(() {}); // 목록 새로고침
 
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('완전 삭제 완료')),
             );
-
           },
         ),
       ],

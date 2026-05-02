@@ -7,7 +7,8 @@ const double _kSelectBarHeight = 36.0;
 class _SelectBarHeader extends SliverPersistentHeaderDelegate {
   final Widget child;
   final double height;
-  const _SelectBarHeader({required this.child, this.height = _kSelectBarHeight});
+  const _SelectBarHeader(
+      {required this.child, this.height = _kSelectBarHeight});
 
   @override
   double get minExtent => height;
@@ -15,7 +16,8 @@ class _SelectBarHeader extends SliverPersistentHeaderDelegate {
   double get maxExtent => height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Material(
       elevation: 2,
       color: Theme.of(context).colorScheme.surface,
@@ -61,18 +63,15 @@ PreferredSizeWidget buildAppBar(
         onPressed: () async {
           debugPrint('[CartIcon] tapped');
           try {
-            final nav = Navigator.of(context, rootNavigator: true);
-            debugPrint('[CartIcon] nav.canPop=${nav.canPop()}');
-
-            final r = await nav.pushNamed('/cart');
+            final r =
+                await context.read<MainTabController>().openShellRoute('/cart');
             debugPrint('[CartIcon] /cart popped, result=$r');
           } catch (e, st) {
-            debugPrint('[CartIcon] pushNamed failed: $e');
+            debugPrint('[CartIcon] openShellRoute failed: $e');
             debugPrint('$st');
           }
         },
       ),
-
       Builder(builder: (_) {
         final repo = context.watch<FolderTreeRepo>();
         return PopupMenuButton<FolderSortMode>(

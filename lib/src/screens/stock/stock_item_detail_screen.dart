@@ -24,8 +24,8 @@ import '../../dev/bom_debug.dart'; // 콘솔 덤프 유틸
 import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
 import '../../services/stock_service.dart';
-import '../../utils/navigation_utils.dart';
 import '../../utils/item_registration.dart';
+import '../../app/main_tab_controller.dart';
 
 class StockItemDetailScreen extends StatefulWidget {
   final String itemId;
@@ -269,14 +269,13 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       await context.read<ItemRepo>().moveItemToTrash(it.id);
       if (!context.mounted) return;
 
-      final rootNav = Navigator.of(context, rootNavigator: true);
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('휴지통 이동됨'),
           action: SnackBarAction(
             label: '열기',
-            onPressed: () => openTrashFromNav(rootNav),
+            onPressed: () =>
+                context.read<MainTabController>().openShellRoute('/trash'),
           ),
         ),
       );
@@ -303,7 +302,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
         action: SnackBarAction(
           label: '보기',
           onPressed: () {
-            Navigator.of(context, rootNavigator: true).pushNamed('/cart');
+            context.read<MainTabController>().openShellRoute('/cart');
           },
         ),
       ),

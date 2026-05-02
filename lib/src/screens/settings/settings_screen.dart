@@ -66,8 +66,7 @@ class SettingsScreen extends StatelessWidget {
             leading: const Icon(Icons.language),
             title: const Text('언어 설정'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context, rootNavigator: true)
-                .pushNamed('/settings/language'),
+            onTap: () => Navigator.of(context).pushNamed('/settings/language'),
           ),
 
           const _StorageUsageSection(),

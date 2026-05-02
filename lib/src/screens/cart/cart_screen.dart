@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
 
+import '../../app/main_tab_controller.dart';
 import '../../providers/cart_manager.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../screens/orders/order_from_cart.dart';
@@ -63,11 +63,13 @@ class _CartScreenState extends State<CartScreen> {
             autofocus: true,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
+            TextButton(
+                onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
             TextButton(
               onPressed: () {
                 final parsed = double.tryParse(c.text.trim());
-                Navigator.pop(dctx, (parsed == null || parsed <= 0) ? null : parsed);
+                Navigator.pop(
+                    dctx, (parsed == null || parsed <= 0) ? null : parsed);
               },
               child: const Text('저장'),
             ),
@@ -77,7 +79,8 @@ class _CartScreenState extends State<CartScreen> {
       if (v != null) cart.updateQty(index, v);
     }
 
-    Future<void> _editSupplier(BuildContext ctx, int index, String current) async {
+    Future<void> _editSupplier(
+        BuildContext ctx, int index, String current) async {
       final c = TextEditingController(text: current);
       final v = await showDialog<String>(
         context: ctx,
@@ -89,7 +92,8 @@ class _CartScreenState extends State<CartScreen> {
             autofocus: true,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
+            TextButton(
+                onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
             TextButton(
               onPressed: () => Navigator.pop(dctx, c.text.trim()),
               child: const Text('저장'),
@@ -112,7 +116,8 @@ class _CartScreenState extends State<CartScreen> {
             autofocus: true,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
+            TextButton(
+                onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
             TextButton(
               onPressed: () => Navigator.pop(dctx, c.text.trim()),
               child: const Text('적용'),
@@ -143,7 +148,8 @@ class _CartScreenState extends State<CartScreen> {
             autofocus: true,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
+            TextButton(
+                onPressed: () => Navigator.pop(dctx), child: const Text('취소')),
             TextButton(
               onPressed: () => Navigator.pop(dctx, c.text.trim()),
               child: const Text('적용'),
@@ -181,8 +187,12 @@ class _CartScreenState extends State<CartScreen> {
           title: Text('선택 ${_selected.length}개 삭제할까요?'),
           content: const Text('선택된 품목들을 장바구니에서 삭제합니다.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('취소')),
-            TextButton(onPressed: () => Navigator.pop(dctx, true), child: const Text('삭제')),
+            TextButton(
+                onPressed: () => Navigator.pop(dctx, false),
+                child: const Text('취소')),
+            TextButton(
+                onPressed: () => Navigator.pop(dctx, true),
+                child: const Text('삭제')),
           ],
         ),
       );
@@ -235,10 +245,9 @@ class _CartScreenState extends State<CartScreen> {
               action: SnackBarAction(
                 label: '목록 보기',
                 onPressed: () {
-                  Navigator.push(
-                    ctx,
-                    MaterialPageRoute(builder: (_) => const PurchaseListScreen()),
-                  );
+                  final tabs = ctx.read<MainTabController>();
+                  Navigator.of(ctx).pop();
+                  tabs.setIndex(5);
                 },
               ),
             ),
@@ -251,21 +260,19 @@ class _CartScreenState extends State<CartScreen> {
       }
     }
 
-
     final hasItems = cart.count > 0;
     final hasSelection = _selected.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: hasSelection
-            ? Text('선택 ${_selected.length}개')
-            : const Text('장바구니'),
+        title:
+            hasSelection ? Text('선택 ${_selected.length}개') : const Text('장바구니'),
         leading: hasSelection
             ? IconButton(
-          tooltip: '선택 해제',
-          icon: const Icon(Icons.close),
-          onPressed: _clearSelection,
-        )
+                tooltip: '선택 해제',
+                icon: const Icon(Icons.close),
+                onPressed: _clearSelection,
+              )
             : null,
         actions: [
           if (hasItems)
@@ -294,136 +301,143 @@ class _CartScreenState extends State<CartScreen> {
                 }
               },
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'selSupplier', child: Text('선택 항목 공급처 지정')),
+                PopupMenuItem(
+                    value: 'selSupplier', child: Text('선택 항목 공급처 지정')),
                 PopupMenuItem(value: 'selDelete', child: Text('선택 항목 삭제')),
               ],
             ),
         ],
-
       ),
       body: !hasItems
           ? const Center(child: Text('장바구니가 비어 있습니다.'))
           : ListView.separated(
-        itemCount: cart.count,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (ctx, i) {
-          final it = cart.items[i];
-          final selected = _selected.contains(i);
+              itemCount: cart.count,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (ctx, i) {
+                final it = cart.items[i];
+                final selected = _selected.contains(i);
 
-          return Dismissible(
-            key: ValueKey('cart_i_${it.itemId}_$i'),
-            direction: DismissDirection.endToStart,
-            background: Container(
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              color: Colors.redAccent,
-              child: const Icon(Icons.delete, color: Colors.white),
-            ),
-            onDismissed: (_) {
-              final removed = it;
-              cart.removeAt(i);
-              // ✅ 인덱스 기반 선택은 삭제 시 깨질 수 있으니 안전하게 초기화
-              _clearSelection();
+                return Dismissible(
+                  key: ValueKey('cart_i_${it.itemId}_$i'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    color: Colors.redAccent,
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  onDismissed: (_) {
+                    final removed = it;
+                    cart.removeAt(i);
+                    // ✅ 인덱스 기반 선택은 삭제 시 깨질 수 있으니 안전하게 초기화
+                    _clearSelection();
 
-              ScaffoldMessenger.of(ctx).clearSnackBars();
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                SnackBar(
-                  content: Text('삭제됨: ${removed.name}'),
-                  action: SnackBarAction(
-                    label: '실행취소',
-                    onPressed: () {
-                      cart.insert(i, removed);
-                    },
+                    ScaffoldMessenger.of(ctx).clearSnackBars();
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text('삭제됨: ${removed.name}'),
+                        action: SnackBarAction(
+                          label: '실행취소',
+                          onPressed: () {
+                            cart.insert(i, removed);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  child: ListTile(
+                    onTap: () => _toggleOne(i), // ✅ 탭으로 선택 토글
+                    leading: Icon(
+                      selected ? Icons.check_circle : Icons.circle_outlined,
+                      color: selected
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    title: Text(it.name),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('수량: ${it.qty.toStringAsFixed(0)}  (${it.unit})'),
+                        Text(it.supplierName.isEmpty
+                            ? '(공급처 미지정)'
+                            : '공급처: ${it.supplierName}'),
+                      ],
+                    ),
+                    trailing: Wrap(
+                      spacing: 8,
+                      children: [
+                        IconButton(
+                          tooltip: '수량 변경',
+                          icon: const Icon(Icons.exposure),
+                          onPressed: () => _editQty(ctx, i, it.qty),
+                        ),
+                        IconButton(
+                          tooltip: '공급처 변경',
+                          icon: const Icon(Icons.store),
+                          onPressed: () =>
+                              _editSupplier(ctx, i, it.supplierName),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-            child: ListTile(
-              onTap: () => _toggleOne(i), // ✅ 탭으로 선택 토글
-              leading: Icon(
-                selected ? Icons.check_circle : Icons.circle_outlined,
-                color: selected ? Theme.of(context).colorScheme.primary : null,
-              ),
-              title: Text(it.name),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('수량: ${it.qty.toStringAsFixed(0)}  (${it.unit})'),
-                  Text(it.supplierName.isEmpty ? '(공급처 미지정)' : '공급처: ${it.supplierName}'),
-                ],
-              ),
-              trailing: Wrap(
-                spacing: 8,
-                children: [
-                  IconButton(
-                    tooltip: '수량 변경',
-                    icon: const Icon(Icons.exposure),
-                    onPressed: () => _editQty(ctx, i, it.qty),
-                  ),
-                  IconButton(
-                    tooltip: '공급처 변경',
-                    icon: const Icon(Icons.store),
-                    onPressed: () => _editSupplier(ctx, i, it.supplierName),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        },
-      ),
       bottomNavigationBar: !hasItems
           ? null
           : SafeArea(
-        top: false,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            boxShadow: const [BoxShadow(blurRadius: 4, color: Colors.black12)],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '품목 ${cart.count} • 공급처 ${cart.supplierCount} • 총수량 ${cart.totalQty.toStringAsFixed(0)}',
-                  style: Theme.of(context).textTheme.bodyMedium,
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  boxShadow: const [
+                    BoxShadow(blurRadius: 4, color: Colors.black12)
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '품목 ${cart.count} • 공급처 ${cart.supplierCount} • 총수량 ${cart.totalQty.toStringAsFixed(0)}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.shopping_bag),
+                      label: const Text('발주서 생성'),
+                      onPressed: () => _createPOs(context),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        if (_selected.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('주문으로 만들 항목을 먼저 선택해주세요')),
+                          );
+                          return;
+                        }
+
+                        final picked = cart.pickByIndexes(_selected);
+
+                        await createInternalOrderFromPicked(
+                          context,
+                          picked: picked,
+                          onAfterSaved: () {
+                            // ✅ 저장 성공 후: 선택 항목만 장바구니에서 제거
+                            cart.removeByIndexes(_selected);
+                            _clearSelection();
+                          },
+                        );
+                      },
+                      icon: const Icon(Icons.receipt_long),
+                      label: const Text('주문 생성'),
+                    ),
+                  ],
                 ),
               ),
-              FilledButton.icon(
-                icon: const Icon(Icons.shopping_bag),
-                label: const Text('발주서 생성'),
-                onPressed: () => _createPOs(context),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  if (_selected.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('주문으로 만들 항목을 먼저 선택해주세요')),
-                    );
-                    return;
-                  }
-
-                  final picked = cart.pickByIndexes(_selected);
-
-                  await createInternalOrderFromPicked(
-                    context,
-                    picked: picked,
-                    onAfterSaved: () {
-                      // ✅ 저장 성공 후: 선택 항목만 장바구니에서 제거
-                      cart.removeByIndexes(_selected);
-                      _clearSelection();
-                    },
-                  );
-                },
-                icon: const Icon(Icons.receipt_long),
-                label: const Text('주문 생성'),
-              ),
-
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }

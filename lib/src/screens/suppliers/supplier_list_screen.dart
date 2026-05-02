@@ -72,14 +72,13 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
   }
 
   Future<void> _openNew() async {
-    await Navigator.of(context, rootNavigator: true).pushNamed('/suppliers/new');
+    await Navigator.of(context).pushNamed('/suppliers/new');
     if (!mounted) return;
     _load();
   }
 
   Future<void> _openEdit(String id) async {
-    await Navigator.of(context, rootNavigator: true)
-        .pushNamed('/suppliers/edit', arguments: id);
+    await Navigator.of(context).pushNamed('/suppliers/edit', arguments: id);
     if (!mounted) return;
     _load();
   }
@@ -126,69 +125,69 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView.separated(
-                padding: const EdgeInsets.only(bottom: 88, top: 8),
-                itemCount: _suppliers.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
-                itemBuilder: (context, i) {
-                  final s = _suppliers[i];
-                  return ListTile(
-                    leading: Icon(
-                      s.isActive ? Icons.business : Icons.business,
-
-                    ),
-                    title: Text(s.name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: s.isActive ? null : Colors.grey,
-                        )),
-                    subtitle: _buildSubtitle(s),
-                    onTap: () => _openEdit(s.id),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (key) {
-                        switch (key) {
-                          case 'edit':
-                            _openEdit(s.id);
-                            break;
-                          case 'toggle':
-                            _toggleActive(s);
-                            break;
-                          case 'delete':
-                            _softDelete(s);
-                            break;
-                        }
+                    onRefresh: _load,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.only(bottom: 88, top: 8),
+                      itemCount: _suppliers.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final s = _suppliers[i];
+                        return ListTile(
+                          leading: Icon(
+                            s.isActive ? Icons.business : Icons.business,
+                          ),
+                          title: Text(s.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: s.isActive ? null : Colors.grey,
+                              )),
+                          subtitle: _buildSubtitle(s),
+                          onTap: () => _openEdit(s.id),
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (key) {
+                              switch (key) {
+                                case 'edit':
+                                  _openEdit(s.id);
+                                  break;
+                                case 'toggle':
+                                  _toggleActive(s);
+                                  break;
+                                case 'delete':
+                                  _softDelete(s);
+                                  break;
+                              }
+                            },
+                            itemBuilder: (_) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: ListTile(
+                                  leading: Icon(Icons.edit),
+                                  title: Text('수정'),
+                                ),
+                              ),
+                              PopupMenuItem(
+                                value: 'toggle',
+                                child: ListTile(
+                                  leading: Icon(s.isActive
+                                      ? Icons.visibility_off
+                                      : Icons.visibility),
+                                  title: Text(s.isActive ? '비활성화' : '활성화'),
+                                ),
+                              ),
+                              const PopupMenuDivider(),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: ListTile(
+                                  leading: Icon(Icons.delete_outline),
+                                  title: Text('비활성 처리'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
                       },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: ListTile(
-                            leading: Icon(Icons.edit),
-                            title: Text('수정'),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'toggle',
-                          child: ListTile(
-                            leading: Icon(
-                                s.isActive ? Icons.visibility_off : Icons.visibility),
-                            title: Text(s.isActive ? '비활성화' : '활성화'),
-                          ),
-                        ),
-                        const PopupMenuDivider(),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: ListTile(
-                            leading: Icon(Icons.delete_outline),
-                            title: Text('비활성 처리'),
-                          ),
-                        ),
-                      ],
                     ),
-                  );
-                },
-              ),
-            ),
+                  ),
           ),
         ],
       ),
