@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:stockapp_mvp/src/services/seed_importer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import '/src/services/export_service.dart';
+import '/src/services/full_backup_service.dart';
 import '/src/services/storage_usage_service.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
@@ -14,6 +16,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final exportService = context.read<ExportService>(); // ← 여기 추가
+    const fullBackupService = FullBackupService();
 
     // 공통 실행 함수: 진행중 스피너 + 에러/성공 스낵바
     Future<void> runWithSpinner(
@@ -244,6 +247,23 @@ class SettingsScreen extends StatelessWidget {
               },
             ),
 
+          ListTile(
+            leading: const Icon(Icons.archive_outlined),
+            title: const Text('전체 백업 내보내기'),
+            subtitle: const Text('DB와 영수증/거래명세서 첨부파일을 zip으로 공유합니다'),
+            onTap: () async {
+              await runWithSpinner(
+                () async {
+                  final result = await fullBackupService.createBackup();
+                  await Share.shareXFiles(
+                    [XFile(result.zipFile.path)],
+                    subject: 'StockApp Full Backup',
+                  );
+                },
+                okMsg: '전체 백업 생성 완료',
+              );
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.save),
             title: const Text('DB 백업'),
