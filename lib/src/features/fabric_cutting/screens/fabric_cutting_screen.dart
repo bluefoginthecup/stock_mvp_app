@@ -129,6 +129,9 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
   }
 
   void _showImageSheet() {
+    final imagePath = _project.imagePath;
+    final hasImage = imagePath != null && File(imagePath).existsSync();
+
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -136,6 +139,15 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
         return SafeArea(
           child: Wrap(
             children: [
+              if (hasImage)
+                ListTile(
+                  leading: const Icon(Icons.zoom_out_map),
+                  title: const Text('원본 이미지 보기'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showOriginalImage(imagePath);
+                  },
+                ),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
                 title: const Text('사진 보관함에서 선택'),
@@ -152,7 +164,7 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
                   _pickImage(ImageSource.camera);
                 },
               ),
-              if (_project.imagePath != null)
+              if (hasImage)
                 ListTile(
                   leading: const Icon(Icons.close),
                   title: const Text('이미지 제거'),
@@ -163,6 +175,47 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
                   },
                 ),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showOriginalImage(String imagePath) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black87,
+      builder: (context) {
+        return Dialog.fullscreen(
+          backgroundColor: Colors.black,
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Center(
+                  child: InteractiveViewer(
+                    minScale: 0.7,
+                    maxScale: 5,
+                    child: Image(
+                      image: FileImage(File(imagePath)),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton.filled(
+                    tooltip: '닫기',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white24,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -353,7 +406,13 @@ class _ProductCard extends StatelessWidget {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: hasImage
-                    ? Image.file(File(imagePath!), fit: BoxFit.cover)
+                    ? Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Image.file(
+                          File(imagePath!),
+                          fit: BoxFit.contain,
+                        ),
+                      )
                     : const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
