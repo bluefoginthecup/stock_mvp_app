@@ -16,6 +16,7 @@ enum QuickActionType {
   trash,
   shortage,
   memo,
+  fabricCutting,
 }
 
 const defaultQuickActionOrder = <QuickActionType>[
@@ -30,6 +31,7 @@ const defaultQuickActionOrder = <QuickActionType>[
   QuickActionType.trash,
   QuickActionType.shortage,
   QuickActionType.memo,
+  QuickActionType.fabricCutting,
 ];
 
 String quickActionIdOf(QuickActionType type) => type.name;
@@ -193,6 +195,17 @@ DashboardQuickAction buildDashboardQuickAction(
           final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
           tabs.openShellRoute('/memo');
+        },
+      );
+    case QuickActionType.fabricCutting:
+      return DashboardQuickAction(
+        key: const ValueKey('fabricCutting'),
+        icon: Icons.content_cut,
+        label: '배색 재단 계산기',
+        onTap: () {
+          final tabs = context.read<MainTabController>();
+          onBeforeNavigate?.call();
+          tabs.openShellRoute('/fabric-cutting');
         },
       );
   }
