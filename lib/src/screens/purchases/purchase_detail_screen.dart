@@ -62,7 +62,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     try {
       final po = await widget.repo.getPurchaseOrderById(widget.orderId);
       final lines = await widget.repo.getLines(widget.orderId);
-      final receipts = await widget.repo.getPurchaseReceipts(widget.orderId);
+      final receipts = await _repairReceiptFilePaths(
+        await widget.repo.getPurchaseReceipts(widget.orderId),
+      );
 
       if (!mounted) return;
       final receiptIds = receipts.map((receipt) => receipt.id).toSet();
@@ -80,6 +82,71 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<List<PurchaseReceipt>> _repairReceiptFilePaths(
+    List<PurchaseReceipt> receipts,
+  ) async {
+    final repaired = <PurchaseReceipt>[];
+
+    for (final receipt in receipts) {
+      final resolved = await _resolveReceiptFile(receipt);
+      if (resolved != null && resolved.path != receipt.filePath) {
+        final updated = receipt.copyWith(filePath: resolved.path);
+        await widget.repo.addPurchaseReceipt(updated);
+        repaired.add(updated);
+      } else {
+        repaired.add(receipt);
+      }
+    }
+
+    return repaired;
+  }
+
+  Future<File?> _resolveReceiptFile(PurchaseReceipt receipt) async {
+    final stored = File(receipt.filePath);
+    if (await stored.exists()) return stored;
+
+    final supportDir = await getApplicationSupportDirectory();
+    final receiptRoot = p.join(supportDir.path, 'purchase_receipts');
+    final fileName = p.basename(receipt.filePath);
+    final candidates = <String>{
+      p.join(receiptRoot, receipt.purchaseOrderId, fileName),
+    };
+
+    final parts = p.split(receipt.filePath);
+    final receiptFolderIndex = parts.lastIndexOf('purchase_receipts');
+    if (receiptFolderIndex >= 0 && receiptFolderIndex < parts.length - 1) {
+      candidates.add(
+        p.joinAll([
+          receiptRoot,
+          ...parts.skip(receiptFolderIndex + 1),
+        ]),
+      );
+    }
+
+    for (final candidate in candidates) {
+      final file = File(candidate);
+      if (await file.exists()) return file;
+    }
+
+    final orderDir = Directory(p.join(receiptRoot, receipt.purchaseOrderId));
+    final foundInOrder = await _findFileByName(orderDir, fileName);
+    if (foundInOrder != null) return foundInOrder;
+
+    return _findFileByName(Directory(receiptRoot), fileName);
+  }
+
+  Future<File?> _findFileByName(Directory dir, String fileName) async {
+    if (!await dir.exists()) return null;
+
+    await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      if (entity is File && p.basename(entity.path) == fileName) {
+        return entity;
+      }
+    }
+
+    return null;
   }
 
   String _statusLabel(PurchaseOrderStatus s) {
@@ -335,7 +402,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
           source: action == _ReceiptPickAction.camera
               ? ImageSource.camera
               : ImageSource.gallery,
-          imageQuality: 92,
+          maxWidth: 1600,
+          maxHeight: 1600,
+          imageQuality: 75,
         );
         if (image == null) return;
 
@@ -356,14 +425,30 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   Future<void> _openReceipt(PurchaseReceipt receipt) async {
-    if (receipt.isImage) {
+    final file = await _resolveReceiptFile(receipt);
+    if (file == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('첨부파일을 찾을 수 없습니다.')),
+      );
+      return;
+    }
+
+    if (file.path != receipt.filePath) {
+      await widget.repo
+          .addPurchaseReceipt(receipt.copyWith(filePath: file.path));
+      await _reload();
+    }
+
+    if (receipt.canPreviewInApp) {
+      if (!mounted) return;
       await showDialog<void>(
         context: context,
         builder: (_) => Dialog(
           insetPadding: const EdgeInsets.all(16),
           child: InteractiveViewer(
             child: Image.file(
-              File(receipt.filePath),
+              file,
               fit: BoxFit.contain,
               errorBuilder: (_, __, ___) => const Padding(
                 padding: EdgeInsets.all(24),
@@ -396,8 +481,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     await widget.repo.deletePurchaseReceipt(receipt.id);
     try {
-      final file = File(receipt.filePath);
-      if (await file.exists()) {
+      final file = await _resolveReceiptFile(receipt);
+      if (file != null && await file.exists()) {
         await file.delete();
       }
     } catch (_) {
@@ -1368,7 +1453,7 @@ class _ReceiptTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (receipt.isImage && !collapsed) {
+    if (receipt.canPreviewInApp && !collapsed) {
       return _ExpandedImageReceiptTile(
         receipt: receipt,
         onOpen: onOpen,
@@ -1388,7 +1473,7 @@ class _ReceiptTile extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: receipt.isImage
+          child: receipt.canPreviewInApp
               ? Image.file(
                   File(receipt.filePath),
                   fit: BoxFit.cover,
@@ -1411,7 +1496,7 @@ class _ReceiptTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
       ),
       onTap: onOpen,
-      trailing: receipt.isImage
+      trailing: receipt.canPreviewInApp
           ? TextButton.icon(
               onPressed: onToggleCollapsed,
               icon: const Icon(Icons.unfold_more),

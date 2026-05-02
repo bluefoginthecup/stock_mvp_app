@@ -19,6 +19,25 @@ class PurchaseReceipt {
 
   bool get isImage => mimeType.startsWith('image/');
 
+  bool get canPreviewInApp {
+    final lowerMime = mimeType.toLowerCase();
+    if (const {
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/bmp',
+    }.contains(lowerMime)) {
+      return true;
+    }
+
+    final lowerName = fileName.toLowerCase();
+    return const ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].any(
+      lowerName.endsWith,
+    );
+  }
+
   PurchaseReceipt copyWith({
     String? id,
     String? purchaseOrderId,
