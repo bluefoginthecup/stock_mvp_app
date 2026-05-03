@@ -33,6 +33,8 @@ class CloudBackupException implements Exception {
 }
 
 class CloudBackupMetadata {
+  final String docId;
+  final String uid;
   final String backupId;
   final DateTime createdAt;
   final int backupFormatVersion;
@@ -41,8 +43,12 @@ class CloudBackupMetadata {
   final String storagePath;
   final String status;
   final DateTime? uploadedAt;
+  final DateTime? updatedAt;
+  final DateTime? failedAt;
 
   const CloudBackupMetadata({
+    required this.docId,
+    required this.uid,
     required this.backupId,
     required this.createdAt,
     required this.backupFormatVersion,
@@ -51,6 +57,8 @@ class CloudBackupMetadata {
     required this.storagePath,
     required this.status,
     this.uploadedAt,
+    this.updatedAt,
+    this.failedAt,
   });
 
   factory CloudBackupMetadata.fromDoc(
@@ -58,6 +66,8 @@ class CloudBackupMetadata {
   ) {
     final data = doc.data() ?? const <String, dynamic>{};
     return CloudBackupMetadata(
+      docId: doc.id,
+      uid: (data['uid'] ?? '').toString(),
       backupId: (data['backupId'] ?? doc.id).toString(),
       createdAt: _dateTimeValue(data['createdAt']) ?? DateTime(1970),
       backupFormatVersion: _intValue(data['backupFormatVersion']),
@@ -66,6 +76,8 @@ class CloudBackupMetadata {
       storagePath: (data['storagePath'] ?? '').toString(),
       status: (data['status'] ?? '').toString(),
       uploadedAt: _dateTimeValue(data['uploadedAt']),
+      updatedAt: _dateTimeValue(data['updatedAt']),
+      failedAt: _dateTimeValue(data['failedAt']),
     );
   }
 
@@ -84,6 +96,28 @@ class CloudBackupMetadata {
   }
 }
 
+class CloudBackupCleanupResult {
+  final int deletedCount;
+  final int markedFailedCount;
+  final int storageObjectNotFoundCount;
+
+  const CloudBackupCleanupResult({
+    required this.deletedCount,
+    required this.markedFailedCount,
+    required this.storageObjectNotFoundCount,
+  });
+}
+
+class CloudBackupDeleteResult {
+  final bool deleted;
+  final bool storageObjectNotFound;
+
+  const CloudBackupDeleteResult({
+    required this.deleted,
+    required this.storageObjectNotFound,
+  });
+}
+
 class CloudBackupUploadResult {
   final CloudBackupMetadata metadata;
   final File localZipFile;
@@ -96,6 +130,9 @@ class CloudBackupUploadResult {
 
 class CloudBackupService {
   static const int defaultKeepRecent = 5;
+  static const int defaultMaxBackups = 20;
+  static const Duration failedRetention = Duration(days: 3);
+  static const Duration uploadingStaleAfter = Duration(hours: 1);
 
   CloudBackupService({
     required this.authService,
@@ -175,8 +212,9 @@ class CloudBackupService {
         ...metadata,
         'status': 'ready',
         'uploadedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
-      await cleanupOldReadyBackups(uid: uid, keepRecent: keepRecent);
+      await cleanupBackups(uid: uid, keepReady: keepRecent);
 
       final readyDoc = await docRef.get();
       return CloudBackupUploadResult(
@@ -286,28 +324,200 @@ class CloudBackupService {
     return null;
   }
 
+  Future<List<CloudBackupMetadata>> listBackups({
+    String? uid,
+    int limit = 50,
+  }) async {
+    final resolvedUid = uid ?? authService.uid;
+    if (resolvedUid == null) {
+      throw const CloudBackupException(
+        '로그인 후 클라우드 백업을 사용할 수 있습니다.',
+        code: CloudBackupErrorCode.notSignedIn,
+      );
+    }
+
+    try {
+      final query = await _backupsCollection(resolvedUid)
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .get();
+      return query.docs
+          .map(CloudBackupMetadata.fromDoc)
+          .where((backup) => !_isDiagnosticBackup(backup))
+          .toList();
+    } on FirebaseException catch (e, stackTrace) {
+      debugPrint(
+        '☁️ CloudBackup list failed: '
+        'code=${e.code}, message=${e.message}, plugin=${e.plugin}',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      throw CloudBackupException(
+        '클라우드 백업 목록을 불러오지 못했습니다. Firebase 설정 또는 네트워크를 확인해주세요.',
+        code: CloudBackupErrorCode.firestoreConnection,
+        cause: e,
+      );
+    }
+  }
+
+  Future<CloudBackupCleanupResult> cleanupBackups({
+    String? uid,
+    int keepRecent = defaultKeepRecent,
+    int keepReady = defaultKeepRecent,
+    int maxBackups = defaultMaxBackups,
+  }) async {
+    final resolvedUid = uid ?? authService.uid;
+    if (resolvedUid == null) {
+      throw const CloudBackupException(
+        '로그인 후 클라우드 백업을 사용할 수 있습니다.',
+        code: CloudBackupErrorCode.notSignedIn,
+      );
+    }
+
+    final now = DateTime.now();
+    var deletedCount = 0;
+    var markedFailedCount = 0;
+    var storageObjectNotFoundCount = 0;
+
+    final query = await _backupsCollection(resolvedUid)
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    var backups = query.docs.map(CloudBackupMetadata.fromDoc).toList();
+
+    for (final backup in backups.where(_isDiagnosticBackup).toList()) {
+      final result = await deleteBackup(backup, uid: resolvedUid);
+      deletedCount += result.deleted ? 1 : 0;
+      storageObjectNotFoundCount += result.storageObjectNotFound ? 1 : 0;
+    }
+
+    backups = backups.where((backup) => !_isDiagnosticBackup(backup)).toList();
+
+    for (final backup in backups.where((backup) {
+      if (backup.status != 'uploading') return false;
+      final referenceTime = backup.updatedAt ?? backup.createdAt;
+      return now.difference(referenceTime) > uploadingStaleAfter;
+    }).toList()) {
+      await _backupDoc(resolvedUid, backup.docId).set({
+        'status': 'failed',
+        'failedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'errorMessage': '업로드가 1시간 이상 완료되지 않아 실패로 표시했습니다.',
+      }, SetOptions(merge: true));
+      markedFailedCount += 1;
+    }
+
+    final refreshedQuery = await _backupsCollection(resolvedUid)
+        .orderBy('createdAt', descending: true)
+        .get();
+    backups = refreshedQuery.docs
+        .map(CloudBackupMetadata.fromDoc)
+        .where((backup) => !_isDiagnosticBackup(backup))
+        .toList();
+
+    final protectedReadyDocIds = backups
+        .where((backup) => backup.status == 'ready')
+        .take(keepReady)
+        .map((backup) => backup.docId)
+        .toSet();
+
+    final readyToDelete =
+        backups.where((backup) => backup.status == 'ready').skip(keepReady);
+    for (final backup in readyToDelete.toList()) {
+      final result = await deleteBackup(backup, uid: resolvedUid);
+      deletedCount += result.deleted ? 1 : 0;
+      storageObjectNotFoundCount += result.storageObjectNotFound ? 1 : 0;
+    }
+
+    final failedToDelete = backups.where((backup) {
+      if (backup.status != 'failed') return false;
+      final referenceTime = backup.failedAt ?? backup.createdAt;
+      return now.difference(referenceTime) > failedRetention;
+    });
+    for (final backup in failedToDelete.toList()) {
+      final result = await deleteBackup(backup, uid: resolvedUid);
+      deletedCount += result.deleted ? 1 : 0;
+      storageObjectNotFoundCount += result.storageObjectNotFound ? 1 : 0;
+    }
+
+    final afterPolicyQuery = await _backupsCollection(resolvedUid)
+        .orderBy('createdAt', descending: true)
+        .get();
+    backups = afterPolicyQuery.docs
+        .map(CloudBackupMetadata.fromDoc)
+        .where((backup) => !_isDiagnosticBackup(backup))
+        .toList();
+
+    var overflow = backups.length - maxBackups;
+    if (overflow > 0) {
+      final overflowCandidates = backups.reversed
+          .where((backup) => !protectedReadyDocIds.contains(backup.docId))
+          .toList();
+      overflowCandidates.sort((a, b) {
+        final priorityCompare =
+            _deletePriority(a.status).compareTo(_deletePriority(b.status));
+        if (priorityCompare != 0) return priorityCompare;
+        return a.createdAt.compareTo(b.createdAt);
+      });
+
+      for (final backup in overflowCandidates) {
+        if (overflow <= 0) break;
+        final result = await deleteBackup(backup, uid: resolvedUid);
+        deletedCount += result.deleted ? 1 : 0;
+        storageObjectNotFoundCount += result.storageObjectNotFound ? 1 : 0;
+        if (result.deleted) overflow -= 1;
+      }
+    }
+
+    return CloudBackupCleanupResult(
+      deletedCount: deletedCount,
+      markedFailedCount: markedFailedCount,
+      storageObjectNotFoundCount: storageObjectNotFoundCount,
+    );
+  }
+
   Future<void> cleanupOldReadyBackups({
     required String uid,
     int keepRecent = defaultKeepRecent,
   }) async {
-    final query = await _backupsCollection(uid)
-        .orderBy('createdAt', descending: true)
-        .get();
+    await cleanupBackups(uid: uid, keepReady: keepRecent);
+  }
 
-    final readyDocs = query.docs.where((doc) {
-      return CloudBackupMetadata.fromDoc(doc).status == 'ready';
-    }).toList();
-    for (final doc in readyDocs.skip(keepRecent)) {
-      final backup = CloudBackupMetadata.fromDoc(doc);
-      if (backup.storagePath.isNotEmpty) {
-        try {
-          await storage.ref(backup.storagePath).delete();
-        } catch (_) {
-          // Storage 파일이 이미 없어도 metadata 정리는 계속한다.
+  Future<CloudBackupDeleteResult> deleteBackup(
+    CloudBackupMetadata backup, {
+    String? uid,
+  }) async {
+    final resolvedUid =
+        uid ?? (backup.uid.isNotEmpty ? backup.uid : authService.uid);
+    if (resolvedUid == null) {
+      throw const CloudBackupException(
+        '로그인 후 클라우드 백업을 사용할 수 있습니다.',
+        code: CloudBackupErrorCode.notSignedIn,
+      );
+    }
+
+    var storageObjectNotFound = false;
+    if (backup.storagePath.isNotEmpty) {
+      try {
+        await storage.ref(backup.storagePath).delete();
+      } on FirebaseException catch (e) {
+        if (e.plugin == 'firebase_storage' && e.code == 'object-not-found') {
+          storageObjectNotFound = true;
+        } else {
+          debugPrint(
+            '☁️ CloudBackup storage delete failed: '
+            'path=${backup.storagePath}, code=${e.code}, '
+            'message=${e.message}, plugin=${e.plugin}',
+          );
+          rethrow;
         }
       }
-      await doc.reference.delete();
     }
+
+    await _backupDoc(resolvedUid, backup.docId).delete();
+    return CloudBackupDeleteResult(
+      deleted: true,
+      storageObjectNotFound: storageObjectNotFound,
+    );
   }
 
   CollectionReference<Map<String, dynamic>> _backupsCollection(String uid) {
@@ -319,6 +529,27 @@ class CloudBackupService {
     String backupId,
   ) {
     return _backupsCollection(uid).doc(backupId);
+  }
+
+  bool _isDiagnosticBackup(CloudBackupMetadata backup) {
+    return backup.status == 'diagnostic' ||
+        backup.docId == '_connection_test' ||
+        backup.backupId == '_connection_test';
+  }
+
+  int _deletePriority(String status) {
+    switch (status) {
+      case 'diagnostic':
+        return 0;
+      case 'failed':
+        return 1;
+      case 'uploading':
+        return 2;
+      case 'ready':
+        return 3;
+      default:
+        return 1;
+    }
   }
 
   Map<String, Object?> _metadataFromManifest({
