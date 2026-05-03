@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../db/app_database.dart';
 import 'auth_service.dart';
+import 'backup_encryption_service.dart';
 import 'full_backup_service.dart';
 
 enum CloudBackupErrorCode {
@@ -48,6 +49,9 @@ class CloudBackupMetadata {
   final int totalSizeBytes;
   final String storagePath;
   final String status;
+  final bool encrypted;
+  final int? encryptionVersion;
+  final String? encryptionAlgorithm;
   final DateTime? uploadedAt;
   final DateTime? updatedAt;
   final DateTime? failedAt;
@@ -75,6 +79,9 @@ class CloudBackupMetadata {
     required this.totalSizeBytes,
     required this.storagePath,
     required this.status,
+    required this.encrypted,
+    this.encryptionVersion,
+    this.encryptionAlgorithm,
     this.uploadedAt,
     this.updatedAt,
     this.failedAt,
@@ -107,6 +114,9 @@ class CloudBackupMetadata {
       totalSizeBytes: _intValue(data['totalSizeBytes']),
       storagePath: (data['storagePath'] ?? '').toString(),
       status: (data['status'] ?? '').toString(),
+      encrypted: data['encrypted'] == true,
+      encryptionVersion: _nullableIntValue(data['encryptionVersion']),
+      encryptionAlgorithm: data['encryptionAlgorithm']?.toString(),
       uploadedAt: _dateTimeValue(data['uploadedAt']),
       updatedAt: _dateTimeValue(data['updatedAt']),
       failedAt: _dateTimeValue(data['failedAt']),
@@ -185,6 +195,16 @@ class CloudBackupUploadResult {
   });
 }
 
+class CloudBackupEncryptionRequest {
+  final String password;
+  final String recoveryKey;
+
+  const CloudBackupEncryptionRequest({
+    required this.password,
+    required this.recoveryKey,
+  });
+}
+
 class CloudBackupDownloadResult {
   final CloudBackupMetadata metadata;
   final File zipFile;
@@ -204,6 +224,7 @@ class CloudBackupService {
   CloudBackupService({
     required this.authService,
     this.fullBackupService = const FullBackupService(),
+    this.encryptionService = const BackupEncryptionService(),
     FirebaseFirestore? firestore,
     FirebaseStorage? storage,
   })  : _firestore = firestore,
@@ -211,6 +232,7 @@ class CloudBackupService {
 
   final AuthService authService;
   final FullBackupService fullBackupService;
+  final BackupEncryptionService encryptionService;
   final FirebaseFirestore? _firestore;
   final FirebaseStorage? _storage;
 
@@ -220,6 +242,7 @@ class CloudBackupService {
   Future<CloudBackupUploadResult> uploadFullBackup({
     int keepRecent = defaultKeepRecent,
     bool skipIfContentUnchanged = false,
+    CloudBackupEncryptionRequest? encryption,
   }) async {
     final uid = authService.uid;
     if (uid == null) {
@@ -237,13 +260,18 @@ class CloudBackupService {
     final backupId = _requiredString(manifest, 'backupId');
     final createdAt =
         DateTime.parse(_requiredString(manifest, 'backupCreatedAt'));
-    final storagePath = 'users/$uid/backups/$backupId/stockapp_full_backup.zip';
+    final encrypted = encryption != null;
+    final storageFileName = encrypted
+        ? 'stockapp_full_backup${BackupEncryptionService.encryptedExtension}'
+        : 'stockapp_full_backup.zip';
+    final storagePath = 'users/$uid/backups/$backupId/$storageFileName';
     final docRef = _backupDoc(uid, backupId);
     final metadata = await _metadataFromManifest(
       uid: uid,
       manifest: manifest,
       status: 'uploading',
       storagePath: storagePath,
+      encrypted: encrypted,
     );
     if (skipIfContentUnchanged) {
       final latestReady = await latestReadyBackup();
@@ -264,30 +292,30 @@ class CloudBackupService {
     }
 
     try {
+      final uploadFile = encrypted
+          ? (await encryptionService.encryptZip(
+              zipFile: backup.zipFile,
+              password: encryption.password,
+              recoveryKey: encryption.recoveryKey,
+            ))
+              .file
+          : backup.zipFile;
+
       debugPrint('☁️ CloudBackup: writing uploading metadata $backupId');
       await docRef.set(metadata);
-    } on FirebaseException catch (e, stackTrace) {
-      debugPrint(
-        '☁️ CloudBackup metadata write failed: '
-        'code=${e.code}, message=${e.message}, plugin=${e.plugin}',
-      );
-      debugPrintStack(stackTrace: stackTrace);
-      throw CloudBackupException(
-        'Firestore metadata 저장에 실패했습니다.',
-        code: CloudBackupErrorCode.metadataWrite,
-        cause: e,
-      );
-    }
-
-    try {
-      debugPrint('☁️ CloudBackup: uploading zip to $storagePath');
+      debugPrint('☁️ CloudBackup: uploading backup file to $storagePath');
       await storage.ref(storagePath).putFile(
-            backup.zipFile,
+            uploadFile,
             SettableMetadata(
-              contentType: 'application/zip',
+              contentType:
+                  encrypted ? 'application/octet-stream' : 'application/zip',
               customMetadata: {
                 'backupId': backupId,
                 'createdAt': createdAt.toUtc().toIso8601String(),
+                'encrypted': encrypted.toString(),
+                if (encrypted)
+                  'encryptionVersion':
+                      BackupEncryptionService.encryptionVersion.toString(),
               },
             ),
           );
@@ -320,6 +348,14 @@ class CloudBackupService {
         code: e.plugin == 'firebase_storage'
             ? CloudBackupErrorCode.storageUpload
             : CloudBackupErrorCode.metadataWrite,
+        cause: e,
+      );
+    } on BackupEncryptionException catch (e, stackTrace) {
+      debugPrint('☁️ CloudBackup encryption failed: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      throw CloudBackupException(
+        '백업 zip 암호화에 실패했습니다.',
+        code: CloudBackupErrorCode.general,
         cause: e,
       );
     } catch (e, stackTrace) {
@@ -703,6 +739,7 @@ class CloudBackupService {
     required Map<String, Object?> manifest,
     required String status,
     required String storagePath,
+    required bool encrypted,
   }) async {
     final receiptFiles = manifest['purchaseReceiptFiles'];
     final receiptList = receiptFiles is List ? receiptFiles : const [];
@@ -732,6 +769,10 @@ class CloudBackupService {
       'totalSizeBytes': _requiredInt(manifest, 'totalSizeBytes'),
       'storagePath': storagePath,
       'status': status,
+      'encrypted': encrypted,
+      'encryptionVersion':
+          encrypted ? BackupEncryptionService.encryptionVersion : null,
+      'encryptionAlgorithm': encrypted ? 'AES-256-GCM' : null,
       'stockappDbSha256': stockappDbMap['sha256']?.toString() ?? '',
       'stockappDbSizeBytes': _intValue(stockappDbMap['sizeBytes']),
       'receiptFileCount': receiptList.length,

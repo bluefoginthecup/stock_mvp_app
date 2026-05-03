@@ -67,6 +67,15 @@ class BackupEncryptionSettingsService {
     // Do not store the raw password or raw recovery key in SharedPreferences.
   }
 
+  bool verifyRecoveryKey({
+    required BackupEncryptionSettings settings,
+    required String recoveryKey,
+  }) {
+    final expectedHash = settings.recoveryKeyHash;
+    if (expectedHash == null || expectedHash.isEmpty) return false;
+    return _hashRecoveryKey(recoveryKey) == expectedHash;
+  }
+
   String _generateRecoveryKey() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     final random = Random.secure();
