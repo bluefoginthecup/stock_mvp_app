@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import 'auth_service.dart';
 import 'full_backup_service.dart';
@@ -125,6 +127,16 @@ class CloudBackupUploadResult {
   const CloudBackupUploadResult({
     required this.metadata,
     required this.localZipFile,
+  });
+}
+
+class CloudBackupDownloadResult {
+  final CloudBackupMetadata metadata;
+  final File zipFile;
+
+  const CloudBackupDownloadResult({
+    required this.metadata,
+    required this.zipFile,
   });
 }
 
@@ -518,6 +530,47 @@ class CloudBackupService {
       deleted: true,
       storageObjectNotFound: storageObjectNotFound,
     );
+  }
+
+  Future<CloudBackupDownloadResult> downloadBackupZip(
+    CloudBackupMetadata backup,
+  ) async {
+    if (backup.status != 'ready') {
+      throw const CloudBackupException('ready 상태의 백업만 복원할 수 있습니다.');
+    }
+    if (backup.storagePath.isEmpty) {
+      throw const CloudBackupException('백업 Storage 경로가 비어 있습니다.');
+    }
+
+    final tempRoot = await getTemporaryDirectory();
+    final backupDir = Directory(
+      p.join(tempRoot.path, 'stockapp_cloud_restore', backup.docId),
+    );
+    if (await backupDir.exists()) {
+      await backupDir.delete(recursive: true);
+    }
+    await backupDir.create(recursive: true);
+
+    final zipFile = File(p.join(backupDir.path, 'stockapp_full_backup.zip'));
+    try {
+      await storage.ref(backup.storagePath).writeToFile(zipFile);
+      return CloudBackupDownloadResult(
+        metadata: backup,
+        zipFile: zipFile,
+      );
+    } on FirebaseException catch (e, stackTrace) {
+      debugPrint(
+        '☁️ CloudBackup download failed: '
+        'path=${backup.storagePath}, code=${e.code}, '
+        'message=${e.message}, plugin=${e.plugin}',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      throw CloudBackupException(
+        '클라우드 백업 zip 다운로드에 실패했습니다. Firebase Storage 설정 또는 네트워크를 확인해주세요.',
+        code: CloudBackupErrorCode.storageUpload,
+        cause: e,
+      );
+    }
   }
 
   CollectionReference<Map<String, dynamic>> _backupsCollection(String uid) {

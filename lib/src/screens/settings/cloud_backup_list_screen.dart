@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '/src/services/auth_service.dart';
 import '/src/services/cloud_backup_service.dart';
+import '/src/services/full_restore_service.dart';
 import '/src/services/storage_usage_service.dart';
 
 class CloudBackupListScreen extends StatefulWidget {
@@ -18,7 +21,9 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
   List<CloudBackupMetadata> _backups = const [];
   Object? _error;
   bool _loading = true;
+  bool _restoring = false;
   CloudBackupCleanupResult? _cleanupResult;
+  final FullRestoreService _restoreService = const FullRestoreService();
 
   @override
   void didChangeDependencies() {
@@ -100,13 +105,120 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
               ..._backups.map(
                 (backup) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _CloudBackupCard(backup: backup),
+                  child: _CloudBackupCard(
+                    backup: backup,
+                    restoring: _restoring,
+                    onRestore: backup.status == 'ready'
+                        ? () => _restoreBackup(backup)
+                        : null,
+                  ),
                 ),
               ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _restoreBackup(CloudBackupMetadata backup) async {
+    final service = _service;
+    if (service == null || _restoring) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('클라우드 백업 복원'),
+        content: Text(
+          '선택한 클라우드 백업 zip을 다운로드한 뒤 현재 DB와 첨부파일을 '
+          '백업 시점으로 되돌립니다.\n\n'
+          '생성일: ${_formatDateTime(backup.createdAt)}\n'
+          '용량: ${StorageUsageService.formatBytes(backup.totalSizeBytes)}\n\n'
+          '복원 완료 후 앱이 종료됩니다. 계속할까요?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('복원'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    setState(() => _restoring = true);
+    FullRestoreResult? restoreResult;
+    Object? error;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final download = await service.downloadBackupZip(backup);
+      restoreResult = await _restoreService.restoreFromZip(download.zipFile);
+    } catch (e) {
+      error = e;
+    } finally {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        setState(() => _restoring = false);
+      }
+    }
+
+    if (!mounted) return;
+    if (error != null) {
+      await _showRestoreErrorDialog(context, error);
+      return;
+    }
+
+    final missingCount = restoreResult?.missingAttachmentCount ?? 0;
+    if (missingCount > 0) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('첨부파일 누락 경고'),
+          content: Text(
+            '전체 복원은 완료됐지만, purchase_receipts DB row 중 '
+            '$missingCount개의 실제 첨부파일을 찾지 못했습니다.\n\n'
+            '백업 zip 생성 시 이미 파일이 누락되었거나, zip 내부 첨부 폴더가 '
+            '불완전할 수 있습니다.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('복원 완료'),
+        content: const Text(
+          '클라우드 백업 복원이 완료되었습니다.\n'
+          '변경된 DB를 안전하게 다시 열기 위해 앱을 종료합니다.\n'
+          '앱을 다시 실행해 주세요.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+    exit(0);
   }
 }
 
@@ -182,8 +294,14 @@ class _CloudBackupPolicyCard extends StatelessWidget {
 
 class _CloudBackupCard extends StatelessWidget {
   final CloudBackupMetadata backup;
+  final VoidCallback? onRestore;
+  final bool restoring;
 
-  const _CloudBackupCard({required this.backup});
+  const _CloudBackupCard({
+    required this.backup,
+    required this.onRestore,
+    required this.restoring,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -261,10 +379,10 @@ class _CloudBackupCard extends StatelessWidget {
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerRight,
-              child: OutlinedButton.icon(
-                onPressed: null,
+              child: FilledButton.icon(
+                onPressed: restoring ? null : onRestore,
                 icon: const Icon(Icons.restore_outlined),
-                label: const Text('복원 준비 중'),
+                label: Text(backup.status == 'ready' ? '복원' : '복원 불가'),
               ),
             ),
           ],
@@ -289,6 +407,61 @@ class _CloudBackupCard extends StatelessWidget {
         return Theme.of(context).colorScheme.outline;
     }
   }
+}
+
+String _formatDateTime(DateTime value) {
+  return DateFormat('yyyy-MM-dd HH:mm').format(value.toLocal());
+}
+
+Future<void> _showRestoreErrorDialog(
+  BuildContext context,
+  Object error,
+) {
+  var title = '클라우드 백업 복원 실패';
+  var message = '클라우드 백업 복원 중 오류가 발생했습니다.\n\n$error';
+
+  if (error is FullRestoreException) {
+    message = error.message;
+    switch (error.code) {
+      case FullRestoreErrorCode.schemaTooNew:
+        title = '앱 업데이트 후 복원 필요';
+        message = '이 백업은 더 최신 앱 버전에서 생성되었습니다.\n'
+            '앱 업데이트 후 다시 시도해주세요.';
+        break;
+      case FullRestoreErrorCode.manifestInvalid:
+        title = 'manifest 손상';
+        break;
+      case FullRestoreErrorCode.checksumMismatch:
+        title = 'checksum 검증 실패';
+        break;
+      case FullRestoreErrorCode.databaseInvalid:
+      case FullRestoreErrorCode.missingRequiredTables:
+        title = '백업 DB 검증 실패';
+        break;
+      case FullRestoreErrorCode.rollbackFailed:
+        title = 'rollback 실패';
+        break;
+      case FullRestoreErrorCode.general:
+        break;
+    }
+  } else if (error is CloudBackupException) {
+    title = '클라우드 백업 다운로드 실패';
+    message = error.message;
+  }
+
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('확인'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _CloudBackupErrorCard extends StatelessWidget {
