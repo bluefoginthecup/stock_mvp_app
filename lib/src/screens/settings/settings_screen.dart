@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:stockapp_mvp/src/services/seed_importer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'dart:io';
 import '/src/services/backup_file_delivery_service.dart';
+import '/src/services/auth_service.dart';
+import '/src/services/cloud_backup_service.dart';
 import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
 import '/src/services/full_restore_service.dart';
@@ -139,6 +142,8 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           const _StorageUsageSection(),
+
+          const _CloudBackupSection(),
 
           const _SectionHeader('데이터'),
 
@@ -509,6 +514,46 @@ Future<void> _showRestoreErrorDialog(
   }
 }
 
+Future<void> _showCloudBackupErrorDialog(
+  BuildContext context,
+  CloudBackupException error,
+) {
+  switch (error.code) {
+    case CloudBackupErrorCode.notSignedIn:
+      return _showSimpleErrorDialog(
+        context,
+        title: '로그인 필요',
+        message: '로그인 후 클라우드 백업을 사용할 수 있습니다.',
+      );
+    case CloudBackupErrorCode.firebaseNotInitialized:
+      return _showSimpleErrorDialog(
+        context,
+        title: 'Firebase 초기화 실패',
+        message: 'Firebase 초기화가 완료되지 않았습니다. 앱을 다시 실행한 뒤 시도해주세요.',
+      );
+    case CloudBackupErrorCode.firestoreConnection:
+    case CloudBackupErrorCode.metadataWrite:
+      return _showSimpleErrorDialog(
+        context,
+        title: 'Firestore 연결 실패',
+        message: 'Firestore 연결에 실패했습니다. Firebase 설정 또는 네트워크를 확인해주세요.',
+      );
+    case CloudBackupErrorCode.storageUpload:
+      return _showSimpleErrorDialog(
+        context,
+        title: 'Storage 업로드 실패',
+        message:
+            'Firebase Storage 업로드에 실패했습니다. Firebase Storage 설정 또는 네트워크를 확인해주세요.',
+      );
+    case CloudBackupErrorCode.general:
+      return _showSimpleErrorDialog(
+        context,
+        title: '클라우드 백업 실패',
+        message: '클라우드 백업 중 오류가 발생했습니다.',
+      );
+  }
+}
+
 Future<void> _showSimpleErrorDialog(
   BuildContext context, {
   required String title,
@@ -699,6 +744,178 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
         _loading = false;
       });
     }
+  }
+}
+
+class _CloudBackupSection extends StatefulWidget {
+  const _CloudBackupSection();
+
+  @override
+  State<_CloudBackupSection> createState() => _CloudBackupSectionState();
+}
+
+class _CloudBackupSectionState extends State<_CloudBackupSection> {
+  CloudBackupService? _service;
+  CloudBackupMetadata? _latestBackup;
+  Object? _error;
+  bool _loading = true;
+  bool _uploading = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _service ??= CloudBackupService(
+      authService: context.read<AuthService>(),
+    );
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final service = _service;
+    if (service == null) return;
+
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final latest = await service.latestReadyBackup();
+      if (!mounted) return;
+      setState(() {
+        _latestBackup = latest;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _uploadNow() async {
+    final service = _service;
+    if (service == null || _uploading) return;
+
+    setState(() {
+      _uploading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await service.uploadFullBackup();
+      if (!mounted) return;
+      setState(() {
+        _latestBackup = result.metadata;
+        _uploading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '클라우드 백업 완료 (${StorageUsageService.formatBytes(result.metadata.totalSizeBytes)})',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _uploading = false;
+      });
+      if (e is CloudBackupException) {
+        await _showCloudBackupErrorDialog(context, e);
+      } else {
+        await _showSimpleErrorDialog(
+          context,
+          title: '클라우드 백업 실패',
+          message: '클라우드 백업 중 오류가 발생했습니다.',
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthService>();
+    final uid = auth.uid;
+    final latestBackup = _latestBackup;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      '클라우드 백업',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (_loading || _uploading)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _StorageUsageRow(
+                label: '로그인',
+                value: uid == null ? '필요' : '완료',
+              ),
+              const SizedBox(height: 8),
+              _StorageUsageRow(
+                label: '마지막 백업',
+                value: latestBackup == null
+                    ? '없음'
+                    : DateFormat('yyyy-MM-dd HH:mm')
+                        .format(latestBackup.createdAt.toLocal()),
+              ),
+              if (latestBackup != null) ...[
+                const SizedBox(height: 8),
+                _StorageUsageRow(
+                  label: '백업 크기',
+                  value: StorageUsageService.formatBytes(
+                      latestBackup.totalSizeBytes),
+                ),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '클라우드 백업 정보를 불러오지 못했습니다.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: uid == null || _uploading ? null : _uploadNow,
+                    icon: const Icon(Icons.cloud_upload_outlined),
+                    label: const Text('지금 클라우드 백업하기'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _loading || _uploading ? null : _refresh,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('새로고침'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
