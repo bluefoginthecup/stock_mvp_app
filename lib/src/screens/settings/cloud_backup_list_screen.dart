@@ -22,6 +22,7 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
   Object? _error;
   bool _loading = true;
   bool _restoring = false;
+  bool _deleting = false;
   CloudBackupCleanupResult? _cleanupResult;
   final FullRestoreService _restoreService = const FullRestoreService();
 
@@ -108,9 +109,11 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
                   child: _CloudBackupCard(
                     backup: backup,
                     restoring: _restoring,
+                    deleting: _deleting,
                     onRestore: backup.status == 'ready'
                         ? () => _restoreBackup(backup)
                         : null,
+                    onDelete: () => _deleteBackup(backup),
                   ),
                 ),
               ),
@@ -220,6 +223,67 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
     );
     exit(0);
   }
+
+  Future<void> _deleteBackup(CloudBackupMetadata backup) async {
+    final service = _service;
+    if (service == null || _restoring || _deleting) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('클라우드 백업 삭제'),
+        content: Text(
+          '이 클라우드 백업을 삭제할까요?\n\n'
+          '생성일: ${_formatDateTime(backup.createdAt)}\n'
+          '상태: ${backup.status}\n'
+          '용량: ${StorageUsageService.formatBytes(backup.totalSizeBytes)}\n\n'
+          'Firebase Storage의 zip과 Firestore metadata가 함께 삭제됩니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    Object? error;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await service.deleteBackup(backup);
+    } catch (e) {
+      error = e;
+    } finally {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        setState(() => _deleting = false);
+      }
+    }
+
+    if (!mounted) return;
+    if (error != null) {
+      await _showDeleteErrorDialog(context, error);
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('클라우드 백업을 삭제했습니다.')),
+    );
+    await _refresh();
+  }
 }
 
 class _CloudBackupPolicyCard extends StatelessWidget {
@@ -295,12 +359,16 @@ class _CloudBackupPolicyCard extends StatelessWidget {
 class _CloudBackupCard extends StatelessWidget {
   final CloudBackupMetadata backup;
   final VoidCallback? onRestore;
+  final VoidCallback? onDelete;
   final bool restoring;
+  final bool deleting;
 
   const _CloudBackupCard({
     required this.backup,
     required this.onRestore,
+    required this.onDelete,
     required this.restoring,
+    required this.deleting,
   });
 
   @override
@@ -377,13 +445,22 @@ class _CloudBackupCard extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: restoring ? null : onRestore,
-                icon: const Icon(Icons.restore_outlined),
-                label: Text(backup.status == 'ready' ? '복원' : '복원 불가'),
-              ),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: restoring || deleting ? null : onDelete,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('삭제'),
+                ),
+                FilledButton.icon(
+                  onPressed: restoring || deleting ? null : onRestore,
+                  icon: const Icon(Icons.restore_outlined),
+                  label: Text(backup.status == 'ready' ? '복원' : '복원 불가'),
+                ),
+              ],
             ),
           ],
         ),
@@ -411,6 +488,29 @@ class _CloudBackupCard extends StatelessWidget {
 
 String _formatDateTime(DateTime value) {
   return DateFormat('yyyy-MM-dd HH:mm').format(value.toLocal());
+}
+
+Future<void> _showDeleteErrorDialog(
+  BuildContext context,
+  Object error,
+) {
+  final message = error is CloudBackupException
+      ? error.message
+      : '클라우드 백업 삭제 중 오류가 발생했습니다.\n\n$error';
+
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('클라우드 백업 삭제 실패'),
+      content: Text(message),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('확인'),
+        ),
+      ],
+    ),
+  );
 }
 
 Future<void> _showRestoreErrorDialog(
