@@ -141,6 +141,8 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => Navigator.of(context).pushNamed('/settings/language'),
           ),
 
+          const _AccountSection(),
+
           const _StorageUsageSection(),
 
           const _CloudBackupSection(),
@@ -572,6 +574,115 @@ Future<void> _showSimpleErrorDialog(
       ],
     ),
   );
+}
+
+class _AccountSection extends StatelessWidget {
+  const _AccountSection();
+
+  Future<void> _signOut(BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('로그아웃'),
+        content: const Text('현재 Google 계정에서 로그아웃할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('로그아웃'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+
+    try {
+      await context.read<AuthService>().signOut();
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).popUntil(
+        (route) => route.isFirst,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('로그아웃 실패: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.read<AuthService>();
+
+    return StreamBuilder(
+      stream: auth.userStream,
+      initialData: auth.currentUser,
+      builder: (context, snapshot) {
+        final user = auth.currentUser;
+        final email = user?.email;
+        final name = user?.displayName;
+        final uid = user?.uid;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '계정',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  _StorageUsageRow(
+                    label: '로그인 상태',
+                    value: user == null ? '로그아웃됨' : '로그인됨',
+                  ),
+                  const SizedBox(height: 8),
+                  _StorageUsageRow(
+                    label: '사용자 이메일',
+                    value: email?.isNotEmpty == true ? email! : '-',
+                  ),
+                  const SizedBox(height: 8),
+                  _StorageUsageRow(
+                    label: '사용자 이름',
+                    value: name?.isNotEmpty == true ? name! : '-',
+                  ),
+                  if (uid != null) ...[
+                    const SizedBox(height: 10),
+                    SelectableText(
+                      'UID: $uid',
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.55),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: user == null ? null : () => _signOut(context),
+                    icon: const Icon(Icons.logout),
+                    label: const Text('로그아웃'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _StorageUsageSection extends StatefulWidget {

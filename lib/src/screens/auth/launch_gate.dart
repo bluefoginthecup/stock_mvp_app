@@ -46,8 +46,9 @@ class _LaunchGateState extends State<LaunchGate> {
 
     return StreamBuilder(
       stream: context.read<AuthService>().userStream,
+      initialData: context.read<AuthService>().currentUser,
       builder: (context, snapshot) {
-        final user = context.read<AuthService>().currentUser;
+        final user = snapshot.data;
 
         // 로그인된 상태라면 메인으로 진입
         if (user != null) {
@@ -86,21 +87,21 @@ class _LaunchGateState extends State<LaunchGate> {
                           label: const Text('Google로 로그인'),
                           onPressed: () async {
                             final auth = context.read<AuthService>();
+                            final messenger = ScaffoldMessenger.of(context);
                             try {
                               await auth.signInWithGoogle();
                               if (!mounted) return;
                               final uid = auth.uid;
                               if (uid != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                messenger.showSnackBar(
                                   SnackBar(content: Text('로그인 완료: $uid')),
                                 );
                               }
                             } catch (e) {
                               if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 SnackBar(
-                                  content:
-                                  Text('로그인 실패: $e'),
+                                  content: Text('로그인 실패: $e'),
                                   backgroundColor: Colors.red,
                                 ),
                               );
