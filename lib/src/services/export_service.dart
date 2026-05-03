@@ -11,9 +11,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../repos/repo_interfaces.dart';
-import '../models/item.dart';
 import '../models/folder_node.dart';
 import '../db/app_database.dart';
+import 'backup_file_delivery_service.dart';
 
 class ExportService {
   final ItemRepo itemRepo;
@@ -34,11 +34,7 @@ class ExportService {
       'items': items.map((it) => it.toJson()).toList(),
     };
 
-
-
-    final folderMap = {
-      for (final f in folders) f.id: f
-    };
+    final folderMap = {for (final f in folders) f.id: f};
 
     final foldersPayload = {
       'version': 1,
@@ -50,8 +46,8 @@ class ExportService {
           'name': f.name,
           if (f.parentId != null) 'parentId': f.parentId,
           if (parent != null) 'parentName': parent.name, // ⭐ 여기
-          if (f.depth != null) 'depth': f.depth,
-          if (f.order != null) 'order': f.order,
+          'depth': f.depth,
+          'order': f.order,
         };
       }).toList(),
     };
@@ -62,11 +58,11 @@ class ExportService {
     final itemsPath = '${dir.path}/items_$stamp.json';
     final foldersPath = '${dir.path}/folders_$stamp.json';
 
-    await File(itemsPath)
-        .writeAsString(const JsonEncoder.withIndent('  ').convert(itemsPayload));
+    await File(itemsPath).writeAsString(
+        const JsonEncoder.withIndent('  ').convert(itemsPayload));
 
-    await File(foldersPath)
-        .writeAsString(const JsonEncoder.withIndent('  ').convert(foldersPayload));
+    await File(foldersPath).writeAsString(
+        const JsonEncoder.withIndent('  ').convert(foldersPayload));
 
     await Share.shareXFiles(
       [
@@ -77,8 +73,7 @@ class ExportService {
     );
   }
 
-  Future<void> exportDatabase() async {
-
+  Future<String> exportDatabase() async {
     final db = AppDatabase(); // 현재 DB instance
 
     final dir = await getApplicationSupportDirectory();
@@ -90,14 +85,17 @@ class ExportService {
     // 🔥 SQLite 공식 백업
     await db.customStatement("VACUUM INTO '$exportPath'");
 
-    await Share.shareXFiles(
-      [XFile(exportPath)],
+    final deliveryResult =
+        await const BackupFileDeliveryService().deliverBackupFile(
+      file: File(exportPath),
+      fileName: p.basename(exportPath),
       subject: 'StockApp DB Backup',
+      allowedExtensions: const ['db'],
     );
+    return deliveryResult?.message('DB 백업') ?? 'DB 백업 저장이 취소되었습니다';
   }
 
   Future<bool> importDatabase() async {
-
     debugPrint("🟡 importDatabase() 시작");
 
     final result = await FilePicker.platform.pickFiles(
@@ -130,8 +128,8 @@ class ExportService {
     debugPrint("🟢 DB 복원 완료");
 
     // 🔥 DB 재생성 (싱글톤 다시 초기화)
-    final db = AppDatabase(); // 새로 생성해야 함
-      debugPrint("🟢 DB 재오픈 완료");
+    AppDatabase(); // 새로 생성해야 함
+    debugPrint("🟢 DB 재오픈 완료");
 
     return true;
   }

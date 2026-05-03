@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:stockapp_mvp/src/services/seed_importer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
-import 'package:share_plus/share_plus.dart';
 import 'dart:io';
+import '/src/services/backup_file_delivery_service.dart';
 import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
+import '/src/services/full_restore_service.dart';
+import '/src/services/restore_rollback_service.dart';
 import '/src/services/storage_usage_service.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
@@ -17,6 +20,8 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final exportService = context.read<ExportService>(); // ← 여기 추가
     const fullBackupService = FullBackupService();
+    const fullRestoreService = FullRestoreService();
+    const backupFileDeliveryService = BackupFileDeliveryService();
 
     // 공통 실행 함수: 진행중 스피너 + 에러/성공 스낵바
     Future<void> runWithSpinner(
@@ -36,6 +41,26 @@ class SettingsScreen extends StatelessWidget {
       } finally {
         if (context.mounted) {
           Navigator.of(context, rootNavigator: true).pop(); // progress 닫기
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(msg)));
+        }
+      }
+    }
+
+    Future<void> runWithSpinnerMessage(Future<String> Function() job) async {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+      var msg = '완료했습니다.';
+      try {
+        msg = await job();
+      } catch (e) {
+        msg = '실패: $e';
+      } finally {
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
           ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text(msg)));
         }
@@ -118,7 +143,7 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.archive_outlined, color: Colors.red),
             title: const Text(
-              '전체 백업 zip 내보내기',
+              '전체 백업 내보내기',
               style: TextStyle(
                 color: Colors.red,
                 fontWeight: FontWeight.w700,
@@ -126,15 +151,19 @@ class SettingsScreen extends StatelessWidget {
             ),
             subtitle: const Text('DB와 영수증/거래명세서 첨부파일을 zip으로 공유합니다'),
             onTap: () async {
-              await runWithSpinner(
+              await runWithSpinnerMessage(
                 () async {
                   final result = await fullBackupService.createBackup();
-                  await Share.shareXFiles(
-                    [XFile(result.zipFile.path)],
+                  final deliveryResult =
+                      await backupFileDeliveryService.deliverBackupFile(
+                    file: result.zipFile,
+                    fileName: result.zipFile.uri.pathSegments.last,
                     subject: 'StockApp Full Backup',
+                    allowedExtensions: const ['zip'],
                   );
+                  return deliveryResult?.message('전체 백업') ??
+                      '전체 백업 저장이 취소되었습니다';
                 },
-                okMsg: '전체 백업 생성 완료',
               );
             },
           ),
@@ -273,48 +302,114 @@ class SettingsScreen extends StatelessWidget {
 
           ListTile(
             leading: const Icon(Icons.save),
-            title: const Text('DB 백업'),
-            subtitle: const Text('데이터베이스 파일을 공유합니다'),
+            title: const Text('DB만 백업'),
+            subtitle: const Text('문제 해결용: 첨부파일 없이 데이터베이스 파일만 공유합니다'),
             onTap: () async {
-              await runWithSpinner(
+              await runWithSpinnerMessage(
                 () => exportService.exportDatabase(),
-                okMsg: 'DB 백업 완료',
               );
             },
           ),
           ListTile(
-            leading: const Icon(Icons.restore),
-            title: const Text('DB 복원'),
-            subtitle: const Text('백업된 DB 파일을 불러옵니다'),
+            leading: const Icon(Icons.restore_page_outlined, color: Colors.red),
+            title: const Text(
+              '전체 백업 복원',
+              style: TextStyle(
+                color: Colors.red,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            subtitle: const Text('DB와 영수증/거래명세서 첨부파일을 백업 시점으로 되돌립니다'),
             onTap: () async {
-              debugPrint("🟢 DB 복원 버튼 눌림");
-
-              // 🔥 복원 확인창
               final confirm = await showDialog<bool>(
                 context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('DB 복원'),
-                  content: const Text('현재 데이터가 백업 파일로 덮어쓰여집니다.\n계속하시겠습니까?'),
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('전체 백업 복원'),
+                  content: const Text(
+                    '현재 DB와 첨부파일이 전체 백업 파일의 내용으로 교체됩니다.\n'
+                    '복원 전 rollback 백업을 만들지만, 작업 중 앱을 종료하지 마세요.\n'
+                    '복원이 완료되면 앱이 종료됩니다. 다시 실행해 주세요.\n\n'
+                    '계속하시겠습니까?',
+                  ),
                   actions: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context, false),
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
                       child: const Text('취소'),
                     ),
-                    ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
+                    FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
                       child: const Text('복원'),
                     ),
                   ],
                 ),
               );
-
               if (confirm != true) return;
-
-              final ok = await exportService.importDatabase();
-
               if (!context.mounted) return;
 
-              if (ok) {
+              await Future<void>.delayed(const Duration(milliseconds: 100));
+              if (!context.mounted) return;
+
+              final result = await FilePicker.platform.pickFiles(
+                type: FileType.custom,
+                allowedExtensions: const ['zip'],
+              );
+              final path = result?.files.single.path;
+              if (path == null) return;
+
+              var restored = false;
+              FullRestoreResult? restoreResult;
+              await runWithSpinner(
+                () async {
+                  restoreResult =
+                      await fullRestoreService.restoreFromZip(File(path));
+                  restored = true;
+                },
+                okMsg: '전체 백업 복원 완료',
+              );
+
+              if (!context.mounted) return;
+              if (restored) {
+                final missingCount = restoreResult?.missingAttachmentCount ?? 0;
+                if (missingCount > 0) {
+                  await showDialog<void>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('첨부파일 누락 경고'),
+                      content: Text(
+                        '전체 복원은 완료됐지만, purchase_receipts DB row 중 '
+                        '$missingCount개의 실제 첨부파일을 찾지 못했습니다.\n\n'
+                        '백업 zip 생성 시 이미 파일이 누락되었거나, zip 내부 첨부 폴더가 '
+                        '불완전할 수 있습니다.',
+                      ),
+                      actions: [
+                        FilledButton(
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                          child: const Text('확인'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                if (!context.mounted) return;
+
+                await showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text('복원 완료'),
+                    content: const Text(
+                      '전체 백업 복원이 완료되었습니다.\n'
+                      '변경된 DB를 안전하게 다시 열기 위해 앱을 종료합니다.\n'
+                      '앱을 다시 실행해 주세요.',
+                    ),
+                    actions: [
+                      FilledButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        child: const Text('확인'),
+                      ),
+                    ],
+                  ),
+                );
                 exit(0);
               }
             },
@@ -334,7 +429,10 @@ class _StorageUsageSection extends StatefulWidget {
 
 class _StorageUsageSectionState extends State<_StorageUsageSection> {
   final StorageUsageService _service = const StorageUsageService();
+  final RestoreRollbackService _rollbackService =
+      const RestoreRollbackService();
   StorageUsageSummary? _summary;
+  RestoreRollbackSummary? _rollbackSummary;
   Object? _error;
   bool _loading = true;
 
@@ -352,9 +450,11 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
 
     try {
       final summary = await _service.calculate();
+      final rollbackSummary = await _rollbackService.calculateUsage();
       if (!mounted) return;
       setState(() {
         _summary = summary;
+        _rollbackSummary = rollbackSummary;
         _loading = false;
       });
     } catch (e) {
@@ -371,6 +471,9 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
     final receiptUsage = _receiptUsage;
     final bytes = receiptUsage?.bytes ?? 0;
     final fileCount = receiptUsage?.fileCount ?? 0;
+    final rollbackSummary = _rollbackSummary;
+    final rollbackCount = rollbackSummary?.count ?? 0;
+    final rollbackBytes = rollbackSummary?.totalBytes ?? 0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -406,6 +509,12 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
                 label: '파일 개수',
                 value: '$fileCount개',
               ),
+              const SizedBox(height: 8),
+              _StorageUsageRow(
+                label: '복원 rollback',
+                value:
+                    '$rollbackCount개 / ${StorageUsageService.formatBytes(rollbackBytes)}',
+              ),
               if (_error != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -414,10 +523,23 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
                 ),
               ],
               const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _loading ? null : _refresh,
-                icon: const Icon(Icons.refresh),
-                label: const Text('새로고침'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _loading ? null : _refresh,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('새로고침'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _loading || rollbackCount == 0
+                        ? null
+                        : _cleanupRollbacks,
+                    icon: const Icon(Icons.cleaning_services_outlined),
+                    label: const Text('오래된 rollback 정리'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -435,6 +557,39 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
       }
     }
     return null;
+  }
+
+  Future<void> _cleanupRollbacks() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final result = await _rollbackService.cleanupOldRollbacks();
+      final summary = await _service.calculate();
+      final rollbackSummary = await _rollbackService.calculateUsage();
+      if (!mounted) return;
+      setState(() {
+        _summary = summary;
+        _rollbackSummary = rollbackSummary;
+        _loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'rollback ${result.deletedCount}개 정리 완료 '
+            '(${StorageUsageService.formatBytes(result.deletedBytes)})',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
   }
 }
 
