@@ -36,19 +36,122 @@ target 'Runner' do
     inherit! :search_paths
   end
 end
+
+def remove_weak_framework(flags, framework_name)
+  filtered = []
+  skip_next = false
+
+  flags.each_with_index do |flag, index|
+    if skip_next
+      skip_next = false
+      next
+    end
+
+    next_flag = flags[index + 1]&.delete('"')
+    if flag == '-weak_framework' && next_flag == framework_name
+      skip_next = true
+      next
+    end
+
+    filtered << flag
+  end
+
+  filtered
+end
+
+def patch_cloud_firestore_macos_plugin
+  plugin_path = File.join(
+    __dir__,
+    'Flutter',
+    'ephemeral',
+    '.symlinks',
+    'plugins',
+    'cloud_firestore',
+    'macos',
+    'cloud_firestore',
+    'Sources',
+    'cloud_firestore',
+    'FLTFirebaseFirestorePlugin.m'
+  )
+  return unless File.exist?(plugin_path)
+
+  text = File.read(plugin_path)
+  original = text
+
+  unless text.include?('+ (instancetype)sharedInstance:(NSObject<FlutterBinaryMessenger> *)messenger')
+    text = text.sub(
+      %r{// Returns a singleton instance of the Firebase Firestore plugin\.\n//\+ \(instancetype\)sharedInstance \{\n//  static dispatch_once_t onceToken;\n//  static FLTFirebaseFirestorePlugin \*instance;\n//\n//  dispatch_once\(&onceToken, \^\{\n//    instance = \[\[FLTFirebaseFirestorePlugin alloc\] init\];\n//    // Register with the Flutter Firebase plugin registry\.\n//    \[\[FLTFirebasePluginRegistry sharedInstance\] registerFirebasePlugin:instance\];\n//  \}\);\n//\n//  return instance;\n//\}},
+      <<~'OBJC'.strip
+      // Returns a singleton instance of the Firebase Firestore plugin.
+      + (instancetype)sharedInstance:(NSObject<FlutterBinaryMessenger> *)messenger {
+        static dispatch_once_t onceToken;
+        static FLTFirebaseFirestorePlugin *instance;
+
+        dispatch_once(&onceToken, ^{
+          instance = [[FLTFirebaseFirestorePlugin alloc] init:messenger];
+          // Register with the Flutter Firebase plugin registry.
+          [[FLTFirebasePluginRegistry sharedInstance] registerFirebasePlugin:instance];
+        });
+
+        return instance;
+      }
+      OBJC
+    )
+  end
+
+  text = text.sub(
+    "FLTFirebaseFirestorePlugin *instance =\n      [[FLTFirebaseFirestorePlugin alloc] init:[registrar messenger]];",
+    "FLTFirebaseFirestorePlugin *instance =\n      [FLTFirebaseFirestorePlugin sharedInstance:[registrar messenger]];"
+  )
+
+  File.write(plugin_path, text) if text != original
+end
+
 post_install do |installer|
+  patch_cloud_firestore_macos_plugin
+
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
 
     target.build_configurations.each do |config|
       config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
 
-      # 🔧 gRPC modulemap 오류 해결
-      config.build_settings['HEADER_SEARCH_PATHS'] ||= ['$(inherited)']
-      config.build_settings['HEADER_SEARCH_PATHS'] << '${PODS_ROOT}/Headers/Public'
-      config.build_settings['HEADER_SEARCH_PATHS'] << '${PODS_ROOT}/Headers/Public/gRPC-Core'
-      config.build_settings['HEADER_SEARCH_PATHS'] << '${PODS_ROOT}/Headers/Private'
-      config.build_settings['HEADER_SEARCH_PATHS'] << '${PODS_ROOT}/Headers/Private/gRPC'
+      # Firebase Firestore가 끌고 오는 gRPC-C++에서 CocoaPods가 존재하지 않는
+      # Private/grpc/gRPC-Core.modulemap 경로를 주입하는 경우가 있다.
+      # 실제 modulemap은 Target Support Files 아래에 생성되므로, 깨진 참조만 제거한다.
+      ['OTHER_CFLAGS', 'OTHER_SWIFT_FLAGS', 'OTHER_LDFLAGS'].each do |key|
+        flags = config.build_settings[key]
+        next if flags.nil?
+
+        if flags.is_a?(String)
+          flags = flags.split(/\s+/)
+        end
+
+        filtered = flags.reject do |flag|
+          flag.include?('Headers/Private/grpc/gRPC-Core.modulemap')
+        end
+
+        # FirebaseFirestoreInternal은 정적 라이브러리(-lFirebaseFirestoreInternal)로
+        # 링크되는데, 일부 CocoaPods 조합에서 존재하지 않는 framework weak link가
+        # 같이 들어가 macOS 링커가 실패한다.
+        filtered = remove_weak_framework(filtered, 'FirebaseFirestoreInternal') if key == 'OTHER_LDFLAGS'
+
+        config.build_settings[key] = filtered
+      end
+
+      if config.build_settings['MODULEMAP_FILE'] == 'Headers/Private/grpc/gRPC-Core.modulemap'
+        config.build_settings['MODULEMAP_FILE'] = 'Target Support Files/gRPC-Core/gRPC-Core.modulemap'
+      end
     end
+  end
+
+  Dir.glob(File.join(__dir__, 'Pods', 'Target Support Files', '**', '*.xcconfig')).each do |path|
+    text = File.read(path)
+    cleaned = text
+      .gsub(/\s-Xcc\s-fmodule-map-file="\$\{PODS_ROOT\}\/Headers\/Private\/grpc\/gRPC-Core\.modulemap"/, '')
+      .gsub(/\s-fmodule-map-file="\$\{PODS_ROOT\}\/Headers\/Private\/grpc\/gRPC-Core\.modulemap"/, '')
+      .gsub(/\s-weak_framework\s+"?FirebaseFirestoreInternal"?/, '')
+
+    File.write(path, cleaned) if cleaned != text
   end
 end

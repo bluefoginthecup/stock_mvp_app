@@ -67,7 +67,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '101861330698',
     projectId: 'chalstock',
     storageBucket: 'chalstock.firebasestorage.app',
-    iosClientId: '101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com',
+    iosClientId:
+        '101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com',
     iosBundleId: 'com.example.stockMvpApp',
   );
 
@@ -77,7 +78,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '101861330698',
     projectId: 'chalstock',
     storageBucket: 'chalstock.firebasestorage.app',
-    iosClientId: '101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com',
-    iosBundleId: 'com.example.stockMvpApp',
+    iosClientId:
+        '101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com',
+    iosBundleId: 'com.bluefog.stockMvpApp',
   );
 }

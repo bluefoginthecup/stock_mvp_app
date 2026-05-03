@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'firebase_options.dart';
 import 'src/app.dart';
 
 import 'src/repos/repo_interfaces.dart';
@@ -28,9 +29,10 @@ import 'src/repos/timeline_repo.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Firebase (macOS는 plist만 Runner에 있으면 options 없이도 됨)
   if (Firebase.apps.isEmpty) {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   }
 
   // ✅ Provider 타입 체크 완화 (기존 main.dart와 동일)
@@ -72,7 +74,8 @@ Future<void> main() async {
               if (o == null) throw Exception('Order not found: $id');
               return o;
             },
-            listPOsByOrderId: (id) => unifiedRepo.listPurchaseOrdersByOrderId(id),
+            listPOsByOrderId: (id) =>
+                unifiedRepo.listPurchaseOrdersByOrderId(id),
             listWorksByOrderId: (id) => unifiedRepo.listWorksByOrderId(id),
           ),
         ),
@@ -83,7 +86,8 @@ Future<void> main() async {
           initialData: const [],
         ),
         StreamProvider<List<PurchaseOrder>>(
-          create: (ctx) => ctx.read<PurchaseOrderRepo>().watchAllPurchaseOrders(),
+          create: (ctx) =>
+              ctx.read<PurchaseOrderRepo>().watchAllPurchaseOrders(),
           initialData: const [],
         ),
 
@@ -94,7 +98,8 @@ Future<void> main() async {
 
         // 유틸/서비스
         Provider<ItemDetailOpener>(create: (_) => AppItemDetailOpener()),
-        Provider<ItemPathProvider>(create: (ctx) => RepoItemPathFacade(ctx.read<ItemRepo>())),
+        Provider<ItemPathProvider>(
+            create: (ctx) => RepoItemPathFacade(ctx.read<ItemRepo>())),
         Provider<InventoryService>(
           create: (ctx) => InventoryService(
             works: ctx.read<WorkRepo>(),
