@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:path/path.dart' as p;
 
 import '/src/services/auth_service.dart';
+import '/src/services/backup_encryption_service.dart';
 import '/src/services/cloud_backup_service.dart';
 import '/src/services/full_restore_service.dart';
 import '/src/services/storage_usage_service.dart';
@@ -25,6 +27,8 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
   bool _deleting = false;
   CloudBackupCleanupResult? _cleanupResult;
   final FullRestoreService _restoreService = const FullRestoreService();
+  final BackupEncryptionService _encryptionService =
+      const BackupEncryptionService();
 
   @override
   void didChangeDependencies() {
@@ -170,6 +174,11 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
     );
     if (finalConfirm != true || !mounted) return;
 
+    final decryptRequest = backup.encrypted
+        ? await _showEncryptedBackupUnlockDialog()
+        : const _EncryptedBackupUnlockRequest.none();
+    if (decryptRequest == null || !mounted) return;
+
     setState(() => _restoring = true);
     FullRestoreResult? restoreResult;
     Object? error;
@@ -182,7 +191,13 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
 
     try {
       final download = await service.downloadBackupZip(backup);
-      restoreResult = await _restoreService.restoreFromZip(download.zipFile);
+      final restoreZip = backup.encrypted
+          ? await _decryptCloudBackup(
+              encryptedFile: download.zipFile,
+              request: decryptRequest,
+            )
+          : download.zipFile;
+      restoreResult = await _restoreService.restoreFromZip(restoreZip);
     } catch (e) {
       error = e;
     } finally {
@@ -240,6 +255,136 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
       ),
     );
     exit(0);
+  }
+
+  Future<File> _decryptCloudBackup({
+    required File encryptedFile,
+    required _EncryptedBackupUnlockRequest request,
+  }) async {
+    final outputFile = File(
+      p.join(
+        encryptedFile.parent.path,
+        '${p.basenameWithoutExtension(encryptedFile.path)}_decrypted.zip',
+      ),
+    );
+    final decrypted = await _encryptionService.decryptToZip(
+      encryptedFile: encryptedFile,
+      outputFile: outputFile,
+      password: request.password,
+      recoveryKey: request.recoveryKey,
+    );
+    return decrypted.file;
+  }
+
+  Future<_EncryptedBackupUnlockRequest?> _showEncryptedBackupUnlockDialog() {
+    final passwordController = TextEditingController();
+    final recoveryKeyController = TextEditingController();
+    var useRecoveryKey = false;
+    String? errorText;
+
+    return showDialog<_EncryptedBackupUnlockRequest>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('암호화 백업 잠금 해제'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '이 백업은 암호화되어 있습니다. 백업 비밀번호 또는 복구키를 입력해야 복원할 수 있습니다.',
+                ),
+                const SizedBox(height: 12),
+                SegmentedButton<bool>(
+                  segments: const [
+                    ButtonSegment(
+                      value: false,
+                      label: Text('비밀번호'),
+                      icon: Icon(Icons.password_outlined),
+                    ),
+                    ButtonSegment(
+                      value: true,
+                      label: Text('복구키'),
+                      icon: Icon(Icons.key_outlined),
+                    ),
+                  ],
+                  selected: {useRecoveryKey},
+                  onSelectionChanged: (selection) {
+                    setDialogState(() {
+                      useRecoveryKey = selection.first;
+                      errorText = null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                if (useRecoveryKey)
+                  TextField(
+                    controller: recoveryKeyController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: '복구키',
+                      border: OutlineInputBorder(),
+                    ),
+                  )
+                else
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: '백업 비밀번호',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                if (errorText != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    errorText!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('취소'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                if (useRecoveryKey) {
+                  final recoveryKey = recoveryKeyController.text.trim();
+                  if (recoveryKey.isEmpty) {
+                    setDialogState(() => errorText = '복구키를 입력해주세요.');
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(
+                    _EncryptedBackupUnlockRequest(recoveryKey: recoveryKey),
+                  );
+                  return;
+                }
+
+                final password = passwordController.text;
+                if (password.isEmpty) {
+                  setDialogState(() => errorText = '비밀번호를 입력해주세요.');
+                  return;
+                }
+                Navigator.of(dialogContext).pop(
+                  _EncryptedBackupUnlockRequest(password: password),
+                );
+              },
+              icon: const Icon(Icons.lock_open_outlined),
+              label: const Text('잠금 해제'),
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(() {
+      passwordController.dispose();
+      recoveryKeyController.dispose();
+    });
   }
 
   Future<void> _deleteBackup(CloudBackupMetadata backup) async {
@@ -470,6 +615,13 @@ class _CloudBackupCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _InfoRow(
+              label: '암호화',
+              value: backup.encrypted
+                  ? '사용 (${backup.encryptionAlgorithm ?? 'AES-256-GCM'})'
+                  : '미사용',
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
               label: 'schemaVersion',
               value: '${backup.dbSchemaVersion}',
             ),
@@ -584,6 +736,20 @@ class _CloudBackupCard extends StatelessWidget {
 
 String _formatDateTime(DateTime value) {
   return DateFormat('yyyy-MM-dd HH:mm').format(value.toLocal());
+}
+
+class _EncryptedBackupUnlockRequest {
+  final String? password;
+  final String? recoveryKey;
+
+  const _EncryptedBackupUnlockRequest({
+    this.password,
+    this.recoveryKey,
+  });
+
+  const _EncryptedBackupUnlockRequest.none()
+      : password = null,
+        recoveryKey = null;
 }
 
 class _CloudBackupRestorePreview extends StatelessWidget {
@@ -849,6 +1015,10 @@ Future<void> _showRestoreErrorDialog(
   } else if (error is CloudBackupException) {
     title = '클라우드 백업 다운로드 실패';
     message = error.message;
+  } else if (error is BackupEncryptionException) {
+    title = '암호화 백업 잠금 해제 실패';
+    message = '비밀번호 또는 복구키가 올바르지 않거나 백업 파일이 손상되었습니다.\n\n'
+        '${error.message}';
   }
 
   return showDialog<void>(
