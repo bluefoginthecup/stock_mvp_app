@@ -130,13 +130,31 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('클라우드 백업 복원'),
-        content: Text(
-          '선택한 클라우드 백업 zip을 다운로드한 뒤 현재 DB와 첨부파일을 '
-          '백업 시점으로 되돌립니다.\n\n'
-          '생성일: ${_formatDateTime(backup.createdAt)}\n'
-          '용량: ${StorageUsageService.formatBytes(backup.totalSizeBytes)}\n\n'
-          '복원 완료 후 앱이 종료됩니다. 계속할까요?',
+        title: const Text('이 백업으로 복원'),
+        content: _CloudBackupRestorePreview(backup: backup),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.restore_outlined),
+            label: const Text('백업 시점으로 되돌리기'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+
+    final finalConfirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('복원 최종 확인'),
+        content: const Text(
+          '현재 앱 데이터가 선택한 클라우드 백업 시점으로 교체됩니다.\n\n'
+          '현재 기기의 미백업 변경사항은 사라질 수 있습니다. '
+          '복원 완료 후 앱이 종료됩니다.',
         ),
         actions: [
           TextButton(
@@ -145,12 +163,12 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('복원'),
+            child: const Text('복원 실행'),
           ),
         ],
       ),
     );
-    if (confirm != true || !mounted) return;
+    if (finalConfirm != true || !mounted) return;
 
     setState(() => _restoring = true);
     FullRestoreResult? restoreResult;
@@ -496,7 +514,9 @@ class _CloudBackupCard extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: restoring || deleting ? null : onRestore,
                   icon: const Icon(Icons.restore_outlined),
-                  label: Text(backup.status == 'ready' ? '복원' : '복원 불가'),
+                  label: Text(
+                    backup.status == 'ready' ? '이 백업으로 복원' : '복원 불가',
+                  ),
                 ),
               ],
             ),
@@ -569,6 +589,120 @@ class _CloudBackupCard extends StatelessWidget {
 
 String _formatDateTime(DateTime value) {
   return DateFormat('yyyy-MM-dd HH:mm').format(value.toLocal());
+}
+
+class _CloudBackupRestorePreview extends StatelessWidget {
+  final CloudBackupMetadata backup;
+
+  const _CloudBackupRestorePreview({required this.backup});
+
+  @override
+  Widget build(BuildContext context) {
+    final numberFormat = NumberFormat.decimalPattern('ko_KR');
+
+    return SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '현재 DB와 첨부파일을 아래 백업 시점으로 되돌립니다.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .errorContainer
+                    .withValues(alpha: 0.34),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .error
+                      .withValues(alpha: 0.22),
+                ),
+              ),
+              child: Text(
+                '현재 기기의 미백업 변경사항은 사라질 수 있습니다. '
+                '복원 완료 후 앱이 종료됩니다.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _InfoRow(label: '생성일', value: _formatDateTime(backup.createdAt)),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '백업 기기',
+              value: _CloudBackupCard._formatDevice(backup),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '용량',
+              value: StorageUsageService.formatBytes(backup.totalSizeBytes),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '아이템',
+              value: _CloudBackupCard._formatCount(
+                backup.summaryItemCount,
+                numberFormat,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '총 재고수량',
+              value: _CloudBackupCard._formatCount(
+                backup.summaryTotalStockQty,
+                numberFormat,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '거래처',
+              value: _CloudBackupCard._formatCount(
+                backup.summarySupplierCount,
+                numberFormat,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '최근 입출고',
+              value: backup.summaryLatestTxnAt == null
+                  ? '-'
+                  : _formatDateTime(backup.summaryLatestTxnAt!),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '최근 발주',
+              value: _CloudBackupCard._formatLatestPurchase(backup),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '첨부파일',
+              value: _CloudBackupCard._formatReceiptSummary(
+                backup,
+                numberFormat,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: 'schemaVersion',
+              value: '${backup.dbSchemaVersion}',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 Future<void> _showDeleteErrorDialog(
