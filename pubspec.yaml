@@ -13,6 +13,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   archive: ^4.0.9
+  crypto: ^3.0.6
   provider: ^6.1.2
   uuid: ^4.5.1
   intl: ^0.19.0

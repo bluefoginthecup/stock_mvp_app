@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 
 import '../db/app_database.dart';
 import 'app_path_service.dart';
+import 'backup_hash_service.dart';
 
 class FullBackupResult {
   final File zipFile;
@@ -45,9 +46,11 @@ class FullBackupService {
 
   const FullBackupService({
     this.paths = const AppPathService(),
+    this.hashService = const BackupHashService(),
   });
 
   final AppPathService paths;
+  final BackupHashService hashService;
 
   Future<FullBackupResult> createBackup() async {
     final backupId = _uuid.v4();
@@ -88,6 +91,14 @@ class FullBackupService {
       );
       final dbSize = await dbBackup.length();
       final totalSizeBytes = dbSize + receiptFilesSize;
+      final dbHash = await hashService.hashFile(
+        file: dbBackup,
+        relativePath: 'stockapp.db',
+      );
+      final receiptFileHashes = await hashService.hashDirectoryFiles(
+        root: await paths.purchaseReceiptsRoot(),
+        relativeRoot: AppPathService.purchaseReceiptsRelativeRoot,
+      );
 
       final manifest = <String, Object?>{
         'backupId': backupId,
@@ -96,6 +107,13 @@ class FullBackupService {
         'dbSchemaVersion': AppDatabase().schemaVersion,
         'includedFolders': includedFolders,
         'totalSizeBytes': totalSizeBytes,
+        'stockappDb': {
+          'sizeBytes': dbHash.sizeBytes,
+          'sha256': dbHash.sha256,
+        },
+        'purchaseReceiptFiles': receiptFileHashes
+            .map((fileHash) => fileHash.toJson())
+            .toList(growable: false),
       };
 
       await manifestFile.writeAsString(
@@ -254,6 +272,10 @@ class FullBackupService {
       ..writeln(_metaRow('dbSchemaVersion', manifest['dbSchemaVersion']))
       ..writeln(_metaRow('includedFolders', manifest['includedFolders']))
       ..writeln(_metaRow('totalSizeBytes', manifest['totalSizeBytes']))
+      ..writeln(_metaRow('stockapp.db sizeBytes',
+          (manifest['stockappDb'] as Map?)?['sizeBytes']))
+      ..writeln(_metaRow(
+          'stockapp.db sha256', (manifest['stockappDb'] as Map?)?['sha256']))
       ..writeln('</dl>')
       ..writeln('</section>')
       ..writeln('<section>')

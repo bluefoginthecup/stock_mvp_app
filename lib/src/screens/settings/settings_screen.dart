@@ -67,6 +67,47 @@ class SettingsScreen extends StatelessWidget {
       }
     }
 
+    Future<bool> runRestoreWithSpinner(Future<void> Function() job) async {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      FullRestoreException? restoreError;
+      Object? otherError;
+      try {
+        await job();
+      } on FullRestoreException catch (e) {
+        restoreError = e;
+      } catch (e) {
+        otherError = e;
+      } finally {
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+
+      if (!context.mounted) return false;
+      if (restoreError != null) {
+        await _showRestoreErrorDialog(context, restoreError);
+        return false;
+      }
+      if (otherError != null) {
+        await _showSimpleErrorDialog(
+          context,
+          title: '복원 실패',
+          message: '전체 백업 복원 중 오류가 발생했습니다.\n\n$otherError',
+        );
+        return false;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('전체 백업 복원 완료')),
+      );
+      return true;
+    }
+
     // 개별 파트 임포트 실행기
     Future<void> runPart(SeedPart part, String okMsg) async {
       await runWithSpinner(
@@ -358,13 +399,11 @@ class SettingsScreen extends StatelessWidget {
 
               var restored = false;
               FullRestoreResult? restoreResult;
-              await runWithSpinner(
+              restored = await runRestoreWithSpinner(
                 () async {
                   restoreResult =
                       await fullRestoreService.restoreFromZip(File(path));
-                  restored = true;
                 },
-                okMsg: '전체 백업 복원 완료',
               );
 
               if (!context.mounted) return;
@@ -418,6 +457,76 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _showRestoreErrorDialog(
+  BuildContext context,
+  FullRestoreException error,
+) {
+  switch (error.code) {
+    case FullRestoreErrorCode.schemaTooNew:
+      return _showSimpleErrorDialog(
+        context,
+        title: '앱 업데이트 후 복원 필요',
+        message: '이 백업은 더 최신 앱 버전에서 생성되었습니다.\n'
+            '앱 업데이트 후 다시 시도해주세요.',
+      );
+    case FullRestoreErrorCode.checksumMismatch:
+      return _showSimpleErrorDialog(
+        context,
+        title: '백업 파일 검증 실패',
+        message: '백업 파일의 크기 또는 checksum이 맞지 않아 복원을 중단했습니다.\n'
+            '파일이 손상되었거나 일부 내용이 바뀌었을 수 있습니다.\n\n'
+            '${error.message}',
+      );
+    case FullRestoreErrorCode.manifestInvalid:
+      return _showSimpleErrorDialog(
+        context,
+        title: '백업 정보 손상',
+        message: 'manifest.json이 없거나 형식이 올바르지 않아 복원할 수 없습니다.\n\n'
+            '${error.message}',
+      );
+    case FullRestoreErrorCode.databaseInvalid:
+    case FullRestoreErrorCode.missingRequiredTables:
+      return _showSimpleErrorDialog(
+        context,
+        title: '백업 DB 검증 실패',
+        message: '백업 DB가 정상적인 앱 데이터베이스인지 확인하지 못해 복원을 중단했습니다.\n\n'
+            '${error.message}',
+      );
+    case FullRestoreErrorCode.rollbackFailed:
+      return _showSimpleErrorDialog(
+        context,
+        title: '복원 실패',
+        message: error.message,
+      );
+    case FullRestoreErrorCode.general:
+      return _showSimpleErrorDialog(
+        context,
+        title: '복원 실패',
+        message: error.message,
+      );
+  }
+}
+
+Future<void> _showSimpleErrorDialog(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(title),
+      content: Text(message),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('확인'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _StorageUsageSection extends StatefulWidget {

@@ -8,13 +8,28 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import '../db/app_database.dart';
 import 'app_path_service.dart';
+import 'backup_hash_service.dart';
 import 'full_backup_service.dart';
 import 'restore_rollback_service.dart';
 
+enum FullRestoreErrorCode {
+  general,
+  schemaTooNew,
+  manifestInvalid,
+  checksumMismatch,
+  databaseInvalid,
+  missingRequiredTables,
+  rollbackFailed,
+}
+
 class FullRestoreException implements Exception {
   final String message;
+  final FullRestoreErrorCode code;
 
-  const FullRestoreException(this.message);
+  const FullRestoreException(
+    this.message, {
+    this.code = FullRestoreErrorCode.general,
+  });
 
   @override
   String toString() => message;
@@ -51,10 +66,12 @@ class FullRestoreService {
   const FullRestoreService({
     this.paths = const AppPathService(),
     this.rollbackService = const RestoreRollbackService(),
+    this.hashService = const BackupHashService(),
   });
 
   final AppPathService paths;
   final RestoreRollbackService rollbackService;
+  final BackupHashService hashService;
 
   Future<FullRestoreResult> restoreFromZip(File zipFile) async {
     if (!await zipFile.exists()) {
@@ -84,10 +101,16 @@ class FullRestoreService {
         throw FullRestoreException(
           '앱 업데이트 후 복원 필요: 백업 DB schemaVersion($backupSchemaVersion)이 '
           '현재 앱 schemaVersion($currentSchemaVersion)보다 높습니다.',
+          code: FullRestoreErrorCode.schemaTooNew,
         );
       }
 
       await _validateExtractedSize(
+        manifest,
+        extracted.databaseFile,
+        extracted.purchaseReceiptsDir,
+      );
+      await _validateChecksums(
         manifest,
         extracted.databaseFile,
         extracted.purchaseReceiptsDir,
@@ -116,6 +139,7 @@ class FullRestoreService {
           throw FullRestoreException(
             '복원 실패 후 rollback도 실패했습니다. 앱 데이터 확인이 필요합니다: '
             '$rollbackError',
+            code: FullRestoreErrorCode.rollbackFailed,
           );
         }
         throw FullRestoreException('복원 실패로 기존 데이터를 복구했습니다: $e');
@@ -184,19 +208,26 @@ class FullRestoreService {
     } catch (_) {
       // 아래의 명확한 메시지로 실패시킨다.
     }
-    throw const FullRestoreException('manifest.json 형식이 올바르지 않습니다.');
+    throw const FullRestoreException(
+      'manifest.json 형식이 올바르지 않습니다.',
+      code: FullRestoreErrorCode.manifestInvalid,
+    );
   }
 
   void _validateManifestShape(Map<String, Object?> manifest) {
     final backupId = _stringValue(manifest['backupId']).trim();
     if (backupId.isEmpty) {
-      throw const FullRestoreException('manifest.json에 backupId가 없습니다.');
+      throw const FullRestoreException(
+        'manifest.json에 backupId가 없습니다.',
+        code: FullRestoreErrorCode.manifestInvalid,
+      );
     }
 
     final backupCreatedAt = _stringValue(manifest['backupCreatedAt']).trim();
     if (backupCreatedAt.isEmpty || DateTime.tryParse(backupCreatedAt) == null) {
       throw const FullRestoreException(
         'manifest.json의 backupCreatedAt 날짜 형식이 올바르지 않습니다.',
+        code: FullRestoreErrorCode.manifestInvalid,
       );
     }
 
@@ -204,6 +235,7 @@ class FullRestoreService {
     if (formatVersion != FullBackupService.backupFormatVersion) {
       throw FullRestoreException(
         '지원하지 않는 백업 포맷입니다: $formatVersion',
+        code: FullRestoreErrorCode.manifestInvalid,
       );
     }
 
@@ -212,6 +244,7 @@ class FullRestoreService {
     if (totalSizeBytes < 0) {
       throw const FullRestoreException(
         'manifest.json의 totalSizeBytes 값이 올바르지 않습니다.',
+        code: FullRestoreErrorCode.manifestInvalid,
       );
     }
 
@@ -222,6 +255,7 @@ class FullRestoreService {
             .contains(AppPathService.purchaseReceiptsRelativeRoot)) {
       throw const FullRestoreException(
         'manifest.json의 includedFolders에 purchase_receipts가 없습니다.',
+        code: FullRestoreErrorCode.manifestInvalid,
       );
     }
   }
@@ -238,8 +272,121 @@ class FullRestoreService {
       throw FullRestoreException(
         '백업 파일 크기 검증 실패: manifest totalSizeBytes=$expectedSize, '
         '실제 복원 대상 크기=$actualSize',
+        code: FullRestoreErrorCode.checksumMismatch,
       );
     }
+  }
+
+  Future<void> _validateChecksums(
+    Map<String, Object?> manifest,
+    File dbFile,
+    Directory receiptsDir,
+  ) async {
+    final stockappDb = manifest['stockappDb'];
+    if (stockappDb != null) {
+      if (stockappDb is! Map) {
+        throw const FullRestoreException(
+          'manifest.json의 stockappDb 형식이 올바르지 않습니다.',
+          code: FullRestoreErrorCode.manifestInvalid,
+        );
+      }
+      await _validateFileHash(
+        file: dbFile,
+        expected: stockappDb,
+        relativePath: 'stockapp.db',
+      );
+    }
+
+    final receiptFiles = manifest['purchaseReceiptFiles'];
+    if (receiptFiles == null) return;
+    if (receiptFiles is! List) {
+      throw const FullRestoreException(
+        'manifest.json의 purchaseReceiptFiles 형식이 올바르지 않습니다.',
+        code: FullRestoreErrorCode.manifestInvalid,
+      );
+    }
+
+    final seen = <String>{};
+    for (final entry in receiptFiles) {
+      if (entry is! Map) {
+        throw const FullRestoreException(
+          'manifest.json의 첨부파일 checksum 항목 형식이 올바르지 않습니다.',
+          code: FullRestoreErrorCode.manifestInvalid,
+        );
+      }
+      final relativePath = _stringValue(entry['relativePath']);
+      final normalized = _normalizeManifestReceiptPath(relativePath);
+      if (!seen.add(normalized)) {
+        throw FullRestoreException(
+          'manifest.json에 중복 첨부파일 경로가 있습니다: $normalized',
+          code: FullRestoreErrorCode.manifestInvalid,
+        );
+      }
+
+      final file = File(
+        p.joinAll([
+          receiptsDir.path,
+          ...p.posix.split(
+            normalized.substring(
+              AppPathService.purchaseReceiptsRelativeRoot.length + 1,
+            ),
+          ),
+        ]),
+      );
+      if (!await file.exists()) {
+        throw FullRestoreException(
+          '백업 zip에 manifest 첨부파일이 없습니다: $normalized',
+          code: FullRestoreErrorCode.checksumMismatch,
+        );
+      }
+      await _validateFileHash(
+        file: file,
+        expected: entry,
+        relativePath: normalized,
+      );
+    }
+  }
+
+  Future<void> _validateFileHash({
+    required File file,
+    required Map expected,
+    required String relativePath,
+  }) async {
+    final expectedSize = _intValue(expected['sizeBytes']);
+    final expectedSha256 = _stringValue(expected['sha256']).trim();
+    if (expectedSha256.isEmpty) {
+      throw FullRestoreException(
+        'manifest.json에 sha256 값이 없습니다: $relativePath',
+        code: FullRestoreErrorCode.manifestInvalid,
+      );
+    }
+
+    final actualHash = await hashService.hashFile(
+      file: file,
+      relativePath: relativePath,
+    );
+    if (actualHash.sizeBytes != expectedSize ||
+        actualHash.sha256 != expectedSha256) {
+      throw FullRestoreException(
+        '백업 파일 checksum 검증 실패: $relativePath',
+        code: FullRestoreErrorCode.checksumMismatch,
+      );
+    }
+  }
+
+  String _normalizeManifestReceiptPath(String relativePath) {
+    final normalized = p.posix.normalize(relativePath.replaceAll('\\', '/'));
+    if (!normalized.startsWith(
+          '${AppPathService.purchaseReceiptsRelativeRoot}/',
+        ) ||
+        normalized.contains('../') ||
+        p.posix.isAbsolute(normalized)) {
+      throw FullRestoreException(
+        'manifest.json에 안전하지 않은 첨부파일 경로가 있습니다: $relativePath',
+        code: FullRestoreErrorCode.manifestInvalid,
+      );
+    }
+    return normalized;
   }
 
   void _validateBackupDatabase(File dbFile) {
@@ -254,6 +401,7 @@ class FullRestoreService {
       if (integrityResult.toLowerCase() != 'ok') {
         throw FullRestoreException(
           '백업 DB integrity_check 실패: $integrityResult',
+          code: FullRestoreErrorCode.databaseInvalid,
         );
       }
 
@@ -270,12 +418,16 @@ class FullRestoreService {
       if (missingTables.isNotEmpty) {
         throw FullRestoreException(
           '백업 DB에 필수 테이블이 없습니다: ${missingTables.join(', ')}',
+          code: FullRestoreErrorCode.missingRequiredTables,
         );
       }
     } on FullRestoreException {
       rethrow;
     } catch (e) {
-      throw FullRestoreException('백업 DB 검증에 실패했습니다: $e');
+      throw FullRestoreException(
+        '백업 DB 검증에 실패했습니다: $e',
+        code: FullRestoreErrorCode.databaseInvalid,
+      );
     } finally {
       database?.dispose();
     }
@@ -503,7 +655,9 @@ class FullRestoreService {
       if (parsed != null) return parsed;
     }
     throw const FullRestoreException(
-        'manifest.json의 schema/version 값이 올바르지 않습니다.');
+      'manifest.json의 schema/version 값이 올바르지 않습니다.',
+      code: FullRestoreErrorCode.manifestInvalid,
+    );
   }
 
   String _stringValue(Object? value) => value?.toString() ?? '';
