@@ -377,6 +377,7 @@ class _CloudBackupCard extends StatelessWidget {
     final uploadedAt =
         backup.uploadedAt == null ? '-' : _formatDateTime(backup.uploadedAt!);
     final statusColor = _statusColor(context, backup.status);
+    final numberFormat = NumberFormat.decimalPattern('ko_KR');
 
     return Card(
       child: Padding(
@@ -416,6 +417,43 @@ class _CloudBackupCard extends StatelessWidget {
             _InfoRow(
               label: '용량',
               value: StorageUsageService.formatBytes(backup.totalSizeBytes),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '백업 기기',
+              value: _formatDevice(backup),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '아이템',
+              value: _formatCount(backup.summaryItemCount, numberFormat),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '총 재고수량',
+              value: _formatCount(backup.summaryTotalStockQty, numberFormat),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '거래처',
+              value: _formatCount(backup.summarySupplierCount, numberFormat),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '최근 입출고',
+              value: backup.summaryLatestTxnAt == null
+                  ? '-'
+                  : _formatDateTime(backup.summaryLatestTxnAt!),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '최근 발주',
+              value: _formatLatestPurchase(backup),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '첨부파일',
+              value: _formatReceiptSummary(backup, numberFormat),
             ),
             const SizedBox(height: 8),
             _InfoRow(
@@ -470,6 +508,49 @@ class _CloudBackupCard extends StatelessWidget {
 
   static String _formatDateTime(DateTime value) {
     return DateFormat('yyyy-MM-dd HH:mm').format(value.toLocal());
+  }
+
+  static String _formatCount(int? value, NumberFormat numberFormat) {
+    if (value == null) return '-';
+    return numberFormat.format(value);
+  }
+
+  static String _formatDevice(CloudBackupMetadata backup) {
+    final name = backup.deviceName?.trim();
+    final platform = backup.devicePlatform?.trim();
+    final osVersion = backup.deviceOsVersion?.trim();
+
+    final main = [
+      if (name != null && name.isNotEmpty) name,
+      if (platform != null && platform.isNotEmpty) platform,
+    ].join(' / ');
+    if (main.isEmpty && (osVersion == null || osVersion.isEmpty)) return '-';
+    if (osVersion == null || osVersion.isEmpty) return main;
+    if (main.isEmpty) return osVersion;
+    return '$main\n$osVersion';
+  }
+
+  static String _formatLatestPurchase(CloudBackupMetadata backup) {
+    final date = backup.summaryLatestPurchaseOrderAt;
+    if (date == null) return '-';
+    final supplierName = backup.summaryLatestPurchaseSupplierName?.trim();
+    if (supplierName == null || supplierName.isEmpty) {
+      return _formatDateTime(date);
+    }
+    return '${_formatDateTime(date)} / $supplierName';
+  }
+
+  static String _formatReceiptSummary(
+    CloudBackupMetadata backup,
+    NumberFormat numberFormat,
+  ) {
+    final count = backup.receiptFileCount;
+    final sizeBytes = backup.receiptTotalSizeBytes;
+    if (count == null && sizeBytes == null) return '-';
+    final countText = count == null ? '-' : '${numberFormat.format(count)}개';
+    final sizeText =
+        sizeBytes == null ? '-' : StorageUsageService.formatBytes(sizeBytes);
+    return '$countText / $sizeText';
   }
 
   static Color _statusColor(BuildContext context, String status) {

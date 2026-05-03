@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../db/app_database.dart';
 import 'auth_service.dart';
 import 'full_backup_service.dart';
 
@@ -47,6 +48,18 @@ class CloudBackupMetadata {
   final DateTime? uploadedAt;
   final DateTime? updatedAt;
   final DateTime? failedAt;
+  final int? stockappDbSizeBytes;
+  final int? receiptFileCount;
+  final int? receiptTotalSizeBytes;
+  final int? summaryItemCount;
+  final int? summaryTotalStockQty;
+  final int? summarySupplierCount;
+  final DateTime? summaryLatestTxnAt;
+  final DateTime? summaryLatestPurchaseOrderAt;
+  final String? summaryLatestPurchaseSupplierName;
+  final String? deviceName;
+  final String? devicePlatform;
+  final String? deviceOsVersion;
 
   const CloudBackupMetadata({
     required this.docId,
@@ -61,6 +74,18 @@ class CloudBackupMetadata {
     this.uploadedAt,
     this.updatedAt,
     this.failedAt,
+    this.stockappDbSizeBytes,
+    this.receiptFileCount,
+    this.receiptTotalSizeBytes,
+    this.summaryItemCount,
+    this.summaryTotalStockQty,
+    this.summarySupplierCount,
+    this.summaryLatestTxnAt,
+    this.summaryLatestPurchaseOrderAt,
+    this.summaryLatestPurchaseSupplierName,
+    this.deviceName,
+    this.devicePlatform,
+    this.deviceOsVersion,
   });
 
   factory CloudBackupMetadata.fromDoc(
@@ -80,6 +105,20 @@ class CloudBackupMetadata {
       uploadedAt: _dateTimeValue(data['uploadedAt']),
       updatedAt: _dateTimeValue(data['updatedAt']),
       failedAt: _dateTimeValue(data['failedAt']),
+      stockappDbSizeBytes: _nullableIntValue(data['stockappDbSizeBytes']),
+      receiptFileCount: _nullableIntValue(data['receiptFileCount']),
+      receiptTotalSizeBytes: _nullableIntValue(data['receiptTotalSizeBytes']),
+      summaryItemCount: _nullableIntValue(data['summaryItemCount']),
+      summaryTotalStockQty: _nullableIntValue(data['summaryTotalStockQty']),
+      summarySupplierCount: _nullableIntValue(data['summarySupplierCount']),
+      summaryLatestTxnAt: _dateTimeValue(data['summaryLatestTxnAt']),
+      summaryLatestPurchaseOrderAt:
+          _dateTimeValue(data['summaryLatestPurchaseOrderAt']),
+      summaryLatestPurchaseSupplierName:
+          data['summaryLatestPurchaseSupplierName']?.toString(),
+      deviceName: data['deviceName']?.toString(),
+      devicePlatform: data['devicePlatform']?.toString(),
+      deviceOsVersion: data['deviceOsVersion']?.toString(),
     );
   }
 
@@ -95,6 +134,13 @@ class CloudBackupMetadata {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
+  }
+
+  static int? _nullableIntValue(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }
 
@@ -183,7 +229,7 @@ class CloudBackupService {
         DateTime.parse(_requiredString(manifest, 'backupCreatedAt'));
     final storagePath = 'users/$uid/backups/$backupId/stockapp_full_backup.zip';
     final docRef = _backupDoc(uid, backupId);
-    final metadata = _metadataFromManifest(
+    final metadata = await _metadataFromManifest(
       uid: uid,
       manifest: manifest,
       status: 'uploading',
@@ -605,12 +651,12 @@ class CloudBackupService {
     }
   }
 
-  Map<String, Object?> _metadataFromManifest({
+  Future<Map<String, Object?>> _metadataFromManifest({
     required String uid,
     required Map<String, Object?> manifest,
     required String status,
     required String storagePath,
-  }) {
+  }) async {
     final receiptFiles = manifest['purchaseReceiptFiles'];
     final receiptList = receiptFiles is List ? receiptFiles : const [];
     final receiptTotalSizeBytes = receiptList.fold<int>(
@@ -625,6 +671,7 @@ class CloudBackupService {
     );
     final stockappDb = manifest['stockappDb'];
     final stockappDbMap = stockappDb is Map ? stockappDb : const {};
+    final contentSummary = await _buildContentSummaryMetadata();
 
     return {
       'uid': uid,
@@ -641,8 +688,103 @@ class CloudBackupService {
       'stockappDbSizeBytes': _intValue(stockappDbMap['sizeBytes']),
       'receiptFileCount': receiptList.length,
       'receiptTotalSizeBytes': receiptTotalSizeBytes,
+      ..._buildDeviceMetadata(),
+      ...contentSummary,
       'updatedAt': FieldValue.serverTimestamp(),
     };
+  }
+
+  Map<String, Object?> _buildDeviceMetadata() {
+    String? hostname;
+    try {
+      hostname = Platform.localHostname;
+    } catch (_) {
+      hostname = null;
+    }
+
+    return {
+      'deviceName': _emptyToNull(hostname),
+      'devicePlatform': Platform.operatingSystem,
+      'deviceOsVersion': Platform.operatingSystemVersion,
+    };
+  }
+
+  Future<Map<String, Object?>> _buildContentSummaryMetadata() async {
+    try {
+      final db = AppDatabase();
+
+      final itemCount = await _singleInt(
+        db,
+        'SELECT COUNT(*) AS value FROM items '
+        'WHERE COALESCE(is_deleted, 0) = 0',
+      );
+      final totalStockQty = await _singleInt(
+        db,
+        'SELECT COALESCE(SUM(qty), 0) AS value FROM items '
+        'WHERE COALESCE(is_deleted, 0) = 0',
+      );
+      final supplierCount = await _singleInt(
+        db,
+        'SELECT COUNT(*) AS value FROM suppliers '
+        'WHERE COALESCE(is_active, 1) = 1',
+      );
+      final latestTxnAt = await _singleString(
+        db,
+        'SELECT ts AS value FROM txns '
+        'WHERE COALESCE(is_deleted, 0) = 0 '
+        'ORDER BY ts DESC LIMIT 1',
+      );
+      final latestPurchase = await db
+          .customSelect(
+            'SELECT created_at, supplier_name FROM purchase_orders '
+            'WHERE COALESCE(is_deleted, 0) = 0 '
+            'ORDER BY created_at DESC LIMIT 1',
+          )
+          .getSingleOrNull();
+      final latestPurchaseAt = latestPurchase?.data['created_at']?.toString();
+      final latestPurchaseSupplierName =
+          latestPurchase?.data['supplier_name']?.toString();
+
+      return {
+        'summaryItemCount': itemCount,
+        'summaryTotalStockQty': totalStockQty,
+        'summarySupplierCount': supplierCount,
+        'summaryLatestTxnAt': _timestampFromIso(latestTxnAt),
+        'summaryLatestPurchaseOrderAt': _timestampFromIso(latestPurchaseAt),
+        'summaryLatestPurchaseSupplierName': latestPurchaseSupplierName,
+      };
+    } catch (e, stackTrace) {
+      debugPrint('☁️ CloudBackup summary metadata failed: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      return const <String, Object?>{};
+    }
+  }
+
+  Future<int> _singleInt(AppDatabase db, String sql) async {
+    final row = await db.customSelect(sql).getSingle();
+    final value = row.data['value'];
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  Future<String?> _singleString(AppDatabase db, String sql) async {
+    final row = await db.customSelect(sql).getSingleOrNull();
+    return row?.data['value']?.toString();
+  }
+
+  Timestamp? _timestampFromIso(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return null;
+    return Timestamp.fromDate(parsed);
+  }
+
+  String? _emptyToNull(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
   }
 
   String _requiredString(Map<String, Object?> manifest, String key) {
