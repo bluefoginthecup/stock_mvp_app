@@ -1020,6 +1020,14 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                     icon: const Icon(Icons.refresh),
                     label: const Text('새로고침'),
                   ),
+                  OutlinedButton.icon(
+                    onPressed: _uploading
+                        ? null
+                        : () => Navigator.of(context)
+                            .pushNamed('/settings/cloud-backups'),
+                    icon: const Icon(Icons.list_alt_outlined),
+                    label: const Text('백업 목록 보기'),
+                  ),
                 ],
               ),
             ],
