@@ -8,6 +8,7 @@ import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'dart:io';
 import '/src/services/backup_file_delivery_service.dart';
 import '/src/services/backup_encryption_settings_service.dart';
+import '/src/services/backup_encryption_key_store.dart';
 import '/src/services/auth_service.dart';
 import '/src/services/cloud_auto_backup_service.dart';
 import '/src/services/cloud_backup_service.dart';
@@ -885,6 +886,7 @@ class _BackupEncryptionSection extends StatefulWidget {
 class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
   final BackupEncryptionSettingsService _service =
       const BackupEncryptionSettingsService();
+  final BackupEncryptionKeyStore _keyStore = const BackupEncryptionKeyStore();
   BackupEncryptionSettings? _settings;
   bool _loading = true;
   bool _saving = false;
@@ -921,8 +923,8 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
   Future<void> _setupEncryption() async {
     if (_saving) return;
 
-    final passwordOk = await _showPasswordDialog();
-    if (passwordOk != true || !mounted) return;
+    final password = await _showPasswordDialog();
+    if (password == null || !mounted) return;
 
     final draft = _service.createSetupDraft();
     final confirmed = await _showRecoveryKeyDialog(draft.recoveryKey);
@@ -930,6 +932,10 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
 
     setState(() => _saving = true);
     try {
+      await _keyStore.saveSecret(
+        password: password,
+        recoveryKey: draft.recoveryKey,
+      );
       await _service.completeSetup(draft);
       final settings = await _service.load();
       if (!mounted) return;
@@ -952,12 +958,12 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
     }
   }
 
-  Future<bool?> _showPasswordDialog() {
+  Future<String?> _showPasswordDialog() {
     final passwordController = TextEditingController();
     final confirmController = TextEditingController();
     String? errorText;
 
-    return showDialog<bool>(
+    return showDialog<String>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
@@ -999,7 +1005,7 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('취소'),
             ),
             FilledButton(
@@ -1018,7 +1024,7 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
                   });
                   return;
                 }
-                Navigator.of(dialogContext).pop(true);
+                Navigator.of(dialogContext).pop(password);
               },
               child: const Text('다음'),
             ),
@@ -1148,9 +1154,9 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
               ],
               const SizedBox(height: 8),
               Text(
-                '클라우드 자동백업은 암호화 설정 완료 후 사용하는 방향으로 준비 중입니다. '
-                '이번 단계에서는 설정 UI와 복구키 hash 저장까지만 적용되며, '
-                '실제 zip 암호화와 Keychain/Keystore 저장은 다음 단계에서 연결합니다.',
+                '수동 클라우드 백업은 저장된 암호화 secret으로 .stockbackup 파일만 업로드합니다. '
+                '복구키 원문은 저장하지 않고 검증용 hash만 저장합니다. '
+                '자동백업 암호화 연결은 다음 단계에서 적용합니다.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context)
                           .colorScheme
@@ -1329,7 +1335,19 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
   Future<CloudBackupEncryptionRequest?>
       _readManualBackupEncryptionRequest() async {
     const encryptionSettingsService = BackupEncryptionSettingsService();
-    final settings = await encryptionSettingsService.load();
+    const keyStore = BackupEncryptionKeyStore();
+    late final BackupEncryptionSettings settings;
+    try {
+      settings = await encryptionSettingsService.load();
+    } catch (e) {
+      if (!mounted) return null;
+      await _showSimpleErrorDialog(
+        context,
+        title: '백업 암호화 설정 확인 실패',
+        message: '백업 암호화 설정을 확인하지 못했습니다.\n\n$e',
+      );
+      return null;
+    }
     if (!settings.configured) {
       if (!mounted) return null;
       await _showSimpleErrorDialog(
@@ -1340,105 +1358,41 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
       return null;
     }
 
-    if (!mounted) return null;
-    return _showManualBackupEncryptionDialog(
-      settings: settings,
-      settingsService: encryptionSettingsService,
+    late final BackupEncryptionStoredSecret? secret;
+    try {
+      secret = await keyStore.readSecret();
+    } on BackupEncryptionKeyStoreException catch (e) {
+      if (!mounted) return null;
+      await _showSimpleErrorDialog(
+        context,
+        title: '기기 보안 저장소 사용 불가',
+        message: e.message,
+      );
+      return null;
+    } catch (e) {
+      if (!mounted) return null;
+      await _showSimpleErrorDialog(
+        context,
+        title: '백업 암호화 secret 확인 실패',
+        message: '기기 보안 저장소에서 백업 암호화 secret을 읽지 못했습니다.\n\n$e',
+      );
+      return null;
+    }
+    if (secret == null) {
+      if (!mounted) return null;
+      await _showSimpleErrorDialog(
+        context,
+        title: '백업 암호화 재설정 필요',
+        message: '기기 보안 저장소에서 백업 암호화 secret을 찾지 못했습니다.\n\n'
+            '백업 암호화를 다시 설정한 뒤 클라우드 백업을 시도해주세요.',
+      );
+      return null;
+    }
+
+    return CloudBackupEncryptionRequest(
+      passwordSecret: secret.passwordSecret,
+      recoverySecret: secret.recoverySecret,
     );
-  }
-
-  Future<CloudBackupEncryptionRequest?> _showManualBackupEncryptionDialog({
-    required BackupEncryptionSettings settings,
-    required BackupEncryptionSettingsService settingsService,
-  }) {
-    final passwordController = TextEditingController();
-    final recoveryKeyController = TextEditingController();
-    String? errorText;
-
-    return showDialog<CloudBackupEncryptionRequest>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('암호화 백업 만들기'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '클라우드에는 원본 zip 대신 암호화된 .stockbackup 파일만 업로드합니다. '
-                  '이번 단계에서는 자동백업과 Keychain/Keystore 저장은 아직 연결하지 않습니다.',
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: '백업 비밀번호',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: recoveryKeyController,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: const InputDecoration(
-                    labelText: '복구키',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                if (errorText != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    errorText!,
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('취소'),
-            ),
-            FilledButton.icon(
-              onPressed: () {
-                final password = passwordController.text;
-                final recoveryKey = recoveryKeyController.text;
-                if (password.length < 8) {
-                  setDialogState(() {
-                    errorText = '비밀번호는 8자 이상으로 입력해주세요.';
-                  });
-                  return;
-                }
-                if (!settingsService.verifyRecoveryKey(
-                  settings: settings,
-                  recoveryKey: recoveryKey,
-                )) {
-                  setDialogState(() {
-                    errorText = '복구키가 백업 암호화 설정과 일치하지 않습니다.';
-                  });
-                  return;
-                }
-                Navigator.of(dialogContext).pop(
-                  CloudBackupEncryptionRequest(
-                    password: password,
-                    recoveryKey: recoveryKey.trim().toUpperCase(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.lock_outline),
-              label: const Text('암호화 백업 시작'),
-            ),
-          ],
-        ),
-      ),
-    ).whenComplete(() {
-      passwordController.dispose();
-      recoveryKeyController.dispose();
-    });
   }
 
   @override

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:cryptography/cryptography.dart';
 import 'package:path/path.dart' as p;
 
@@ -62,6 +63,20 @@ class BackupEncryptionService {
       outputFile: outputFile ?? File('${zipFile.path}$encryptedExtension'),
       password: password,
       recoveryKey: recoveryKey,
+    );
+  }
+
+  Future<EncryptedBackupFile> encryptZipWithSecrets({
+    required File zipFile,
+    File? outputFile,
+    required String passwordSecret,
+    required String recoverySecret,
+  }) {
+    return encryptFile(
+      inputFile: zipFile,
+      outputFile: outputFile ?? File('${zipFile.path}$encryptedExtension'),
+      password: passwordSecret,
+      recoveryKey: recoverySecret,
     );
   }
 
@@ -213,10 +228,20 @@ class BackupEncryptionService {
     String? recoveryKey,
   }) async {
     final attempts = <_UnwrapAttempt>[
-      if (password != null && password.isNotEmpty)
+      if (password != null && password.isNotEmpty) ...[
         _UnwrapAttempt('passwordWrappedKey', password),
-      if (recoveryKey != null && recoveryKey.isNotEmpty)
+        _UnwrapAttempt(
+          'passwordWrappedKey',
+          _derivePasswordUnlockSecret(password),
+        ),
+      ],
+      if (recoveryKey != null && recoveryKey.isNotEmpty) ...[
         _UnwrapAttempt('recoveryWrappedKey', recoveryKey),
+        _UnwrapAttempt(
+          'recoveryWrappedKey',
+          _deriveRecoveryUnlockSecret(recoveryKey),
+        ),
+      ],
     ];
 
     for (final attempt in attempts) {
@@ -350,6 +375,19 @@ class BackupEncryptionService {
     if (value.trim().isEmpty) {
       throw BackupEncryptionException('$label 값이 비어 있습니다.');
     }
+  }
+
+  String _derivePasswordUnlockSecret(String password) {
+    return crypto.sha256
+        .convert(utf8.encode('stockapp:password-wrap:v1:$password'))
+        .toString();
+  }
+
+  String _deriveRecoveryUnlockSecret(String recoveryKey) {
+    final normalized = recoveryKey.trim().toUpperCase();
+    return crypto.sha256
+        .convert(utf8.encode('stockapp:recovery-wrap:v1:$normalized'))
+        .toString();
   }
 
   List<int> _randomBytes(int length) {

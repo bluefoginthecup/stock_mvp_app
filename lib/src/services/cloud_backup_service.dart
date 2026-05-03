@@ -196,13 +196,20 @@ class CloudBackupUploadResult {
 }
 
 class CloudBackupEncryptionRequest {
-  final String password;
-  final String recoveryKey;
+  final String? password;
+  final String? recoveryKey;
+  final String? passwordSecret;
+  final String? recoverySecret;
 
   const CloudBackupEncryptionRequest({
-    required this.password,
-    required this.recoveryKey,
+    this.password,
+    this.recoveryKey,
+    this.passwordSecret,
+    this.recoverySecret,
   });
+
+  bool get usesStoredSecrets =>
+      passwordSecret?.isNotEmpty == true && recoverySecret?.isNotEmpty == true;
 }
 
 class CloudBackupDownloadResult {
@@ -293,10 +300,9 @@ class CloudBackupService {
 
     try {
       final uploadFile = encrypted
-          ? (await encryptionService.encryptZip(
+          ? (await _encryptCloudBackupFile(
               zipFile: backup.zipFile,
-              password: encryption.password,
-              recoveryKey: encryption.recoveryKey,
+              encryption: encryption,
             ))
               .file
           : backup.zipFile;
@@ -364,6 +370,34 @@ class CloudBackupService {
       await _markBackupFailed(docRef, metadata, e);
       rethrow;
     }
+  }
+
+  Future<EncryptedBackupFile> _encryptCloudBackupFile({
+    required File zipFile,
+    required CloudBackupEncryptionRequest encryption,
+  }) {
+    if (encryption.usesStoredSecrets) {
+      return encryptionService.encryptZipWithSecrets(
+        zipFile: zipFile,
+        passwordSecret: encryption.passwordSecret!,
+        recoverySecret: encryption.recoverySecret!,
+      );
+    }
+
+    final password = encryption.password;
+    final recoveryKey = encryption.recoveryKey;
+    if (password == null ||
+        password.isEmpty ||
+        recoveryKey == null ||
+        recoveryKey.isEmpty) {
+      throw const BackupEncryptionException('백업 암호화 secret이 없습니다.');
+    }
+
+    return encryptionService.encryptZip(
+      zipFile: zipFile,
+      password: password,
+      recoveryKey: recoveryKey,
+    );
   }
 
   void _assertFirebaseInitialized() {
