@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/cloud_auto_backup_service.dart';
 
 /// 앱 시작 시 로그인 상태를 점검하고,
 /// - 로그인 되어 있으면 child로 진입
@@ -52,7 +53,9 @@ class _LaunchGateState extends State<LaunchGate> {
 
         // 로그인된 상태라면 메인으로 진입
         if (user != null) {
-          return widget.signedInBuilder(context);
+          return _CloudAutoBackupRunner(
+            child: widget.signedInBuilder(context),
+          );
         }
 
         // 로그인 필요 화면
@@ -119,4 +122,61 @@ class _LaunchGateState extends State<LaunchGate> {
       },
     );
   }
+}
+
+class _CloudAutoBackupRunner extends StatefulWidget {
+  final Widget child;
+
+  const _CloudAutoBackupRunner({required this.child});
+
+  @override
+  State<_CloudAutoBackupRunner> createState() => _CloudAutoBackupRunnerState();
+}
+
+class _CloudAutoBackupRunnerState extends State<_CloudAutoBackupRunner>
+    with WidgetsBindingObserver {
+  bool _running = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _maybeRun();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _maybeRun();
+    }
+  }
+
+  Future<void> _maybeRun() async {
+    final auth = context.read<AuthService>();
+    final uid = auth.uid;
+    if (uid == null || _running) return;
+
+    _running = true;
+    try {
+      final service = CloudAutoBackupService(authService: auth);
+      final result = await service.runIfDue();
+      debugPrint('☁️ CloudAutoBackup startup: ${result.message}');
+    } finally {
+      _running = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

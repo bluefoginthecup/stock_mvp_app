@@ -7,7 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'dart:io';
 import '/src/services/backup_file_delivery_service.dart';
+import '/src/services/backup_encryption_settings_service.dart';
 import '/src/services/auth_service.dart';
+import '/src/services/cloud_auto_backup_service.dart';
 import '/src/services/cloud_backup_service.dart';
 import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
@@ -144,6 +146,8 @@ class SettingsScreen extends StatelessWidget {
           const _AccountSection(),
 
           const _StorageUsageSection(),
+
+          const _BackupEncryptionSection(),
 
           const _CloudBackupSection(),
 
@@ -547,6 +551,18 @@ Future<void> _showCloudBackupErrorDialog(
         message:
             'Firebase Storage 업로드에 실패했습니다. Firebase Storage 설정 또는 네트워크를 확인해주세요.',
       );
+    case CloudBackupErrorCode.storageDelete:
+      return _showSimpleErrorDialog(
+        context,
+        title: 'Storage 삭제 실패',
+        message: error.message,
+      );
+    case CloudBackupErrorCode.metadataDelete:
+      return _showSimpleErrorDialog(
+        context,
+        title: 'Firestore metadata 삭제 실패',
+        message: error.message,
+      );
     case CloudBackupErrorCode.general:
       return _showSimpleErrorDialog(
         context,
@@ -858,6 +874,311 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
   }
 }
 
+class _BackupEncryptionSection extends StatefulWidget {
+  const _BackupEncryptionSection();
+
+  @override
+  State<_BackupEncryptionSection> createState() =>
+      _BackupEncryptionSectionState();
+}
+
+class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
+  final BackupEncryptionSettingsService _service =
+      const BackupEncryptionSettingsService();
+  BackupEncryptionSettings? _settings;
+  bool _loading = true;
+  bool _saving = false;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final settings = await _service.load();
+      if (!mounted) return;
+      setState(() {
+        _settings = settings;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _setupEncryption() async {
+    if (_saving) return;
+
+    final passwordOk = await _showPasswordDialog();
+    if (passwordOk != true || !mounted) return;
+
+    final draft = _service.createSetupDraft();
+    final confirmed = await _showRecoveryKeyDialog(draft.recoveryKey);
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      await _service.completeSetup(draft);
+      final settings = await _service.load();
+      if (!mounted) return;
+      setState(() {
+        _settings = settings;
+        _saving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('백업 암호화 설정을 완료했습니다.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('백업 암호화 설정 실패: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  Future<bool?> _showPasswordDialog() {
+    final passwordController = TextEditingController();
+    final confirmController = TextEditingController();
+    String? errorText;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('백업 암호 설정'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '이 비밀번호는 이후 백업 zip 암호화에 사용할 예정입니다. '
+                '이번 단계에서는 실제 암호화 secret 저장은 Keychain/Keystore 연동 때 처리합니다.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: '비밀번호',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: '비밀번호 확인',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              if (errorText != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  errorText!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final password = passwordController.text;
+                final confirm = confirmController.text;
+                if (password.length < 8) {
+                  setDialogState(() {
+                    errorText = '비밀번호는 8자 이상으로 입력해주세요.';
+                  });
+                  return;
+                }
+                if (password != confirm) {
+                  setDialogState(() {
+                    errorText = '비밀번호가 서로 다릅니다.';
+                  });
+                  return;
+                }
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('다음'),
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(() {
+      passwordController.dispose();
+      confirmController.dispose();
+    });
+  }
+
+  Future<bool?> _showRecoveryKeyDialog(String recoveryKey) {
+    var checked = false;
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('복구키 보관'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '비밀번호를 잊었을 때 이 복구키로 백업을 복원할 수 있게 할 예정입니다. '
+                  '복구키 원문은 앱에 저장하지 않습니다.',
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                  ),
+                  child: SelectableText(
+                    recoveryKey,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '이 복구키를 잃어버리면 비밀번호 분실 시 백업 복원이 불가능합니다.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: checked,
+                  onChanged: (value) {
+                    setDialogState(() => checked = value ?? false);
+                  },
+                  title: const Text('복구키를 안전한 곳에 보관했습니다'),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed:
+                  checked ? () => Navigator.of(dialogContext).pop(true) : null,
+              child: const Text('설정 완료'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = _settings;
+    final configured = settings?.configured ?? false;
+    final configuredAt = settings?.configuredAt;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      '백업 암호화',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (_loading || _saving)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _StorageUsageRow(
+                label: '상태',
+                value: configured ? '설정 완료' : '설정 안 됨',
+              ),
+              if (configuredAt != null) ...[
+                const SizedBox(height: 8),
+                _StorageUsageRow(
+                  label: '설정일',
+                  value: DateFormat('yyyy-MM-dd HH:mm')
+                      .format(configuredAt.toLocal()),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                '클라우드 자동백업은 암호화 설정 완료 후 사용하는 방향으로 준비 중입니다. '
+                '이번 단계에서는 설정 UI와 복구키 hash 저장까지만 적용되며, '
+                '실제 zip 암호화와 Keychain/Keystore 저장은 다음 단계에서 연결합니다.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.62),
+                    ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '백업 암호화 설정을 불러오지 못했습니다.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: _loading || _saving ? null : _setupEncryption,
+                icon: const Icon(Icons.lock_outline),
+                label: Text(configured ? '백업 암호 다시 설정' : '백업 암호 설정'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CloudBackupSection extends StatefulWidget {
   const _CloudBackupSection();
 
@@ -867,16 +1188,25 @@ class _CloudBackupSection extends StatefulWidget {
 
 class _CloudBackupSectionState extends State<_CloudBackupSection> {
   CloudBackupService? _service;
+  CloudAutoBackupService? _autoBackupService;
   CloudBackupMetadata? _latestBackup;
+  CloudAutoBackupSettings _autoSettings = CloudAutoBackupSettings.defaults;
+  DateTime? _lastAutoAttemptAt;
+  DateTime? _lastAutoSuccessAt;
   Object? _error;
   bool _loading = true;
   bool _uploading = false;
+  bool _savingAutoSettings = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _service ??= CloudBackupService(
       authService: context.read<AuthService>(),
+    );
+    _autoBackupService ??= CloudAutoBackupService(
+      authService: context.read<AuthService>(),
+      cloudBackupService: _service,
     );
     _refresh();
   }
@@ -891,10 +1221,18 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
     });
 
     try {
+      final autoService = _autoBackupService;
       final latest = await service.latestReadyBackup();
+      final autoSettings =
+          await autoService?.loadSettings() ?? CloudAutoBackupSettings.defaults;
+      final lastAutoAttemptAt = await autoService?.lastAttemptAt();
+      final lastAutoSuccessAt = await autoService?.lastSuccessAt();
       if (!mounted) return;
       setState(() {
         _latestBackup = latest;
+        _autoSettings = autoSettings;
+        _lastAutoAttemptAt = lastAutoAttemptAt;
+        _lastAutoSuccessAt = lastAutoSuccessAt;
         _loading = false;
       });
     } catch (e) {
@@ -903,6 +1241,42 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
         _error = e;
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _saveAutoSettings(CloudAutoBackupSettings settings) async {
+    final service = _autoBackupService;
+    if (service == null || _savingAutoSettings) return;
+
+    setState(() {
+      _savingAutoSettings = true;
+      _autoSettings = settings;
+    });
+
+    try {
+      await service.saveSettings(settings);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            settings.enabled
+                ? '자동 백업이 켜졌습니다. (${_frequencyLabel(settings.frequency)})'
+                : '자동 백업이 꺼졌습니다.',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('자동 백업 설정 저장 실패: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _savingAutoSettings = false);
+      }
     }
   }
 
@@ -998,6 +1372,86 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                       latestBackup.totalSizeBytes),
                 ),
               ],
+              const SizedBox(height: 8),
+              _StorageUsageRow(
+                label: '자동 백업',
+                value: _autoSettings.enabled
+                    ? '${_frequencyLabel(_autoSettings.frequency)} / 켜짐'
+                    : '꺼짐',
+              ),
+              const SizedBox(height: 8),
+              _StorageUsageRow(
+                label: '자동 백업 성공',
+                value: _lastAutoSuccessAt == null
+                    ? '-'
+                    : DateFormat('yyyy-MM-dd HH:mm')
+                        .format(_lastAutoSuccessAt!.toLocal()),
+              ),
+              const SizedBox(height: 8),
+              _StorageUsageRow(
+                label: '자동 백업 시도',
+                value: _lastAutoAttemptAt == null
+                    ? '-'
+                    : DateFormat('yyyy-MM-dd HH:mm')
+                        .format(_lastAutoAttemptAt!.toLocal()),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('자동 백업 사용'),
+                subtitle: const Text('앱 실행 시와 앱이 다시 활성화될 때 자동 백업 여부를 확인합니다.'),
+                value: _autoSettings.enabled,
+                onChanged: uid == null || _savingAutoSettings
+                    ? null
+                    : (value) => _saveAutoSettings(
+                          CloudAutoBackupSettings(
+                            enabled: value,
+                            frequency: _autoSettings.frequency,
+                          ),
+                        ),
+              ),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<CloudAutoBackupFrequency>(
+                value: _autoSettings.frequency,
+                decoration: const InputDecoration(
+                  labelText: '자동 백업 주기',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: CloudAutoBackupFrequency.values
+                    .map(
+                      (frequency) => DropdownMenuItem(
+                        value: frequency,
+                        child: Text(_frequencyLabel(frequency)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: uid == null || _savingAutoSettings
+                    ? null
+                    : (frequency) {
+                        if (frequency == null) return;
+                        _saveAutoSettings(
+                          CloudAutoBackupSettings(
+                            enabled: _autoSettings.enabled,
+                            frequency: frequency,
+                          ),
+                        );
+                      },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '매일: 마지막 성공 백업 후 24시간이 지났을 때\n'
+                '매주: 마지막 성공 백업 후 7일이 지났을 때\n'
+                '매달: 마지막 성공 백업 후 30일이 지났을 때\n'
+                '단, 이전 백업과 내용이 같으면 새 백업을 만들지 않습니다. '
+                '자동 백업 시도 후 최소 12시간 동안은 다시 시도하지 않습니다.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.62),
+                    ),
+              ),
               if (_error != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -1035,6 +1489,17 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
         ),
       ),
     );
+  }
+
+  static String _frequencyLabel(CloudAutoBackupFrequency frequency) {
+    switch (frequency) {
+      case CloudAutoBackupFrequency.daily:
+        return '매일';
+      case CloudAutoBackupFrequency.weekly:
+        return '매주';
+      case CloudAutoBackupFrequency.monthly:
+        return '매달';
+    }
   }
 }
 

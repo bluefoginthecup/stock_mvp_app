@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive_io.dart';
+import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
@@ -99,12 +100,17 @@ class FullBackupService {
         root: await paths.purchaseReceiptsRoot(),
         relativeRoot: AppPathService.purchaseReceiptsRelativeRoot,
       );
+      final contentHash = _buildContentHash(
+        dbHash: dbHash,
+        receiptFileHashes: receiptFileHashes,
+      );
 
       final manifest = <String, Object?>{
         'backupId': backupId,
         'backupCreatedAt': createdAt.toIso8601String(),
         'backupFormatVersion': backupFormatVersion,
         'dbSchemaVersion': AppDatabase().schemaVersion,
+        'contentHash': contentHash,
         'includedFolders': includedFolders,
         'totalSizeBytes': totalSizeBytes,
         'stockappDb': {
@@ -140,6 +146,20 @@ class FullBackupService {
         await tempDir.delete(recursive: true);
       }
     }
+  }
+
+  String _buildContentHash({
+    required BackupFileHash dbHash,
+    required List<BackupFileHash> receiptFileHashes,
+  }) {
+    final content = <String, Object?>{
+      'stockappDb': dbHash.toJson(),
+      'purchaseReceiptFiles': receiptFileHashes
+          .map((fileHash) => fileHash.toJson())
+          .toList(growable: false),
+    };
+    final canonical = const JsonEncoder.withIndent('  ').convert(content);
+    return sha256.convert(utf8.encode(canonical)).toString();
   }
 
   Future<void> _writeConsistentDatabaseBackup(File dbBackup) async {
@@ -270,6 +290,7 @@ class FullBackupService {
       ..writeln(
           _metaRow('backupFormatVersion', manifest['backupFormatVersion']))
       ..writeln(_metaRow('dbSchemaVersion', manifest['dbSchemaVersion']))
+      ..writeln(_metaRow('contentHash', manifest['contentHash']))
       ..writeln(_metaRow('includedFolders', manifest['includedFolders']))
       ..writeln(_metaRow('totalSizeBytes', manifest['totalSizeBytes']))
       ..writeln(_metaRow('stockapp.db sizeBytes',

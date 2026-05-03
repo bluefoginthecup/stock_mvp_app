@@ -16,7 +16,9 @@ enum CloudBackupErrorCode {
   firebaseNotInitialized,
   firestoreConnection,
   storageUpload,
+  storageDelete,
   metadataWrite,
+  metadataDelete,
   general,
 }
 
@@ -42,6 +44,7 @@ class CloudBackupMetadata {
   final DateTime createdAt;
   final int backupFormatVersion;
   final int dbSchemaVersion;
+  final String contentHash;
   final int totalSizeBytes;
   final String storagePath;
   final String status;
@@ -68,6 +71,7 @@ class CloudBackupMetadata {
     required this.createdAt,
     required this.backupFormatVersion,
     required this.dbSchemaVersion,
+    required this.contentHash,
     required this.totalSizeBytes,
     required this.storagePath,
     required this.status,
@@ -99,6 +103,7 @@ class CloudBackupMetadata {
       createdAt: _dateTimeValue(data['createdAt']) ?? DateTime(1970),
       backupFormatVersion: _intValue(data['backupFormatVersion']),
       dbSchemaVersion: _intValue(data['dbSchemaVersion']),
+      contentHash: (data['contentHash'] ?? '').toString(),
       totalSizeBytes: _intValue(data['totalSizeBytes']),
       storagePath: (data['storagePath'] ?? '').toString(),
       status: (data['status'] ?? '').toString(),
@@ -169,10 +174,14 @@ class CloudBackupDeleteResult {
 class CloudBackupUploadResult {
   final CloudBackupMetadata metadata;
   final File localZipFile;
+  final bool uploaded;
+  final bool skippedDuplicate;
 
   const CloudBackupUploadResult({
     required this.metadata,
     required this.localZipFile,
+    this.uploaded = true,
+    this.skippedDuplicate = false,
   });
 }
 
@@ -187,7 +196,7 @@ class CloudBackupDownloadResult {
 }
 
 class CloudBackupService {
-  static const int defaultKeepRecent = 5;
+  static const int defaultKeepRecent = 10;
   static const int defaultMaxBackups = 20;
   static const Duration failedRetention = Duration(days: 3);
   static const Duration uploadingStaleAfter = Duration(hours: 1);
@@ -210,6 +219,7 @@ class CloudBackupService {
 
   Future<CloudBackupUploadResult> uploadFullBackup({
     int keepRecent = defaultKeepRecent,
+    bool skipIfContentUnchanged = false,
   }) async {
     final uid = authService.uid;
     if (uid == null) {
@@ -235,6 +245,23 @@ class CloudBackupService {
       status: 'uploading',
       storagePath: storagePath,
     );
+    if (skipIfContentUnchanged) {
+      final latestReady = await latestReadyBackup();
+      final contentHash = metadata['contentHash']?.toString() ?? '';
+      if (latestReady != null &&
+          contentHash.isNotEmpty &&
+          latestReady.contentHash == contentHash) {
+        debugPrint(
+          '☁️ CloudBackup: content unchanged, skipping upload $backupId',
+        );
+        return CloudBackupUploadResult(
+          metadata: latestReady,
+          localZipFile: backup.zipFile,
+          uploaded: false,
+          skippedDuplicate: true,
+        );
+      }
+    }
 
     try {
       debugPrint('☁️ CloudBackup: writing uploading metadata $backupId');
@@ -566,12 +593,32 @@ class CloudBackupService {
             'path=${backup.storagePath}, code=${e.code}, '
             'message=${e.message}, plugin=${e.plugin}',
           );
-          rethrow;
+          throw CloudBackupException(
+            'Firebase Storage의 백업 zip 삭제에 실패했습니다. '
+            '네트워크 또는 Storage 권한을 확인해주세요.',
+            code: CloudBackupErrorCode.storageDelete,
+            cause: e,
+          );
         }
       }
     }
 
-    await _backupDoc(resolvedUid, backup.docId).delete();
+    try {
+      await _backupDoc(resolvedUid, backup.docId).delete();
+    } on FirebaseException catch (e, stackTrace) {
+      debugPrint(
+        '☁️ CloudBackup metadata delete failed: '
+        'docId=${backup.docId}, code=${e.code}, '
+        'message=${e.message}, plugin=${e.plugin}',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      throw CloudBackupException(
+        'Firestore의 백업 metadata 삭제에 실패했습니다. '
+        '네트워크 또는 Firestore 권한을 확인해주세요.',
+        code: CloudBackupErrorCode.metadataDelete,
+        cause: e,
+      );
+    }
     return CloudBackupDeleteResult(
       deleted: true,
       storageObjectNotFound: storageObjectNotFound,
@@ -681,6 +728,7 @@ class CloudBackupService {
       ),
       'backupFormatVersion': _requiredInt(manifest, 'backupFormatVersion'),
       'dbSchemaVersion': _requiredInt(manifest, 'dbSchemaVersion'),
+      'contentHash': _requiredString(manifest, 'contentHash'),
       'totalSizeBytes': _requiredInt(manifest, 'totalSizeBytes'),
       'storagePath': storagePath,
       'status': status,

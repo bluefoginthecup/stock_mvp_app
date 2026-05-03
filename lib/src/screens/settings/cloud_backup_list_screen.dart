@@ -250,21 +250,16 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('클라우드 백업 삭제'),
-        content: Text(
-          '이 클라우드 백업을 삭제할까요?\n\n'
-          '생성일: ${_formatDateTime(backup.createdAt)}\n'
-          '상태: ${backup.status}\n'
-          '용량: ${StorageUsageService.formatBytes(backup.totalSizeBytes)}\n\n'
-          'Firebase Storage의 zip과 Firestore metadata가 함께 삭제됩니다.',
-        ),
+        content: _CloudBackupDeletePreview(backup: backup),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('취소'),
           ),
-          FilledButton(
+          FilledButton.icon(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('삭제'),
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('백업 삭제'),
           ),
         ],
       ),
@@ -351,7 +346,7 @@ class _CloudBackupPolicyCard extends StatelessWidget {
             const SizedBox(height: 12),
             _InfoRow(label: '계정 UID', value: uid ?? '로그인 필요'),
             const SizedBox(height: 8),
-            _InfoRow(label: 'ready 백업', value: '$readyCount개 / 최대 5개 유지'),
+            _InfoRow(label: 'ready 백업', value: '$readyCount개 / 최대 10개 유지'),
             const SizedBox(height: 8),
             _InfoRow(label: '전체 백업', value: '${backups.length}개 / 최대 20개 유지'),
             const SizedBox(height: 8),
@@ -705,18 +700,110 @@ class _CloudBackupRestorePreview extends StatelessWidget {
   }
 }
 
+class _CloudBackupDeletePreview extends StatelessWidget {
+  final CloudBackupMetadata backup;
+
+  const _CloudBackupDeletePreview({required this.backup});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '이 클라우드 백업을 삭제합니다.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .errorContainer
+                    .withValues(alpha: 0.34),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .error
+                      .withValues(alpha: 0.22),
+                ),
+              ),
+              child: Text(
+                'Firebase Storage의 zip을 먼저 삭제한 뒤 Firestore metadata를 삭제합니다. '
+                '삭제한 클라우드 백업은 복원할 수 없습니다.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onErrorContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _InfoRow(label: '생성일', value: _formatDateTime(backup.createdAt)),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '백업 기기',
+              value: _CloudBackupCard._formatDevice(backup),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(label: '상태', value: backup.status),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '용량',
+              value: StorageUsageService.formatBytes(backup.totalSizeBytes),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '첨부파일',
+              value: _CloudBackupCard._formatReceiptSummary(
+                backup,
+                NumberFormat.decimalPattern('ko_KR'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> _showDeleteErrorDialog(
   BuildContext context,
   Object error,
 ) {
-  final message = error is CloudBackupException
-      ? error.message
-      : '클라우드 백업 삭제 중 오류가 발생했습니다.\n\n$error';
+  var title = '클라우드 백업 삭제 실패';
+  var message = '클라우드 백업 삭제 중 오류가 발생했습니다.\n\n$error';
+
+  if (error is CloudBackupException) {
+    message = error.message;
+    switch (error.code) {
+      case CloudBackupErrorCode.storageDelete:
+        title = 'Storage zip 삭제 실패';
+        message = '${error.message}\n\n'
+            'Firestore metadata는 삭제하지 않았습니다. '
+            '잠시 후 다시 시도하면 Storage와 Firestore 불일치를 줄일 수 있습니다.';
+        break;
+      case CloudBackupErrorCode.metadataDelete:
+        title = 'Firestore metadata 삭제 실패';
+        message = '${error.message}\n\n'
+            'Storage zip은 이미 삭제되었을 수 있습니다. '
+            '목록을 새로고침한 뒤 같은 항목이 남아 있으면 다시 삭제를 시도해주세요.';
+        break;
+      default:
+        break;
+    }
+  }
 
   return showDialog<void>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('클라우드 백업 삭제 실패'),
+      title: Text(title),
       content: Text(message),
       actions: [
         FilledButton(
