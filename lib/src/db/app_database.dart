@@ -314,6 +314,15 @@ class PurchaseOrders extends Table {
   TextColumn get deliveryMemo => text().nullable()();
   BoolColumn get showDeliveryOnPrint =>
       boolean().withDefault(const Constant(false))();
+  IntColumn get buyerProfileId => integer().nullable()();
+  TextColumn get buyerProfileName => text().nullable()();
+  TextColumn get buyerBusinessNumber => text().nullable()();
+  TextColumn get buyerCompanyName => text().nullable()();
+  TextColumn get buyerRepresentative => text().nullable()();
+  TextColumn get buyerAddress => text().nullable()();
+  TextColumn get buyerBusinessType => text().nullable()();
+  TextColumn get buyerBusinessItem => text().nullable()();
+  TextColumn get buyerPhoneFax => text().nullable()();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
   // 🔥 신규 컬럼 2개 (주문 연동/입고일)
   TextColumn get orderId => text().nullable()(); // 주문 연동 발주면 채움
@@ -461,7 +470,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 24; //
+  int get schemaVersion => 26; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -471,6 +480,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureSupplierContactsTable();
           await _ensureSupplierAccountsTable();
           await _ensurePurchaseReceiptsTable();
+          await _ensureBuyerProfilesTable();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -690,6 +700,12 @@ class AppDatabase extends _$AppDatabase {
             await _addColumnIfMissing('purchase_orders',
                 'show_delivery_on_print', 'INTEGER NOT NULL DEFAULT 0');
           }
+          if (from < 25) {
+            await _ensureBuyerProfilesTable();
+          }
+          if (from < 26) {
+            await _ensurePurchaseOrderBuyerSnapshotColumns();
+          }
         },
       );
   Future<void> _backfillItemSearchKeys() async {
@@ -813,6 +829,38 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_supplier_contacts_supplier '
       'ON supplier_contacts(supplier_id, sort_order)',
     );
+  }
+
+  Future<void> _ensureBuyerProfilesTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS buyer_profiles (
+        id INTEGER PRIMARY KEY NOT NULL,
+        profile_name TEXT NOT NULL DEFAULT '',
+        business_number TEXT NOT NULL DEFAULT '',
+        company_name TEXT NOT NULL DEFAULT '',
+        representative TEXT NOT NULL DEFAULT '',
+        address TEXT NOT NULL DEFAULT '',
+        business_type TEXT NOT NULL DEFAULT '',
+        business_item TEXT NOT NULL DEFAULT '',
+        phone_fax TEXT NOT NULL DEFAULT '',
+        is_default INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _ensurePurchaseOrderBuyerSnapshotColumns() async {
+    await _addColumnIfMissing('purchase_orders', 'buyer_profile_id', 'INTEGER');
+    await _addColumnIfMissing('purchase_orders', 'buyer_profile_name', 'TEXT');
+    await _addColumnIfMissing(
+        'purchase_orders', 'buyer_business_number', 'TEXT');
+    await _addColumnIfMissing('purchase_orders', 'buyer_company_name', 'TEXT');
+    await _addColumnIfMissing(
+        'purchase_orders', 'buyer_representative', 'TEXT');
+    await _addColumnIfMissing('purchase_orders', 'buyer_address', 'TEXT');
+    await _addColumnIfMissing('purchase_orders', 'buyer_business_type', 'TEXT');
+    await _addColumnIfMissing('purchase_orders', 'buyer_business_item', 'TEXT');
+    await _addColumnIfMissing('purchase_orders', 'buyer_phone_fax', 'TEXT');
   }
 
   Future<void> _ensureSupplierAccountsTable() async {
@@ -1197,6 +1245,15 @@ extension PurchaseOrderRowMapping on PurchaseOrderRow {
         deliveryPhone: deliveryPhone,
         deliveryMemo: deliveryMemo,
         showDeliveryOnPrint: showDeliveryOnPrint,
+        buyerProfileId: buyerProfileId,
+        buyerProfileName: buyerProfileName,
+        buyerBusinessNumber: buyerBusinessNumber,
+        buyerCompanyName: buyerCompanyName,
+        buyerRepresentative: buyerRepresentative,
+        buyerAddress: buyerAddress,
+        buyerBusinessType: buyerBusinessType,
+        buyerBusinessItem: buyerBusinessItem,
+        buyerPhoneFax: buyerPhoneFax,
         orderId: orderId,
         receivedAt: receivedAt != null ? DateTime.parse(receivedAt!) : null,
       );
@@ -1233,6 +1290,15 @@ extension PurchaseOrderToCompanion on PurchaseOrder {
         deliveryPhone: Value(deliveryPhone),
         deliveryMemo: Value(deliveryMemo),
         showDeliveryOnPrint: Value(showDeliveryOnPrint),
+        buyerProfileId: Value(buyerProfileId),
+        buyerProfileName: Value(buyerProfileName),
+        buyerBusinessNumber: Value(buyerBusinessNumber),
+        buyerCompanyName: Value(buyerCompanyName),
+        buyerRepresentative: Value(buyerRepresentative),
+        buyerAddress: Value(buyerAddress),
+        buyerBusinessType: Value(buyerBusinessType),
+        buyerBusinessItem: Value(buyerBusinessItem),
+        buyerPhoneFax: Value(buyerPhoneFax),
         orderId: Value(orderId),
         receivedAt: Value(receivedAt?.toIso8601String()),
       );

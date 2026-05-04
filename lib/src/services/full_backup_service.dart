@@ -43,6 +43,7 @@ class FullBackupService {
     'memos',
     'quick_action_orders',
     'purchase_receipts',
+    'buyer_profiles',
   ];
 
   const FullBackupService({

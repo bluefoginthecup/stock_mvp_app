@@ -6,10 +6,12 @@ import 'package:stockapp_mvp/src/services/seed_importer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'dart:io';
+import '/src/models/buyer_profile.dart';
 import '/src/services/backup_file_delivery_service.dart';
 import '/src/services/backup_encryption_settings_service.dart';
 import '/src/services/backup_encryption_key_store.dart';
 import '/src/services/auth_service.dart';
+import '/src/services/buyer_profile_service.dart';
 import '/src/services/cloud_auto_backup_service.dart';
 import '/src/services/cloud_backup_service.dart';
 import '/src/services/export_service.dart';
@@ -145,6 +147,8 @@ class SettingsScreen extends StatelessWidget {
           ),
 
           const _AccountSection(),
+
+          const _BuyerProfileSection(),
 
           const _StorageUsageSection(),
 
@@ -700,6 +704,301 @@ class _AccountSection extends StatelessWidget {
       },
     );
   }
+}
+
+class _BuyerProfileSection extends StatefulWidget {
+  const _BuyerProfileSection();
+
+  @override
+  State<_BuyerProfileSection> createState() => _BuyerProfileSectionState();
+}
+
+class _BuyerProfileSectionState extends State<_BuyerProfileSection> {
+  late final BuyerProfileService _service;
+  List<BuyerProfile> _profiles = const [];
+  bool _loading = true;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = BuyerProfileService(context.read<AppDatabase>());
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+
+    try {
+      final profiles = await _service.listProfiles();
+      if (!mounted) return;
+      setState(() {
+        _profiles = profiles;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
+  }
+
+  BuyerProfile _slotProfile(int id) {
+    return _profiles.where((profile) => profile.id == id).firstOrNull ??
+        BuyerProfile(
+          id: id,
+          profileName: '',
+          businessNumber: '',
+          companyName: '',
+          representative: '',
+          address: '',
+          businessType: '',
+          businessItem: '',
+          phoneFax: '',
+          isDefault: false,
+          updatedAt: DateTime.now(),
+        );
+  }
+
+  Future<void> _edit(BuyerProfile profile) async {
+    final edited = await _showBuyerProfileEditor(context, profile);
+    if (edited == null) return;
+
+    await _service.saveProfile(edited);
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('공급받는자 정보를 저장했습니다')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '공급받는자 정보',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '발주서에 표시될 내 사업자 정보를 최대 2개까지 저장합니다.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else if (_error != null)
+                Text('불러오기 실패: $_error')
+              else
+                Column(
+                  children: [
+                    _BuyerProfileTile(
+                      profile: _slotProfile(1),
+                      onTap: () => _edit(_slotProfile(1)),
+                    ),
+                    const Divider(height: 1),
+                    _BuyerProfileTile(
+                      profile: _slotProfile(2),
+                      onTap: () => _edit(_slotProfile(2)),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BuyerProfileTile extends StatelessWidget {
+  final BuyerProfile profile;
+  final VoidCallback onTap;
+
+  const _BuyerProfileTile({
+    required this.profile,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final configured = profile.isConfigured;
+    final title = configured ? profile.displayName : '공급받는자 ${profile.id}';
+    final subtitle = configured
+        ? [
+            if (profile.companyName.trim().isNotEmpty) profile.companyName,
+            if (profile.businessNumber.trim().isNotEmpty)
+              profile.businessNumber,
+            if (profile.representative.trim().isNotEmpty)
+              profile.representative,
+          ].join(' / ')
+        : '미설정';
+
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        configured ? Icons.business_outlined : Icons.add_business_outlined,
+      ),
+      title: Row(
+        children: [
+          Expanded(child: Text(title)),
+          if (profile.isDefault)
+            const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: Chip(label: Text('기본')),
+            ),
+        ],
+      ),
+      subtitle: Text(subtitle.isEmpty ? '미설정' : subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+}
+
+Future<BuyerProfile?> _showBuyerProfileEditor(
+  BuildContext context,
+  BuyerProfile profile,
+) {
+  final profileNameC = TextEditingController(text: profile.profileName);
+  final businessNumberC = TextEditingController(text: profile.businessNumber);
+  final companyNameC = TextEditingController(text: profile.companyName);
+  final representativeC = TextEditingController(text: profile.representative);
+  final addressC = TextEditingController(text: profile.address);
+  final businessTypeC = TextEditingController(text: profile.businessType);
+  final businessItemC = TextEditingController(text: profile.businessItem);
+  final phoneFaxC = TextEditingController(text: profile.phoneFax);
+  var isDefault = profile.isDefault;
+
+  return showModalBottomSheet<BuyerProfile>(
+    context: context,
+    isScrollControlled: true,
+    builder: (sheetContext) {
+      return StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '공급받는자 ${profile.id}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('기본 공급받는자로 사용'),
+                    value: isDefault,
+                    onChanged: (value) {
+                      setSheetState(() => isDefault = value);
+                    },
+                  ),
+                  TextField(
+                    controller: profileNameC,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: '프로필 이름'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: businessNumberC,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: '사업자등록번호'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: companyNameC,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: '상호'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: representativeC,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: '대표자'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: addressC,
+                    minLines: 1,
+                    maxLines: 3,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: '주소'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: businessTypeC,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: '업태'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: businessItemC,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: '종목'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: phoneFaxC,
+                    decoration: const InputDecoration(labelText: '전화/팩스'),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop(
+                        profile.copyWith(
+                          profileName: profileNameC.text.trim(),
+                          businessNumber: businessNumberC.text.trim(),
+                          companyName: companyNameC.text.trim(),
+                          representative: representativeC.text.trim(),
+                          address: addressC.text.trim(),
+                          businessType: businessTypeC.text.trim(),
+                          businessItem: businessItemC.text.trim(),
+                          phoneFax: phoneFaxC.text.trim(),
+                          isDefault: isDefault,
+                          updatedAt: DateTime.now(),
+                        ),
+                      );
+                    },
+                    child: const Text('저장'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  ).whenComplete(() {
+    profileNameC.dispose();
+    businessNumberC.dispose();
+    companyNameC.dispose();
+    representativeC.dispose();
+    addressC.dispose();
+    businessTypeC.dispose();
+    businessItemC.dispose();
+    phoneFaxC.dispose();
+  });
 }
 
 class _StorageUsageSection extends StatefulWidget {

@@ -4800,6 +4800,60 @@ class $PurchaseOrdersTable extends PurchaseOrders
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("show_delivery_on_print" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _buyerProfileIdMeta =
+      const VerificationMeta('buyerProfileId');
+  @override
+  late final GeneratedColumn<int> buyerProfileId = GeneratedColumn<int>(
+      'buyer_profile_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _buyerProfileNameMeta =
+      const VerificationMeta('buyerProfileName');
+  @override
+  late final GeneratedColumn<String> buyerProfileName = GeneratedColumn<String>(
+      'buyer_profile_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _buyerBusinessNumberMeta =
+      const VerificationMeta('buyerBusinessNumber');
+  @override
+  late final GeneratedColumn<String> buyerBusinessNumber =
+      GeneratedColumn<String>('buyer_business_number', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _buyerCompanyNameMeta =
+      const VerificationMeta('buyerCompanyName');
+  @override
+  late final GeneratedColumn<String> buyerCompanyName = GeneratedColumn<String>(
+      'buyer_company_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _buyerRepresentativeMeta =
+      const VerificationMeta('buyerRepresentative');
+  @override
+  late final GeneratedColumn<String> buyerRepresentative =
+      GeneratedColumn<String>('buyer_representative', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _buyerAddressMeta =
+      const VerificationMeta('buyerAddress');
+  @override
+  late final GeneratedColumn<String> buyerAddress = GeneratedColumn<String>(
+      'buyer_address', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _buyerBusinessTypeMeta =
+      const VerificationMeta('buyerBusinessType');
+  @override
+  late final GeneratedColumn<String> buyerBusinessType =
+      GeneratedColumn<String>('buyer_business_type', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _buyerBusinessItemMeta =
+      const VerificationMeta('buyerBusinessItem');
+  @override
+  late final GeneratedColumn<String> buyerBusinessItem =
+      GeneratedColumn<String>('buyer_business_item', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _buyerPhoneFaxMeta =
+      const VerificationMeta('buyerPhoneFax');
+  @override
+  late final GeneratedColumn<String> buyerPhoneFax = GeneratedColumn<String>(
+      'buyer_phone_fax', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _deletedAtMeta =
       const VerificationMeta('deletedAt');
   @override
@@ -4845,6 +4899,15 @@ class $PurchaseOrdersTable extends PurchaseOrders
         deliveryPhone,
         deliveryMemo,
         showDeliveryOnPrint,
+        buyerProfileId,
+        buyerProfileName,
+        buyerBusinessNumber,
+        buyerCompanyName,
+        buyerRepresentative,
+        buyerAddress,
+        buyerBusinessType,
+        buyerBusinessItem,
+        buyerPhoneFax,
         deletedAt,
         orderId,
         receivedAt
@@ -4998,6 +5061,60 @@ class $PurchaseOrdersTable extends PurchaseOrders
           showDeliveryOnPrint.isAcceptableOrUnknown(
               data['show_delivery_on_print']!, _showDeliveryOnPrintMeta));
     }
+    if (data.containsKey('buyer_profile_id')) {
+      context.handle(
+          _buyerProfileIdMeta,
+          buyerProfileId.isAcceptableOrUnknown(
+              data['buyer_profile_id']!, _buyerProfileIdMeta));
+    }
+    if (data.containsKey('buyer_profile_name')) {
+      context.handle(
+          _buyerProfileNameMeta,
+          buyerProfileName.isAcceptableOrUnknown(
+              data['buyer_profile_name']!, _buyerProfileNameMeta));
+    }
+    if (data.containsKey('buyer_business_number')) {
+      context.handle(
+          _buyerBusinessNumberMeta,
+          buyerBusinessNumber.isAcceptableOrUnknown(
+              data['buyer_business_number']!, _buyerBusinessNumberMeta));
+    }
+    if (data.containsKey('buyer_company_name')) {
+      context.handle(
+          _buyerCompanyNameMeta,
+          buyerCompanyName.isAcceptableOrUnknown(
+              data['buyer_company_name']!, _buyerCompanyNameMeta));
+    }
+    if (data.containsKey('buyer_representative')) {
+      context.handle(
+          _buyerRepresentativeMeta,
+          buyerRepresentative.isAcceptableOrUnknown(
+              data['buyer_representative']!, _buyerRepresentativeMeta));
+    }
+    if (data.containsKey('buyer_address')) {
+      context.handle(
+          _buyerAddressMeta,
+          buyerAddress.isAcceptableOrUnknown(
+              data['buyer_address']!, _buyerAddressMeta));
+    }
+    if (data.containsKey('buyer_business_type')) {
+      context.handle(
+          _buyerBusinessTypeMeta,
+          buyerBusinessType.isAcceptableOrUnknown(
+              data['buyer_business_type']!, _buyerBusinessTypeMeta));
+    }
+    if (data.containsKey('buyer_business_item')) {
+      context.handle(
+          _buyerBusinessItemMeta,
+          buyerBusinessItem.isAcceptableOrUnknown(
+              data['buyer_business_item']!, _buyerBusinessItemMeta));
+    }
+    if (data.containsKey('buyer_phone_fax')) {
+      context.handle(
+          _buyerPhoneFaxMeta,
+          buyerPhoneFax.isAcceptableOrUnknown(
+              data['buyer_phone_fax']!, _buyerPhoneFaxMeta));
+    }
     if (data.containsKey('deleted_at')) {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
@@ -5071,6 +5188,24 @@ class $PurchaseOrdersTable extends PurchaseOrders
           .read(DriftSqlType.string, data['${effectivePrefix}delivery_memo']),
       showDeliveryOnPrint: attachedDatabase.typeMapping.read(
           DriftSqlType.bool, data['${effectivePrefix}show_delivery_on_print'])!,
+      buyerProfileId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}buyer_profile_id']),
+      buyerProfileName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}buyer_profile_name']),
+      buyerBusinessNumber: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}buyer_business_number']),
+      buyerCompanyName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}buyer_company_name']),
+      buyerRepresentative: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}buyer_representative']),
+      buyerAddress: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}buyer_address']),
+      buyerBusinessType: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}buyer_business_type']),
+      buyerBusinessItem: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}buyer_business_item']),
+      buyerPhoneFax: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}buyer_phone_fax']),
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
       orderId: attachedDatabase.typeMapping
@@ -5113,6 +5248,15 @@ class PurchaseOrderRow extends DataClass
   final String? deliveryPhone;
   final String? deliveryMemo;
   final bool showDeliveryOnPrint;
+  final int? buyerProfileId;
+  final String? buyerProfileName;
+  final String? buyerBusinessNumber;
+  final String? buyerCompanyName;
+  final String? buyerRepresentative;
+  final String? buyerAddress;
+  final String? buyerBusinessType;
+  final String? buyerBusinessItem;
+  final String? buyerPhoneFax;
   final String? deletedAt;
   final String? orderId;
   final String? receivedAt;
@@ -5142,6 +5286,15 @@ class PurchaseOrderRow extends DataClass
       this.deliveryPhone,
       this.deliveryMemo,
       required this.showDeliveryOnPrint,
+      this.buyerProfileId,
+      this.buyerProfileName,
+      this.buyerBusinessNumber,
+      this.buyerCompanyName,
+      this.buyerRepresentative,
+      this.buyerAddress,
+      this.buyerBusinessType,
+      this.buyerBusinessItem,
+      this.buyerPhoneFax,
       this.deletedAt,
       this.orderId,
       this.receivedAt});
@@ -5193,6 +5346,33 @@ class PurchaseOrderRow extends DataClass
       map['delivery_memo'] = Variable<String>(deliveryMemo);
     }
     map['show_delivery_on_print'] = Variable<bool>(showDeliveryOnPrint);
+    if (!nullToAbsent || buyerProfileId != null) {
+      map['buyer_profile_id'] = Variable<int>(buyerProfileId);
+    }
+    if (!nullToAbsent || buyerProfileName != null) {
+      map['buyer_profile_name'] = Variable<String>(buyerProfileName);
+    }
+    if (!nullToAbsent || buyerBusinessNumber != null) {
+      map['buyer_business_number'] = Variable<String>(buyerBusinessNumber);
+    }
+    if (!nullToAbsent || buyerCompanyName != null) {
+      map['buyer_company_name'] = Variable<String>(buyerCompanyName);
+    }
+    if (!nullToAbsent || buyerRepresentative != null) {
+      map['buyer_representative'] = Variable<String>(buyerRepresentative);
+    }
+    if (!nullToAbsent || buyerAddress != null) {
+      map['buyer_address'] = Variable<String>(buyerAddress);
+    }
+    if (!nullToAbsent || buyerBusinessType != null) {
+      map['buyer_business_type'] = Variable<String>(buyerBusinessType);
+    }
+    if (!nullToAbsent || buyerBusinessItem != null) {
+      map['buyer_business_item'] = Variable<String>(buyerBusinessItem);
+    }
+    if (!nullToAbsent || buyerPhoneFax != null) {
+      map['buyer_phone_fax'] = Variable<String>(buyerPhoneFax);
+    }
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<String>(deletedAt);
     }
@@ -5249,6 +5429,33 @@ class PurchaseOrderRow extends DataClass
           ? const Value.absent()
           : Value(deliveryMemo),
       showDeliveryOnPrint: Value(showDeliveryOnPrint),
+      buyerProfileId: buyerProfileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerProfileId),
+      buyerProfileName: buyerProfileName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerProfileName),
+      buyerBusinessNumber: buyerBusinessNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerBusinessNumber),
+      buyerCompanyName: buyerCompanyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerCompanyName),
+      buyerRepresentative: buyerRepresentative == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerRepresentative),
+      buyerAddress: buyerAddress == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerAddress),
+      buyerBusinessType: buyerBusinessType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerBusinessType),
+      buyerBusinessItem: buyerBusinessItem == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerBusinessItem),
+      buyerPhoneFax: buyerPhoneFax == null && nullToAbsent
+          ? const Value.absent()
+          : Value(buyerPhoneFax),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
@@ -5292,6 +5499,19 @@ class PurchaseOrderRow extends DataClass
       deliveryMemo: serializer.fromJson<String?>(json['deliveryMemo']),
       showDeliveryOnPrint:
           serializer.fromJson<bool>(json['showDeliveryOnPrint']),
+      buyerProfileId: serializer.fromJson<int?>(json['buyerProfileId']),
+      buyerProfileName: serializer.fromJson<String?>(json['buyerProfileName']),
+      buyerBusinessNumber:
+          serializer.fromJson<String?>(json['buyerBusinessNumber']),
+      buyerCompanyName: serializer.fromJson<String?>(json['buyerCompanyName']),
+      buyerRepresentative:
+          serializer.fromJson<String?>(json['buyerRepresentative']),
+      buyerAddress: serializer.fromJson<String?>(json['buyerAddress']),
+      buyerBusinessType:
+          serializer.fromJson<String?>(json['buyerBusinessType']),
+      buyerBusinessItem:
+          serializer.fromJson<String?>(json['buyerBusinessItem']),
+      buyerPhoneFax: serializer.fromJson<String?>(json['buyerPhoneFax']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
       orderId: serializer.fromJson<String?>(json['orderId']),
       receivedAt: serializer.fromJson<String?>(json['receivedAt']),
@@ -5326,6 +5546,15 @@ class PurchaseOrderRow extends DataClass
       'deliveryPhone': serializer.toJson<String?>(deliveryPhone),
       'deliveryMemo': serializer.toJson<String?>(deliveryMemo),
       'showDeliveryOnPrint': serializer.toJson<bool>(showDeliveryOnPrint),
+      'buyerProfileId': serializer.toJson<int?>(buyerProfileId),
+      'buyerProfileName': serializer.toJson<String?>(buyerProfileName),
+      'buyerBusinessNumber': serializer.toJson<String?>(buyerBusinessNumber),
+      'buyerCompanyName': serializer.toJson<String?>(buyerCompanyName),
+      'buyerRepresentative': serializer.toJson<String?>(buyerRepresentative),
+      'buyerAddress': serializer.toJson<String?>(buyerAddress),
+      'buyerBusinessType': serializer.toJson<String?>(buyerBusinessType),
+      'buyerBusinessItem': serializer.toJson<String?>(buyerBusinessItem),
+      'buyerPhoneFax': serializer.toJson<String?>(buyerPhoneFax),
       'deletedAt': serializer.toJson<String?>(deletedAt),
       'orderId': serializer.toJson<String?>(orderId),
       'receivedAt': serializer.toJson<String?>(receivedAt),
@@ -5358,6 +5587,15 @@ class PurchaseOrderRow extends DataClass
           Value<String?> deliveryPhone = const Value.absent(),
           Value<String?> deliveryMemo = const Value.absent(),
           bool? showDeliveryOnPrint,
+          Value<int?> buyerProfileId = const Value.absent(),
+          Value<String?> buyerProfileName = const Value.absent(),
+          Value<String?> buyerBusinessNumber = const Value.absent(),
+          Value<String?> buyerCompanyName = const Value.absent(),
+          Value<String?> buyerRepresentative = const Value.absent(),
+          Value<String?> buyerAddress = const Value.absent(),
+          Value<String?> buyerBusinessType = const Value.absent(),
+          Value<String?> buyerBusinessItem = const Value.absent(),
+          Value<String?> buyerPhoneFax = const Value.absent(),
           Value<String?> deletedAt = const Value.absent(),
           Value<String?> orderId = const Value.absent(),
           Value<String?> receivedAt = const Value.absent()}) =>
@@ -5397,6 +5635,30 @@ class PurchaseOrderRow extends DataClass
         deliveryMemo:
             deliveryMemo.present ? deliveryMemo.value : this.deliveryMemo,
         showDeliveryOnPrint: showDeliveryOnPrint ?? this.showDeliveryOnPrint,
+        buyerProfileId:
+            buyerProfileId.present ? buyerProfileId.value : this.buyerProfileId,
+        buyerProfileName: buyerProfileName.present
+            ? buyerProfileName.value
+            : this.buyerProfileName,
+        buyerBusinessNumber: buyerBusinessNumber.present
+            ? buyerBusinessNumber.value
+            : this.buyerBusinessNumber,
+        buyerCompanyName: buyerCompanyName.present
+            ? buyerCompanyName.value
+            : this.buyerCompanyName,
+        buyerRepresentative: buyerRepresentative.present
+            ? buyerRepresentative.value
+            : this.buyerRepresentative,
+        buyerAddress:
+            buyerAddress.present ? buyerAddress.value : this.buyerAddress,
+        buyerBusinessType: buyerBusinessType.present
+            ? buyerBusinessType.value
+            : this.buyerBusinessType,
+        buyerBusinessItem: buyerBusinessItem.present
+            ? buyerBusinessItem.value
+            : this.buyerBusinessItem,
+        buyerPhoneFax:
+            buyerPhoneFax.present ? buyerPhoneFax.value : this.buyerPhoneFax,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         orderId: orderId.present ? orderId.value : this.orderId,
         receivedAt: receivedAt.present ? receivedAt.value : this.receivedAt,
@@ -5454,6 +5716,33 @@ class PurchaseOrderRow extends DataClass
       showDeliveryOnPrint: data.showDeliveryOnPrint.present
           ? data.showDeliveryOnPrint.value
           : this.showDeliveryOnPrint,
+      buyerProfileId: data.buyerProfileId.present
+          ? data.buyerProfileId.value
+          : this.buyerProfileId,
+      buyerProfileName: data.buyerProfileName.present
+          ? data.buyerProfileName.value
+          : this.buyerProfileName,
+      buyerBusinessNumber: data.buyerBusinessNumber.present
+          ? data.buyerBusinessNumber.value
+          : this.buyerBusinessNumber,
+      buyerCompanyName: data.buyerCompanyName.present
+          ? data.buyerCompanyName.value
+          : this.buyerCompanyName,
+      buyerRepresentative: data.buyerRepresentative.present
+          ? data.buyerRepresentative.value
+          : this.buyerRepresentative,
+      buyerAddress: data.buyerAddress.present
+          ? data.buyerAddress.value
+          : this.buyerAddress,
+      buyerBusinessType: data.buyerBusinessType.present
+          ? data.buyerBusinessType.value
+          : this.buyerBusinessType,
+      buyerBusinessItem: data.buyerBusinessItem.present
+          ? data.buyerBusinessItem.value
+          : this.buyerBusinessItem,
+      buyerPhoneFax: data.buyerPhoneFax.present
+          ? data.buyerPhoneFax.value
+          : this.buyerPhoneFax,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       orderId: data.orderId.present ? data.orderId.value : this.orderId,
       receivedAt:
@@ -5489,6 +5778,15 @@ class PurchaseOrderRow extends DataClass
           ..write('deliveryPhone: $deliveryPhone, ')
           ..write('deliveryMemo: $deliveryMemo, ')
           ..write('showDeliveryOnPrint: $showDeliveryOnPrint, ')
+          ..write('buyerProfileId: $buyerProfileId, ')
+          ..write('buyerProfileName: $buyerProfileName, ')
+          ..write('buyerBusinessNumber: $buyerBusinessNumber, ')
+          ..write('buyerCompanyName: $buyerCompanyName, ')
+          ..write('buyerRepresentative: $buyerRepresentative, ')
+          ..write('buyerAddress: $buyerAddress, ')
+          ..write('buyerBusinessType: $buyerBusinessType, ')
+          ..write('buyerBusinessItem: $buyerBusinessItem, ')
+          ..write('buyerPhoneFax: $buyerPhoneFax, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('orderId: $orderId, ')
           ..write('receivedAt: $receivedAt')
@@ -5523,6 +5821,15 @@ class PurchaseOrderRow extends DataClass
         deliveryPhone,
         deliveryMemo,
         showDeliveryOnPrint,
+        buyerProfileId,
+        buyerProfileName,
+        buyerBusinessNumber,
+        buyerCompanyName,
+        buyerRepresentative,
+        buyerAddress,
+        buyerBusinessType,
+        buyerBusinessItem,
+        buyerPhoneFax,
         deletedAt,
         orderId,
         receivedAt
@@ -5556,6 +5863,15 @@ class PurchaseOrderRow extends DataClass
           other.deliveryPhone == this.deliveryPhone &&
           other.deliveryMemo == this.deliveryMemo &&
           other.showDeliveryOnPrint == this.showDeliveryOnPrint &&
+          other.buyerProfileId == this.buyerProfileId &&
+          other.buyerProfileName == this.buyerProfileName &&
+          other.buyerBusinessNumber == this.buyerBusinessNumber &&
+          other.buyerCompanyName == this.buyerCompanyName &&
+          other.buyerRepresentative == this.buyerRepresentative &&
+          other.buyerAddress == this.buyerAddress &&
+          other.buyerBusinessType == this.buyerBusinessType &&
+          other.buyerBusinessItem == this.buyerBusinessItem &&
+          other.buyerPhoneFax == this.buyerPhoneFax &&
           other.deletedAt == this.deletedAt &&
           other.orderId == this.orderId &&
           other.receivedAt == this.receivedAt);
@@ -5587,6 +5903,15 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<String?> deliveryPhone;
   final Value<String?> deliveryMemo;
   final Value<bool> showDeliveryOnPrint;
+  final Value<int?> buyerProfileId;
+  final Value<String?> buyerProfileName;
+  final Value<String?> buyerBusinessNumber;
+  final Value<String?> buyerCompanyName;
+  final Value<String?> buyerRepresentative;
+  final Value<String?> buyerAddress;
+  final Value<String?> buyerBusinessType;
+  final Value<String?> buyerBusinessItem;
+  final Value<String?> buyerPhoneFax;
   final Value<String?> deletedAt;
   final Value<String?> orderId;
   final Value<String?> receivedAt;
@@ -5617,6 +5942,15 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.deliveryPhone = const Value.absent(),
     this.deliveryMemo = const Value.absent(),
     this.showDeliveryOnPrint = const Value.absent(),
+    this.buyerProfileId = const Value.absent(),
+    this.buyerProfileName = const Value.absent(),
+    this.buyerBusinessNumber = const Value.absent(),
+    this.buyerCompanyName = const Value.absent(),
+    this.buyerRepresentative = const Value.absent(),
+    this.buyerAddress = const Value.absent(),
+    this.buyerBusinessType = const Value.absent(),
+    this.buyerBusinessItem = const Value.absent(),
+    this.buyerPhoneFax = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.orderId = const Value.absent(),
     this.receivedAt = const Value.absent(),
@@ -5648,6 +5982,15 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.deliveryPhone = const Value.absent(),
     this.deliveryMemo = const Value.absent(),
     this.showDeliveryOnPrint = const Value.absent(),
+    this.buyerProfileId = const Value.absent(),
+    this.buyerProfileName = const Value.absent(),
+    this.buyerBusinessNumber = const Value.absent(),
+    this.buyerCompanyName = const Value.absent(),
+    this.buyerRepresentative = const Value.absent(),
+    this.buyerAddress = const Value.absent(),
+    this.buyerBusinessType = const Value.absent(),
+    this.buyerBusinessItem = const Value.absent(),
+    this.buyerPhoneFax = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.orderId = const Value.absent(),
     this.receivedAt = const Value.absent(),
@@ -5684,6 +6027,15 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     Expression<String>? deliveryPhone,
     Expression<String>? deliveryMemo,
     Expression<bool>? showDeliveryOnPrint,
+    Expression<int>? buyerProfileId,
+    Expression<String>? buyerProfileName,
+    Expression<String>? buyerBusinessNumber,
+    Expression<String>? buyerCompanyName,
+    Expression<String>? buyerRepresentative,
+    Expression<String>? buyerAddress,
+    Expression<String>? buyerBusinessType,
+    Expression<String>? buyerBusinessItem,
+    Expression<String>? buyerPhoneFax,
     Expression<String>? deletedAt,
     Expression<String>? orderId,
     Expression<String>? receivedAt,
@@ -5717,6 +6069,17 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       if (deliveryMemo != null) 'delivery_memo': deliveryMemo,
       if (showDeliveryOnPrint != null)
         'show_delivery_on_print': showDeliveryOnPrint,
+      if (buyerProfileId != null) 'buyer_profile_id': buyerProfileId,
+      if (buyerProfileName != null) 'buyer_profile_name': buyerProfileName,
+      if (buyerBusinessNumber != null)
+        'buyer_business_number': buyerBusinessNumber,
+      if (buyerCompanyName != null) 'buyer_company_name': buyerCompanyName,
+      if (buyerRepresentative != null)
+        'buyer_representative': buyerRepresentative,
+      if (buyerAddress != null) 'buyer_address': buyerAddress,
+      if (buyerBusinessType != null) 'buyer_business_type': buyerBusinessType,
+      if (buyerBusinessItem != null) 'buyer_business_item': buyerBusinessItem,
+      if (buyerPhoneFax != null) 'buyer_phone_fax': buyerPhoneFax,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (orderId != null) 'order_id': orderId,
       if (receivedAt != null) 'received_at': receivedAt,
@@ -5750,6 +6113,15 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       Value<String?>? deliveryPhone,
       Value<String?>? deliveryMemo,
       Value<bool>? showDeliveryOnPrint,
+      Value<int?>? buyerProfileId,
+      Value<String?>? buyerProfileName,
+      Value<String?>? buyerBusinessNumber,
+      Value<String?>? buyerCompanyName,
+      Value<String?>? buyerRepresentative,
+      Value<String?>? buyerAddress,
+      Value<String?>? buyerBusinessType,
+      Value<String?>? buyerBusinessItem,
+      Value<String?>? buyerPhoneFax,
       Value<String?>? deletedAt,
       Value<String?>? orderId,
       Value<String?>? receivedAt,
@@ -5780,6 +6152,15 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       deliveryPhone: deliveryPhone ?? this.deliveryPhone,
       deliveryMemo: deliveryMemo ?? this.deliveryMemo,
       showDeliveryOnPrint: showDeliveryOnPrint ?? this.showDeliveryOnPrint,
+      buyerProfileId: buyerProfileId ?? this.buyerProfileId,
+      buyerProfileName: buyerProfileName ?? this.buyerProfileName,
+      buyerBusinessNumber: buyerBusinessNumber ?? this.buyerBusinessNumber,
+      buyerCompanyName: buyerCompanyName ?? this.buyerCompanyName,
+      buyerRepresentative: buyerRepresentative ?? this.buyerRepresentative,
+      buyerAddress: buyerAddress ?? this.buyerAddress,
+      buyerBusinessType: buyerBusinessType ?? this.buyerBusinessType,
+      buyerBusinessItem: buyerBusinessItem ?? this.buyerBusinessItem,
+      buyerPhoneFax: buyerPhoneFax ?? this.buyerPhoneFax,
       deletedAt: deletedAt ?? this.deletedAt,
       orderId: orderId ?? this.orderId,
       receivedAt: receivedAt ?? this.receivedAt,
@@ -5865,6 +6246,34 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     if (showDeliveryOnPrint.present) {
       map['show_delivery_on_print'] = Variable<bool>(showDeliveryOnPrint.value);
     }
+    if (buyerProfileId.present) {
+      map['buyer_profile_id'] = Variable<int>(buyerProfileId.value);
+    }
+    if (buyerProfileName.present) {
+      map['buyer_profile_name'] = Variable<String>(buyerProfileName.value);
+    }
+    if (buyerBusinessNumber.present) {
+      map['buyer_business_number'] =
+          Variable<String>(buyerBusinessNumber.value);
+    }
+    if (buyerCompanyName.present) {
+      map['buyer_company_name'] = Variable<String>(buyerCompanyName.value);
+    }
+    if (buyerRepresentative.present) {
+      map['buyer_representative'] = Variable<String>(buyerRepresentative.value);
+    }
+    if (buyerAddress.present) {
+      map['buyer_address'] = Variable<String>(buyerAddress.value);
+    }
+    if (buyerBusinessType.present) {
+      map['buyer_business_type'] = Variable<String>(buyerBusinessType.value);
+    }
+    if (buyerBusinessItem.present) {
+      map['buyer_business_item'] = Variable<String>(buyerBusinessItem.value);
+    }
+    if (buyerPhoneFax.present) {
+      map['buyer_phone_fax'] = Variable<String>(buyerPhoneFax.value);
+    }
     if (deletedAt.present) {
       map['deleted_at'] = Variable<String>(deletedAt.value);
     }
@@ -5908,6 +6317,15 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
           ..write('deliveryPhone: $deliveryPhone, ')
           ..write('deliveryMemo: $deliveryMemo, ')
           ..write('showDeliveryOnPrint: $showDeliveryOnPrint, ')
+          ..write('buyerProfileId: $buyerProfileId, ')
+          ..write('buyerProfileName: $buyerProfileName, ')
+          ..write('buyerBusinessNumber: $buyerBusinessNumber, ')
+          ..write('buyerCompanyName: $buyerCompanyName, ')
+          ..write('buyerRepresentative: $buyerRepresentative, ')
+          ..write('buyerAddress: $buyerAddress, ')
+          ..write('buyerBusinessType: $buyerBusinessType, ')
+          ..write('buyerBusinessItem: $buyerBusinessItem, ')
+          ..write('buyerPhoneFax: $buyerPhoneFax, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('orderId: $orderId, ')
           ..write('receivedAt: $receivedAt, ')
@@ -11863,6 +12281,15 @@ typedef $$PurchaseOrdersTableCreateCompanionBuilder = PurchaseOrdersCompanion
   Value<String?> deliveryPhone,
   Value<String?> deliveryMemo,
   Value<bool> showDeliveryOnPrint,
+  Value<int?> buyerProfileId,
+  Value<String?> buyerProfileName,
+  Value<String?> buyerBusinessNumber,
+  Value<String?> buyerCompanyName,
+  Value<String?> buyerRepresentative,
+  Value<String?> buyerAddress,
+  Value<String?> buyerBusinessType,
+  Value<String?> buyerBusinessItem,
+  Value<String?> buyerPhoneFax,
   Value<String?> deletedAt,
   Value<String?> orderId,
   Value<String?> receivedAt,
@@ -11895,6 +12322,15 @@ typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
   Value<String?> deliveryPhone,
   Value<String?> deliveryMemo,
   Value<bool> showDeliveryOnPrint,
+  Value<int?> buyerProfileId,
+  Value<String?> buyerProfileName,
+  Value<String?> buyerBusinessNumber,
+  Value<String?> buyerCompanyName,
+  Value<String?> buyerRepresentative,
+  Value<String?> buyerAddress,
+  Value<String?> buyerBusinessType,
+  Value<String?> buyerBusinessItem,
+  Value<String?> buyerPhoneFax,
   Value<String?> deletedAt,
   Value<String?> orderId,
   Value<String?> receivedAt,
@@ -12010,6 +12446,40 @@ class $$PurchaseOrdersTableFilterComposer
   ColumnFilters<bool> get showDeliveryOnPrint => $composableBuilder(
       column: $table.showDeliveryOnPrint,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get buyerProfileId => $composableBuilder(
+      column: $table.buyerProfileId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buyerProfileName => $composableBuilder(
+      column: $table.buyerProfileName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buyerBusinessNumber => $composableBuilder(
+      column: $table.buyerBusinessNumber,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buyerCompanyName => $composableBuilder(
+      column: $table.buyerCompanyName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buyerRepresentative => $composableBuilder(
+      column: $table.buyerRepresentative,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buyerAddress => $composableBuilder(
+      column: $table.buyerAddress, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buyerBusinessType => $composableBuilder(
+      column: $table.buyerBusinessType,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buyerBusinessItem => $composableBuilder(
+      column: $table.buyerBusinessItem,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get buyerPhoneFax => $composableBuilder(
+      column: $table.buyerPhoneFax, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
@@ -12138,6 +12608,42 @@ class $$PurchaseOrdersTableOrderingComposer
       column: $table.showDeliveryOnPrint,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get buyerProfileId => $composableBuilder(
+      column: $table.buyerProfileId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buyerProfileName => $composableBuilder(
+      column: $table.buyerProfileName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buyerBusinessNumber => $composableBuilder(
+      column: $table.buyerBusinessNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buyerCompanyName => $composableBuilder(
+      column: $table.buyerCompanyName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buyerRepresentative => $composableBuilder(
+      column: $table.buyerRepresentative,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buyerAddress => $composableBuilder(
+      column: $table.buyerAddress,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buyerBusinessType => $composableBuilder(
+      column: $table.buyerBusinessType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buyerBusinessItem => $composableBuilder(
+      column: $table.buyerBusinessItem,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get buyerPhoneFax => $composableBuilder(
+      column: $table.buyerPhoneFax,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 
@@ -12232,6 +12738,33 @@ class $$PurchaseOrdersTableAnnotationComposer
   GeneratedColumn<bool> get showDeliveryOnPrint => $composableBuilder(
       column: $table.showDeliveryOnPrint, builder: (column) => column);
 
+  GeneratedColumn<int> get buyerProfileId => $composableBuilder(
+      column: $table.buyerProfileId, builder: (column) => column);
+
+  GeneratedColumn<String> get buyerProfileName => $composableBuilder(
+      column: $table.buyerProfileName, builder: (column) => column);
+
+  GeneratedColumn<String> get buyerBusinessNumber => $composableBuilder(
+      column: $table.buyerBusinessNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get buyerCompanyName => $composableBuilder(
+      column: $table.buyerCompanyName, builder: (column) => column);
+
+  GeneratedColumn<String> get buyerRepresentative => $composableBuilder(
+      column: $table.buyerRepresentative, builder: (column) => column);
+
+  GeneratedColumn<String> get buyerAddress => $composableBuilder(
+      column: $table.buyerAddress, builder: (column) => column);
+
+  GeneratedColumn<String> get buyerBusinessType => $composableBuilder(
+      column: $table.buyerBusinessType, builder: (column) => column);
+
+  GeneratedColumn<String> get buyerBusinessItem => $composableBuilder(
+      column: $table.buyerBusinessItem, builder: (column) => column);
+
+  GeneratedColumn<String> get buyerPhoneFax => $composableBuilder(
+      column: $table.buyerPhoneFax, builder: (column) => column);
+
   GeneratedColumn<String> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
@@ -12312,6 +12845,15 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<String?> deliveryPhone = const Value.absent(),
             Value<String?> deliveryMemo = const Value.absent(),
             Value<bool> showDeliveryOnPrint = const Value.absent(),
+            Value<int?> buyerProfileId = const Value.absent(),
+            Value<String?> buyerProfileName = const Value.absent(),
+            Value<String?> buyerBusinessNumber = const Value.absent(),
+            Value<String?> buyerCompanyName = const Value.absent(),
+            Value<String?> buyerRepresentative = const Value.absent(),
+            Value<String?> buyerAddress = const Value.absent(),
+            Value<String?> buyerBusinessType = const Value.absent(),
+            Value<String?> buyerBusinessItem = const Value.absent(),
+            Value<String?> buyerPhoneFax = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
             Value<String?> orderId = const Value.absent(),
             Value<String?> receivedAt = const Value.absent(),
@@ -12343,6 +12885,15 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             deliveryPhone: deliveryPhone,
             deliveryMemo: deliveryMemo,
             showDeliveryOnPrint: showDeliveryOnPrint,
+            buyerProfileId: buyerProfileId,
+            buyerProfileName: buyerProfileName,
+            buyerBusinessNumber: buyerBusinessNumber,
+            buyerCompanyName: buyerCompanyName,
+            buyerRepresentative: buyerRepresentative,
+            buyerAddress: buyerAddress,
+            buyerBusinessType: buyerBusinessType,
+            buyerBusinessItem: buyerBusinessItem,
+            buyerPhoneFax: buyerPhoneFax,
             deletedAt: deletedAt,
             orderId: orderId,
             receivedAt: receivedAt,
@@ -12374,6 +12925,15 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<String?> deliveryPhone = const Value.absent(),
             Value<String?> deliveryMemo = const Value.absent(),
             Value<bool> showDeliveryOnPrint = const Value.absent(),
+            Value<int?> buyerProfileId = const Value.absent(),
+            Value<String?> buyerProfileName = const Value.absent(),
+            Value<String?> buyerBusinessNumber = const Value.absent(),
+            Value<String?> buyerCompanyName = const Value.absent(),
+            Value<String?> buyerRepresentative = const Value.absent(),
+            Value<String?> buyerAddress = const Value.absent(),
+            Value<String?> buyerBusinessType = const Value.absent(),
+            Value<String?> buyerBusinessItem = const Value.absent(),
+            Value<String?> buyerPhoneFax = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
             Value<String?> orderId = const Value.absent(),
             Value<String?> receivedAt = const Value.absent(),
@@ -12405,6 +12965,15 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             deliveryPhone: deliveryPhone,
             deliveryMemo: deliveryMemo,
             showDeliveryOnPrint: showDeliveryOnPrint,
+            buyerProfileId: buyerProfileId,
+            buyerProfileName: buyerProfileName,
+            buyerBusinessNumber: buyerBusinessNumber,
+            buyerCompanyName: buyerCompanyName,
+            buyerRepresentative: buyerRepresentative,
+            buyerAddress: buyerAddress,
+            buyerBusinessType: buyerBusinessType,
+            buyerBusinessItem: buyerBusinessItem,
+            buyerPhoneFax: buyerPhoneFax,
             deletedAt: deletedAt,
             orderId: orderId,
             receivedAt: receivedAt,

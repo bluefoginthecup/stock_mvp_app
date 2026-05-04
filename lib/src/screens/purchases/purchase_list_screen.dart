@@ -1,9 +1,11 @@
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import '../../db/app_database.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../models/purchase_order.dart'; // ✅
 import '../../models/purchase_line.dart';
 import '../../models/suppliers.dart';
+import '../../services/buyer_profile_service.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/draggable_fab.dart';
 import '../../ui/common/ui.dart';
@@ -108,6 +110,8 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
 
     final id = const Uuid().v4();
     final now = DateTime.now();
+    final buyerProfile =
+        await BuyerProfileService(context.read<AppDatabase>()).defaultProfile();
     final po = PurchaseOrder(
       id: id,
       supplierName: '',
@@ -115,7 +119,7 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
       status: PurchaseOrderStatus.draft,
       createdAt: now,
       updatedAt: now,
-    );
+    ).copyWithBuyerProfile(buyerProfile);
 
     try {
       await repo.createPurchaseOrder(po);

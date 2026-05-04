@@ -9,8 +9,10 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../db/app_database.dart';
 import '../../models/extensions/payment_status_ext.dart';
 import '../../models/extensions/vat_invoice_status_ext.dart';
+import '../../models/buyer_profile.dart';
 import '../../models/purchase_line.dart';
 import '../../models/purchase_order.dart';
 import '../../models/purchase_receipt.dart';
@@ -18,6 +20,7 @@ import '../../models/suppliers.dart';
 import '../../models/types.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/app_path_service.dart';
+import '../../services/buyer_profile_service.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/delete_more_menu.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
@@ -559,6 +562,69 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     return context.read<SupplierRepo>().get(supplierId);
   }
 
+  String _buyerSummary(PurchaseOrder po) {
+    final buyer = po.buyerSnapshotProfile;
+    final parts = [
+      buyer.companyName.trim(),
+      buyer.businessNumber.trim(),
+      buyer.representative.trim(),
+    ].where((value) => value.isNotEmpty);
+    return parts.join(' / ');
+  }
+
+  Future<void> _changeBuyerProfile(PurchaseOrder po) async {
+    final service = BuyerProfileService(context.read<AppDatabase>());
+    final profiles = await service.listProfiles();
+    final options = [
+      ...profiles.where((profile) => profile.isConfigured),
+      if (profiles.where((profile) => profile.isConfigured).isEmpty)
+        BuyerProfile.fallback(),
+    ];
+
+    if (!mounted) return;
+    final selected = await showModalBottomSheet<BuyerProfile>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text('공급받는자 선택'),
+                subtitle: Text('선택한 정보가 이 발주서에 스냅샷으로 저장됩니다.'),
+              ),
+              for (final profile in options)
+                ListTile(
+                  leading: const Icon(Icons.business_outlined),
+                  title: Text(profile.displayName),
+                  subtitle: Text([
+                    if (profile.companyName.trim().isNotEmpty)
+                      profile.companyName.trim(),
+                    if (profile.businessNumber.trim().isNotEmpty)
+                      profile.businessNumber.trim(),
+                    if (profile.representative.trim().isNotEmpty)
+                      profile.representative.trim(),
+                  ].join(' / ')),
+                  trailing: profile.id == po.buyerProfileId
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.of(sheetContext).pop(profile),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null) return;
+
+    await widget.repo.updatePurchaseOrder(po.copyWithBuyerProfile(selected));
+    await _reload();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${selected.displayName} 정보가 발주서에 저장되었습니다')),
+    );
+  }
+
   String _fallbackSupplierName(PurchaseOrder po) {
     final name = po.supplierName.trim();
     return name.isEmpty ? '(거래처 미지정)' : name;
@@ -994,14 +1060,6 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         break;
 
       case 2:
-        if (po.status != PurchaseOrderStatus.received) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('입고완료 후 결제 처리할 수 있습니다.')),
-          );
-          return;
-        }
-
         final result = await showModalBottomSheet<bool>(
           context: context,
           builder: (_) {
@@ -1275,6 +1333,15 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       onDateTap: _handleDateTap,
                     ),
                     const SizedBox(height: 8),
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.business_outlined),
+                      title: const Text('공급받는자'),
+                      subtitle: Text(_buyerSummary(po)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _changeBuyerProfile(po),
+                    ),
                     ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,

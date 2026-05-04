@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../models/buyer_profile.dart';
 import '../../models/purchase_line.dart';
 import '../../models/purchase_order.dart';
 
@@ -43,8 +44,13 @@ class PrintLine {
 class PurchaseOrderPrintView extends StatelessWidget {
   final PurchaseOrder order;
   final List<PrintLine> lines;
-  const PurchaseOrderPrintView(
-      {super.key, required this.order, required this.lines});
+  final BuyerProfile buyerProfile;
+  const PurchaseOrderPrintView({
+    super.key,
+    required this.order,
+    required this.lines,
+    required this.buyerProfile,
+  });
 
   // ────────────────────────────────────────────────────────────
   // Scaffold + A4 캔버스
@@ -140,9 +146,9 @@ class PurchaseOrderPrintView extends StatelessWidget {
           const SizedBox(height: 8),
           Text('[공급자] $supplier 귀하', style: hSection),
           const SizedBox(height: 12),
-          const Text('[공급받는자] 자장노래', style: hSection),
+          Text('[공급받는자] ${buyerProfile.companyName}', style: hSection),
           const SizedBox(height: 6),
-          _buyerInfoTableSmall(),
+          _buyerInfoTableSmall(buyerProfile),
           if (_hasPrintableDelivery(order)) ...[
             const SizedBox(height: 10),
             _deliveryInfoBlock(order),
@@ -273,23 +279,38 @@ String _fmtMoney(num n) {
 // ────────────────────────────────────────────────────────────
 // 공유: 공급받는자 표 (모든 화면에서 공용 사용)
 // ────────────────────────────────────────────────────────────
-Widget _buyerInfoTableSmall() {
+Widget _buyerInfoTableSmall(BuyerProfile profile) {
+  final businessTypeItem = [
+    profile.businessType,
+    profile.businessItem,
+  ].where((value) => value.trim().isNotEmpty).join(' / ');
+
   return Table(
     border: TableBorder.all(),
     columnWidths: const {0: FixedColumnWidth(100), 1: FlexColumnWidth()},
     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-    children: const [
-      TableRow(children: [_Cell('사업자등록번호', bold: true), _Cell('313-05-49582')]),
-      TableRow(children: [_Cell('상호', bold: true), _Cell('자장노래')]),
-      TableRow(children: [_Cell('대표자', bold: true), _Cell('장효정')]),
+    children: [
       TableRow(children: [
-        _Cell('주소', bold: true),
-        _Cell('충청남도 보령시 수산길 4, 1층 (대천동)')
+        const _Cell('사업자등록번호', bold: true),
+        _Cell(profile.businessNumber)
       ]),
-      TableRow(children: [_Cell('업태/종목', bold: true), _Cell('제조업 / 침구류 기타')]),
       TableRow(children: [
-        _Cell('전화/팩스', bold: true),
-        _Cell('041-935-2855 / 0505-937-0558')
+        const _Cell('상호', bold: true),
+        _Cell(profile.companyName)
+      ]),
+      TableRow(children: [
+        const _Cell('대표자', bold: true),
+        _Cell(profile.representative)
+      ]),
+      TableRow(
+          children: [const _Cell('주소', bold: true), _Cell(profile.address)]),
+      TableRow(children: [
+        const _Cell('업태/종목', bold: true),
+        _Cell(businessTypeItem)
+      ]),
+      TableRow(children: [
+        const _Cell('전화/팩스', bold: true),
+        _Cell(profile.phoneFax)
       ]),
     ],
   );
@@ -375,10 +396,12 @@ Widget _itemsTotalRow(List<PrintLine> lines) {
 class PurchaseOrderPrintViewMobile extends StatelessWidget {
   final PurchaseOrder order;
   final List<PrintLine> lines;
+  final BuyerProfile buyerProfile;
   const PurchaseOrderPrintViewMobile({
     super.key,
     required this.order,
     required this.lines,
+    required this.buyerProfile,
   });
 
   @override
@@ -440,11 +463,11 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 12),
-                      const Text('[공급받는자] 자장노래',
-                          style: TextStyle(
+                      Text('[공급받는자] ${buyerProfile.companyName}',
+                          style: const TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 6),
-                      _buyerInfoTableSmall(),
+                      _buyerInfoTableSmall(buyerProfile),
                       if (_hasPrintableDelivery(order)) ...[
                         const SizedBox(height: 10),
                         _deliveryInfoBlock(order),

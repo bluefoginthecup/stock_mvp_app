@@ -61,9 +61,18 @@ class PurchasePrintAction extends StatelessWidget {
           enabled: ready,
           onSelected: (v) {
             final (po, _, printLines) = snap.data!;
+            final buyerProfile = po!.buyerSnapshotProfile;
             final screen = (v == 'a4')
-                ? PurchaseOrderPrintView(order: po!, lines: printLines)
-                : PurchaseOrderPrintViewMobile(order: po!, lines: printLines);
+                ? PurchaseOrderPrintView(
+                    order: po,
+                    lines: printLines,
+                    buyerProfile: buyerProfile,
+                  )
+                : PurchaseOrderPrintViewMobile(
+                    order: po,
+                    lines: printLines,
+                    buyerProfile: buyerProfile,
+                  );
             Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
           },
           itemBuilder: (ctx) => const [
