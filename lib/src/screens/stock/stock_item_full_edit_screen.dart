@@ -1,10 +1,74 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/path_picker.dart';
 import '../../utils/item_registration.dart';
+
+const _systemAttrKeys = {
+  'temporary',
+  'status',
+  'source',
+  'createdFromPurchaseOrderId',
+  'createdAt',
+};
+
+const _protectedAttrKeys = {
+  'color_no',
+  'nominalSize',
+};
+
+const _defaultAttrTemplates = [
+  _AttrTemplate(key: 'design', label: '디자인'),
+  _AttrTemplate(key: 'color_name', label: '색상명'),
+  _AttrTemplate(
+    key: 'color_no',
+    label: '색상번호',
+    protectedReason: '발주 색상번호에 사용됩니다.',
+  ),
+  _AttrTemplate(key: 'form', label: '형태'),
+  _AttrTemplate(
+    key: 'nominalSize',
+    label: '표기 사이즈',
+    protectedReason: '발주서 스펙 출력에 사용됩니다.',
+  ),
+  _AttrTemplate(key: 'cutSize', label: '재단 사이즈'),
+];
+
+class _AttrTemplate {
+  final String key;
+  final String label;
+  final String? protectedReason;
+
+  const _AttrTemplate({
+    required this.key,
+    required this.label,
+    this.protectedReason,
+  });
+}
+
+class _AttrEditorRow {
+  final TextEditingController keyC;
+  final TextEditingController valueC;
+  final String? label;
+  final String? protectedReason;
+
+  _AttrEditorRow({
+    required String key,
+    required String value,
+    this.label,
+    this.protectedReason,
+  })  : keyC = TextEditingController(text: key),
+        valueC = TextEditingController(text: value);
+
+  bool get isProtected =>
+      protectedReason != null || _protectedAttrKeys.contains(keyC.text.trim());
+
+  void dispose() {
+    keyC.dispose();
+    valueC.dispose();
+  }
+}
 
 class StockItemFullEditScreen extends StatefulWidget {
   final String itemId;
@@ -32,7 +96,8 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
   late TextEditingController qtyC;
 
   late TextEditingController kindC;
-  late TextEditingController attrsC; // JSON 텍스트
+  final List<_AttrEditorRow> _attrRows = [];
+  Map<String, dynamic> _hiddenSystemAttrs = const {};
 
   late TextEditingController unitInC;
   late TextEditingController unitOutC;
@@ -60,7 +125,6 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     minQtyC = TextEditingController();
     qtyC = TextEditingController();
     kindC = TextEditingController();
-    attrsC = TextEditingController();
     unitInC = TextEditingController();
     unitOutC = TextEditingController();
     conversionRateC = TextEditingController();
@@ -86,7 +150,9 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     minQtyC.dispose();
     qtyC.dispose();
     kindC.dispose();
-    attrsC.dispose();
+    for (final row in _attrRows) {
+      row.dispose();
+    }
     unitInC.dispose();
     unitOutC.dispose();
     conversionRateC.dispose();
@@ -96,34 +162,95 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     super.dispose();
   }
 
-  Map<String, dynamic>? _parseAttrs(String raw) {
-    final s = raw.trim();
-    if (s.isEmpty) return null;
-    try {
-      final m = json.decode(s);
-      if (m is Map<String, dynamic>) return m;
-      return null;
-    } catch (_) {
-      return null;
+  void _resetAttrEditors(Map<String, dynamic>? attrs) {
+    for (final row in _attrRows) {
+      row.dispose();
     }
+    _attrRows.clear();
+
+    final source = Map<String, dynamic>.from(attrs ?? const {});
+    _hiddenSystemAttrs = {
+      for (final entry in source.entries)
+        if (_systemAttrKeys.contains(entry.key)) entry.key: entry.value,
+    };
+
+    final usedKeys = <String>{..._systemAttrKeys};
+    for (final template in _defaultAttrTemplates) {
+      final value = source[template.key];
+      _attrRows.add(
+        _AttrEditorRow(
+          key: template.key,
+          value: _attrValueToText(value),
+          label: template.label,
+          protectedReason: template.protectedReason,
+        ),
+      );
+      usedKeys.add(template.key);
+    }
+
+    final extraKeys =
+        source.keys.where((key) => !usedKeys.contains(key)).toList()..sort();
+    for (final key in extraKeys) {
+      _attrRows.add(
+        _AttrEditorRow(
+          key: key,
+          value: _attrValueToText(source[key]),
+        ),
+      );
+    }
+  }
+
+  String _attrValueToText(dynamic value) {
+    if (value == null) return '';
+    return value.toString();
+  }
+
+  Map<String, dynamic>? _buildAttrsFromRows() {
+    final attrs = <String, dynamic>{..._hiddenSystemAttrs};
+    for (final row in _attrRows) {
+      final key = row.keyC.text.trim();
+      final value = row.valueC.text.trim();
+      if (key.isEmpty || value.isEmpty) continue;
+      attrs[key] = value;
+    }
+    return attrs.isEmpty ? null : attrs;
+  }
+
+  Map<String, int> _attrKeyCounts() {
+    final counts = <String, int>{};
+    for (final row in _attrRows) {
+      final key = row.keyC.text.trim();
+      final value = row.valueC.text.trim();
+      if (key.isEmpty && value.isEmpty) continue;
+      if (key.isEmpty) continue;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  void _addAttrRow() {
+    setState(() {
+      _attrRows.add(_AttrEditorRow(key: '', value: ''));
+    });
+  }
+
+  void _removeAttrRow(_AttrEditorRow row) {
+    if (row.isProtected) return;
+    setState(() {
+      _attrRows.remove(row);
+      row.dispose();
+    });
   }
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final repo = context.read<ItemRepo>();
     final i = _loaded!;
-    final parsedAttrs = _parseAttrs(attrsC.text);
+    final parsedAttrs = _buildAttrsFromRows();
 
     // 수치 파싱
     final minQty = int.tryParse(minQtyC.text.trim());
-    final qty =
-        int.tryParse(qtyC.text.trim()); // qty는 권장: 별도 Adjust 플로우 사용. 여기선 옵션.
     final convRate = double.tryParse(conversionRateC.text.trim());
-
-    // 경고: qty를 여기서 바꾸면 Txn 없이 점프함(재무 이력 없음).
-    // 운영정책에 따라 숨기거나 readOnly로 두는 게 안전.
-    // 원한다면 아래 line 제거하고 Adjust 플로우만 쓰세요.
-    final wantUpdateQtyHere = false;
 
     final purchasePrice = double.tryParse(purchasePriceC.text.trim());
     final salePrice = double.tryParse(salePriceC.text.trim());
@@ -143,7 +270,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       minQty: minQty ?? i.minQty,
       qty: i.qty, // 여기선 건드리지 않음 (Adjust 권장)
       kind: kindC.text.trim().isEmpty ? i.kind : kindC.text.trim(),
-      attrs: parsedAttrs ?? i.attrs,
+      attrs: parsedAttrs,
       unitIn: unitInC.text.trim().isEmpty ? i.unitIn : unitInC.text.trim(),
       unitOut: unitOutC.text.trim().isEmpty ? i.unitOut : unitOutC.text.trim(),
       conversionRate: convRate ?? i.conversionRate,
@@ -162,7 +289,6 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     await repo.updateItemMeta(updated);
     final finalized = await repo.tryFinalizeRegistration(i.id);
 
-    print('저장 price: $purchasePrice / $salePrice');
     if (!mounted) return;
     if (finalized) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -177,6 +303,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     if (item == null) return;
 
     final folderRepo = context.read<FolderTreeRepo>();
+    final itemRepo = context.read<ItemRepo>();
     final dest = await showPathPicker(
       context,
       childrenProvider: (String? parentId) async {
@@ -193,17 +320,16 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
         itemIds: [item.id],
         pathIds: dest,
       );
-      final finalized =
-          await context.read<ItemRepo>().tryFinalizeRegistration(item.id);
+      final finalized = await itemRepo.tryFinalizeRegistration(item.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(finalized ? '정식등록 완료' : '아이템 $moved개 이동')),
       );
       setState(() {
         _loaded = null;
-        _itemFuture = context.read<ItemRepo>().getItemById(widget.itemId);
+        _itemFuture = itemRepo.getItemById(widget.itemId);
         _registrationMissingFuture =
-            context.read<ItemRepo>().registrationMissingFields(widget.itemId);
+            itemRepo.registrationMissingFields(widget.itemId);
       });
     } catch (e) {
       if (!mounted) return;
@@ -257,6 +383,109 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     );
   }
 
+  Widget _buildAttrsEditor(BuildContext context) {
+    final theme = Theme.of(context);
+    final counts = _attrKeyCounts();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('품목 속성', style: theme.textTheme.titleSmall),
+            ),
+            TextButton.icon(
+              onPressed: _addAttrRow,
+              icon: const Icon(Icons.add),
+              label: const Text('속성 추가'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '속성명과 값을 자유롭게 편집할 수 있습니다. '
+          '색상번호와 표기 사이즈는 발주 기능에서 사용되어 속성명 변경/삭제가 제한됩니다.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.64),
+          ),
+        ),
+        if (_hiddenSystemAttrs.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            '시스템 속성 ${_hiddenSystemAttrs.length}개는 숨긴 상태로 보존됩니다.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.secondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+        ..._attrRows.map(
+          (row) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _buildAttrRow(context, row, counts),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAttrRow(
+    BuildContext context,
+    _AttrEditorRow row,
+    Map<String, int> counts,
+  ) {
+    final protectedReason = row.protectedReason;
+    final isProtected = row.isProtected;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: TextFormField(
+            controller: row.keyC,
+            readOnly: isProtected,
+            decoration: InputDecoration(
+              labelText: row.label == null ? '속성명' : '${row.label} 속성명',
+              helperText: protectedReason,
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            onChanged: (_) => setState(() {}),
+            validator: (value) {
+              final key = value?.trim() ?? '';
+              final attrValue = row.valueC.text.trim();
+              if (key.isEmpty && attrValue.isEmpty) return null;
+              if (key.isEmpty) return '속성명 필요';
+              if (_systemAttrKeys.contains(key)) return '시스템 속성명은 사용할 수 없습니다';
+              if ((counts[key] ?? 0) > 1) return '중복 속성명';
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 5,
+          child: TextFormField(
+            controller: row.valueC,
+            decoration: InputDecoration(
+              labelText: row.label ?? '값',
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+        const SizedBox(width: 4),
+        IconButton(
+          tooltip: isProtected ? '보호된 속성은 삭제할 수 없습니다' : '속성 삭제',
+          onPressed: isProtected ? null : () => _removeAttrRow(row),
+          icon: const Icon(Icons.delete_outline),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -288,12 +517,10 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
           minQtyC.text = item.minQty.toString();
           qtyC.text = item.qty.toString();
           kindC.text = item.kind ?? '';
-          attrsC.text = (item.attrs == null || item.attrs!.isEmpty)
-              ? ''
-              : const JsonEncoder.withIndent('  ').convert(item.attrs);
-          unitInC.text = item.unitIn ?? '';
-          unitOutC.text = item.unitOut ?? '';
-          conversionRateC.text = (item.conversionRate ?? 0).toString();
+          _resetAttrEditors(item.attrs);
+          unitInC.text = item.unitIn;
+          unitOutC.text = item.unitOut;
+          conversionRateC.text = item.conversionRate.toString();
           conversionMode = item.conversionMode;
           supplierC.text = item.supplierName ?? '';
           purchasePriceC.text = (item.defaultPurchasePrice ?? 0).toString();
@@ -482,21 +709,8 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
                     controller: supplierC,
                     decoration: const InputDecoration(labelText: '공급처(상호)'),
                   ),
-                  TextFormField(
-                    controller: attrsC,
-                    decoration: _dec('attrs (JSON)'),
-                    maxLines: 6,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return null;
-                      try {
-                        final parsed = json.decode(v);
-                        if (parsed is! Map) return 'JSON Map 형태여야 합니다';
-                      } catch (e) {
-                        return 'JSON 파싱 오류: $e';
-                      }
-                      return null;
-                    },
-                  ),
+                  const SizedBox(height: 12),
+                  _buildAttrsEditor(context),
 
                   const SizedBox(height: 16),
                   Text('환산/모드', style: text.titleSmall),
