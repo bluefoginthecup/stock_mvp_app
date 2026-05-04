@@ -324,6 +324,8 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
                     textCapitalization: TextCapitalization.characters,
                     decoration: const InputDecoration(
                       labelText: '복구키',
+                      hintText: 'STOCK-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX',
+                      helperText: '공백과 소문자는 자동으로 정리됩니다.',
                       border: OutlineInputBorder(),
                     ),
                   )
@@ -355,7 +357,8 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
             FilledButton.icon(
               onPressed: () {
                 if (useRecoveryKey) {
-                  final recoveryKey = recoveryKeyController.text.trim();
+                  final recoveryKey =
+                      _normalizeRecoveryKey(recoveryKeyController.text);
                   if (recoveryKey.isEmpty) {
                     setDialogState(() => errorText = '복구키를 입력해주세요.');
                     return;
@@ -385,6 +388,10 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
       passwordController.dispose();
       recoveryKeyController.dispose();
     });
+  }
+
+  static String _normalizeRecoveryKey(String value) {
+    return value.trim().toUpperCase().replaceAll(RegExp(r'\s+'), '');
   }
 
   Future<void> _deleteBackup(CloudBackupMetadata backup) async {
@@ -853,6 +860,13 @@ class _CloudBackupRestorePreview extends StatelessWidget {
                 backup,
                 numberFormat,
               ),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: '암호화',
+              value: backup.encrypted
+                  ? '사용 (${backup.encryptionAlgorithm ?? 'AES-256-GCM'})'
+                  : '미사용',
             ),
             const SizedBox(height: 8),
             _InfoRow(
