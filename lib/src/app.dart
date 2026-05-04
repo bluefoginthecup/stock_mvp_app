@@ -7,6 +7,7 @@ import 'screens/stock/stock_browser_screen.dart';
 import 'screens/txns/txn_list_screen.dart';
 import 'screens/works/work_list_screen.dart';
 import 'screens/purchases/purchase_list_screen.dart';
+import 'screens/quotes/quote_list_screen.dart';
 import 'screens/trash/trash_screen.dart';
 import 'screens/cart/cart_screen.dart';
 import '/src/screens/settings/settings_screen.dart';
@@ -21,6 +22,7 @@ import '/src/screens/settings/language_settings_screen.dart';
 
 import 'screens/stock/stock_item_detail_screen.dart';
 import 'screens/purchases/purchase_detail_screen.dart';
+import 'screens/quotes/quote_detail_screen.dart';
 import 'screens/suppliers/supplier_form_screen.dart';
 import 'screens/suppliers/supplier_list_screen.dart';
 import 'screens/receipts/receipt_create_screen.dart';
@@ -73,6 +75,7 @@ class StockApp extends StatelessWidget {
               '/txns': (_) => const TxnListScreen(),
               '/works': (_) => const WorkListScreen(),
               '/purchases': (_) => const PurchaseListScreen(),
+              '/quotes': (_) => const QuoteListScreen(),
               '/settings/language': (_) => const LanguageSettingsScreen(),
               '/items/detail': (context) {
                 final itemId =
@@ -85,6 +88,11 @@ class StockApp extends StatelessWidget {
                     ModalRoute.of(context)!.settings.arguments as String;
                 final poRepo = context.read<PurchaseOrderRepo>();
                 return PurchaseDetailScreen(orderId: orderId, repo: poRepo);
+              },
+              '/quotes/detail': (context) {
+                final quoteId =
+                    ModalRoute.of(context)!.settings.arguments as String;
+                return QuoteDetailScreen(quoteId: quoteId);
               },
               '/trash': (_) =>
                   const TrashScreen(), // ← 여기서만 TrashScreen을 import

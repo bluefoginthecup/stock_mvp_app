@@ -6,6 +6,8 @@ import '../models/bom.dart';
 import '../models/work.dart';
 import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
+import '../models/quote.dart';
+import '../models/quote_line.dart';
 import '../models/purchase_receipt.dart';
 import '../models/types.dart';
 import '../models/suppliers.dart';
@@ -341,6 +343,20 @@ abstract class SupplierRepo {
   Future<List<SupplierAccount>> listAccounts(String supplierId);
   Future<void> replaceAccounts(
       String supplierId, List<SupplierAccount> accounts);
+}
+
+abstract class QuoteRepo {
+  Future<String> createQuote(Quote quote);
+  Future<void> updateQuote(Quote quote);
+  Future<void> updateQuoteStatus(String id, QuoteStatus status);
+  Stream<List<Quote>> watchAllQuotes();
+  Future<Quote?> getQuoteById(String id);
+  Future<void> softDeleteQuote(String id);
+  Future<void> restoreQuote(String id);
+
+  Future<void> upsertQuoteLines(String quoteId, List<QuoteLine> lines);
+  Future<List<QuoteLine>> getQuoteLines(String quoteId);
+  Future<Map<String, List<QuoteLine>>> getQuoteLinesMap();
 }
 // 맨 아래 부분만 이렇게 정리 👇
 

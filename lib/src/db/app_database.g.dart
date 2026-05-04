@@ -6960,6 +6960,1197 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
   }
 }
 
+class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QuotesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _customerNameMeta =
+      const VerificationMeta('customerName');
+  @override
+  late final GeneratedColumn<String> customerName = GeneratedColumn<String>(
+      'customer_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _customerIdMeta =
+      const VerificationMeta('customerId');
+  @override
+  late final GeneratedColumn<String> customerId = GeneratedColumn<String>(
+      'customer_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _quoteDateMeta =
+      const VerificationMeta('quoteDate');
+  @override
+  late final GeneratedColumn<String> quoteDate = GeneratedColumn<String>(
+      'quote_date', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _validUntilMeta =
+      const VerificationMeta('validUntil');
+  @override
+  late final GeneratedColumn<String> validUntil = GeneratedColumn<String>(
+      'valid_until', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _memoMeta = const VerificationMeta('memo');
+  @override
+  late final GeneratedColumn<String> memo = GeneratedColumn<String>(
+      'memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _discountAmountMeta =
+      const VerificationMeta('discountAmount');
+  @override
+  late final GeneratedColumn<double> discountAmount = GeneratedColumn<double>(
+      'discount_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _shippingCostMeta =
+      const VerificationMeta('shippingCost');
+  @override
+  late final GeneratedColumn<double> shippingCost = GeneratedColumn<double>(
+      'shipping_cost', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _vatTypeMeta =
+      const VerificationMeta('vatType');
+  @override
+  late final GeneratedColumn<int> vatType = GeneratedColumn<int>(
+      'vat_type', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _isDeletedMeta =
+      const VerificationMeta('isDeleted');
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+      'is_deleted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        customerName,
+        customerId,
+        quoteDate,
+        validUntil,
+        status,
+        memo,
+        discountAmount,
+        shippingCost,
+        vatType,
+        createdAt,
+        updatedAt,
+        isDeleted,
+        deletedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'quotes';
+  @override
+  VerificationContext validateIntegrity(Insertable<QuoteRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('customer_name')) {
+      context.handle(
+          _customerNameMeta,
+          customerName.isAcceptableOrUnknown(
+              data['customer_name']!, _customerNameMeta));
+    } else if (isInserting) {
+      context.missing(_customerNameMeta);
+    }
+    if (data.containsKey('customer_id')) {
+      context.handle(
+          _customerIdMeta,
+          customerId.isAcceptableOrUnknown(
+              data['customer_id']!, _customerIdMeta));
+    }
+    if (data.containsKey('quote_date')) {
+      context.handle(_quoteDateMeta,
+          quoteDate.isAcceptableOrUnknown(data['quote_date']!, _quoteDateMeta));
+    } else if (isInserting) {
+      context.missing(_quoteDateMeta);
+    }
+    if (data.containsKey('valid_until')) {
+      context.handle(
+          _validUntilMeta,
+          validUntil.isAcceptableOrUnknown(
+              data['valid_until']!, _validUntilMeta));
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('memo')) {
+      context.handle(
+          _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
+    }
+    if (data.containsKey('discount_amount')) {
+      context.handle(
+          _discountAmountMeta,
+          discountAmount.isAcceptableOrUnknown(
+              data['discount_amount']!, _discountAmountMeta));
+    }
+    if (data.containsKey('shipping_cost')) {
+      context.handle(
+          _shippingCostMeta,
+          shippingCost.isAcceptableOrUnknown(
+              data['shipping_cost']!, _shippingCostMeta));
+    }
+    if (data.containsKey('vat_type')) {
+      context.handle(_vatTypeMeta,
+          vatType.isAcceptableOrUnknown(data['vat_type']!, _vatTypeMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(_isDeletedMeta,
+          isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QuoteRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QuoteRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      customerName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}customer_name'])!,
+      customerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}customer_id']),
+      quoteDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}quote_date'])!,
+      validUntil: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}valid_until']),
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      memo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}memo']),
+      discountAmount: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}discount_amount'])!,
+      shippingCost: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}shipping_cost'])!,
+      vatType: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}vat_type'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}updated_at'])!,
+      isDeleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
+    );
+  }
+
+  @override
+  $QuotesTable createAlias(String alias) {
+    return $QuotesTable(attachedDatabase, alias);
+  }
+}
+
+class QuoteRow extends DataClass implements Insertable<QuoteRow> {
+  final String id;
+  final String customerName;
+  final String? customerId;
+  final String quoteDate;
+  final String? validUntil;
+  final String status;
+  final String? memo;
+  final double discountAmount;
+  final double shippingCost;
+  final int vatType;
+  final String createdAt;
+  final String updatedAt;
+  final bool isDeleted;
+  final String? deletedAt;
+  const QuoteRow(
+      {required this.id,
+      required this.customerName,
+      this.customerId,
+      required this.quoteDate,
+      this.validUntil,
+      required this.status,
+      this.memo,
+      required this.discountAmount,
+      required this.shippingCost,
+      required this.vatType,
+      required this.createdAt,
+      required this.updatedAt,
+      required this.isDeleted,
+      this.deletedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['customer_name'] = Variable<String>(customerName);
+    if (!nullToAbsent || customerId != null) {
+      map['customer_id'] = Variable<String>(customerId);
+    }
+    map['quote_date'] = Variable<String>(quoteDate);
+    if (!nullToAbsent || validUntil != null) {
+      map['valid_until'] = Variable<String>(validUntil);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || memo != null) {
+      map['memo'] = Variable<String>(memo);
+    }
+    map['discount_amount'] = Variable<double>(discountAmount);
+    map['shipping_cost'] = Variable<double>(shippingCost);
+    map['vat_type'] = Variable<int>(vatType);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    return map;
+  }
+
+  QuotesCompanion toCompanion(bool nullToAbsent) {
+    return QuotesCompanion(
+      id: Value(id),
+      customerName: Value(customerName),
+      customerId: customerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(customerId),
+      quoteDate: Value(quoteDate),
+      validUntil: validUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(validUntil),
+      status: Value(status),
+      memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      discountAmount: Value(discountAmount),
+      shippingCost: Value(shippingCost),
+      vatType: Value(vatType),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      isDeleted: Value(isDeleted),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory QuoteRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QuoteRow(
+      id: serializer.fromJson<String>(json['id']),
+      customerName: serializer.fromJson<String>(json['customerName']),
+      customerId: serializer.fromJson<String?>(json['customerId']),
+      quoteDate: serializer.fromJson<String>(json['quoteDate']),
+      validUntil: serializer.fromJson<String?>(json['validUntil']),
+      status: serializer.fromJson<String>(json['status']),
+      memo: serializer.fromJson<String?>(json['memo']),
+      discountAmount: serializer.fromJson<double>(json['discountAmount']),
+      shippingCost: serializer.fromJson<double>(json['shippingCost']),
+      vatType: serializer.fromJson<int>(json['vatType']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'customerName': serializer.toJson<String>(customerName),
+      'customerId': serializer.toJson<String?>(customerId),
+      'quoteDate': serializer.toJson<String>(quoteDate),
+      'validUntil': serializer.toJson<String?>(validUntil),
+      'status': serializer.toJson<String>(status),
+      'memo': serializer.toJson<String?>(memo),
+      'discountAmount': serializer.toJson<double>(discountAmount),
+      'shippingCost': serializer.toJson<double>(shippingCost),
+      'vatType': serializer.toJson<int>(vatType),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'deletedAt': serializer.toJson<String?>(deletedAt),
+    };
+  }
+
+  QuoteRow copyWith(
+          {String? id,
+          String? customerName,
+          Value<String?> customerId = const Value.absent(),
+          String? quoteDate,
+          Value<String?> validUntil = const Value.absent(),
+          String? status,
+          Value<String?> memo = const Value.absent(),
+          double? discountAmount,
+          double? shippingCost,
+          int? vatType,
+          String? createdAt,
+          String? updatedAt,
+          bool? isDeleted,
+          Value<String?> deletedAt = const Value.absent()}) =>
+      QuoteRow(
+        id: id ?? this.id,
+        customerName: customerName ?? this.customerName,
+        customerId: customerId.present ? customerId.value : this.customerId,
+        quoteDate: quoteDate ?? this.quoteDate,
+        validUntil: validUntil.present ? validUntil.value : this.validUntil,
+        status: status ?? this.status,
+        memo: memo.present ? memo.value : this.memo,
+        discountAmount: discountAmount ?? this.discountAmount,
+        shippingCost: shippingCost ?? this.shippingCost,
+        vatType: vatType ?? this.vatType,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        isDeleted: isDeleted ?? this.isDeleted,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+      );
+  QuoteRow copyWithCompanion(QuotesCompanion data) {
+    return QuoteRow(
+      id: data.id.present ? data.id.value : this.id,
+      customerName: data.customerName.present
+          ? data.customerName.value
+          : this.customerName,
+      customerId:
+          data.customerId.present ? data.customerId.value : this.customerId,
+      quoteDate: data.quoteDate.present ? data.quoteDate.value : this.quoteDate,
+      validUntil:
+          data.validUntil.present ? data.validUntil.value : this.validUntil,
+      status: data.status.present ? data.status.value : this.status,
+      memo: data.memo.present ? data.memo.value : this.memo,
+      discountAmount: data.discountAmount.present
+          ? data.discountAmount.value
+          : this.discountAmount,
+      shippingCost: data.shippingCost.present
+          ? data.shippingCost.value
+          : this.shippingCost,
+      vatType: data.vatType.present ? data.vatType.value : this.vatType,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuoteRow(')
+          ..write('id: $id, ')
+          ..write('customerName: $customerName, ')
+          ..write('customerId: $customerId, ')
+          ..write('quoteDate: $quoteDate, ')
+          ..write('validUntil: $validUntil, ')
+          ..write('status: $status, ')
+          ..write('memo: $memo, ')
+          ..write('discountAmount: $discountAmount, ')
+          ..write('shippingCost: $shippingCost, ')
+          ..write('vatType: $vatType, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      customerName,
+      customerId,
+      quoteDate,
+      validUntil,
+      status,
+      memo,
+      discountAmount,
+      shippingCost,
+      vatType,
+      createdAt,
+      updatedAt,
+      isDeleted,
+      deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuoteRow &&
+          other.id == this.id &&
+          other.customerName == this.customerName &&
+          other.customerId == this.customerId &&
+          other.quoteDate == this.quoteDate &&
+          other.validUntil == this.validUntil &&
+          other.status == this.status &&
+          other.memo == this.memo &&
+          other.discountAmount == this.discountAmount &&
+          other.shippingCost == this.shippingCost &&
+          other.vatType == this.vatType &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.isDeleted == this.isDeleted &&
+          other.deletedAt == this.deletedAt);
+}
+
+class QuotesCompanion extends UpdateCompanion<QuoteRow> {
+  final Value<String> id;
+  final Value<String> customerName;
+  final Value<String?> customerId;
+  final Value<String> quoteDate;
+  final Value<String?> validUntil;
+  final Value<String> status;
+  final Value<String?> memo;
+  final Value<double> discountAmount;
+  final Value<double> shippingCost;
+  final Value<int> vatType;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<bool> isDeleted;
+  final Value<String?> deletedAt;
+  final Value<int> rowid;
+  const QuotesCompanion({
+    this.id = const Value.absent(),
+    this.customerName = const Value.absent(),
+    this.customerId = const Value.absent(),
+    this.quoteDate = const Value.absent(),
+    this.validUntil = const Value.absent(),
+    this.status = const Value.absent(),
+    this.memo = const Value.absent(),
+    this.discountAmount = const Value.absent(),
+    this.shippingCost = const Value.absent(),
+    this.vatType = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  QuotesCompanion.insert({
+    required String id,
+    required String customerName,
+    this.customerId = const Value.absent(),
+    required String quoteDate,
+    this.validUntil = const Value.absent(),
+    required String status,
+    this.memo = const Value.absent(),
+    this.discountAmount = const Value.absent(),
+    this.shippingCost = const Value.absent(),
+    this.vatType = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+    this.isDeleted = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        customerName = Value(customerName),
+        quoteDate = Value(quoteDate),
+        status = Value(status),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<QuoteRow> custom({
+    Expression<String>? id,
+    Expression<String>? customerName,
+    Expression<String>? customerId,
+    Expression<String>? quoteDate,
+    Expression<String>? validUntil,
+    Expression<String>? status,
+    Expression<String>? memo,
+    Expression<double>? discountAmount,
+    Expression<double>? shippingCost,
+    Expression<int>? vatType,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<bool>? isDeleted,
+    Expression<String>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (customerName != null) 'customer_name': customerName,
+      if (customerId != null) 'customer_id': customerId,
+      if (quoteDate != null) 'quote_date': quoteDate,
+      if (validUntil != null) 'valid_until': validUntil,
+      if (status != null) 'status': status,
+      if (memo != null) 'memo': memo,
+      if (discountAmount != null) 'discount_amount': discountAmount,
+      if (shippingCost != null) 'shipping_cost': shippingCost,
+      if (vatType != null) 'vat_type': vatType,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  QuotesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? customerName,
+      Value<String?>? customerId,
+      Value<String>? quoteDate,
+      Value<String?>? validUntil,
+      Value<String>? status,
+      Value<String?>? memo,
+      Value<double>? discountAmount,
+      Value<double>? shippingCost,
+      Value<int>? vatType,
+      Value<String>? createdAt,
+      Value<String>? updatedAt,
+      Value<bool>? isDeleted,
+      Value<String?>? deletedAt,
+      Value<int>? rowid}) {
+    return QuotesCompanion(
+      id: id ?? this.id,
+      customerName: customerName ?? this.customerName,
+      customerId: customerId ?? this.customerId,
+      quoteDate: quoteDate ?? this.quoteDate,
+      validUntil: validUntil ?? this.validUntil,
+      status: status ?? this.status,
+      memo: memo ?? this.memo,
+      discountAmount: discountAmount ?? this.discountAmount,
+      shippingCost: shippingCost ?? this.shippingCost,
+      vatType: vatType ?? this.vatType,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (customerName.present) {
+      map['customer_name'] = Variable<String>(customerName.value);
+    }
+    if (customerId.present) {
+      map['customer_id'] = Variable<String>(customerId.value);
+    }
+    if (quoteDate.present) {
+      map['quote_date'] = Variable<String>(quoteDate.value);
+    }
+    if (validUntil.present) {
+      map['valid_until'] = Variable<String>(validUntil.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (memo.present) {
+      map['memo'] = Variable<String>(memo.value);
+    }
+    if (discountAmount.present) {
+      map['discount_amount'] = Variable<double>(discountAmount.value);
+    }
+    if (shippingCost.present) {
+      map['shipping_cost'] = Variable<double>(shippingCost.value);
+    }
+    if (vatType.present) {
+      map['vat_type'] = Variable<int>(vatType.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<String>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuotesCompanion(')
+          ..write('id: $id, ')
+          ..write('customerName: $customerName, ')
+          ..write('customerId: $customerId, ')
+          ..write('quoteDate: $quoteDate, ')
+          ..write('validUntil: $validUntil, ')
+          ..write('status: $status, ')
+          ..write('memo: $memo, ')
+          ..write('discountAmount: $discountAmount, ')
+          ..write('shippingCost: $shippingCost, ')
+          ..write('vatType: $vatType, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $QuoteLinesTable extends QuoteLines
+    with TableInfo<$QuoteLinesTable, QuoteLineRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QuoteLinesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _quoteIdMeta =
+      const VerificationMeta('quoteId');
+  @override
+  late final GeneratedColumn<String> quoteId = GeneratedColumn<String>(
+      'quote_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES quotes (id) ON DELETE CASCADE'));
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+      'item_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES items (id) ON DELETE RESTRICT'));
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+      'unit', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _qtyMeta = const VerificationMeta('qty');
+  @override
+  late final GeneratedColumn<double> qty = GeneratedColumn<double>(
+      'qty', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _unitPriceMeta =
+      const VerificationMeta('unitPrice');
+  @override
+  late final GeneratedColumn<double> unitPrice = GeneratedColumn<double>(
+      'unit_price', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _memoMeta = const VerificationMeta('memo');
+  @override
+  late final GeneratedColumn<String> memo = GeneratedColumn<String>(
+      'memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isDeletedMeta =
+      const VerificationMeta('isDeleted');
+  @override
+  late final GeneratedColumn<bool> isDeleted = GeneratedColumn<bool>(
+      'is_deleted', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_deleted" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<String> deletedAt = GeneratedColumn<String>(
+      'deleted_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        quoteId,
+        itemId,
+        name,
+        unit,
+        qty,
+        unitPrice,
+        memo,
+        isDeleted,
+        deletedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'quote_lines';
+  @override
+  VerificationContext validateIntegrity(Insertable<QuoteLineRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('quote_id')) {
+      context.handle(_quoteIdMeta,
+          quoteId.isAcceptableOrUnknown(data['quote_id']!, _quoteIdMeta));
+    } else if (isInserting) {
+      context.missing(_quoteIdMeta);
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(_itemIdMeta,
+          itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta));
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+          _unitMeta, unit.isAcceptableOrUnknown(data['unit']!, _unitMeta));
+    } else if (isInserting) {
+      context.missing(_unitMeta);
+    }
+    if (data.containsKey('qty')) {
+      context.handle(
+          _qtyMeta, qty.isAcceptableOrUnknown(data['qty']!, _qtyMeta));
+    } else if (isInserting) {
+      context.missing(_qtyMeta);
+    }
+    if (data.containsKey('unit_price')) {
+      context.handle(_unitPriceMeta,
+          unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta));
+    }
+    if (data.containsKey('memo')) {
+      context.handle(
+          _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
+    }
+    if (data.containsKey('is_deleted')) {
+      context.handle(_isDeletedMeta,
+          isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QuoteLineRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QuoteLineRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      quoteId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}quote_id'])!,
+      itemId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}item_id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      unit: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}unit'])!,
+      qty: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}qty'])!,
+      unitPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}unit_price'])!,
+      memo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}memo']),
+      isDeleted: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
+    );
+  }
+
+  @override
+  $QuoteLinesTable createAlias(String alias) {
+    return $QuoteLinesTable(attachedDatabase, alias);
+  }
+}
+
+class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
+  final String id;
+  final String quoteId;
+  final String itemId;
+  final String name;
+  final String unit;
+  final double qty;
+  final double unitPrice;
+  final String? memo;
+  final bool isDeleted;
+  final String? deletedAt;
+  const QuoteLineRow(
+      {required this.id,
+      required this.quoteId,
+      required this.itemId,
+      required this.name,
+      required this.unit,
+      required this.qty,
+      required this.unitPrice,
+      this.memo,
+      required this.isDeleted,
+      this.deletedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['quote_id'] = Variable<String>(quoteId);
+    map['item_id'] = Variable<String>(itemId);
+    map['name'] = Variable<String>(name);
+    map['unit'] = Variable<String>(unit);
+    map['qty'] = Variable<double>(qty);
+    map['unit_price'] = Variable<double>(unitPrice);
+    if (!nullToAbsent || memo != null) {
+      map['memo'] = Variable<String>(memo);
+    }
+    map['is_deleted'] = Variable<bool>(isDeleted);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<String>(deletedAt);
+    }
+    return map;
+  }
+
+  QuoteLinesCompanion toCompanion(bool nullToAbsent) {
+    return QuoteLinesCompanion(
+      id: Value(id),
+      quoteId: Value(quoteId),
+      itemId: Value(itemId),
+      name: Value(name),
+      unit: Value(unit),
+      qty: Value(qty),
+      unitPrice: Value(unitPrice),
+      memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      isDeleted: Value(isDeleted),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+    );
+  }
+
+  factory QuoteLineRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QuoteLineRow(
+      id: serializer.fromJson<String>(json['id']),
+      quoteId: serializer.fromJson<String>(json['quoteId']),
+      itemId: serializer.fromJson<String>(json['itemId']),
+      name: serializer.fromJson<String>(json['name']),
+      unit: serializer.fromJson<String>(json['unit']),
+      qty: serializer.fromJson<double>(json['qty']),
+      unitPrice: serializer.fromJson<double>(json['unitPrice']),
+      memo: serializer.fromJson<String?>(json['memo']),
+      isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      deletedAt: serializer.fromJson<String?>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'quoteId': serializer.toJson<String>(quoteId),
+      'itemId': serializer.toJson<String>(itemId),
+      'name': serializer.toJson<String>(name),
+      'unit': serializer.toJson<String>(unit),
+      'qty': serializer.toJson<double>(qty),
+      'unitPrice': serializer.toJson<double>(unitPrice),
+      'memo': serializer.toJson<String?>(memo),
+      'isDeleted': serializer.toJson<bool>(isDeleted),
+      'deletedAt': serializer.toJson<String?>(deletedAt),
+    };
+  }
+
+  QuoteLineRow copyWith(
+          {String? id,
+          String? quoteId,
+          String? itemId,
+          String? name,
+          String? unit,
+          double? qty,
+          double? unitPrice,
+          Value<String?> memo = const Value.absent(),
+          bool? isDeleted,
+          Value<String?> deletedAt = const Value.absent()}) =>
+      QuoteLineRow(
+        id: id ?? this.id,
+        quoteId: quoteId ?? this.quoteId,
+        itemId: itemId ?? this.itemId,
+        name: name ?? this.name,
+        unit: unit ?? this.unit,
+        qty: qty ?? this.qty,
+        unitPrice: unitPrice ?? this.unitPrice,
+        memo: memo.present ? memo.value : this.memo,
+        isDeleted: isDeleted ?? this.isDeleted,
+        deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+      );
+  QuoteLineRow copyWithCompanion(QuoteLinesCompanion data) {
+    return QuoteLineRow(
+      id: data.id.present ? data.id.value : this.id,
+      quoteId: data.quoteId.present ? data.quoteId.value : this.quoteId,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      name: data.name.present ? data.name.value : this.name,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      qty: data.qty.present ? data.qty.value : this.qty,
+      unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      memo: data.memo.present ? data.memo.value : this.memo,
+      isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuoteLineRow(')
+          ..write('id: $id, ')
+          ..write('quoteId: $quoteId, ')
+          ..write('itemId: $itemId, ')
+          ..write('name: $name, ')
+          ..write('unit: $unit, ')
+          ..write('qty: $qty, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('memo: $memo, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, quoteId, itemId, name, unit, qty,
+      unitPrice, memo, isDeleted, deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuoteLineRow &&
+          other.id == this.id &&
+          other.quoteId == this.quoteId &&
+          other.itemId == this.itemId &&
+          other.name == this.name &&
+          other.unit == this.unit &&
+          other.qty == this.qty &&
+          other.unitPrice == this.unitPrice &&
+          other.memo == this.memo &&
+          other.isDeleted == this.isDeleted &&
+          other.deletedAt == this.deletedAt);
+}
+
+class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
+  final Value<String> id;
+  final Value<String> quoteId;
+  final Value<String> itemId;
+  final Value<String> name;
+  final Value<String> unit;
+  final Value<double> qty;
+  final Value<double> unitPrice;
+  final Value<String?> memo;
+  final Value<bool> isDeleted;
+  final Value<String?> deletedAt;
+  final Value<int> rowid;
+  const QuoteLinesCompanion({
+    this.id = const Value.absent(),
+    this.quoteId = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.qty = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    this.memo = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  QuoteLinesCompanion.insert({
+    required String id,
+    required String quoteId,
+    required String itemId,
+    required String name,
+    required String unit,
+    required double qty,
+    this.unitPrice = const Value.absent(),
+    this.memo = const Value.absent(),
+    this.isDeleted = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        quoteId = Value(quoteId),
+        itemId = Value(itemId),
+        name = Value(name),
+        unit = Value(unit),
+        qty = Value(qty);
+  static Insertable<QuoteLineRow> custom({
+    Expression<String>? id,
+    Expression<String>? quoteId,
+    Expression<String>? itemId,
+    Expression<String>? name,
+    Expression<String>? unit,
+    Expression<double>? qty,
+    Expression<double>? unitPrice,
+    Expression<String>? memo,
+    Expression<bool>? isDeleted,
+    Expression<String>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (quoteId != null) 'quote_id': quoteId,
+      if (itemId != null) 'item_id': itemId,
+      if (name != null) 'name': name,
+      if (unit != null) 'unit': unit,
+      if (qty != null) 'qty': qty,
+      if (unitPrice != null) 'unit_price': unitPrice,
+      if (memo != null) 'memo': memo,
+      if (isDeleted != null) 'is_deleted': isDeleted,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  QuoteLinesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? quoteId,
+      Value<String>? itemId,
+      Value<String>? name,
+      Value<String>? unit,
+      Value<double>? qty,
+      Value<double>? unitPrice,
+      Value<String?>? memo,
+      Value<bool>? isDeleted,
+      Value<String?>? deletedAt,
+      Value<int>? rowid}) {
+    return QuoteLinesCompanion(
+      id: id ?? this.id,
+      quoteId: quoteId ?? this.quoteId,
+      itemId: itemId ?? this.itemId,
+      name: name ?? this.name,
+      unit: unit ?? this.unit,
+      qty: qty ?? this.qty,
+      unitPrice: unitPrice ?? this.unitPrice,
+      memo: memo ?? this.memo,
+      isDeleted: isDeleted ?? this.isDeleted,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (quoteId.present) {
+      map['quote_id'] = Variable<String>(quoteId.value);
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
+    if (qty.present) {
+      map['qty'] = Variable<double>(qty.value);
+    }
+    if (unitPrice.present) {
+      map['unit_price'] = Variable<double>(unitPrice.value);
+    }
+    if (memo.present) {
+      map['memo'] = Variable<String>(memo.value);
+    }
+    if (isDeleted.present) {
+      map['is_deleted'] = Variable<bool>(isDeleted.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<String>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuoteLinesCompanion(')
+          ..write('id: $id, ')
+          ..write('quoteId: $quoteId, ')
+          ..write('itemId: $itemId, ')
+          ..write('name: $name, ')
+          ..write('unit: $unit, ')
+          ..write('qty: $qty, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('memo: $memo, ')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SuppliersTable extends Suppliers
     with TableInfo<$SuppliersTable, SupplierRow> {
   @override
@@ -8332,6 +9523,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WorksTable works = $WorksTable(this);
   late final $PurchaseOrdersTable purchaseOrders = $PurchaseOrdersTable(this);
   late final $PurchaseLinesTable purchaseLines = $PurchaseLinesTable(this);
+  late final $QuotesTable quotes = $QuotesTable(this);
+  late final $QuoteLinesTable quoteLines = $QuoteLinesTable(this);
   late final $SuppliersTable suppliers = $SuppliersTable(this);
   late final $LotsTable lots = $LotsTable(this);
   late final $MemosTable memos = $MemosTable(this);
@@ -8352,6 +9545,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         works,
         purchaseOrders,
         purchaseLines,
+        quotes,
+        quoteLines,
         suppliers,
         lots,
         memos,
@@ -8435,6 +9630,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('purchase_lines', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('quotes',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('quote_lines', kind: UpdateKind.delete),
             ],
           ),
           WritePropagation(
@@ -8584,6 +9786,20 @@ final class $$ItemsTableReferences
         .filter((f) => f.itemId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_purchaseLinesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$QuoteLinesTable, List<QuoteLineRow>>
+      _quoteLinesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.quoteLines,
+          aliasName: $_aliasNameGenerator(db.items.id, db.quoteLines.itemId));
+
+  $$QuoteLinesTableProcessedTableManager get quoteLinesRefs {
+    final manager = $$QuoteLinesTableTableManager($_db, $_db.quoteLines)
+        .filter((f) => f.itemId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_quoteLinesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -8804,6 +10020,27 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
             $$PurchaseLinesTableFilterComposer(
               $db: $db,
               $table: $db.purchaseLines,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> quoteLinesRefs(
+      Expression<bool> Function($$QuoteLinesTableFilterComposer f) f) {
+    final $$QuoteLinesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.quoteLines,
+        getReferencedColumn: (t) => t.itemId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuoteLinesTableFilterComposer(
+              $db: $db,
+              $table: $db.quoteLines,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -9144,6 +10381,27 @@ class $$ItemsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> quoteLinesRefs<T extends Object>(
+      Expression<T> Function($$QuoteLinesTableAnnotationComposer a) f) {
+    final $$QuoteLinesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.quoteLines,
+        getReferencedColumn: (t) => t.itemId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuoteLinesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.quoteLines,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
   Expression<T> lotsRefs<T extends Object>(
       Expression<T> Function($$LotsTableAnnotationComposer a) f) {
     final $$LotsTableAnnotationComposer composer = $composerBuilder(
@@ -9183,6 +10441,7 @@ class $$ItemsTableTableManager extends RootTableManager<
         bool orderLinesRefs,
         bool worksRefs,
         bool purchaseLinesRefs,
+        bool quoteLinesRefs,
         bool lotsRefs})> {
   $$ItemsTableTableManager(_$AppDatabase db, $ItemsTable table)
       : super(TableManagerState(
@@ -9332,6 +10591,7 @@ class $$ItemsTableTableManager extends RootTableManager<
               orderLinesRefs = false,
               worksRefs = false,
               purchaseLinesRefs = false,
+              quoteLinesRefs = false,
               lotsRefs = false}) {
             return PrefetchHooks(
               db: db,
@@ -9341,6 +10601,7 @@ class $$ItemsTableTableManager extends RootTableManager<
                 if (orderLinesRefs) db.orderLines,
                 if (worksRefs) db.works,
                 if (purchaseLinesRefs) db.purchaseLines,
+                if (quoteLinesRefs) db.quoteLines,
                 if (lotsRefs) db.lots
               ],
               addJoins: null,
@@ -9406,6 +10667,19 @@ class $$ItemsTableTableManager extends RootTableManager<
                                 referencedItems) =>
                             referencedItems.where((e) => e.itemId == item.id),
                         typedResults: items),
+                  if (quoteLinesRefs)
+                    await $_getPrefetchedData<ItemRow, $ItemsTable,
+                            QuoteLineRow>(
+                        currentTable: table,
+                        referencedTable:
+                            $$ItemsTableReferences._quoteLinesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ItemsTableReferences(db, table, p0)
+                                .quoteLinesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.itemId == item.id),
+                        typedResults: items),
                   if (lotsRefs)
                     await $_getPrefetchedData<ItemRow, $ItemsTable, LotRow>(
                         currentTable: table,
@@ -9441,6 +10715,7 @@ typedef $$ItemsTableProcessedTableManager = ProcessedTableManager<
         bool orderLinesRefs,
         bool worksRefs,
         bool purchaseLinesRefs,
+        bool quoteLinesRefs,
         bool lotsRefs})>;
 typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
   required String id,
@@ -13499,6 +14774,817 @@ typedef $$PurchaseLinesTableProcessedTableManager = ProcessedTableManager<
     (PurchaseLineRow, $$PurchaseLinesTableReferences),
     PurchaseLineRow,
     PrefetchHooks Function({bool orderId, bool itemId})>;
+typedef $$QuotesTableCreateCompanionBuilder = QuotesCompanion Function({
+  required String id,
+  required String customerName,
+  Value<String?> customerId,
+  required String quoteDate,
+  Value<String?> validUntil,
+  required String status,
+  Value<String?> memo,
+  Value<double> discountAmount,
+  Value<double> shippingCost,
+  Value<int> vatType,
+  required String createdAt,
+  required String updatedAt,
+  Value<bool> isDeleted,
+  Value<String?> deletedAt,
+  Value<int> rowid,
+});
+typedef $$QuotesTableUpdateCompanionBuilder = QuotesCompanion Function({
+  Value<String> id,
+  Value<String> customerName,
+  Value<String?> customerId,
+  Value<String> quoteDate,
+  Value<String?> validUntil,
+  Value<String> status,
+  Value<String?> memo,
+  Value<double> discountAmount,
+  Value<double> shippingCost,
+  Value<int> vatType,
+  Value<String> createdAt,
+  Value<String> updatedAt,
+  Value<bool> isDeleted,
+  Value<String?> deletedAt,
+  Value<int> rowid,
+});
+
+final class $$QuotesTableReferences
+    extends BaseReferences<_$AppDatabase, $QuotesTable, QuoteRow> {
+  $$QuotesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$QuoteLinesTable, List<QuoteLineRow>>
+      _quoteLinesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.quoteLines,
+          aliasName: $_aliasNameGenerator(db.quotes.id, db.quoteLines.quoteId));
+
+  $$QuoteLinesTableProcessedTableManager get quoteLinesRefs {
+    final manager = $$QuoteLinesTableTableManager($_db, $_db.quoteLines)
+        .filter((f) => f.quoteId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_quoteLinesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$QuotesTableFilterComposer
+    extends Composer<_$AppDatabase, $QuotesTable> {
+  $$QuotesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get customerName => $composableBuilder(
+      column: $table.customerName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get customerId => $composableBuilder(
+      column: $table.customerId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get quoteDate => $composableBuilder(
+      column: $table.quoteDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get validUntil => $composableBuilder(
+      column: $table.validUntil, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get discountAmount => $composableBuilder(
+      column: $table.discountAmount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get shippingCost => $composableBuilder(
+      column: $table.shippingCost, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get vatType => $composableBuilder(
+      column: $table.vatType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> quoteLinesRefs(
+      Expression<bool> Function($$QuoteLinesTableFilterComposer f) f) {
+    final $$QuoteLinesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.quoteLines,
+        getReferencedColumn: (t) => t.quoteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuoteLinesTableFilterComposer(
+              $db: $db,
+              $table: $db.quoteLines,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$QuotesTableOrderingComposer
+    extends Composer<_$AppDatabase, $QuotesTable> {
+  $$QuotesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get customerName => $composableBuilder(
+      column: $table.customerName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get customerId => $composableBuilder(
+      column: $table.customerId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get quoteDate => $composableBuilder(
+      column: $table.quoteDate, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get validUntil => $composableBuilder(
+      column: $table.validUntil, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get discountAmount => $composableBuilder(
+      column: $table.discountAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get shippingCost => $composableBuilder(
+      column: $table.shippingCost,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get vatType => $composableBuilder(
+      column: $table.vatType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$QuotesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $QuotesTable> {
+  $$QuotesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get customerName => $composableBuilder(
+      column: $table.customerName, builder: (column) => column);
+
+  GeneratedColumn<String> get customerId => $composableBuilder(
+      column: $table.customerId, builder: (column) => column);
+
+  GeneratedColumn<String> get quoteDate =>
+      $composableBuilder(column: $table.quoteDate, builder: (column) => column);
+
+  GeneratedColumn<String> get validUntil => $composableBuilder(
+      column: $table.validUntil, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get memo =>
+      $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<double> get discountAmount => $composableBuilder(
+      column: $table.discountAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get shippingCost => $composableBuilder(
+      column: $table.shippingCost, builder: (column) => column);
+
+  GeneratedColumn<int> get vatType =>
+      $composableBuilder(column: $table.vatType, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  Expression<T> quoteLinesRefs<T extends Object>(
+      Expression<T> Function($$QuoteLinesTableAnnotationComposer a) f) {
+    final $$QuoteLinesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.quoteLines,
+        getReferencedColumn: (t) => t.quoteId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuoteLinesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.quoteLines,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$QuotesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $QuotesTable,
+    QuoteRow,
+    $$QuotesTableFilterComposer,
+    $$QuotesTableOrderingComposer,
+    $$QuotesTableAnnotationComposer,
+    $$QuotesTableCreateCompanionBuilder,
+    $$QuotesTableUpdateCompanionBuilder,
+    (QuoteRow, $$QuotesTableReferences),
+    QuoteRow,
+    PrefetchHooks Function({bool quoteLinesRefs})> {
+  $$QuotesTableTableManager(_$AppDatabase db, $QuotesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QuotesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QuotesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QuotesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> customerName = const Value.absent(),
+            Value<String?> customerId = const Value.absent(),
+            Value<String> quoteDate = const Value.absent(),
+            Value<String?> validUntil = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> memo = const Value.absent(),
+            Value<double> discountAmount = const Value.absent(),
+            Value<double> shippingCost = const Value.absent(),
+            Value<int> vatType = const Value.absent(),
+            Value<String> createdAt = const Value.absent(),
+            Value<String> updatedAt = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
+            Value<String?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              QuotesCompanion(
+            id: id,
+            customerName: customerName,
+            customerId: customerId,
+            quoteDate: quoteDate,
+            validUntil: validUntil,
+            status: status,
+            memo: memo,
+            discountAmount: discountAmount,
+            shippingCost: shippingCost,
+            vatType: vatType,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isDeleted: isDeleted,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String customerName,
+            Value<String?> customerId = const Value.absent(),
+            required String quoteDate,
+            Value<String?> validUntil = const Value.absent(),
+            required String status,
+            Value<String?> memo = const Value.absent(),
+            Value<double> discountAmount = const Value.absent(),
+            Value<double> shippingCost = const Value.absent(),
+            Value<int> vatType = const Value.absent(),
+            required String createdAt,
+            required String updatedAt,
+            Value<bool> isDeleted = const Value.absent(),
+            Value<String?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              QuotesCompanion.insert(
+            id: id,
+            customerName: customerName,
+            customerId: customerId,
+            quoteDate: quoteDate,
+            validUntil: validUntil,
+            status: status,
+            memo: memo,
+            discountAmount: discountAmount,
+            shippingCost: shippingCost,
+            vatType: vatType,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            isDeleted: isDeleted,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$QuotesTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: ({quoteLinesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (quoteLinesRefs) db.quoteLines],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (quoteLinesRefs)
+                    await $_getPrefetchedData<QuoteRow, $QuotesTable,
+                            QuoteLineRow>(
+                        currentTable: table,
+                        referencedTable:
+                            $$QuotesTableReferences._quoteLinesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$QuotesTableReferences(db, table, p0)
+                                .quoteLinesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.quoteId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$QuotesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $QuotesTable,
+    QuoteRow,
+    $$QuotesTableFilterComposer,
+    $$QuotesTableOrderingComposer,
+    $$QuotesTableAnnotationComposer,
+    $$QuotesTableCreateCompanionBuilder,
+    $$QuotesTableUpdateCompanionBuilder,
+    (QuoteRow, $$QuotesTableReferences),
+    QuoteRow,
+    PrefetchHooks Function({bool quoteLinesRefs})>;
+typedef $$QuoteLinesTableCreateCompanionBuilder = QuoteLinesCompanion Function({
+  required String id,
+  required String quoteId,
+  required String itemId,
+  required String name,
+  required String unit,
+  required double qty,
+  Value<double> unitPrice,
+  Value<String?> memo,
+  Value<bool> isDeleted,
+  Value<String?> deletedAt,
+  Value<int> rowid,
+});
+typedef $$QuoteLinesTableUpdateCompanionBuilder = QuoteLinesCompanion Function({
+  Value<String> id,
+  Value<String> quoteId,
+  Value<String> itemId,
+  Value<String> name,
+  Value<String> unit,
+  Value<double> qty,
+  Value<double> unitPrice,
+  Value<String?> memo,
+  Value<bool> isDeleted,
+  Value<String?> deletedAt,
+  Value<int> rowid,
+});
+
+final class $$QuoteLinesTableReferences
+    extends BaseReferences<_$AppDatabase, $QuoteLinesTable, QuoteLineRow> {
+  $$QuoteLinesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $QuotesTable _quoteIdTable(_$AppDatabase db) => db.quotes
+      .createAlias($_aliasNameGenerator(db.quoteLines.quoteId, db.quotes.id));
+
+  $$QuotesTableProcessedTableManager get quoteId {
+    final $_column = $_itemColumn<String>('quote_id')!;
+
+    final manager = $$QuotesTableTableManager($_db, $_db.quotes)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_quoteIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $ItemsTable _itemIdTable(_$AppDatabase db) => db.items
+      .createAlias($_aliasNameGenerator(db.quoteLines.itemId, db.items.id));
+
+  $$ItemsTableProcessedTableManager get itemId {
+    final $_column = $_itemColumn<String>('item_id')!;
+
+    final manager = $$ItemsTableTableManager($_db, $_db.items)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_itemIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$QuoteLinesTableFilterComposer
+    extends Composer<_$AppDatabase, $QuoteLinesTable> {
+  $$QuoteLinesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get unit => $composableBuilder(
+      column: $table.unit, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get qty => $composableBuilder(
+      column: $table.qty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get unitPrice => $composableBuilder(
+      column: $table.unitPrice, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnFilters(column));
+
+  $$QuotesTableFilterComposer get quoteId {
+    final $$QuotesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.quoteId,
+        referencedTable: $db.quotes,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuotesTableFilterComposer(
+              $db: $db,
+              $table: $db.quotes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ItemsTableFilterComposer get itemId {
+    final $$ItemsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableFilterComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$QuoteLinesTableOrderingComposer
+    extends Composer<_$AppDatabase, $QuoteLinesTable> {
+  $$QuoteLinesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+      column: $table.unit, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get qty => $composableBuilder(
+      column: $table.qty, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get unitPrice => $composableBuilder(
+      column: $table.unitPrice, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isDeleted => $composableBuilder(
+      column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deletedAt => $composableBuilder(
+      column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
+
+  $$QuotesTableOrderingComposer get quoteId {
+    final $$QuotesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.quoteId,
+        referencedTable: $db.quotes,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuotesTableOrderingComposer(
+              $db: $db,
+              $table: $db.quotes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ItemsTableOrderingComposer get itemId {
+    final $$ItemsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableOrderingComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$QuoteLinesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $QuoteLinesTable> {
+  $$QuoteLinesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumn<double> get qty =>
+      $composableBuilder(column: $table.qty, builder: (column) => column);
+
+  GeneratedColumn<double> get unitPrice =>
+      $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<String> get memo =>
+      $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<bool> get isDeleted =>
+      $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<String> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  $$QuotesTableAnnotationComposer get quoteId {
+    final $$QuotesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.quoteId,
+        referencedTable: $db.quotes,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$QuotesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.quotes,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ItemsTableAnnotationComposer get itemId {
+    final $$ItemsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$QuoteLinesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $QuoteLinesTable,
+    QuoteLineRow,
+    $$QuoteLinesTableFilterComposer,
+    $$QuoteLinesTableOrderingComposer,
+    $$QuoteLinesTableAnnotationComposer,
+    $$QuoteLinesTableCreateCompanionBuilder,
+    $$QuoteLinesTableUpdateCompanionBuilder,
+    (QuoteLineRow, $$QuoteLinesTableReferences),
+    QuoteLineRow,
+    PrefetchHooks Function({bool quoteId, bool itemId})> {
+  $$QuoteLinesTableTableManager(_$AppDatabase db, $QuoteLinesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QuoteLinesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QuoteLinesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QuoteLinesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> quoteId = const Value.absent(),
+            Value<String> itemId = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> unit = const Value.absent(),
+            Value<double> qty = const Value.absent(),
+            Value<double> unitPrice = const Value.absent(),
+            Value<String?> memo = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
+            Value<String?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              QuoteLinesCompanion(
+            id: id,
+            quoteId: quoteId,
+            itemId: itemId,
+            name: name,
+            unit: unit,
+            qty: qty,
+            unitPrice: unitPrice,
+            memo: memo,
+            isDeleted: isDeleted,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String quoteId,
+            required String itemId,
+            required String name,
+            required String unit,
+            required double qty,
+            Value<double> unitPrice = const Value.absent(),
+            Value<String?> memo = const Value.absent(),
+            Value<bool> isDeleted = const Value.absent(),
+            Value<String?> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              QuoteLinesCompanion.insert(
+            id: id,
+            quoteId: quoteId,
+            itemId: itemId,
+            name: name,
+            unit: unit,
+            qty: qty,
+            unitPrice: unitPrice,
+            memo: memo,
+            isDeleted: isDeleted,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$QuoteLinesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({quoteId = false, itemId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (quoteId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.quoteId,
+                    referencedTable:
+                        $$QuoteLinesTableReferences._quoteIdTable(db),
+                    referencedColumn:
+                        $$QuoteLinesTableReferences._quoteIdTable(db).id,
+                  ) as T;
+                }
+                if (itemId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.itemId,
+                    referencedTable:
+                        $$QuoteLinesTableReferences._itemIdTable(db),
+                    referencedColumn:
+                        $$QuoteLinesTableReferences._itemIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$QuoteLinesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $QuoteLinesTable,
+    QuoteLineRow,
+    $$QuoteLinesTableFilterComposer,
+    $$QuoteLinesTableOrderingComposer,
+    $$QuoteLinesTableAnnotationComposer,
+    $$QuoteLinesTableCreateCompanionBuilder,
+    $$QuoteLinesTableUpdateCompanionBuilder,
+    (QuoteLineRow, $$QuoteLinesTableReferences),
+    QuoteLineRow,
+    PrefetchHooks Function({bool quoteId, bool itemId})>;
 typedef $$SuppliersTableCreateCompanionBuilder = SuppliersCompanion Function({
   required String id,
   required String name,
@@ -14335,6 +16421,10 @@ class $AppDatabaseManager {
       $$PurchaseOrdersTableTableManager(_db, _db.purchaseOrders);
   $$PurchaseLinesTableTableManager get purchaseLines =>
       $$PurchaseLinesTableTableManager(_db, _db.purchaseLines);
+  $$QuotesTableTableManager get quotes =>
+      $$QuotesTableTableManager(_db, _db.quotes);
+  $$QuoteLinesTableTableManager get quoteLines =>
+      $$QuoteLinesTableTableManager(_db, _db.quoteLines);
   $$SuppliersTableTableManager get suppliers =>
       $$SuppliersTableTableManager(_db, _db.suppliers);
   $$LotsTableTableManager get lots => $$LotsTableTableManager(_db, _db.lots);

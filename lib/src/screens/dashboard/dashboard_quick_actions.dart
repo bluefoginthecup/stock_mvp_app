@@ -10,6 +10,7 @@ enum QuickActionType {
   txns,
   works,
   purchases,
+  quotes,
   settings,
   suppliers,
   receipts,
@@ -25,6 +26,7 @@ const defaultQuickActionOrder = <QuickActionType>[
   QuickActionType.txns,
   QuickActionType.works,
   QuickActionType.purchases,
+  QuickActionType.quotes,
   QuickActionType.settings,
   QuickActionType.suppliers,
   QuickActionType.receipts,
@@ -128,6 +130,17 @@ DashboardQuickAction buildDashboardQuickAction(
           final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
           tabs.setIndex(5);
+        },
+      );
+    case QuickActionType.quotes:
+      return DashboardQuickAction(
+        key: const ValueKey('quotes'),
+        icon: Icons.request_quote_outlined,
+        label: '견적',
+        onTap: () {
+          final tabs = context.read<MainTabController>();
+          onBeforeNavigate?.call();
+          tabs.openShellRoute('/quotes');
         },
       );
     case QuickActionType.settings:

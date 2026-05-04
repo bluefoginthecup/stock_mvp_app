@@ -11,6 +11,8 @@ import 'package:stockapp_mvp/src/screens/txns/txn_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/works/work_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_detail_screen.dart';
+import 'package:stockapp_mvp/src/screens/quotes/quote_list_screen.dart';
+import 'package:stockapp_mvp/src/screens/quotes/quote_detail_screen.dart';
 import 'package:stockapp_mvp/src/screens/cart/cart_screen.dart';
 import 'package:stockapp_mvp/src/screens/memo/memo_screen.dart';
 import 'package:stockapp_mvp/src/screens/receipts/receipt_create_screen.dart';
@@ -233,6 +235,12 @@ class _MainTabScreenState extends State<MainTabScreen> {
             break;
           case '/cart':
             screen = const CartScreen();
+            break;
+          case '/quotes':
+            screen = const QuoteListScreen();
+            break;
+          case '/quotes/detail':
+            screen = QuoteDetailScreen(quoteId: settings.arguments as String);
             break;
           default:
             screen = const DashboardScreen();

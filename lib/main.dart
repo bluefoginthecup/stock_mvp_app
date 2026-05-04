@@ -36,7 +36,7 @@ import 'src/services/export_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform, // ✅ macOS 포함 모든 플랫폼에서 필수
+    options: DefaultFirebaseOptions.currentPlatform, // ✅ macOS 포함 모든 플랫폼에서 필수
   );
 
   // Provider 경고 끄기 (필요 시)
@@ -49,9 +49,7 @@ Future<void> main() async {
 
   print('schemaVersion: ${db.schemaVersion}');
 
-  final result = await db.customSelect(
-      "PRAGMA table_info(items)"
-  ).get();
+  final result = await db.customSelect("PRAGMA table_info(items)").get();
 
   print('items columns:');
   for (final row in result) {
@@ -67,24 +65,22 @@ Future<void> main() async {
 // (notifyListeners가 너무 빨리 호출돼도 문제 없음)
   Future.microtask(() => unifiedRepo.refreshBomSnapshot());
 
-
-    // ⚠️ 자동 시드 임포트 비활성화: 설정 화면에서 버튼으로만 실행
-    // (개발 중 임시로 쓰고 싶다면 아래 가드 플래그/디버그 모드로 감싸세요)
-    // if (kDebugMode && kEnableDevAutoSeed) {
-    //   final importer = UnifiedSeedImporter(
-    //     itemRepo: unifiedRepo,
-    //     bomRepo: unifiedRepo,
-    //     verbose: true,
-    //   );
-    //   await importer.importUnifiedFromAssets(
-    //     itemsAssetPath: 'assets/seeds/2025-10-26/items.json',
-    //     foldersAssetPath: 'assets/seeds/2025-10-26/folders.json',
-    //     bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
-    //     lotsAssetPath: 'assets/seeds/2025-10-26/lots.json',
-    //     clearBefore: true,
-    //   );
-    // }
-
+  // ⚠️ 자동 시드 임포트 비활성화: 설정 화면에서 버튼으로만 실행
+  // (개발 중 임시로 쓰고 싶다면 아래 가드 플래그/디버그 모드로 감싸세요)
+  // if (kDebugMode && kEnableDevAutoSeed) {
+  //   final importer = UnifiedSeedImporter(
+  //     itemRepo: unifiedRepo,
+  //     bomRepo: unifiedRepo,
+  //     verbose: true,
+  //   );
+  //   await importer.importUnifiedFromAssets(
+  //     itemsAssetPath: 'assets/seeds/2025-10-26/items.json',
+  //     foldersAssetPath: 'assets/seeds/2025-10-26/folders.json',
+  //     bomAssetPath: 'assets/seeds/2025-10-26/bom.json',
+  //     lotsAssetPath: 'assets/seeds/2025-10-26/lots.json',
+  //     clearBefore: true,
+  //   );
+  // }
 
   runApp(
     MultiProvider(
@@ -100,6 +96,7 @@ Future<void> main() async {
         Provider<OrderRepo>.value(value: unifiedRepo),
         Provider<WorkRepo>.value(value: unifiedRepo),
         Provider<PurchaseOrderRepo>.value(value: unifiedRepo),
+        Provider<QuoteRepo>.value(value: unifiedRepo),
         Provider<SupplierRepo>.value(value: unifiedRepo),
         Provider<FolderTreeRepo>.value(value: unifiedRepo),
         // ✅ 통합 휴지통(TrashScreen)이 쓰는 Repo 노출
@@ -111,8 +108,7 @@ Future<void> main() async {
           ),
         ),
         Provider<FolderService>(
-          create: (context) =>
-              FolderService(context.read<DriftUnifiedRepo>()),
+          create: (context) => FolderService(context.read<DriftUnifiedRepo>()),
         ),
         Provider<TimelineRepo>(
           create: (_) => TimelineRepo(
@@ -121,13 +117,11 @@ Future<void> main() async {
               if (o == null) throw Exception('Order not found: $id');
               return o;
             },
-            listPOsByOrderId: (id) => unifiedRepo.listPurchaseOrdersByOrderId(id),
+            listPOsByOrderId: (id) =>
+                unifiedRepo.listPurchaseOrdersByOrderId(id),
             listWorksByOrderId: (id) => unifiedRepo.listWorksByOrderId(id),
           ),
-
         ),
-
-
 
         // ✅ txns도 실시간 구독 (UI에서 context.watch<List<Txn>>()로 바로 사용)
         StreamProvider<List<Txn>>(
@@ -135,18 +129,19 @@ Future<void> main() async {
           initialData: const [],
         ),
 
-
-  ChangeNotifierProvider(create: (_) => CartManager()),
+        ChangeNotifierProvider(create: (_) => CartManager()),
         ChangeNotifierProvider(create: (_) => MainTabController()),
         ChangeNotifierProvider(create: (_) => ItemSelectionController()),
 
         StreamProvider<List<PurchaseOrder>>(
-          create: (ctx) => ctx.read<PurchaseOrderRepo>().watchAllPurchaseOrders(),
+          create: (ctx) =>
+              ctx.read<PurchaseOrderRepo>().watchAllPurchaseOrders(),
           initialData: const [],
         ),
 
         Provider<ItemDetailOpener>(create: (_) => AppItemDetailOpener()),
-        Provider<ItemPathProvider>(create: (ctx) => RepoItemPathFacade(ctx.read<ItemRepo>())),
+        Provider<ItemPathProvider>(
+            create: (ctx) => RepoItemPathFacade(ctx.read<ItemRepo>())),
         Provider<InventoryService>(
           create: (ctx) => InventoryService(
             works: ctx.read<WorkRepo>(),
@@ -155,19 +150,20 @@ Future<void> main() async {
             boms: ctx.read<BomRepo>(),
             orders: ctx.read<OrderRepo>(),
             items: ctx.read<ItemRepo>(),
-          ),),
-  // ✅ BOM explode (2-level)
-          Provider<BomService>(
-            create: (ctx) => BomService(ctx.read<ItemRepo>()),
           ),
+        ),
+        // ✅ BOM explode (2-level)
+        Provider<BomService>(
+          create: (ctx) => BomService(ctx.read<ItemRepo>()),
+        ),
 
-          // ✅ ShortageCalcScreen에서 context.read<ShortageService>()
-          Provider<ShortageService>(
-            create: (ctx) => ShortageService(
-              repo: ctx.read<ItemRepo>(),
-              bom: ctx.read<BomService>(),
-            ),
+        // ✅ ShortageCalcScreen에서 context.read<ShortageService>()
+        Provider<ShortageService>(
+          create: (ctx) => ShortageService(
+            repo: ctx.read<ItemRepo>(),
+            bom: ctx.read<BomService>(),
           ),
+        ),
       ],
       // ⛳️ 여기 **무조건** StockApp (MaterialApp 포함)
       child: const StockApp(),
@@ -178,6 +174,4 @@ Future<void> main() async {
   FirebaseAuth.instance.authStateChanges().listen((user) {
     debugPrint('🔥 FirebaseAuth user: ${user?.uid}');
   });
-
-
 }

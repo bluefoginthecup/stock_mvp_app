@@ -14,6 +14,8 @@ import '../models/order.dart';
 import '../models/work.dart';
 import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
+import '../models/quote.dart';
+import '../models/quote_line.dart';
 import '../models/suppliers.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
@@ -362,6 +364,56 @@ class PurchaseLines extends Table {
 }
 
 /// =======================
+///  Quotes / QuoteLines
+/// =======================
+
+@DataClassName('QuoteRow')
+class Quotes extends Table {
+  TextColumn get id => text()();
+  TextColumn get customerName => text()();
+  TextColumn get customerId => text().nullable()();
+  TextColumn get quoteDate => text()();
+  TextColumn get validUntil => text().nullable()();
+  TextColumn get status => text()();
+  TextColumn get memo => text().nullable()();
+  RealColumn get discountAmount => real().withDefault(const Constant(0))();
+  RealColumn get shippingCost => real().withDefault(const Constant(0))();
+  IntColumn get vatType => integer().withDefault(const Constant(0))();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get deletedAt => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('QuoteLineRow')
+class QuoteLines extends Table {
+  TextColumn get id => text()();
+  TextColumn get quoteId =>
+      text().references(Quotes, #id, onDelete: KeyAction.cascade)();
+  TextColumn get itemId =>
+      text().references(Items, #id, onDelete: KeyAction.restrict)();
+  TextColumn get name => text()();
+  TextColumn get unit => text()();
+  RealColumn get qty => real()();
+  RealColumn get unitPrice => real().withDefault(const Constant(0))();
+  TextColumn get memo => text().nullable()();
+  BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
+  TextColumn get deletedAt => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<Index> get indexes => [
+        Index('idx_quote_lines_quote', 'quoteId'),
+        Index('idx_quote_lines_item', 'itemId'),
+      ];
+}
+
+/// =======================
 ///  Suppliers
 /// =======================
 
@@ -438,6 +490,8 @@ class QuickActionOrders extends Table {
     Works,
     PurchaseOrders,
     PurchaseLines,
+    Quotes,
+    QuoteLines,
     Suppliers,
     Lots,
     Memos,
@@ -470,7 +524,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 26; //
+  int get schemaVersion => 27; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -705,6 +759,10 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 26) {
             await _ensurePurchaseOrderBuyerSnapshotColumns();
+          }
+          if (from < 27) {
+            await m.createTable(quotes);
+            await m.createTable(quoteLines);
           }
         },
       );
@@ -1368,6 +1426,76 @@ extension PurchaseLineToCompanionExt on PurchaseLine {
       unitPrice: Value(unitPrice),
     );
   }
+}
+
+/// =======================
+///  Row ↔ Quote / QuoteLine
+/// =======================
+
+extension QuoteRowMapping on QuoteRow {
+  Quote toDomain() => Quote(
+        id: id,
+        customerName: customerName,
+        customerId: customerId,
+        quoteDate: DateTime.parse(quoteDate),
+        validUntil: validUntil == null ? null : DateTime.parse(validUntil!),
+        status: QuoteStatus.values.firstWhere(
+          (e) => e.name == status,
+          orElse: () => QuoteStatus.draft,
+        ),
+        memo: memo,
+        discountAmount: discountAmount,
+        shippingCost: shippingCost,
+        vatType: QuoteVatType
+            .values[vatType.clamp(0, QuoteVatType.values.length - 1)],
+        createdAt: DateTime.parse(createdAt),
+        updatedAt: DateTime.parse(updatedAt),
+        isDeleted: isDeleted,
+      );
+}
+
+extension QuoteToCompanion on Quote {
+  QuotesCompanion toCompanion() => QuotesCompanion(
+        id: Value(id),
+        customerName: Value(customerName),
+        customerId: Value(customerId),
+        quoteDate: Value(quoteDate.toIso8601String()),
+        validUntil: Value(validUntil?.toIso8601String()),
+        status: Value(status.name),
+        memo: Value(memo),
+        discountAmount: Value(discountAmount),
+        shippingCost: Value(shippingCost),
+        vatType: Value(vatType.index),
+        createdAt: Value(createdAt.toIso8601String()),
+        updatedAt: Value(updatedAt.toIso8601String()),
+        isDeleted: Value(isDeleted),
+      );
+}
+
+extension QuoteLineRowMapping on QuoteLineRow {
+  QuoteLine toDomain() => QuoteLine(
+        id: id,
+        quoteId: quoteId,
+        itemId: itemId,
+        name: name,
+        unit: unit,
+        qty: qty,
+        unitPrice: unitPrice,
+        memo: memo,
+      );
+}
+
+extension QuoteLineToCompanion on QuoteLine {
+  QuoteLinesCompanion toCompanion() => QuoteLinesCompanion(
+        id: Value(id),
+        quoteId: Value(quoteId),
+        itemId: Value(itemId),
+        name: Value(name),
+        unit: Value(unit),
+        qty: Value(qty),
+        unitPrice: Value(unitPrice),
+        memo: Value(memo),
+      );
 }
 
 /// =======================
