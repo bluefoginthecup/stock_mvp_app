@@ -63,23 +63,23 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCI1C5EU-cJoCF5ynaxmS6IWm9K4pkJgfU',
-    appId: '1:101861330698:ios:3e31f2616cf8d08691f4f3',
+    appId: '1:101861330698:ios:ea537888a28ef88491f4f3',
     messagingSenderId: '101861330698',
     projectId: 'chalstock',
     storageBucket: 'chalstock.firebasestorage.app',
     iosClientId:
-        '101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com',
+        '101861330698-9rjumcn1dc88o6j7uirv3op8ce30a1u0.apps.googleusercontent.com',
     iosBundleId: 'com.bluefog.chalstock',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCI1C5EU-cJoCF5ynaxmS6IWm9K4pkJgfU',
-    appId: '1:101861330698:ios:3e31f2616cf8d08691f4f3',
+    appId: '1:101861330698:ios:ea537888a28ef88491f4f3',
     messagingSenderId: '101861330698',
     projectId: 'chalstock',
     storageBucket: 'chalstock.firebasestorage.app',
     iosClientId:
-        '101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com',
-    iosBundleId: 'com.bluefog.stockMvpApp',
+        '101861330698-9rjumcn1dc88o6j7uirv3op8ce30a1u0.apps.googleusercontent.com',
+    iosBundleId: 'com.bluefog.chalstock',
   );
 }
