@@ -124,7 +124,7 @@ abstract class L10n {
   /// No description provided for @app_title.
   ///
   /// In ko, this message translates to:
-  /// **'재고관리'**
+  /// **'찰스톡'**
   String get app_title;
 
   /// No description provided for @btn_add.

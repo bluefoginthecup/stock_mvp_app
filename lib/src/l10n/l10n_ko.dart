@@ -23,7 +23,7 @@ class L10nKo extends L10n {
   String get adjust_delta_hint => '변경 수량 (+입고 / -출고)';
 
   @override
-  String get app_title => '재고관리';
+  String get app_title => '찰스톡';
 
   @override
   String get btn_add => '추가';

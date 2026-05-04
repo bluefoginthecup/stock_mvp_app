@@ -14,7 +14,7 @@
     }
   },
   "adjust_delta_hint": "변경 수량 (+입고 / -출고)",
-  "app_title": "재고관리",
+  "app_title": "찰스톡",
   "btn_add": "추가",
   "btn_apply": "적용",
   "btn_save": "저장",

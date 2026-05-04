@@ -7,9 +7,11 @@ Last updated: 2026-05-05
 - App code: mostly ready, but release QA remains.
 - iOS project: builds from a Flutter iOS project and has Firebase configuration.
 - Privacy manifest: added at `ios/Runner/PrivacyInfo.xcprivacy`.
-- App display name: set to `재고관리`.
+- App display name: set to `찰스톡`.
 - Bundle ID: set locally to `com.bluefog.chalstock`.
 - Blocking item: register `com.bluefog.chalstock` in Apple Developer and Firebase, then replace Firebase config with the official downloaded file.
+- Store listing draft: added at `docs/app_store_listing_draft_ko.md`.
+- TestFlight QA plan: added at `docs/testflight_qa_plan.md`.
 
 ## 1. Apple Developer / App Store Connect
 
@@ -31,6 +33,7 @@ Last updated: 2026-05-05
 - [x] Privacy manifest is included in the Runner resources build phase.
 - [ ] Archive from Xcode using Release configuration.
 - [ ] Upload first build to App Store Connect.
+- [x] Add export options draft at `ios/ExportOptions.plist`.
 
 ## 3. Privacy / Data Collection
 
@@ -72,15 +75,15 @@ Expected app-collected data:
 
 ## 5. Store Listing Assets
 
-- [ ] App name.
-- [ ] Subtitle.
-- [ ] Description.
-- [ ] Keywords.
+- [x] App name.
+- [x] Subtitle.
+- [x] Description.
+- [x] Keywords.
 - [ ] Support URL.
 - [ ] Privacy policy URL.
 - [ ] Screenshots for required iPhone sizes.
 - [ ] iPad screenshots if iPad distribution remains enabled.
-- [ ] Review notes.
+- [x] Review notes draft.
 - [ ] Demo reviewer account.
 
 ## 6. Review Notes Draft
