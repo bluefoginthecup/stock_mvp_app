@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../db/app_database.dart';
+import '../../models/buyer_profile.dart';
 import '../../models/quote.dart';
 import '../../models/quote_line.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../services/buyer_profile_service.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
 import 'quote_line_edit_screen.dart';
 import 'quote_print_view.dart';
@@ -124,6 +127,72 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
     await context.read<QuoteRepo>().updateQuote(updated);
     if (!mounted) return;
     setState(() => _quote = updated);
+  }
+
+  String _supplierSummary(Quote quote) {
+    final supplier = quote.supplierSnapshotProfile;
+    final parts = [
+      supplier.companyName.trim(),
+      supplier.businessNumber.trim(),
+      supplier.representative.trim(),
+    ].where((value) => value.isNotEmpty);
+    return parts.isEmpty ? '공급자 정보 미설정' : parts.join(' / ');
+  }
+
+  Future<void> _changeSupplierProfile(Quote quote) async {
+    final repo = context.read<QuoteRepo>();
+    final service = BuyerProfileService(context.read<AppDatabase>());
+    final profiles = await service.listProfiles();
+    final configured =
+        profiles.where((profile) => profile.isConfigured).toList();
+    final options = [
+      ...configured,
+      if (configured.isEmpty) BuyerProfile.fallback(),
+    ];
+
+    if (!mounted) return;
+    final selected = await showModalBottomSheet<BuyerProfile>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const ListTile(
+                title: Text('공급자 선택'),
+                subtitle: Text('계정 프로필 정보가 이 견적서에 스냅샷으로 저장됩니다.'),
+              ),
+              for (final profile in options)
+                ListTile(
+                  leading: const Icon(Icons.business_outlined),
+                  title: Text(profile.displayName),
+                  subtitle: Text([
+                    if (profile.companyName.trim().isNotEmpty)
+                      profile.companyName.trim(),
+                    if (profile.businessNumber.trim().isNotEmpty)
+                      profile.businessNumber.trim(),
+                    if (profile.representative.trim().isNotEmpty)
+                      profile.representative.trim(),
+                  ].join(' / ')),
+                  trailing: profile.id == quote.supplierProfileId
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.of(sheetContext).pop(profile),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null) return;
+
+    final updated = quote.copyWithSupplierProfile(selected);
+    await repo.updateQuote(updated);
+    if (!mounted) return;
+    setState(() => _quote = updated);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${selected.displayName} 정보가 견적서에 저장되었습니다')),
+    );
   }
 
   Future<void> _editLine([QuoteLine? line]) async {
@@ -274,6 +343,15 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
               ),
               Chip(label: Text(_statusText(quote.status))),
             ],
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.storefront_outlined),
+            title: const Text('공급자'),
+            subtitle: Text(_supplierSummary(quote)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _changeSupplierProfile(quote),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<QuoteVatType>(

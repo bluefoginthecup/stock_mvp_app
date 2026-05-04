@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../models/buyer_profile.dart';
 import '../../models/quote.dart';
 import '../../models/quote_line.dart';
 
@@ -69,6 +70,7 @@ class _QuotePage extends StatelessWidget {
     final dateFmt = DateFormat('yyyy.MM.dd');
     final subtotal = lines.fold<double>(0, (sum, line) => sum + line.amount);
     final totals = QuoteTotals.from(quote: quote, linesSubtotal: subtotal);
+    final supplier = quote.supplierSnapshotProfile;
 
     return Container(
       width: 794,
@@ -108,7 +110,12 @@ class _QuotePage extends StatelessWidget {
                     'No. ${quote.id.substring(0, quote.id.length < 8 ? quote.id.length : 8)}'),
               ],
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
+            Text('[공급자] ${supplier.companyName}',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            _profileInfoTable(supplier),
+            const SizedBox(height: 24),
             const Text('아래와 같이 견적합니다.'),
             const SizedBox(height: 16),
             Table(
@@ -238,6 +245,7 @@ class _QuoteMobilePage extends StatelessWidget {
     final totals = QuoteTotals.from(quote: quote, linesSubtotal: subtotal);
     final customer =
         quote.customerName.trim().isEmpty ? '거래처 미지정' : quote.customerName;
+    final supplier = quote.supplierSnapshotProfile;
 
     return Container(
       width: 390,
@@ -262,6 +270,16 @@ class _QuoteMobilePage extends StatelessWidget {
               '견적번호',
               quote.id.substring(0, quote.id.length < 8 ? quote.id.length : 8),
             ),
+            const SizedBox(height: 12),
+            const Text('공급자', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            _mobileInfoLine('상호', supplier.companyName),
+            _mobileInfoLine('대표', supplier.representative),
+            _mobileInfoLine('사업자번호', supplier.businessNumber),
+            if (supplier.address.trim().isNotEmpty)
+              _mobileInfoLine('주소', supplier.address),
+            if (supplier.phoneFax.trim().isNotEmpty)
+              _mobileInfoLine('연락처', supplier.phoneFax),
             const SizedBox(height: 18),
             const Text('아래와 같이 견적합니다.'),
             const SizedBox(height: 12),
@@ -321,6 +339,61 @@ Widget _infoLine(String label, String value) {
                 style: const TextStyle(fontWeight: FontWeight.bold))),
         Expanded(child: Text(value)),
       ],
+    ),
+  );
+}
+
+Widget _profileInfoTable(BuyerProfile profile) {
+  final business = [
+    profile.businessType.trim(),
+    profile.businessItem.trim(),
+  ].where((value) => value.isNotEmpty).join(' / ');
+
+  return Table(
+    border: TableBorder.all(color: Colors.black87),
+    columnWidths: const {
+      0: FixedColumnWidth(92),
+      1: FlexColumnWidth(1),
+      2: FixedColumnWidth(92),
+      3: FlexColumnWidth(1),
+    },
+    children: [
+      _profileRow('사업자번호', profile.businessNumber, '상호', profile.companyName),
+      _profileRow('대표자', profile.representative, '업태/종목', business),
+      TableRow(
+        children: [
+          _profileCell('주소', bold: true),
+          _profileCell(profile.address),
+          _profileCell('연락처', bold: true),
+          _profileCell(profile.phoneFax),
+        ],
+      ),
+    ],
+  );
+}
+
+TableRow _profileRow(
+  String label1,
+  String value1,
+  String label2,
+  String value2,
+) {
+  return TableRow(
+    children: [
+      _profileCell(label1, bold: true),
+      _profileCell(value1),
+      _profileCell(label2, bold: true),
+      _profileCell(value2),
+    ],
+  );
+}
+
+Widget _profileCell(String text, {bool bold = false}) {
+  return Padding(
+    padding: const EdgeInsets.all(7),
+    child: Text(
+      text.trim().isEmpty ? '-' : text.trim(),
+      style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal),
     ),
   );
 }

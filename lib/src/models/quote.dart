@@ -1,3 +1,5 @@
+import 'buyer_profile.dart';
+
 enum QuoteStatus { draft, sent, accepted, canceled }
 
 enum QuoteVatType { exclusive, inclusive, exempt }
@@ -13,6 +15,15 @@ class Quote {
   final double discountAmount;
   final double shippingCost;
   final QuoteVatType vatType;
+  final int? supplierProfileId;
+  final String? supplierProfileName;
+  final String? supplierBusinessNumber;
+  final String? supplierCompanyName;
+  final String? supplierRepresentative;
+  final String? supplierAddress;
+  final String? supplierBusinessType;
+  final String? supplierBusinessItem;
+  final String? supplierPhoneFax;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
@@ -28,11 +39,50 @@ class Quote {
     this.discountAmount = 0,
     this.shippingCost = 0,
     this.vatType = QuoteVatType.exclusive,
+    this.supplierProfileId,
+    this.supplierProfileName,
+    this.supplierBusinessNumber,
+    this.supplierCompanyName,
+    this.supplierRepresentative,
+    this.supplierAddress,
+    this.supplierBusinessType,
+    this.supplierBusinessItem,
+    this.supplierPhoneFax,
     DateTime? createdAt,
     DateTime? updatedAt,
     this.isDeleted = false,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
+
+  BuyerProfile get supplierSnapshotProfile {
+    final profile = BuyerProfile(
+      id: supplierProfileId ?? 1,
+      profileName: supplierProfileName ?? '',
+      businessNumber: supplierBusinessNumber ?? '',
+      companyName: supplierCompanyName ?? '',
+      representative: supplierRepresentative ?? '',
+      address: supplierAddress ?? '',
+      businessType: supplierBusinessType ?? '',
+      businessItem: supplierBusinessItem ?? '',
+      phoneFax: supplierPhoneFax ?? '',
+      isDefault: false,
+      updatedAt: updatedAt,
+    );
+    return profile.isConfigured ? profile : BuyerProfile.fallback();
+  }
+
+  Quote copyWithSupplierProfile(BuyerProfile profile) => copyWith(
+        supplierProfileId: profile.id,
+        supplierProfileName: profile.profileName,
+        supplierBusinessNumber: profile.businessNumber,
+        supplierCompanyName: profile.companyName,
+        supplierRepresentative: profile.representative,
+        supplierAddress: profile.address,
+        supplierBusinessType: profile.businessType,
+        supplierBusinessItem: profile.businessItem,
+        supplierPhoneFax: profile.phoneFax,
+        updatedAt: DateTime.now(),
+      );
 
   Quote copyWith({
     String? customerName,
@@ -44,6 +94,15 @@ class Quote {
     double? discountAmount,
     double? shippingCost,
     QuoteVatType? vatType,
+    int? supplierProfileId,
+    String? supplierProfileName,
+    String? supplierBusinessNumber,
+    String? supplierCompanyName,
+    String? supplierRepresentative,
+    String? supplierAddress,
+    String? supplierBusinessType,
+    String? supplierBusinessItem,
+    String? supplierPhoneFax,
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isDeleted,
@@ -59,6 +118,17 @@ class Quote {
         discountAmount: discountAmount ?? this.discountAmount,
         shippingCost: shippingCost ?? this.shippingCost,
         vatType: vatType ?? this.vatType,
+        supplierProfileId: supplierProfileId ?? this.supplierProfileId,
+        supplierProfileName: supplierProfileName ?? this.supplierProfileName,
+        supplierBusinessNumber:
+            supplierBusinessNumber ?? this.supplierBusinessNumber,
+        supplierCompanyName: supplierCompanyName ?? this.supplierCompanyName,
+        supplierRepresentative:
+            supplierRepresentative ?? this.supplierRepresentative,
+        supplierAddress: supplierAddress ?? this.supplierAddress,
+        supplierBusinessType: supplierBusinessType ?? this.supplierBusinessType,
+        supplierBusinessItem: supplierBusinessItem ?? this.supplierBusinessItem,
+        supplierPhoneFax: supplierPhoneFax ?? this.supplierPhoneFax,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? DateTime.now(),
         isDeleted: isDeleted ?? this.isDeleted,

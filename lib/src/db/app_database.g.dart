@@ -7028,6 +7028,60 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _supplierProfileIdMeta =
+      const VerificationMeta('supplierProfileId');
+  @override
+  late final GeneratedColumn<int> supplierProfileId = GeneratedColumn<int>(
+      'supplier_profile_id', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _supplierProfileNameMeta =
+      const VerificationMeta('supplierProfileName');
+  @override
+  late final GeneratedColumn<String> supplierProfileName =
+      GeneratedColumn<String>('supplier_profile_name', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _supplierBusinessNumberMeta =
+      const VerificationMeta('supplierBusinessNumber');
+  @override
+  late final GeneratedColumn<String> supplierBusinessNumber =
+      GeneratedColumn<String>('supplier_business_number', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _supplierCompanyNameMeta =
+      const VerificationMeta('supplierCompanyName');
+  @override
+  late final GeneratedColumn<String> supplierCompanyName =
+      GeneratedColumn<String>('supplier_company_name', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _supplierRepresentativeMeta =
+      const VerificationMeta('supplierRepresentative');
+  @override
+  late final GeneratedColumn<String> supplierRepresentative =
+      GeneratedColumn<String>('supplier_representative', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _supplierAddressMeta =
+      const VerificationMeta('supplierAddress');
+  @override
+  late final GeneratedColumn<String> supplierAddress = GeneratedColumn<String>(
+      'supplier_address', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _supplierBusinessTypeMeta =
+      const VerificationMeta('supplierBusinessType');
+  @override
+  late final GeneratedColumn<String> supplierBusinessType =
+      GeneratedColumn<String>('supplier_business_type', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _supplierBusinessItemMeta =
+      const VerificationMeta('supplierBusinessItem');
+  @override
+  late final GeneratedColumn<String> supplierBusinessItem =
+      GeneratedColumn<String>('supplier_business_item', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _supplierPhoneFaxMeta =
+      const VerificationMeta('supplierPhoneFax');
+  @override
+  late final GeneratedColumn<String> supplierPhoneFax = GeneratedColumn<String>(
+      'supplier_phone_fax', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -7068,6 +7122,15 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
         discountAmount,
         shippingCost,
         vatType,
+        supplierProfileId,
+        supplierProfileName,
+        supplierBusinessNumber,
+        supplierCompanyName,
+        supplierRepresentative,
+        supplierAddress,
+        supplierBusinessType,
+        supplierBusinessItem,
+        supplierPhoneFax,
         createdAt,
         updatedAt,
         isDeleted,
@@ -7140,6 +7203,60 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
       context.handle(_vatTypeMeta,
           vatType.isAcceptableOrUnknown(data['vat_type']!, _vatTypeMeta));
     }
+    if (data.containsKey('supplier_profile_id')) {
+      context.handle(
+          _supplierProfileIdMeta,
+          supplierProfileId.isAcceptableOrUnknown(
+              data['supplier_profile_id']!, _supplierProfileIdMeta));
+    }
+    if (data.containsKey('supplier_profile_name')) {
+      context.handle(
+          _supplierProfileNameMeta,
+          supplierProfileName.isAcceptableOrUnknown(
+              data['supplier_profile_name']!, _supplierProfileNameMeta));
+    }
+    if (data.containsKey('supplier_business_number')) {
+      context.handle(
+          _supplierBusinessNumberMeta,
+          supplierBusinessNumber.isAcceptableOrUnknown(
+              data['supplier_business_number']!, _supplierBusinessNumberMeta));
+    }
+    if (data.containsKey('supplier_company_name')) {
+      context.handle(
+          _supplierCompanyNameMeta,
+          supplierCompanyName.isAcceptableOrUnknown(
+              data['supplier_company_name']!, _supplierCompanyNameMeta));
+    }
+    if (data.containsKey('supplier_representative')) {
+      context.handle(
+          _supplierRepresentativeMeta,
+          supplierRepresentative.isAcceptableOrUnknown(
+              data['supplier_representative']!, _supplierRepresentativeMeta));
+    }
+    if (data.containsKey('supplier_address')) {
+      context.handle(
+          _supplierAddressMeta,
+          supplierAddress.isAcceptableOrUnknown(
+              data['supplier_address']!, _supplierAddressMeta));
+    }
+    if (data.containsKey('supplier_business_type')) {
+      context.handle(
+          _supplierBusinessTypeMeta,
+          supplierBusinessType.isAcceptableOrUnknown(
+              data['supplier_business_type']!, _supplierBusinessTypeMeta));
+    }
+    if (data.containsKey('supplier_business_item')) {
+      context.handle(
+          _supplierBusinessItemMeta,
+          supplierBusinessItem.isAcceptableOrUnknown(
+              data['supplier_business_item']!, _supplierBusinessItemMeta));
+    }
+    if (data.containsKey('supplier_phone_fax')) {
+      context.handle(
+          _supplierPhoneFaxMeta,
+          supplierPhoneFax.isAcceptableOrUnknown(
+              data['supplier_phone_fax']!, _supplierPhoneFaxMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -7189,6 +7306,28 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
           .read(DriftSqlType.double, data['${effectivePrefix}shipping_cost'])!,
       vatType: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}vat_type'])!,
+      supplierProfileId: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}supplier_profile_id']),
+      supplierProfileName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}supplier_profile_name']),
+      supplierBusinessNumber: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}supplier_business_number']),
+      supplierCompanyName: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}supplier_company_name']),
+      supplierRepresentative: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}supplier_representative']),
+      supplierAddress: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}supplier_address']),
+      supplierBusinessType: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}supplier_business_type']),
+      supplierBusinessItem: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}supplier_business_item']),
+      supplierPhoneFax: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}supplier_phone_fax']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -7217,6 +7356,15 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
   final double discountAmount;
   final double shippingCost;
   final int vatType;
+  final int? supplierProfileId;
+  final String? supplierProfileName;
+  final String? supplierBusinessNumber;
+  final String? supplierCompanyName;
+  final String? supplierRepresentative;
+  final String? supplierAddress;
+  final String? supplierBusinessType;
+  final String? supplierBusinessItem;
+  final String? supplierPhoneFax;
   final String createdAt;
   final String updatedAt;
   final bool isDeleted;
@@ -7232,6 +7380,15 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       required this.discountAmount,
       required this.shippingCost,
       required this.vatType,
+      this.supplierProfileId,
+      this.supplierProfileName,
+      this.supplierBusinessNumber,
+      this.supplierCompanyName,
+      this.supplierRepresentative,
+      this.supplierAddress,
+      this.supplierBusinessType,
+      this.supplierBusinessItem,
+      this.supplierPhoneFax,
       required this.createdAt,
       required this.updatedAt,
       required this.isDeleted,
@@ -7255,6 +7412,34 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
     map['discount_amount'] = Variable<double>(discountAmount);
     map['shipping_cost'] = Variable<double>(shippingCost);
     map['vat_type'] = Variable<int>(vatType);
+    if (!nullToAbsent || supplierProfileId != null) {
+      map['supplier_profile_id'] = Variable<int>(supplierProfileId);
+    }
+    if (!nullToAbsent || supplierProfileName != null) {
+      map['supplier_profile_name'] = Variable<String>(supplierProfileName);
+    }
+    if (!nullToAbsent || supplierBusinessNumber != null) {
+      map['supplier_business_number'] =
+          Variable<String>(supplierBusinessNumber);
+    }
+    if (!nullToAbsent || supplierCompanyName != null) {
+      map['supplier_company_name'] = Variable<String>(supplierCompanyName);
+    }
+    if (!nullToAbsent || supplierRepresentative != null) {
+      map['supplier_representative'] = Variable<String>(supplierRepresentative);
+    }
+    if (!nullToAbsent || supplierAddress != null) {
+      map['supplier_address'] = Variable<String>(supplierAddress);
+    }
+    if (!nullToAbsent || supplierBusinessType != null) {
+      map['supplier_business_type'] = Variable<String>(supplierBusinessType);
+    }
+    if (!nullToAbsent || supplierBusinessItem != null) {
+      map['supplier_business_item'] = Variable<String>(supplierBusinessItem);
+    }
+    if (!nullToAbsent || supplierPhoneFax != null) {
+      map['supplier_phone_fax'] = Variable<String>(supplierPhoneFax);
+    }
     map['created_at'] = Variable<String>(createdAt);
     map['updated_at'] = Variable<String>(updatedAt);
     map['is_deleted'] = Variable<bool>(isDeleted);
@@ -7280,6 +7465,33 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       discountAmount: Value(discountAmount),
       shippingCost: Value(shippingCost),
       vatType: Value(vatType),
+      supplierProfileId: supplierProfileId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierProfileId),
+      supplierProfileName: supplierProfileName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierProfileName),
+      supplierBusinessNumber: supplierBusinessNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierBusinessNumber),
+      supplierCompanyName: supplierCompanyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierCompanyName),
+      supplierRepresentative: supplierRepresentative == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierRepresentative),
+      supplierAddress: supplierAddress == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierAddress),
+      supplierBusinessType: supplierBusinessType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierBusinessType),
+      supplierBusinessItem: supplierBusinessItem == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierBusinessItem),
+      supplierPhoneFax: supplierPhoneFax == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplierPhoneFax),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       isDeleted: Value(isDeleted),
@@ -7303,6 +7515,21 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       discountAmount: serializer.fromJson<double>(json['discountAmount']),
       shippingCost: serializer.fromJson<double>(json['shippingCost']),
       vatType: serializer.fromJson<int>(json['vatType']),
+      supplierProfileId: serializer.fromJson<int?>(json['supplierProfileId']),
+      supplierProfileName:
+          serializer.fromJson<String?>(json['supplierProfileName']),
+      supplierBusinessNumber:
+          serializer.fromJson<String?>(json['supplierBusinessNumber']),
+      supplierCompanyName:
+          serializer.fromJson<String?>(json['supplierCompanyName']),
+      supplierRepresentative:
+          serializer.fromJson<String?>(json['supplierRepresentative']),
+      supplierAddress: serializer.fromJson<String?>(json['supplierAddress']),
+      supplierBusinessType:
+          serializer.fromJson<String?>(json['supplierBusinessType']),
+      supplierBusinessItem:
+          serializer.fromJson<String?>(json['supplierBusinessItem']),
+      supplierPhoneFax: serializer.fromJson<String?>(json['supplierPhoneFax']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
@@ -7323,6 +7550,17 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       'discountAmount': serializer.toJson<double>(discountAmount),
       'shippingCost': serializer.toJson<double>(shippingCost),
       'vatType': serializer.toJson<int>(vatType),
+      'supplierProfileId': serializer.toJson<int?>(supplierProfileId),
+      'supplierProfileName': serializer.toJson<String?>(supplierProfileName),
+      'supplierBusinessNumber':
+          serializer.toJson<String?>(supplierBusinessNumber),
+      'supplierCompanyName': serializer.toJson<String?>(supplierCompanyName),
+      'supplierRepresentative':
+          serializer.toJson<String?>(supplierRepresentative),
+      'supplierAddress': serializer.toJson<String?>(supplierAddress),
+      'supplierBusinessType': serializer.toJson<String?>(supplierBusinessType),
+      'supplierBusinessItem': serializer.toJson<String?>(supplierBusinessItem),
+      'supplierPhoneFax': serializer.toJson<String?>(supplierPhoneFax),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
@@ -7341,6 +7579,15 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           double? discountAmount,
           double? shippingCost,
           int? vatType,
+          Value<int?> supplierProfileId = const Value.absent(),
+          Value<String?> supplierProfileName = const Value.absent(),
+          Value<String?> supplierBusinessNumber = const Value.absent(),
+          Value<String?> supplierCompanyName = const Value.absent(),
+          Value<String?> supplierRepresentative = const Value.absent(),
+          Value<String?> supplierAddress = const Value.absent(),
+          Value<String?> supplierBusinessType = const Value.absent(),
+          Value<String?> supplierBusinessItem = const Value.absent(),
+          Value<String?> supplierPhoneFax = const Value.absent(),
           String? createdAt,
           String? updatedAt,
           bool? isDeleted,
@@ -7356,6 +7603,33 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
         discountAmount: discountAmount ?? this.discountAmount,
         shippingCost: shippingCost ?? this.shippingCost,
         vatType: vatType ?? this.vatType,
+        supplierProfileId: supplierProfileId.present
+            ? supplierProfileId.value
+            : this.supplierProfileId,
+        supplierProfileName: supplierProfileName.present
+            ? supplierProfileName.value
+            : this.supplierProfileName,
+        supplierBusinessNumber: supplierBusinessNumber.present
+            ? supplierBusinessNumber.value
+            : this.supplierBusinessNumber,
+        supplierCompanyName: supplierCompanyName.present
+            ? supplierCompanyName.value
+            : this.supplierCompanyName,
+        supplierRepresentative: supplierRepresentative.present
+            ? supplierRepresentative.value
+            : this.supplierRepresentative,
+        supplierAddress: supplierAddress.present
+            ? supplierAddress.value
+            : this.supplierAddress,
+        supplierBusinessType: supplierBusinessType.present
+            ? supplierBusinessType.value
+            : this.supplierBusinessType,
+        supplierBusinessItem: supplierBusinessItem.present
+            ? supplierBusinessItem.value
+            : this.supplierBusinessItem,
+        supplierPhoneFax: supplierPhoneFax.present
+            ? supplierPhoneFax.value
+            : this.supplierPhoneFax,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         isDeleted: isDeleted ?? this.isDeleted,
@@ -7381,6 +7655,33 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           ? data.shippingCost.value
           : this.shippingCost,
       vatType: data.vatType.present ? data.vatType.value : this.vatType,
+      supplierProfileId: data.supplierProfileId.present
+          ? data.supplierProfileId.value
+          : this.supplierProfileId,
+      supplierProfileName: data.supplierProfileName.present
+          ? data.supplierProfileName.value
+          : this.supplierProfileName,
+      supplierBusinessNumber: data.supplierBusinessNumber.present
+          ? data.supplierBusinessNumber.value
+          : this.supplierBusinessNumber,
+      supplierCompanyName: data.supplierCompanyName.present
+          ? data.supplierCompanyName.value
+          : this.supplierCompanyName,
+      supplierRepresentative: data.supplierRepresentative.present
+          ? data.supplierRepresentative.value
+          : this.supplierRepresentative,
+      supplierAddress: data.supplierAddress.present
+          ? data.supplierAddress.value
+          : this.supplierAddress,
+      supplierBusinessType: data.supplierBusinessType.present
+          ? data.supplierBusinessType.value
+          : this.supplierBusinessType,
+      supplierBusinessItem: data.supplierBusinessItem.present
+          ? data.supplierBusinessItem.value
+          : this.supplierBusinessItem,
+      supplierPhoneFax: data.supplierPhoneFax.present
+          ? data.supplierPhoneFax.value
+          : this.supplierPhoneFax,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
@@ -7401,6 +7702,15 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           ..write('discountAmount: $discountAmount, ')
           ..write('shippingCost: $shippingCost, ')
           ..write('vatType: $vatType, ')
+          ..write('supplierProfileId: $supplierProfileId, ')
+          ..write('supplierProfileName: $supplierProfileName, ')
+          ..write('supplierBusinessNumber: $supplierBusinessNumber, ')
+          ..write('supplierCompanyName: $supplierCompanyName, ')
+          ..write('supplierRepresentative: $supplierRepresentative, ')
+          ..write('supplierAddress: $supplierAddress, ')
+          ..write('supplierBusinessType: $supplierBusinessType, ')
+          ..write('supplierBusinessItem: $supplierBusinessItem, ')
+          ..write('supplierPhoneFax: $supplierPhoneFax, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
@@ -7410,21 +7720,31 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      customerName,
-      customerId,
-      quoteDate,
-      validUntil,
-      status,
-      memo,
-      discountAmount,
-      shippingCost,
-      vatType,
-      createdAt,
-      updatedAt,
-      isDeleted,
-      deletedAt);
+  int get hashCode => Object.hashAll([
+        id,
+        customerName,
+        customerId,
+        quoteDate,
+        validUntil,
+        status,
+        memo,
+        discountAmount,
+        shippingCost,
+        vatType,
+        supplierProfileId,
+        supplierProfileName,
+        supplierBusinessNumber,
+        supplierCompanyName,
+        supplierRepresentative,
+        supplierAddress,
+        supplierBusinessType,
+        supplierBusinessItem,
+        supplierPhoneFax,
+        createdAt,
+        updatedAt,
+        isDeleted,
+        deletedAt
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -7439,6 +7759,15 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           other.discountAmount == this.discountAmount &&
           other.shippingCost == this.shippingCost &&
           other.vatType == this.vatType &&
+          other.supplierProfileId == this.supplierProfileId &&
+          other.supplierProfileName == this.supplierProfileName &&
+          other.supplierBusinessNumber == this.supplierBusinessNumber &&
+          other.supplierCompanyName == this.supplierCompanyName &&
+          other.supplierRepresentative == this.supplierRepresentative &&
+          other.supplierAddress == this.supplierAddress &&
+          other.supplierBusinessType == this.supplierBusinessType &&
+          other.supplierBusinessItem == this.supplierBusinessItem &&
+          other.supplierPhoneFax == this.supplierPhoneFax &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted &&
@@ -7456,6 +7785,15 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
   final Value<double> discountAmount;
   final Value<double> shippingCost;
   final Value<int> vatType;
+  final Value<int?> supplierProfileId;
+  final Value<String?> supplierProfileName;
+  final Value<String?> supplierBusinessNumber;
+  final Value<String?> supplierCompanyName;
+  final Value<String?> supplierRepresentative;
+  final Value<String?> supplierAddress;
+  final Value<String?> supplierBusinessType;
+  final Value<String?> supplierBusinessItem;
+  final Value<String?> supplierPhoneFax;
   final Value<String> createdAt;
   final Value<String> updatedAt;
   final Value<bool> isDeleted;
@@ -7472,6 +7810,15 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     this.discountAmount = const Value.absent(),
     this.shippingCost = const Value.absent(),
     this.vatType = const Value.absent(),
+    this.supplierProfileId = const Value.absent(),
+    this.supplierProfileName = const Value.absent(),
+    this.supplierBusinessNumber = const Value.absent(),
+    this.supplierCompanyName = const Value.absent(),
+    this.supplierRepresentative = const Value.absent(),
+    this.supplierAddress = const Value.absent(),
+    this.supplierBusinessType = const Value.absent(),
+    this.supplierBusinessItem = const Value.absent(),
+    this.supplierPhoneFax = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
@@ -7489,6 +7836,15 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     this.discountAmount = const Value.absent(),
     this.shippingCost = const Value.absent(),
     this.vatType = const Value.absent(),
+    this.supplierProfileId = const Value.absent(),
+    this.supplierProfileName = const Value.absent(),
+    this.supplierBusinessNumber = const Value.absent(),
+    this.supplierCompanyName = const Value.absent(),
+    this.supplierRepresentative = const Value.absent(),
+    this.supplierAddress = const Value.absent(),
+    this.supplierBusinessType = const Value.absent(),
+    this.supplierBusinessItem = const Value.absent(),
+    this.supplierPhoneFax = const Value.absent(),
     required String createdAt,
     required String updatedAt,
     this.isDeleted = const Value.absent(),
@@ -7511,6 +7867,15 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     Expression<double>? discountAmount,
     Expression<double>? shippingCost,
     Expression<int>? vatType,
+    Expression<int>? supplierProfileId,
+    Expression<String>? supplierProfileName,
+    Expression<String>? supplierBusinessNumber,
+    Expression<String>? supplierCompanyName,
+    Expression<String>? supplierRepresentative,
+    Expression<String>? supplierAddress,
+    Expression<String>? supplierBusinessType,
+    Expression<String>? supplierBusinessItem,
+    Expression<String>? supplierPhoneFax,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
     Expression<bool>? isDeleted,
@@ -7528,6 +7893,21 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       if (discountAmount != null) 'discount_amount': discountAmount,
       if (shippingCost != null) 'shipping_cost': shippingCost,
       if (vatType != null) 'vat_type': vatType,
+      if (supplierProfileId != null) 'supplier_profile_id': supplierProfileId,
+      if (supplierProfileName != null)
+        'supplier_profile_name': supplierProfileName,
+      if (supplierBusinessNumber != null)
+        'supplier_business_number': supplierBusinessNumber,
+      if (supplierCompanyName != null)
+        'supplier_company_name': supplierCompanyName,
+      if (supplierRepresentative != null)
+        'supplier_representative': supplierRepresentative,
+      if (supplierAddress != null) 'supplier_address': supplierAddress,
+      if (supplierBusinessType != null)
+        'supplier_business_type': supplierBusinessType,
+      if (supplierBusinessItem != null)
+        'supplier_business_item': supplierBusinessItem,
+      if (supplierPhoneFax != null) 'supplier_phone_fax': supplierPhoneFax,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
@@ -7547,6 +7927,15 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       Value<double>? discountAmount,
       Value<double>? shippingCost,
       Value<int>? vatType,
+      Value<int?>? supplierProfileId,
+      Value<String?>? supplierProfileName,
+      Value<String?>? supplierBusinessNumber,
+      Value<String?>? supplierCompanyName,
+      Value<String?>? supplierRepresentative,
+      Value<String?>? supplierAddress,
+      Value<String?>? supplierBusinessType,
+      Value<String?>? supplierBusinessItem,
+      Value<String?>? supplierPhoneFax,
       Value<String>? createdAt,
       Value<String>? updatedAt,
       Value<bool>? isDeleted,
@@ -7563,6 +7952,17 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       discountAmount: discountAmount ?? this.discountAmount,
       shippingCost: shippingCost ?? this.shippingCost,
       vatType: vatType ?? this.vatType,
+      supplierProfileId: supplierProfileId ?? this.supplierProfileId,
+      supplierProfileName: supplierProfileName ?? this.supplierProfileName,
+      supplierBusinessNumber:
+          supplierBusinessNumber ?? this.supplierBusinessNumber,
+      supplierCompanyName: supplierCompanyName ?? this.supplierCompanyName,
+      supplierRepresentative:
+          supplierRepresentative ?? this.supplierRepresentative,
+      supplierAddress: supplierAddress ?? this.supplierAddress,
+      supplierBusinessType: supplierBusinessType ?? this.supplierBusinessType,
+      supplierBusinessItem: supplierBusinessItem ?? this.supplierBusinessItem,
+      supplierPhoneFax: supplierPhoneFax ?? this.supplierPhoneFax,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
@@ -7604,6 +8004,39 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     if (vatType.present) {
       map['vat_type'] = Variable<int>(vatType.value);
     }
+    if (supplierProfileId.present) {
+      map['supplier_profile_id'] = Variable<int>(supplierProfileId.value);
+    }
+    if (supplierProfileName.present) {
+      map['supplier_profile_name'] =
+          Variable<String>(supplierProfileName.value);
+    }
+    if (supplierBusinessNumber.present) {
+      map['supplier_business_number'] =
+          Variable<String>(supplierBusinessNumber.value);
+    }
+    if (supplierCompanyName.present) {
+      map['supplier_company_name'] =
+          Variable<String>(supplierCompanyName.value);
+    }
+    if (supplierRepresentative.present) {
+      map['supplier_representative'] =
+          Variable<String>(supplierRepresentative.value);
+    }
+    if (supplierAddress.present) {
+      map['supplier_address'] = Variable<String>(supplierAddress.value);
+    }
+    if (supplierBusinessType.present) {
+      map['supplier_business_type'] =
+          Variable<String>(supplierBusinessType.value);
+    }
+    if (supplierBusinessItem.present) {
+      map['supplier_business_item'] =
+          Variable<String>(supplierBusinessItem.value);
+    }
+    if (supplierPhoneFax.present) {
+      map['supplier_phone_fax'] = Variable<String>(supplierPhoneFax.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<String>(createdAt.value);
     }
@@ -7635,6 +8068,15 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
           ..write('discountAmount: $discountAmount, ')
           ..write('shippingCost: $shippingCost, ')
           ..write('vatType: $vatType, ')
+          ..write('supplierProfileId: $supplierProfileId, ')
+          ..write('supplierProfileName: $supplierProfileName, ')
+          ..write('supplierBusinessNumber: $supplierBusinessNumber, ')
+          ..write('supplierCompanyName: $supplierCompanyName, ')
+          ..write('supplierRepresentative: $supplierRepresentative, ')
+          ..write('supplierAddress: $supplierAddress, ')
+          ..write('supplierBusinessType: $supplierBusinessType, ')
+          ..write('supplierBusinessItem: $supplierBusinessItem, ')
+          ..write('supplierPhoneFax: $supplierPhoneFax, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
@@ -14785,6 +15227,15 @@ typedef $$QuotesTableCreateCompanionBuilder = QuotesCompanion Function({
   Value<double> discountAmount,
   Value<double> shippingCost,
   Value<int> vatType,
+  Value<int?> supplierProfileId,
+  Value<String?> supplierProfileName,
+  Value<String?> supplierBusinessNumber,
+  Value<String?> supplierCompanyName,
+  Value<String?> supplierRepresentative,
+  Value<String?> supplierAddress,
+  Value<String?> supplierBusinessType,
+  Value<String?> supplierBusinessItem,
+  Value<String?> supplierPhoneFax,
   required String createdAt,
   required String updatedAt,
   Value<bool> isDeleted,
@@ -14802,6 +15253,15 @@ typedef $$QuotesTableUpdateCompanionBuilder = QuotesCompanion Function({
   Value<double> discountAmount,
   Value<double> shippingCost,
   Value<int> vatType,
+  Value<int?> supplierProfileId,
+  Value<String?> supplierProfileName,
+  Value<String?> supplierBusinessNumber,
+  Value<String?> supplierCompanyName,
+  Value<String?> supplierRepresentative,
+  Value<String?> supplierAddress,
+  Value<String?> supplierBusinessType,
+  Value<String?> supplierBusinessItem,
+  Value<String?> supplierPhoneFax,
   Value<String> createdAt,
   Value<String> updatedAt,
   Value<bool> isDeleted,
@@ -14867,6 +15327,42 @@ class $$QuotesTableFilterComposer
 
   ColumnFilters<int> get vatType => $composableBuilder(
       column: $table.vatType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get supplierProfileId => $composableBuilder(
+      column: $table.supplierProfileId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get supplierProfileName => $composableBuilder(
+      column: $table.supplierProfileName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get supplierBusinessNumber => $composableBuilder(
+      column: $table.supplierBusinessNumber,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get supplierCompanyName => $composableBuilder(
+      column: $table.supplierCompanyName,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get supplierRepresentative => $composableBuilder(
+      column: $table.supplierRepresentative,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get supplierAddress => $composableBuilder(
+      column: $table.supplierAddress,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get supplierBusinessType => $composableBuilder(
+      column: $table.supplierBusinessType,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get supplierBusinessItem => $composableBuilder(
+      column: $table.supplierBusinessItem,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get supplierPhoneFax => $composableBuilder(
+      column: $table.supplierPhoneFax,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -14944,6 +15440,42 @@ class $$QuotesTableOrderingComposer
   ColumnOrderings<int> get vatType => $composableBuilder(
       column: $table.vatType, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get supplierProfileId => $composableBuilder(
+      column: $table.supplierProfileId,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get supplierProfileName => $composableBuilder(
+      column: $table.supplierProfileName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get supplierBusinessNumber => $composableBuilder(
+      column: $table.supplierBusinessNumber,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get supplierCompanyName => $composableBuilder(
+      column: $table.supplierCompanyName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get supplierRepresentative => $composableBuilder(
+      column: $table.supplierRepresentative,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get supplierAddress => $composableBuilder(
+      column: $table.supplierAddress,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get supplierBusinessType => $composableBuilder(
+      column: $table.supplierBusinessType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get supplierBusinessItem => $composableBuilder(
+      column: $table.supplierBusinessItem,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get supplierPhoneFax => $composableBuilder(
+      column: $table.supplierPhoneFax,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -14995,6 +15527,33 @@ class $$QuotesTableAnnotationComposer
 
   GeneratedColumn<int> get vatType =>
       $composableBuilder(column: $table.vatType, builder: (column) => column);
+
+  GeneratedColumn<int> get supplierProfileId => $composableBuilder(
+      column: $table.supplierProfileId, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierProfileName => $composableBuilder(
+      column: $table.supplierProfileName, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierBusinessNumber => $composableBuilder(
+      column: $table.supplierBusinessNumber, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierCompanyName => $composableBuilder(
+      column: $table.supplierCompanyName, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierRepresentative => $composableBuilder(
+      column: $table.supplierRepresentative, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierAddress => $composableBuilder(
+      column: $table.supplierAddress, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierBusinessType => $composableBuilder(
+      column: $table.supplierBusinessType, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierBusinessItem => $composableBuilder(
+      column: $table.supplierBusinessItem, builder: (column) => column);
+
+  GeneratedColumn<String> get supplierPhoneFax => $composableBuilder(
+      column: $table.supplierPhoneFax, builder: (column) => column);
 
   GeneratedColumn<String> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -15063,6 +15622,15 @@ class $$QuotesTableTableManager extends RootTableManager<
             Value<double> discountAmount = const Value.absent(),
             Value<double> shippingCost = const Value.absent(),
             Value<int> vatType = const Value.absent(),
+            Value<int?> supplierProfileId = const Value.absent(),
+            Value<String?> supplierProfileName = const Value.absent(),
+            Value<String?> supplierBusinessNumber = const Value.absent(),
+            Value<String?> supplierCompanyName = const Value.absent(),
+            Value<String?> supplierRepresentative = const Value.absent(),
+            Value<String?> supplierAddress = const Value.absent(),
+            Value<String?> supplierBusinessType = const Value.absent(),
+            Value<String?> supplierBusinessItem = const Value.absent(),
+            Value<String?> supplierPhoneFax = const Value.absent(),
             Value<String> createdAt = const Value.absent(),
             Value<String> updatedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
@@ -15080,6 +15648,15 @@ class $$QuotesTableTableManager extends RootTableManager<
             discountAmount: discountAmount,
             shippingCost: shippingCost,
             vatType: vatType,
+            supplierProfileId: supplierProfileId,
+            supplierProfileName: supplierProfileName,
+            supplierBusinessNumber: supplierBusinessNumber,
+            supplierCompanyName: supplierCompanyName,
+            supplierRepresentative: supplierRepresentative,
+            supplierAddress: supplierAddress,
+            supplierBusinessType: supplierBusinessType,
+            supplierBusinessItem: supplierBusinessItem,
+            supplierPhoneFax: supplierPhoneFax,
             createdAt: createdAt,
             updatedAt: updatedAt,
             isDeleted: isDeleted,
@@ -15097,6 +15674,15 @@ class $$QuotesTableTableManager extends RootTableManager<
             Value<double> discountAmount = const Value.absent(),
             Value<double> shippingCost = const Value.absent(),
             Value<int> vatType = const Value.absent(),
+            Value<int?> supplierProfileId = const Value.absent(),
+            Value<String?> supplierProfileName = const Value.absent(),
+            Value<String?> supplierBusinessNumber = const Value.absent(),
+            Value<String?> supplierCompanyName = const Value.absent(),
+            Value<String?> supplierRepresentative = const Value.absent(),
+            Value<String?> supplierAddress = const Value.absent(),
+            Value<String?> supplierBusinessType = const Value.absent(),
+            Value<String?> supplierBusinessItem = const Value.absent(),
+            Value<String?> supplierPhoneFax = const Value.absent(),
             required String createdAt,
             required String updatedAt,
             Value<bool> isDeleted = const Value.absent(),
@@ -15114,6 +15700,15 @@ class $$QuotesTableTableManager extends RootTableManager<
             discountAmount: discountAmount,
             shippingCost: shippingCost,
             vatType: vatType,
+            supplierProfileId: supplierProfileId,
+            supplierProfileName: supplierProfileName,
+            supplierBusinessNumber: supplierBusinessNumber,
+            supplierCompanyName: supplierCompanyName,
+            supplierRepresentative: supplierRepresentative,
+            supplierAddress: supplierAddress,
+            supplierBusinessType: supplierBusinessType,
+            supplierBusinessItem: supplierBusinessItem,
+            supplierPhoneFax: supplierPhoneFax,
             createdAt: createdAt,
             updatedAt: updatedAt,
             isDeleted: isDeleted,

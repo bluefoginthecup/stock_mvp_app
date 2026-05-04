@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../db/app_database.dart';
 import '../../models/quote.dart';
 import '../../models/quote_line.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../services/buyer_profile_service.dart';
 import 'quote_detail_screen.dart';
 
 class QuoteListScreen extends StatefulWidget {
@@ -45,8 +47,11 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
   Future<void> _createQuote() async {
     if (_creating) return;
     setState(() => _creating = true);
+    final repo = context.read<QuoteRepo>();
+    final profileService = BuyerProfileService(context.read<AppDatabase>());
     final id = const Uuid().v4();
     final now = DateTime.now();
+    final supplierProfile = await profileService.defaultProfile();
     final quote = Quote(
       id: id,
       customerName: '',
@@ -54,10 +59,10 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
       validUntil: now.add(const Duration(days: 14)),
       createdAt: now,
       updatedAt: now,
-    );
+    ).copyWithSupplierProfile(supplierProfile);
 
     try {
-      await context.read<QuoteRepo>().createQuote(quote);
+      await repo.createQuote(quote);
       if (!mounted) return;
       await Navigator.push(
         context,

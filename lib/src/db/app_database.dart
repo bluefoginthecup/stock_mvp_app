@@ -379,6 +379,15 @@ class Quotes extends Table {
   RealColumn get discountAmount => real().withDefault(const Constant(0))();
   RealColumn get shippingCost => real().withDefault(const Constant(0))();
   IntColumn get vatType => integer().withDefault(const Constant(0))();
+  IntColumn get supplierProfileId => integer().nullable()();
+  TextColumn get supplierProfileName => text().nullable()();
+  TextColumn get supplierBusinessNumber => text().nullable()();
+  TextColumn get supplierCompanyName => text().nullable()();
+  TextColumn get supplierRepresentative => text().nullable()();
+  TextColumn get supplierAddress => text().nullable()();
+  TextColumn get supplierBusinessType => text().nullable()();
+  TextColumn get supplierBusinessItem => text().nullable()();
+  TextColumn get supplierPhoneFax => text().nullable()();
   TextColumn get createdAt => text()();
   TextColumn get updatedAt => text()();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
@@ -524,7 +533,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 27; //
+  int get schemaVersion => 28; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -763,6 +772,24 @@ class AppDatabase extends _$AppDatabase {
           if (from < 27) {
             await m.createTable(quotes);
             await m.createTable(quoteLines);
+          }
+          if (from < 28) {
+            await _addColumnIfMissing(
+                'quotes', 'supplier_profile_id', 'INTEGER');
+            await _addColumnIfMissing(
+                'quotes', 'supplier_profile_name', 'TEXT');
+            await _addColumnIfMissing(
+                'quotes', 'supplier_business_number', 'TEXT');
+            await _addColumnIfMissing(
+                'quotes', 'supplier_company_name', 'TEXT');
+            await _addColumnIfMissing(
+                'quotes', 'supplier_representative', 'TEXT');
+            await _addColumnIfMissing('quotes', 'supplier_address', 'TEXT');
+            await _addColumnIfMissing(
+                'quotes', 'supplier_business_type', 'TEXT');
+            await _addColumnIfMissing(
+                'quotes', 'supplier_business_item', 'TEXT');
+            await _addColumnIfMissing('quotes', 'supplier_phone_fax', 'TEXT');
           }
         },
       );
@@ -1448,6 +1475,15 @@ extension QuoteRowMapping on QuoteRow {
         shippingCost: shippingCost,
         vatType: QuoteVatType
             .values[vatType.clamp(0, QuoteVatType.values.length - 1)],
+        supplierProfileId: supplierProfileId,
+        supplierProfileName: supplierProfileName,
+        supplierBusinessNumber: supplierBusinessNumber,
+        supplierCompanyName: supplierCompanyName,
+        supplierRepresentative: supplierRepresentative,
+        supplierAddress: supplierAddress,
+        supplierBusinessType: supplierBusinessType,
+        supplierBusinessItem: supplierBusinessItem,
+        supplierPhoneFax: supplierPhoneFax,
         createdAt: DateTime.parse(createdAt),
         updatedAt: DateTime.parse(updatedAt),
         isDeleted: isDeleted,
@@ -1466,6 +1502,15 @@ extension QuoteToCompanion on Quote {
         discountAmount: Value(discountAmount),
         shippingCost: Value(shippingCost),
         vatType: Value(vatType.index),
+        supplierProfileId: Value(supplierProfileId),
+        supplierProfileName: Value(supplierProfileName),
+        supplierBusinessNumber: Value(supplierBusinessNumber),
+        supplierCompanyName: Value(supplierCompanyName),
+        supplierRepresentative: Value(supplierRepresentative),
+        supplierAddress: Value(supplierAddress),
+        supplierBusinessType: Value(supplierBusinessType),
+        supplierBusinessItem: Value(supplierBusinessItem),
+        supplierPhoneFax: Value(supplierPhoneFax),
         createdAt: Value(createdAt.toIso8601String()),
         updatedAt: Value(updatedAt.toIso8601String()),
         isDeleted: Value(isDeleted),
