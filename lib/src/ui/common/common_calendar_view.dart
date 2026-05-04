@@ -85,6 +85,12 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
           return Colors.orange; // 결제
         case CalendarEventType.vatInvoiceDate:
           return Colors.purple; // 세금계산서
+        case CalendarEventType.workPlanned:
+          return Colors.blueGrey;
+        case CalendarEventType.workInProgress:
+          return Colors.blue;
+        case CalendarEventType.workDone:
+          return Colors.green;
         default:
           return Colors.grey;
       }
@@ -222,6 +228,12 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
         return Icons.payments;
       case CalendarEventType.vatInvoiceDate:
         return Icons.receipt;
+      case CalendarEventType.workPlanned:
+        return Icons.pending_actions;
+      case CalendarEventType.workInProgress:
+        return Icons.play_circle;
+      case CalendarEventType.workDone:
+        return Icons.task_alt;
       default:
         return Icons.event;
     }
@@ -237,6 +249,12 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
         return '결제';
       case CalendarEventType.vatInvoiceDate:
         return '세금계산서';
+      case CalendarEventType.workPlanned:
+        return '예정 작업';
+      case CalendarEventType.workInProgress:
+        return '진행 작업';
+      case CalendarEventType.workDone:
+        return '완료 작업';
       default:
         return '';
     }

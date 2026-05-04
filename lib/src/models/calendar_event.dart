@@ -1,10 +1,13 @@
 enum CalendarEventType {
-  purchaseOrderDate,   // 발주일
-  purchaseEta,         // 입고 예정일
-  paymentDate,         // 결제일
-  vatInvoiceDate,         // 세금계산서
+  purchaseOrderDate, // 발주일
+  purchaseEta, // 입고 예정일
+  paymentDate, // 결제일
+  vatInvoiceDate, // 세금계산서
   inbound,
   memo,
+  workPlanned,
+  workInProgress,
+  workDone,
 }
 
 class CalendarEvent {
@@ -24,10 +27,8 @@ class CalendarEvent {
     required this.refId,
     this.isPaid,
     this.searchText,
-
   });
 
   /// 날짜 비교용 (시간 제거)
-  DateTime get normalizedDate =>
-      DateTime(date.year, date.month, date.day);
+  DateTime get normalizedDate => DateTime(date.year, date.month, date.day);
 }
