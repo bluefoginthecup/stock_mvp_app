@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,6 +9,60 @@ import '../../repos/repo_interfaces.dart';
 import '../../ui/common/item_picker_sheet.dart';
 import '../../ui/common/suggestion_panel.dart';
 import '../../ui/common/ui.dart';
+
+const _knownPrintAttrLabels = {
+  'design': '디자인',
+  'color_name': '색상명',
+  'color_no': '색상번호',
+  'form': '형태',
+  'nominalSize': '규격',
+  'cutSize': '재단 사이즈',
+  'memo': '메모',
+};
+
+const _systemPrintAttrKeys = {
+  'temporary',
+  'status',
+  'source',
+  'createdFromPurchaseOrderId',
+  'createdAt',
+};
+
+class _PrintAttrEditorRow {
+  final TextEditingController keyC;
+  final TextEditingController labelC;
+  final TextEditingController valueC;
+  bool selected;
+  bool removable;
+
+  _PrintAttrEditorRow({
+    required String key,
+    required String label,
+    required String value,
+    this.selected = false,
+    this.removable = false,
+  })  : keyC = TextEditingController(text: key),
+        labelC = TextEditingController(text: label),
+        valueC = TextEditingController(text: value);
+
+  void dispose() {
+    keyC.dispose();
+    labelC.dispose();
+    valueC.dispose();
+  }
+}
+
+class _PrintAttrCandidate {
+  final String key;
+  final String label;
+  final String value;
+
+  const _PrintAttrCandidate({
+    required this.key,
+    required this.label,
+    required this.value,
+  });
+}
 
 class PurchaseLineFullEditScreen extends StatefulWidget {
   final PurchaseOrderRepo repo;
@@ -41,6 +94,7 @@ class _PurchaseLineFullEditScreenState
   late final TextEditingController noteC;
   late final TextEditingController memoC;
   late final TextEditingController priceC;
+  final List<_PrintAttrEditorRow> _printAttrRows = [];
 
   late final bool isEdit;
   late final String lineId;
@@ -66,6 +120,13 @@ class _PurchaseLineFullEditScreenState
     priceC = TextEditingController(
       text: (i?.unitPrice ?? 0).toString(),
     );
+    _resetPrintAttrRows(i?.printAttrs ?? const []);
+    final initialItemId = i?.itemId.trim();
+    if (initialItemId != null && initialItemId.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadPrintAttrCandidates(initialItemId);
+      });
+    }
   }
 
   @override
@@ -79,7 +140,143 @@ class _PurchaseLineFullEditScreenState
     noteC.dispose();
     memoC.dispose();
     priceC.dispose();
+    for (final row in _printAttrRows) {
+      row.dispose();
+    }
     super.dispose();
+  }
+
+  void _resetPrintAttrRows(List<PurchaseLinePrintAttr> attrs) {
+    for (final row in _printAttrRows) {
+      row.dispose();
+    }
+    _printAttrRows.clear();
+    for (final attr in attrs) {
+      _printAttrRows.add(
+        _PrintAttrEditorRow(
+          key: attr.key,
+          label: attr.label,
+          value: attr.value,
+          selected: true,
+          removable: true,
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadPrintAttrCandidates(String itemId) async {
+    final item = await context.read<ItemRepo>().getItem(itemId);
+    if (!mounted) return;
+    _mergePrintAttrCandidates(item);
+  }
+
+  void _mergePrintAttrCandidates(Item? item) {
+    final existing = {
+      for (final row in _printAttrRows) row.keyC.text.trim(): row,
+    };
+    final candidateKeys = <String>{};
+    final candidates = <_PrintAttrCandidate>[];
+
+    final attrs = item?.attrs ?? const <String, dynamic>{};
+    final keys = attrs.keys
+        .where((key) => !_systemPrintAttrKeys.contains(key))
+        .toList()
+      ..sort();
+    for (final key in keys) {
+      final value = attrs[key]?.toString().trim() ?? '';
+      if (value.isEmpty) continue;
+      candidates.add(
+        _PrintAttrCandidate(
+          key: key,
+          label: _knownPrintAttrLabels[key] ?? key,
+          value: value,
+        ),
+      );
+      candidateKeys.add(key);
+    }
+
+    final memo = memoC.text.trim();
+    if (memo.isNotEmpty) {
+      candidates.add(
+        _PrintAttrCandidate(
+          key: 'memo',
+          label: _knownPrintAttrLabels['memo']!,
+          value: memo,
+        ),
+      );
+      candidateKeys.add('memo');
+    }
+
+    final nextRows = <_PrintAttrEditorRow>[];
+    for (final candidate in candidates) {
+      final row = existing.remove(candidate.key);
+      if (row == null) {
+        nextRows.add(
+          _PrintAttrEditorRow(
+            key: candidate.key,
+            label: candidate.label,
+            value: candidate.value,
+          ),
+        );
+      } else {
+        if (!row.selected || candidate.key == 'memo') {
+          row.labelC.text = candidate.label;
+          row.valueC.text = candidate.value;
+        }
+        row.removable = false;
+        nextRows.add(row);
+      }
+    }
+
+    for (final row in existing.values) {
+      if (row.selected || row.removable) {
+        row.removable = !candidateKeys.contains(row.keyC.text.trim());
+        nextRows.add(row);
+      } else {
+        row.dispose();
+      }
+    }
+
+    setState(() {
+      _printAttrRows
+        ..clear()
+        ..addAll(nextRows);
+    });
+  }
+
+  List<PurchaseLinePrintAttr> _buildPrintAttrs() {
+    return _printAttrRows
+        .where((row) => row.selected)
+        .map(
+          (row) => PurchaseLinePrintAttr(
+            key: row.keyC.text.trim(),
+            label: row.labelC.text.trim(),
+            value: row.valueC.text.trim(),
+          ),
+        )
+        .where((attr) => attr.label.isNotEmpty && attr.value.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  void _addCustomPrintAttr() {
+    setState(() {
+      _printAttrRows.add(
+        _PrintAttrEditorRow(
+          key: 'custom_${DateTime.now().microsecondsSinceEpoch}',
+          label: '',
+          value: '',
+          selected: true,
+          removable: true,
+        ),
+      );
+    });
+  }
+
+  void _removePrintAttrRow(_PrintAttrEditorRow row) {
+    setState(() {
+      _printAttrRows.remove(row);
+      row.dispose();
+    });
   }
 
   Future<void> _save() async {
@@ -109,6 +306,7 @@ class _PurchaseLineFullEditScreenState
       note: noteC.text.trim().isEmpty ? null : noteC.text.trim(),
       memo: memoC.text.trim().isEmpty ? null : memoC.text.trim(),
       unitPrice: price,
+      printAttrs: _buildPrintAttrs(),
     );
 
     final lines = await widget.repo.getLines(widget.orderId);
@@ -125,6 +323,7 @@ class _PurchaseLineFullEditScreenState
 
   Future<void> _pickItem() async {
     final currentItemId = itemIdC.text.trim();
+    final itemRepo = context.read<ItemRepo>();
     final pickedId = await showItemPickerSheet(
       context,
       initialItemId: currentItemId.isEmpty ? null : currentItemId,
@@ -132,7 +331,6 @@ class _PurchaseLineFullEditScreenState
     );
     if (pickedId == null || pickedId.isEmpty) return;
 
-    final itemRepo = context.read<ItemRepo>();
     final item = await itemRepo.getItem(pickedId);
 
     if (!mounted) return;
@@ -158,6 +356,7 @@ class _PurchaseLineFullEditScreenState
         priceC.text = purchasePrice.toString();
       }
     });
+    _mergePrintAttrCandidates(item);
     _suppressItemSearch = false;
   }
 
@@ -334,6 +533,110 @@ class _PurchaseLineFullEditScreenState
     );
   }
 
+  Widget _buildPrintAttrsEditor() {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('발주서 표시 정보', style: theme.textTheme.titleSmall),
+            ),
+            TextButton.icon(
+              onPressed: _addCustomPrintAttr,
+              icon: const Icon(Icons.add),
+              label: const Text('직접 추가'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '선택한 항목만 모바일/A4 발주서에 표시됩니다. '
+          '품목 속성과 메모를 후보로 보여주며, 필요한 거래처 전달 정보만 골라주세요.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.64),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (_printAttrRows.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text('선택 가능한 표시 정보가 없습니다. 직접 추가할 수 있습니다.'),
+          )
+        else
+          ..._printAttrRows.map(
+            (row) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildPrintAttrRow(row),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPrintAttrRow(_PrintAttrEditorRow row) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: row.selected,
+          onChanged: (value) {
+            setState(() => row.selected = value ?? false);
+          },
+        ),
+        Expanded(
+          flex: 3,
+          child: TextFormField(
+            controller: row.labelC,
+            enabled: row.selected,
+            decoration: const InputDecoration(
+              labelText: '표시명',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            validator: (value) {
+              if (!row.selected) return null;
+              if (value == null || value.trim().isEmpty) return '표시명 필요';
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 5,
+          child: TextFormField(
+            controller: row.valueC,
+            enabled: row.selected,
+            decoration: InputDecoration(
+              labelText: row.keyC.text.trim().isEmpty
+                  ? '값'
+                  : '값 (${row.keyC.text.trim()})',
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            validator: (value) {
+              if (!row.selected) return null;
+              if (value == null || value.trim().isEmpty) return '값 필요';
+              return null;
+            },
+          ),
+        ),
+        const SizedBox(width: 4),
+        IconButton(
+          tooltip: row.removable ? '표시 항목 삭제' : '후보 항목은 삭제하지 않고 선택만 해제합니다',
+          onPressed: row.removable ? () => _removePrintAttrRow(row) : null,
+          icon: const Icon(Icons.delete_outline),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -420,7 +723,12 @@ class _PurchaseLineFullEditScreenState
                 controller: memoC,
                 decoration: _dec('memo (선택)'),
                 maxLines: 3,
+                onChanged: (_) {
+                  _loadPrintAttrCandidates(itemIdC.text.trim());
+                },
               ),
+              const SizedBox(height: 16),
+              _buildPrintAttrsEditor(),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _save,

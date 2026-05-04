@@ -308,6 +308,12 @@ class PurchaseOrders extends Table {
   TextColumn get updatedAt => text()(); // ISO8601
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get memo => text().nullable()();
+  TextColumn get deliveryName => text().nullable()();
+  TextColumn get deliveryAddress => text().nullable()();
+  TextColumn get deliveryPhone => text().nullable()();
+  TextColumn get deliveryMemo => text().nullable()();
+  BoolColumn get showDeliveryOnPrint =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
   // 🔥 신규 컬럼 2개 (주문 연동/입고일)
   TextColumn get orderId => text().nullable()(); // 주문 연동 발주면 채움
@@ -332,6 +338,7 @@ class PurchaseLines extends Table {
   TextColumn get note => text().nullable()();
   TextColumn get memo => text().nullable()();
   TextColumn get colorNo => text().nullable()();
+  TextColumn get printAttrsJson => text().nullable()();
 
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
@@ -454,7 +461,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 22; //
+  int get schemaVersion => 24; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -663,6 +670,25 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 22) {
             await _ensurePurchaseReceiptsTable();
+          }
+          if (from < 23) {
+            final exists =
+                await _columnExists('purchase_lines', 'print_attrs_json');
+            if (!exists) {
+              await m.addColumn(purchaseLines, purchaseLines.printAttrsJson);
+            }
+          }
+          if (from < 24) {
+            await _addColumnIfMissing(
+                'purchase_orders', 'delivery_name', 'TEXT');
+            await _addColumnIfMissing(
+                'purchase_orders', 'delivery_address', 'TEXT');
+            await _addColumnIfMissing(
+                'purchase_orders', 'delivery_phone', 'TEXT');
+            await _addColumnIfMissing(
+                'purchase_orders', 'delivery_memo', 'TEXT');
+            await _addColumnIfMissing('purchase_orders',
+                'show_delivery_on_print', 'INTEGER NOT NULL DEFAULT 0');
           }
         },
       );
@@ -1166,6 +1192,11 @@ extension PurchaseOrderRowMapping on PurchaseOrderRow {
         updatedAt: DateTime.parse(updatedAt),
         isDeleted: isDeleted,
         memo: memo,
+        deliveryName: deliveryName,
+        deliveryAddress: deliveryAddress,
+        deliveryPhone: deliveryPhone,
+        deliveryMemo: deliveryMemo,
+        showDeliveryOnPrint: showDeliveryOnPrint,
         orderId: orderId,
         receivedAt: receivedAt != null ? DateTime.parse(receivedAt!) : null,
       );
@@ -1197,39 +1228,80 @@ extension PurchaseOrderToCompanion on PurchaseOrder {
             : Value(updatedAt!.toIso8601String()),
         isDeleted: Value(isDeleted),
         memo: Value(memo),
+        deliveryName: Value(deliveryName),
+        deliveryAddress: Value(deliveryAddress),
+        deliveryPhone: Value(deliveryPhone),
+        deliveryMemo: Value(deliveryMemo),
+        showDeliveryOnPrint: Value(showDeliveryOnPrint),
         orderId: Value(orderId),
         receivedAt: Value(receivedAt?.toIso8601String()),
       );
 }
 
 extension PurchaseLineRowMapping on PurchaseLineRow {
-  PurchaseLine toDomain() => PurchaseLine(
-        id: id,
-        orderId: orderId,
-        itemId: itemId,
-        name: name,
-        unit: unit,
-        qty: qty,
-        note: note,
-        memo: memo,
-        colorNo: colorNo,
-        unitPrice: unitPrice,
-      );
+  PurchaseLine toDomain() {
+    final printAttrs = <PurchaseLinePrintAttr>[];
+    final rawPrintAttrs = printAttrsJson;
+    if (rawPrintAttrs != null && rawPrintAttrs.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawPrintAttrs);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is Map) {
+              final attr = PurchaseLinePrintAttr.fromJson(
+                Map<String, dynamic>.from(item),
+              );
+              if (attr.label.trim().isNotEmpty &&
+                  attr.value.trim().isNotEmpty) {
+                printAttrs.add(attr);
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // Keep old rows readable even if custom print attrs are malformed.
+      }
+    }
+
+    return PurchaseLine(
+      id: id,
+      orderId: orderId,
+      itemId: itemId,
+      name: name,
+      unit: unit,
+      qty: qty,
+      note: note,
+      memo: memo,
+      colorNo: colorNo,
+      unitPrice: unitPrice,
+      printAttrs: printAttrs,
+    );
+  }
 }
 
 extension PurchaseLineToCompanionExt on PurchaseLine {
-  PurchaseLinesCompanion toCompanion() => PurchaseLinesCompanion(
-        id: Value(id),
-        orderId: Value(orderId),
-        itemId: Value(itemId),
-        name: Value(name),
-        unit: Value(unit),
-        qty: Value(qty),
-        note: Value(note),
-        memo: Value(memo),
-        colorNo: Value(colorNo),
-        unitPrice: Value(unitPrice),
-      );
+  PurchaseLinesCompanion toCompanion() {
+    final cleanedPrintAttrs = printAttrs
+        .where((attr) =>
+            attr.label.trim().isNotEmpty && attr.value.trim().isNotEmpty)
+        .map((attr) => attr.toJson())
+        .toList(growable: false);
+    return PurchaseLinesCompanion(
+      id: Value(id),
+      orderId: Value(orderId),
+      itemId: Value(itemId),
+      name: Value(name),
+      unit: Value(unit),
+      qty: Value(qty),
+      note: Value(note),
+      memo: Value(memo),
+      colorNo: Value(colorNo),
+      printAttrsJson: Value(
+        cleanedPrintAttrs.isEmpty ? null : jsonEncode(cleanedPrintAttrs),
+      ),
+      unitPrice: Value(unitPrice),
+    );
+  }
 }
 
 /// =======================

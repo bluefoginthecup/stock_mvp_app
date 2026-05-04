@@ -4766,6 +4766,40 @@ class $PurchaseOrdersTable extends PurchaseOrders
   late final GeneratedColumn<String> memo = GeneratedColumn<String>(
       'memo', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryNameMeta =
+      const VerificationMeta('deliveryName');
+  @override
+  late final GeneratedColumn<String> deliveryName = GeneratedColumn<String>(
+      'delivery_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryAddressMeta =
+      const VerificationMeta('deliveryAddress');
+  @override
+  late final GeneratedColumn<String> deliveryAddress = GeneratedColumn<String>(
+      'delivery_address', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryPhoneMeta =
+      const VerificationMeta('deliveryPhone');
+  @override
+  late final GeneratedColumn<String> deliveryPhone = GeneratedColumn<String>(
+      'delivery_phone', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryMemoMeta =
+      const VerificationMeta('deliveryMemo');
+  @override
+  late final GeneratedColumn<String> deliveryMemo = GeneratedColumn<String>(
+      'delivery_memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _showDeliveryOnPrintMeta =
+      const VerificationMeta('showDeliveryOnPrint');
+  @override
+  late final GeneratedColumn<bool> showDeliveryOnPrint = GeneratedColumn<bool>(
+      'show_delivery_on_print', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("show_delivery_on_print" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _deletedAtMeta =
       const VerificationMeta('deletedAt');
   @override
@@ -4806,6 +4840,11 @@ class $PurchaseOrdersTable extends PurchaseOrders
         updatedAt,
         isDeleted,
         memo,
+        deliveryName,
+        deliveryAddress,
+        deliveryPhone,
+        deliveryMemo,
+        showDeliveryOnPrint,
         deletedAt,
         orderId,
         receivedAt
@@ -4929,6 +4968,36 @@ class $PurchaseOrdersTable extends PurchaseOrders
       context.handle(
           _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
     }
+    if (data.containsKey('delivery_name')) {
+      context.handle(
+          _deliveryNameMeta,
+          deliveryName.isAcceptableOrUnknown(
+              data['delivery_name']!, _deliveryNameMeta));
+    }
+    if (data.containsKey('delivery_address')) {
+      context.handle(
+          _deliveryAddressMeta,
+          deliveryAddress.isAcceptableOrUnknown(
+              data['delivery_address']!, _deliveryAddressMeta));
+    }
+    if (data.containsKey('delivery_phone')) {
+      context.handle(
+          _deliveryPhoneMeta,
+          deliveryPhone.isAcceptableOrUnknown(
+              data['delivery_phone']!, _deliveryPhoneMeta));
+    }
+    if (data.containsKey('delivery_memo')) {
+      context.handle(
+          _deliveryMemoMeta,
+          deliveryMemo.isAcceptableOrUnknown(
+              data['delivery_memo']!, _deliveryMemoMeta));
+    }
+    if (data.containsKey('show_delivery_on_print')) {
+      context.handle(
+          _showDeliveryOnPrintMeta,
+          showDeliveryOnPrint.isAcceptableOrUnknown(
+              data['show_delivery_on_print']!, _showDeliveryOnPrintMeta));
+    }
     if (data.containsKey('deleted_at')) {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
@@ -4992,6 +5061,16 @@ class $PurchaseOrdersTable extends PurchaseOrders
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       memo: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
+      deliveryName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}delivery_name']),
+      deliveryAddress: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}delivery_address']),
+      deliveryPhone: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}delivery_phone']),
+      deliveryMemo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}delivery_memo']),
+      showDeliveryOnPrint: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool, data['${effectivePrefix}show_delivery_on_print'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}deleted_at']),
       orderId: attachedDatabase.typeMapping
@@ -5029,6 +5108,11 @@ class PurchaseOrderRow extends DataClass
   final String updatedAt;
   final bool isDeleted;
   final String? memo;
+  final String? deliveryName;
+  final String? deliveryAddress;
+  final String? deliveryPhone;
+  final String? deliveryMemo;
+  final bool showDeliveryOnPrint;
   final String? deletedAt;
   final String? orderId;
   final String? receivedAt;
@@ -5053,6 +5137,11 @@ class PurchaseOrderRow extends DataClass
       required this.updatedAt,
       required this.isDeleted,
       this.memo,
+      this.deliveryName,
+      this.deliveryAddress,
+      this.deliveryPhone,
+      this.deliveryMemo,
+      required this.showDeliveryOnPrint,
       this.deletedAt,
       this.orderId,
       this.receivedAt});
@@ -5091,6 +5180,19 @@ class PurchaseOrderRow extends DataClass
     if (!nullToAbsent || memo != null) {
       map['memo'] = Variable<String>(memo);
     }
+    if (!nullToAbsent || deliveryName != null) {
+      map['delivery_name'] = Variable<String>(deliveryName);
+    }
+    if (!nullToAbsent || deliveryAddress != null) {
+      map['delivery_address'] = Variable<String>(deliveryAddress);
+    }
+    if (!nullToAbsent || deliveryPhone != null) {
+      map['delivery_phone'] = Variable<String>(deliveryPhone);
+    }
+    if (!nullToAbsent || deliveryMemo != null) {
+      map['delivery_memo'] = Variable<String>(deliveryMemo);
+    }
+    map['show_delivery_on_print'] = Variable<bool>(showDeliveryOnPrint);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<String>(deletedAt);
     }
@@ -5134,6 +5236,19 @@ class PurchaseOrderRow extends DataClass
       updatedAt: Value(updatedAt),
       isDeleted: Value(isDeleted),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      deliveryName: deliveryName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryName),
+      deliveryAddress: deliveryAddress == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryAddress),
+      deliveryPhone: deliveryPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryPhone),
+      deliveryMemo: deliveryMemo == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryMemo),
+      showDeliveryOnPrint: Value(showDeliveryOnPrint),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
@@ -5171,6 +5286,12 @@ class PurchaseOrderRow extends DataClass
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       memo: serializer.fromJson<String?>(json['memo']),
+      deliveryName: serializer.fromJson<String?>(json['deliveryName']),
+      deliveryAddress: serializer.fromJson<String?>(json['deliveryAddress']),
+      deliveryPhone: serializer.fromJson<String?>(json['deliveryPhone']),
+      deliveryMemo: serializer.fromJson<String?>(json['deliveryMemo']),
+      showDeliveryOnPrint:
+          serializer.fromJson<bool>(json['showDeliveryOnPrint']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
       orderId: serializer.fromJson<String?>(json['orderId']),
       receivedAt: serializer.fromJson<String?>(json['receivedAt']),
@@ -5200,6 +5321,11 @@ class PurchaseOrderRow extends DataClass
       'updatedAt': serializer.toJson<String>(updatedAt),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'memo': serializer.toJson<String?>(memo),
+      'deliveryName': serializer.toJson<String?>(deliveryName),
+      'deliveryAddress': serializer.toJson<String?>(deliveryAddress),
+      'deliveryPhone': serializer.toJson<String?>(deliveryPhone),
+      'deliveryMemo': serializer.toJson<String?>(deliveryMemo),
+      'showDeliveryOnPrint': serializer.toJson<bool>(showDeliveryOnPrint),
       'deletedAt': serializer.toJson<String?>(deletedAt),
       'orderId': serializer.toJson<String?>(orderId),
       'receivedAt': serializer.toJson<String?>(receivedAt),
@@ -5227,6 +5353,11 @@ class PurchaseOrderRow extends DataClass
           String? updatedAt,
           bool? isDeleted,
           Value<String?> memo = const Value.absent(),
+          Value<String?> deliveryName = const Value.absent(),
+          Value<String?> deliveryAddress = const Value.absent(),
+          Value<String?> deliveryPhone = const Value.absent(),
+          Value<String?> deliveryMemo = const Value.absent(),
+          bool? showDeliveryOnPrint,
           Value<String?> deletedAt = const Value.absent(),
           Value<String?> orderId = const Value.absent(),
           Value<String?> receivedAt = const Value.absent()}) =>
@@ -5256,6 +5387,16 @@ class PurchaseOrderRow extends DataClass
         updatedAt: updatedAt ?? this.updatedAt,
         isDeleted: isDeleted ?? this.isDeleted,
         memo: memo.present ? memo.value : this.memo,
+        deliveryName:
+            deliveryName.present ? deliveryName.value : this.deliveryName,
+        deliveryAddress: deliveryAddress.present
+            ? deliveryAddress.value
+            : this.deliveryAddress,
+        deliveryPhone:
+            deliveryPhone.present ? deliveryPhone.value : this.deliveryPhone,
+        deliveryMemo:
+            deliveryMemo.present ? deliveryMemo.value : this.deliveryMemo,
+        showDeliveryOnPrint: showDeliveryOnPrint ?? this.showDeliveryOnPrint,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         orderId: orderId.present ? orderId.value : this.orderId,
         receivedAt: receivedAt.present ? receivedAt.value : this.receivedAt,
@@ -5298,6 +5439,21 @@ class PurchaseOrderRow extends DataClass
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       memo: data.memo.present ? data.memo.value : this.memo,
+      deliveryName: data.deliveryName.present
+          ? data.deliveryName.value
+          : this.deliveryName,
+      deliveryAddress: data.deliveryAddress.present
+          ? data.deliveryAddress.value
+          : this.deliveryAddress,
+      deliveryPhone: data.deliveryPhone.present
+          ? data.deliveryPhone.value
+          : this.deliveryPhone,
+      deliveryMemo: data.deliveryMemo.present
+          ? data.deliveryMemo.value
+          : this.deliveryMemo,
+      showDeliveryOnPrint: data.showDeliveryOnPrint.present
+          ? data.showDeliveryOnPrint.value
+          : this.showDeliveryOnPrint,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       orderId: data.orderId.present ? data.orderId.value : this.orderId,
       receivedAt:
@@ -5328,6 +5484,11 @@ class PurchaseOrderRow extends DataClass
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('memo: $memo, ')
+          ..write('deliveryName: $deliveryName, ')
+          ..write('deliveryAddress: $deliveryAddress, ')
+          ..write('deliveryPhone: $deliveryPhone, ')
+          ..write('deliveryMemo: $deliveryMemo, ')
+          ..write('showDeliveryOnPrint: $showDeliveryOnPrint, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('orderId: $orderId, ')
           ..write('receivedAt: $receivedAt')
@@ -5357,6 +5518,11 @@ class PurchaseOrderRow extends DataClass
         updatedAt,
         isDeleted,
         memo,
+        deliveryName,
+        deliveryAddress,
+        deliveryPhone,
+        deliveryMemo,
+        showDeliveryOnPrint,
         deletedAt,
         orderId,
         receivedAt
@@ -5385,6 +5551,11 @@ class PurchaseOrderRow extends DataClass
           other.updatedAt == this.updatedAt &&
           other.isDeleted == this.isDeleted &&
           other.memo == this.memo &&
+          other.deliveryName == this.deliveryName &&
+          other.deliveryAddress == this.deliveryAddress &&
+          other.deliveryPhone == this.deliveryPhone &&
+          other.deliveryMemo == this.deliveryMemo &&
+          other.showDeliveryOnPrint == this.showDeliveryOnPrint &&
           other.deletedAt == this.deletedAt &&
           other.orderId == this.orderId &&
           other.receivedAt == this.receivedAt);
@@ -5411,6 +5582,11 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<String> updatedAt;
   final Value<bool> isDeleted;
   final Value<String?> memo;
+  final Value<String?> deliveryName;
+  final Value<String?> deliveryAddress;
+  final Value<String?> deliveryPhone;
+  final Value<String?> deliveryMemo;
+  final Value<bool> showDeliveryOnPrint;
   final Value<String?> deletedAt;
   final Value<String?> orderId;
   final Value<String?> receivedAt;
@@ -5436,6 +5612,11 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.updatedAt = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.memo = const Value.absent(),
+    this.deliveryName = const Value.absent(),
+    this.deliveryAddress = const Value.absent(),
+    this.deliveryPhone = const Value.absent(),
+    this.deliveryMemo = const Value.absent(),
+    this.showDeliveryOnPrint = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.orderId = const Value.absent(),
     this.receivedAt = const Value.absent(),
@@ -5462,6 +5643,11 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     required String updatedAt,
     this.isDeleted = const Value.absent(),
     this.memo = const Value.absent(),
+    this.deliveryName = const Value.absent(),
+    this.deliveryAddress = const Value.absent(),
+    this.deliveryPhone = const Value.absent(),
+    this.deliveryMemo = const Value.absent(),
+    this.showDeliveryOnPrint = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.orderId = const Value.absent(),
     this.receivedAt = const Value.absent(),
@@ -5493,6 +5679,11 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     Expression<String>? updatedAt,
     Expression<bool>? isDeleted,
     Expression<String>? memo,
+    Expression<String>? deliveryName,
+    Expression<String>? deliveryAddress,
+    Expression<String>? deliveryPhone,
+    Expression<String>? deliveryMemo,
+    Expression<bool>? showDeliveryOnPrint,
     Expression<String>? deletedAt,
     Expression<String>? orderId,
     Expression<String>? receivedAt,
@@ -5520,6 +5711,12 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (memo != null) 'memo': memo,
+      if (deliveryName != null) 'delivery_name': deliveryName,
+      if (deliveryAddress != null) 'delivery_address': deliveryAddress,
+      if (deliveryPhone != null) 'delivery_phone': deliveryPhone,
+      if (deliveryMemo != null) 'delivery_memo': deliveryMemo,
+      if (showDeliveryOnPrint != null)
+        'show_delivery_on_print': showDeliveryOnPrint,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (orderId != null) 'order_id': orderId,
       if (receivedAt != null) 'received_at': receivedAt,
@@ -5548,6 +5745,11 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       Value<String>? updatedAt,
       Value<bool>? isDeleted,
       Value<String?>? memo,
+      Value<String?>? deliveryName,
+      Value<String?>? deliveryAddress,
+      Value<String?>? deliveryPhone,
+      Value<String?>? deliveryMemo,
+      Value<bool>? showDeliveryOnPrint,
       Value<String?>? deletedAt,
       Value<String?>? orderId,
       Value<String?>? receivedAt,
@@ -5573,6 +5775,11 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       updatedAt: updatedAt ?? this.updatedAt,
       isDeleted: isDeleted ?? this.isDeleted,
       memo: memo ?? this.memo,
+      deliveryName: deliveryName ?? this.deliveryName,
+      deliveryAddress: deliveryAddress ?? this.deliveryAddress,
+      deliveryPhone: deliveryPhone ?? this.deliveryPhone,
+      deliveryMemo: deliveryMemo ?? this.deliveryMemo,
+      showDeliveryOnPrint: showDeliveryOnPrint ?? this.showDeliveryOnPrint,
       deletedAt: deletedAt ?? this.deletedAt,
       orderId: orderId ?? this.orderId,
       receivedAt: receivedAt ?? this.receivedAt,
@@ -5643,6 +5850,21 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     if (memo.present) {
       map['memo'] = Variable<String>(memo.value);
     }
+    if (deliveryName.present) {
+      map['delivery_name'] = Variable<String>(deliveryName.value);
+    }
+    if (deliveryAddress.present) {
+      map['delivery_address'] = Variable<String>(deliveryAddress.value);
+    }
+    if (deliveryPhone.present) {
+      map['delivery_phone'] = Variable<String>(deliveryPhone.value);
+    }
+    if (deliveryMemo.present) {
+      map['delivery_memo'] = Variable<String>(deliveryMemo.value);
+    }
+    if (showDeliveryOnPrint.present) {
+      map['show_delivery_on_print'] = Variable<bool>(showDeliveryOnPrint.value);
+    }
     if (deletedAt.present) {
       map['deleted_at'] = Variable<String>(deletedAt.value);
     }
@@ -5681,6 +5903,11 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('memo: $memo, ')
+          ..write('deliveryName: $deliveryName, ')
+          ..write('deliveryAddress: $deliveryAddress, ')
+          ..write('deliveryPhone: $deliveryPhone, ')
+          ..write('deliveryMemo: $deliveryMemo, ')
+          ..write('showDeliveryOnPrint: $showDeliveryOnPrint, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('orderId: $orderId, ')
           ..write('receivedAt: $receivedAt, ')
@@ -5757,6 +5984,12 @@ class $PurchaseLinesTable extends PurchaseLines
   late final GeneratedColumn<String> colorNo = GeneratedColumn<String>(
       'color_no', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _printAttrsJsonMeta =
+      const VerificationMeta('printAttrsJson');
+  @override
+  late final GeneratedColumn<String> printAttrsJson = GeneratedColumn<String>(
+      'print_attrs_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _isDeletedMeta =
       const VerificationMeta('isDeleted');
   @override
@@ -5785,6 +6018,7 @@ class $PurchaseLinesTable extends PurchaseLines
         note,
         memo,
         colorNo,
+        printAttrsJson,
         isDeleted,
         deletedAt
       ];
@@ -5849,6 +6083,12 @@ class $PurchaseLinesTable extends PurchaseLines
       context.handle(_colorNoMeta,
           colorNo.isAcceptableOrUnknown(data['color_no']!, _colorNoMeta));
     }
+    if (data.containsKey('print_attrs_json')) {
+      context.handle(
+          _printAttrsJsonMeta,
+          printAttrsJson.isAcceptableOrUnknown(
+              data['print_attrs_json']!, _printAttrsJsonMeta));
+    }
     if (data.containsKey('is_deleted')) {
       context.handle(_isDeletedMeta,
           isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
@@ -5886,6 +6126,8 @@ class $PurchaseLinesTable extends PurchaseLines
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
       colorNo: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}color_no']),
+      printAttrsJson: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}print_attrs_json']),
       isDeleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       deletedAt: attachedDatabase.typeMapping
@@ -5910,6 +6152,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
   final String? note;
   final String? memo;
   final String? colorNo;
+  final String? printAttrsJson;
   final bool isDeleted;
   final String? deletedAt;
   const PurchaseLineRow(
@@ -5923,6 +6166,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       this.note,
       this.memo,
       this.colorNo,
+      this.printAttrsJson,
       required this.isDeleted,
       this.deletedAt});
   @override
@@ -5943,6 +6187,9 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
     }
     if (!nullToAbsent || colorNo != null) {
       map['color_no'] = Variable<String>(colorNo);
+    }
+    if (!nullToAbsent || printAttrsJson != null) {
+      map['print_attrs_json'] = Variable<String>(printAttrsJson);
     }
     map['is_deleted'] = Variable<bool>(isDeleted);
     if (!nullToAbsent || deletedAt != null) {
@@ -5965,6 +6212,9 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       colorNo: colorNo == null && nullToAbsent
           ? const Value.absent()
           : Value(colorNo),
+      printAttrsJson: printAttrsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(printAttrsJson),
       isDeleted: Value(isDeleted),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -5986,6 +6236,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       note: serializer.fromJson<String?>(json['note']),
       memo: serializer.fromJson<String?>(json['memo']),
       colorNo: serializer.fromJson<String?>(json['colorNo']),
+      printAttrsJson: serializer.fromJson<String?>(json['printAttrsJson']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
     );
@@ -6004,6 +6255,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       'note': serializer.toJson<String?>(note),
       'memo': serializer.toJson<String?>(memo),
       'colorNo': serializer.toJson<String?>(colorNo),
+      'printAttrsJson': serializer.toJson<String?>(printAttrsJson),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
     };
@@ -6020,6 +6272,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           Value<String?> note = const Value.absent(),
           Value<String?> memo = const Value.absent(),
           Value<String?> colorNo = const Value.absent(),
+          Value<String?> printAttrsJson = const Value.absent(),
           bool? isDeleted,
           Value<String?> deletedAt = const Value.absent()}) =>
       PurchaseLineRow(
@@ -6033,6 +6286,8 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
         note: note.present ? note.value : this.note,
         memo: memo.present ? memo.value : this.memo,
         colorNo: colorNo.present ? colorNo.value : this.colorNo,
+        printAttrsJson:
+            printAttrsJson.present ? printAttrsJson.value : this.printAttrsJson,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
       );
@@ -6048,6 +6303,9 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       note: data.note.present ? data.note.value : this.note,
       memo: data.memo.present ? data.memo.value : this.memo,
       colorNo: data.colorNo.present ? data.colorNo.value : this.colorNo,
+      printAttrsJson: data.printAttrsJson.present
+          ? data.printAttrsJson.value
+          : this.printAttrsJson,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
@@ -6066,6 +6324,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           ..write('note: $note, ')
           ..write('memo: $memo, ')
           ..write('colorNo: $colorNo, ')
+          ..write('printAttrsJson: $printAttrsJson, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt')
           ..write(')'))
@@ -6074,7 +6333,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
 
   @override
   int get hashCode => Object.hash(id, orderId, itemId, name, unit, qty,
-      unitPrice, note, memo, colorNo, isDeleted, deletedAt);
+      unitPrice, note, memo, colorNo, printAttrsJson, isDeleted, deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6089,6 +6348,7 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           other.note == this.note &&
           other.memo == this.memo &&
           other.colorNo == this.colorNo &&
+          other.printAttrsJson == this.printAttrsJson &&
           other.isDeleted == this.isDeleted &&
           other.deletedAt == this.deletedAt);
 }
@@ -6104,6 +6364,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
   final Value<String?> note;
   final Value<String?> memo;
   final Value<String?> colorNo;
+  final Value<String?> printAttrsJson;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
   final Value<int> rowid;
@@ -6118,6 +6379,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     this.note = const Value.absent(),
     this.memo = const Value.absent(),
     this.colorNo = const Value.absent(),
+    this.printAttrsJson = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -6133,6 +6395,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     this.note = const Value.absent(),
     this.memo = const Value.absent(),
     this.colorNo = const Value.absent(),
+    this.printAttrsJson = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -6153,6 +6416,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     Expression<String>? note,
     Expression<String>? memo,
     Expression<String>? colorNo,
+    Expression<String>? printAttrsJson,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
     Expression<int>? rowid,
@@ -6168,6 +6432,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       if (note != null) 'note': note,
       if (memo != null) 'memo': memo,
       if (colorNo != null) 'color_no': colorNo,
+      if (printAttrsJson != null) 'print_attrs_json': printAttrsJson,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (rowid != null) 'rowid': rowid,
@@ -6185,6 +6450,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       Value<String?>? note,
       Value<String?>? memo,
       Value<String?>? colorNo,
+      Value<String?>? printAttrsJson,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
       Value<int>? rowid}) {
@@ -6199,6 +6465,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       note: note ?? this.note,
       memo: memo ?? this.memo,
       colorNo: colorNo ?? this.colorNo,
+      printAttrsJson: printAttrsJson ?? this.printAttrsJson,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
       rowid: rowid ?? this.rowid,
@@ -6238,6 +6505,9 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     if (colorNo.present) {
       map['color_no'] = Variable<String>(colorNo.value);
     }
+    if (printAttrsJson.present) {
+      map['print_attrs_json'] = Variable<String>(printAttrsJson.value);
+    }
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
@@ -6263,6 +6533,7 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
           ..write('note: $note, ')
           ..write('memo: $memo, ')
           ..write('colorNo: $colorNo, ')
+          ..write('printAttrsJson: $printAttrsJson, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('rowid: $rowid')
@@ -11587,6 +11858,11 @@ typedef $$PurchaseOrdersTableCreateCompanionBuilder = PurchaseOrdersCompanion
   required String updatedAt,
   Value<bool> isDeleted,
   Value<String?> memo,
+  Value<String?> deliveryName,
+  Value<String?> deliveryAddress,
+  Value<String?> deliveryPhone,
+  Value<String?> deliveryMemo,
+  Value<bool> showDeliveryOnPrint,
   Value<String?> deletedAt,
   Value<String?> orderId,
   Value<String?> receivedAt,
@@ -11614,6 +11890,11 @@ typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
   Value<String> updatedAt,
   Value<bool> isDeleted,
   Value<String?> memo,
+  Value<String?> deliveryName,
+  Value<String?> deliveryAddress,
+  Value<String?> deliveryPhone,
+  Value<String?> deliveryMemo,
+  Value<bool> showDeliveryOnPrint,
   Value<String?> deletedAt,
   Value<String?> orderId,
   Value<String?> receivedAt,
@@ -11712,6 +11993,23 @@ class $$PurchaseOrdersTableFilterComposer
 
   ColumnFilters<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryName => $composableBuilder(
+      column: $table.deliveryName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryAddress => $composableBuilder(
+      column: $table.deliveryAddress,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryPhone => $composableBuilder(
+      column: $table.deliveryPhone, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryMemo => $composableBuilder(
+      column: $table.deliveryMemo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get showDeliveryOnPrint => $composableBuilder(
+      column: $table.showDeliveryOnPrint,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnFilters(column));
@@ -11820,6 +12118,26 @@ class $$PurchaseOrdersTableOrderingComposer
   ColumnOrderings<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get deliveryName => $composableBuilder(
+      column: $table.deliveryName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deliveryAddress => $composableBuilder(
+      column: $table.deliveryAddress,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deliveryPhone => $composableBuilder(
+      column: $table.deliveryPhone,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deliveryMemo => $composableBuilder(
+      column: $table.deliveryMemo,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get showDeliveryOnPrint => $composableBuilder(
+      column: $table.showDeliveryOnPrint,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get deletedAt => $composableBuilder(
       column: $table.deletedAt, builder: (column) => ColumnOrderings(column));
 
@@ -11899,6 +12217,21 @@ class $$PurchaseOrdersTableAnnotationComposer
   GeneratedColumn<String> get memo =>
       $composableBuilder(column: $table.memo, builder: (column) => column);
 
+  GeneratedColumn<String> get deliveryName => $composableBuilder(
+      column: $table.deliveryName, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryAddress => $composableBuilder(
+      column: $table.deliveryAddress, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryPhone => $composableBuilder(
+      column: $table.deliveryPhone, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryMemo => $composableBuilder(
+      column: $table.deliveryMemo, builder: (column) => column);
+
+  GeneratedColumn<bool> get showDeliveryOnPrint => $composableBuilder(
+      column: $table.showDeliveryOnPrint, builder: (column) => column);
+
   GeneratedColumn<String> get deletedAt =>
       $composableBuilder(column: $table.deletedAt, builder: (column) => column);
 
@@ -11974,6 +12307,11 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<String> updatedAt = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> memo = const Value.absent(),
+            Value<String?> deliveryName = const Value.absent(),
+            Value<String?> deliveryAddress = const Value.absent(),
+            Value<String?> deliveryPhone = const Value.absent(),
+            Value<String?> deliveryMemo = const Value.absent(),
+            Value<bool> showDeliveryOnPrint = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
             Value<String?> orderId = const Value.absent(),
             Value<String?> receivedAt = const Value.absent(),
@@ -12000,6 +12338,11 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             isDeleted: isDeleted,
             memo: memo,
+            deliveryName: deliveryName,
+            deliveryAddress: deliveryAddress,
+            deliveryPhone: deliveryPhone,
+            deliveryMemo: deliveryMemo,
+            showDeliveryOnPrint: showDeliveryOnPrint,
             deletedAt: deletedAt,
             orderId: orderId,
             receivedAt: receivedAt,
@@ -12026,6 +12369,11 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             required String updatedAt,
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> memo = const Value.absent(),
+            Value<String?> deliveryName = const Value.absent(),
+            Value<String?> deliveryAddress = const Value.absent(),
+            Value<String?> deliveryPhone = const Value.absent(),
+            Value<String?> deliveryMemo = const Value.absent(),
+            Value<bool> showDeliveryOnPrint = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
             Value<String?> orderId = const Value.absent(),
             Value<String?> receivedAt = const Value.absent(),
@@ -12052,6 +12400,11 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             isDeleted: isDeleted,
             memo: memo,
+            deliveryName: deliveryName,
+            deliveryAddress: deliveryAddress,
+            deliveryPhone: deliveryPhone,
+            deliveryMemo: deliveryMemo,
+            showDeliveryOnPrint: showDeliveryOnPrint,
             deletedAt: deletedAt,
             orderId: orderId,
             receivedAt: receivedAt,
@@ -12116,6 +12469,7 @@ typedef $$PurchaseLinesTableCreateCompanionBuilder = PurchaseLinesCompanion
   Value<String?> note,
   Value<String?> memo,
   Value<String?> colorNo,
+  Value<String?> printAttrsJson,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
   Value<int> rowid,
@@ -12132,6 +12486,7 @@ typedef $$PurchaseLinesTableUpdateCompanionBuilder = PurchaseLinesCompanion
   Value<String?> note,
   Value<String?> memo,
   Value<String?> colorNo,
+  Value<String?> printAttrsJson,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
   Value<int> rowid,
@@ -12204,6 +12559,10 @@ class $$PurchaseLinesTableFilterComposer
 
   ColumnFilters<String> get colorNo => $composableBuilder(
       column: $table.colorNo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get printAttrsJson => $composableBuilder(
+      column: $table.printAttrsJson,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnFilters(column));
@@ -12285,6 +12644,10 @@ class $$PurchaseLinesTableOrderingComposer
   ColumnOrderings<String> get colorNo => $composableBuilder(
       column: $table.colorNo, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get printAttrsJson => $composableBuilder(
+      column: $table.printAttrsJson,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
 
@@ -12364,6 +12727,9 @@ class $$PurchaseLinesTableAnnotationComposer
 
   GeneratedColumn<String> get colorNo =>
       $composableBuilder(column: $table.colorNo, builder: (column) => column);
+
+  GeneratedColumn<String> get printAttrsJson => $composableBuilder(
+      column: $table.printAttrsJson, builder: (column) => column);
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
@@ -12445,6 +12811,7 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> colorNo = const Value.absent(),
+            Value<String?> printAttrsJson = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -12460,6 +12827,7 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             note: note,
             memo: memo,
             colorNo: colorNo,
+            printAttrsJson: printAttrsJson,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
             rowid: rowid,
@@ -12475,6 +12843,7 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> colorNo = const Value.absent(),
+            Value<String?> printAttrsJson = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -12490,6 +12859,7 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             note: note,
             memo: memo,
             colorNo: colorNo,
+            printAttrsJson: printAttrsJson,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
             rowid: rowid,

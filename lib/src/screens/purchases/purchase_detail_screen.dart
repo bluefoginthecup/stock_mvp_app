@@ -628,6 +628,131 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     );
   }
 
+  String _deliverySummary(PurchaseOrder po) {
+    final parts = [
+      po.deliveryName?.trim(),
+      po.deliveryAddress?.trim(),
+      po.deliveryPhone?.trim(),
+      po.deliveryMemo?.trim(),
+    ].where((value) => value != null && value.isNotEmpty).cast<String>();
+
+    final text = parts.join(' / ');
+    if (text.isEmpty) return '(없음)';
+    return po.showDeliveryOnPrint ? text : '$text\n발주서 표시: 안 함';
+  }
+
+  Future<void> _editDeliveryInfo(PurchaseOrder po) async {
+    final nameC = TextEditingController(text: po.deliveryName ?? '');
+    final addressC = TextEditingController(text: po.deliveryAddress ?? '');
+    final phoneC = TextEditingController(text: po.deliveryPhone ?? '');
+    final memoC = TextEditingController(text: po.deliveryMemo ?? '');
+    var showOnPrint = po.showDeliveryOnPrint;
+
+    try {
+      final updated = await showModalBottomSheet<PurchaseOrder>(
+        context: context,
+        isScrollControlled: true,
+        builder: (sheetContext) {
+          return StatefulBuilder(
+            builder: (context, setSheetState) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        '배송지',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('발주서에 배송지 표시'),
+                        subtitle: const Text('기본값은 표시 안 함입니다.'),
+                        value: showOnPrint,
+                        onChanged: (value) {
+                          setSheetState(() => showOnPrint = value);
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: nameC,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: '수령처',
+                          hintText: '예: 자장노래 본사, 보령 창고',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: addressC,
+                        minLines: 1,
+                        maxLines: 3,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(labelText: '주소'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: phoneC,
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(labelText: '연락처'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: memoC,
+                        minLines: 1,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: '배송 메모',
+                          hintText: '예: 1층 입구 앞, 오전 수령 가능',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(
+                            sheetContext,
+                            po.copyWith(
+                              deliveryName: nameC.text.trim(),
+                              deliveryAddress: addressC.text.trim(),
+                              deliveryPhone: phoneC.text.trim(),
+                              deliveryMemo: memoC.text.trim(),
+                              showDeliveryOnPrint: showOnPrint,
+                              updatedAt: DateTime.now(),
+                            ),
+                          );
+                        },
+                        child: const Text('저장'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+
+      if (updated == null) return;
+      await widget.repo.updatePurchaseOrder(updated);
+      await _reload();
+    } finally {
+      nameC.dispose();
+      addressC.dispose();
+      phoneC.dispose();
+      memoC.dispose();
+    }
+  }
+
   Future<void> _handleDateTap(int index) async {
     final po = _po;
     if (po == null) return;
@@ -1150,6 +1275,15 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       onDateTap: _handleDateTap,
                     ),
                     const SizedBox(height: 8),
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.local_shipping_outlined),
+                      title: const Text('배송지'),
+                      subtitle: Text(_deliverySummary(po)),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _editDeliveryInfo(po),
+                    ),
                     ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,

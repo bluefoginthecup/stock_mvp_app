@@ -1,5 +1,14 @@
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:image/image.dart' as image_lib;
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../../models/purchase_line.dart';
 import '../../models/purchase_order.dart';
 
 /// ① 출력용 라인 모델
@@ -11,6 +20,7 @@ class PrintLine {
   final double qty;
   final double unitPrice; // ✅ 추가
   final String memo;
+  final List<PurchaseLinePrintAttr> printAttrs;
   const PrintLine({
     required this.itemName,
     required this.spec,
@@ -19,34 +29,56 @@ class PrintLine {
     required this.qty,
     required this.unitPrice, // ✅ 추가
     required this.memo,
+    this.printAttrs = const [],
   });
   double get amount => unitPrice * qty;
+  String get printAttrsText => printAttrs
+      .where((attr) =>
+          attr.label.trim().isNotEmpty && attr.value.trim().isNotEmpty)
+      .map((attr) => '${attr.label.trim()}: ${attr.value.trim()}')
+      .join(' / ');
 }
 
 /// ② 메인 위젯: A4 고정, 핀치줌 지원
 class PurchaseOrderPrintView extends StatelessWidget {
   final PurchaseOrder order;
   final List<PrintLine> lines;
-  const PurchaseOrderPrintView({super.key, required this.order, required this.lines});
+  const PurchaseOrderPrintView(
+      {super.key, required this.order, required this.lines});
 
   // ────────────────────────────────────────────────────────────
   // Scaffold + A4 캔버스
   // ────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    const double _a4W = 794;
-    const double _a4H = 1123;
-    final dateStr = DateFormat('yyyy.MM.dd(E)', 'ko_KR')
-        .format(order.createdAt ?? DateTime.now());
+    const double a4W = 794;
+    const double a4H = 1123;
+    final captureKey = GlobalKey();
+    final dateStr =
+        DateFormat('yyyy.MM.dd(E)', 'ko_KR').format(order.createdAt);
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('발주서')),
+      appBar: AppBar(
+        title: const Text('발주서'),
+        actions: [
+          IconButton(
+            tooltip: '내보내기',
+            icon: const Icon(Icons.ios_share),
+            onPressed: () => _sharePurchaseOrderJpg(
+              context,
+              captureKey: captureKey,
+              order: order,
+              pixelRatio: 3,
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final scaleW = constraints.maxWidth / _a4W;
-            final scaleH = constraints.maxHeight / _a4H;
+            final scaleW = constraints.maxWidth / a4W;
+            final scaleH = constraints.maxHeight / a4H;
             final scale = scaleW < scaleH ? scaleW : scaleH;
 
             return Center(
@@ -59,12 +91,15 @@ class PurchaseOrderPrintView extends StatelessWidget {
                   alignment: Alignment.topLeft,
                   child: MediaQuery(
                     data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
-                    child: Container(
-                      width: _a4W,
-                      height: _a4H,
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(24),
-                      child: _buildA4Page(dateStr),
+                    child: RepaintBoundary(
+                      key: captureKey,
+                      child: Container(
+                        width: a4W,
+                        height: a4H,
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(24),
+                        child: _buildA4Page(dateStr),
+                      ),
                     ),
                   ),
                 ),
@@ -84,7 +119,7 @@ class PurchaseOrderPrintView extends StatelessWidget {
     const hSection = TextStyle(fontSize: 16, fontWeight: FontWeight.w700);
     const body = TextStyle(fontSize: 12);
 
-    final supplier = (order.supplierName.trim().isEmpty ?? true)
+    final supplier = order.supplierName.trim().isEmpty
         ? '(공급처 미지정)'
         : order.supplierName.trim();
 
@@ -102,27 +137,25 @@ class PurchaseOrderPrintView extends StatelessWidget {
           const SizedBox(height: 4),
           Align(alignment: Alignment.centerRight, child: Text(dateStr)),
           const Divider(thickness: 2),
-
           const SizedBox(height: 8),
           Text('[공급자] $supplier 귀하', style: hSection),
           const SizedBox(height: 12),
-
           const Text('[공급받는자] 자장노래', style: hSection),
           const SizedBox(height: 6),
           _buyerInfoTableSmall(),
+          if (_hasPrintableDelivery(order)) ...[
+            const SizedBox(height: 10),
+            _deliveryInfoBlock(order),
+          ],
           const SizedBox(height: 12),
-
           const Align(
             alignment: Alignment.centerRight,
             child: Text('아래와 같이 발주합니다.'),
           ),
           const SizedBox(height: 8),
-
           _itemsTableCompact(lines),
           _itemsTotalRow(lines),
-
           const Spacer(),
-
           Align(
             alignment: Alignment.centerRight,
             child: Wrap(
@@ -142,8 +175,6 @@ class PurchaseOrderPrintView extends StatelessWidget {
     );
   }
 
-
-
   Widget _itemsTableCompact(List<PrintLine> lines) {
     const head = TextStyle(fontSize: 12, fontWeight: FontWeight.bold);
     const cell = TextStyle(fontSize: 11);
@@ -153,13 +184,11 @@ class PurchaseOrderPrintView extends StatelessWidget {
       children: const [
         _Th('No.', style: head),
         _Th('품명', style: head),
-        _Th('색상코드', style: head),
-        _Th('규격', style: head),
+        _Th('표시정보', style: head),
         _Th('단위', style: head),
         _Th('수량', style: head),
         _Th('단가', style: head),
         _Th('금액', style: head),
-        _Th('적요', style: head),
       ],
     );
 
@@ -168,12 +197,11 @@ class PurchaseOrderPrintView extends StatelessWidget {
       columnWidths: const {
         0: FixedColumnWidth(32),
         1: FlexColumnWidth(3),
-        2: FlexColumnWidth(1.4), // 색상코드
-        3: FlexColumnWidth(2),
-        4: FixedColumnWidth(44),
-        5: FixedColumnWidth(56),
+        2: FlexColumnWidth(3),
+        3: FixedColumnWidth(44),
+        4: FixedColumnWidth(56),
+        5: FlexColumnWidth(2),
         6: FlexColumnWidth(2),
-        7: FlexColumnWidth(2),
       },
       children: [
         header,
@@ -182,13 +210,11 @@ class PurchaseOrderPrintView extends StatelessWidget {
             children: [
               _Td('${i + 1}', style: cell),
               _Td(lines[i].itemName, style: cell),
-              _Td(lines[i].colorNo, style: cell),
-              _Td(lines[i].spec, style: cell),
+              _Td(lines[i].printAttrsText, style: cell),
               _Td(lines[i].unit, style: cell),
               _Td(_fmtNum(lines[i].qty), style: cell),
               _Td(_fmtMoney(lines[i].unitPrice)), // 단가
               _Td(_fmtMoney(lines[i].amount), style: cell),
-              _Td(lines[i].memo, style: cell),
             ],
           ),
       ],
@@ -202,8 +228,9 @@ class _Th extends StatelessWidget {
   final TextStyle? style;
   const _Th(this.s, {this.style});
   @override
-  Widget build(BuildContext context) =>
-      Padding(padding: const EdgeInsets.all(4), child: Center(child: Text(s, style: style)));
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.all(4),
+      child: Center(child: Text(s, style: style)));
 }
 
 class _Td extends StatelessWidget {
@@ -211,8 +238,9 @@ class _Td extends StatelessWidget {
   final TextStyle? style;
   const _Td(this.s, {this.style});
   @override
-  Widget build(BuildContext context) =>
-      Padding(padding: const EdgeInsets.all(4), child: Text(s, textAlign: TextAlign.center, style: style));
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.all(4),
+      child: Text(s, textAlign: TextAlign.center, style: style));
 }
 
 class _Cell extends StatelessWidget {
@@ -221,10 +249,12 @@ class _Cell extends StatelessWidget {
   const _Cell(this.s, {this.bold = false});
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(4),
-    child: Text(s,
-        style: TextStyle(fontSize: 11, fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
-  );
+        padding: const EdgeInsets.all(4),
+        child: Text(s,
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+      );
 }
 
 String _fmtNum(num n) => n.toStringAsFixed(n.truncateToDouble() == n ? 0 : 2);
@@ -246,35 +276,80 @@ String _fmtMoney(num n) {
 Widget _buyerInfoTableSmall() {
   return Table(
     border: TableBorder.all(),
-    columnWidths: const { 0: FixedColumnWidth(100), 1: FlexColumnWidth() },
+    columnWidths: const {0: FixedColumnWidth(100), 1: FlexColumnWidth()},
     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
     children: const [
-      TableRow(children: [ _Cell('사업자등록번호', bold: true), _Cell('313-05-49582') ]),
-      TableRow(children: [ _Cell('상호', bold: true), _Cell('자장노래') ]),
-      TableRow(children: [ _Cell('대표자', bold: true), _Cell('장효정') ]),
-      TableRow(children: [ _Cell('주소', bold: true), _Cell('충청남도 보령시 수산길 4, 1층 (대천동)') ]),
-      TableRow(children: [ _Cell('업태/종목', bold: true), _Cell('제조업 / 침구류 기타') ]),
-      TableRow(children: [ _Cell('전화/팩스', bold: true), _Cell('041-935-2855 / 0505-937-0558') ]),
+      TableRow(children: [_Cell('사업자등록번호', bold: true), _Cell('313-05-49582')]),
+      TableRow(children: [_Cell('상호', bold: true), _Cell('자장노래')]),
+      TableRow(children: [_Cell('대표자', bold: true), _Cell('장효정')]),
+      TableRow(children: [
+        _Cell('주소', bold: true),
+        _Cell('충청남도 보령시 수산길 4, 1층 (대천동)')
+      ]),
+      TableRow(children: [_Cell('업태/종목', bold: true), _Cell('제조업 / 침구류 기타')]),
+      TableRow(children: [
+        _Cell('전화/팩스', bold: true),
+        _Cell('041-935-2855 / 0505-937-0558')
+      ]),
     ],
   );
 }
+
+bool _hasPrintableDelivery(PurchaseOrder order) {
+  return order.showDeliveryOnPrint && _deliveryLines(order).isNotEmpty;
+}
+
+List<String> _deliveryLines(PurchaseOrder order) {
+  final lines = <String>[];
+  final name = order.deliveryName?.trim();
+  final address = order.deliveryAddress?.trim();
+  final phone = order.deliveryPhone?.trim();
+  final memo = order.deliveryMemo?.trim();
+
+  if (name != null && name.isNotEmpty) lines.add('수령처: $name');
+  if (address != null && address.isNotEmpty) lines.add('주소: $address');
+  if (phone != null && phone.isNotEmpty) lines.add('연락처: $phone');
+  if (memo != null && memo.isNotEmpty) lines.add('배송 메모: $memo');
+
+  return lines;
+}
+
+Widget _deliveryInfoBlock(PurchaseOrder order) {
+  final lines = _deliveryLines(order);
+  return Container(
+    decoration: BoxDecoration(
+      border: Border.all(color: Colors.black87),
+      color: const Color(0xFFFAFAFA),
+    ),
+    padding: const EdgeInsets.all(8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          '[배송지]',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        for (final line in lines)
+          Text(line, style: const TextStyle(fontSize: 11)),
+      ],
+    ),
+  );
+}
+
 // ─────────────────────────────────────────────
 // 단위별 합계 + 총 금액 (예: 20 EA + 5 ROLL)
 // ─────────────────────────────────────────────
 Widget _itemsTotalRow(List<PrintLine> lines) {
   // 단위별 수량 합산
   final byUnit = <String, double>{};
-  double totalAmount = 0;
-
   for (final l in lines) {
     byUnit[l.unit] = (byUnit[l.unit] ?? 0) + l.qty;
-    totalAmount += l.amount;
   }
 
   // 예: "20 EA + 5 ROLL + 10 M"
-  final qtyStr = byUnit.entries
-      .map((e) => '${_fmtNum(e.value)} ${e.key}')
-      .join(' + ');
+  final qtyStr =
+      byUnit.entries.map((e) => '${_fmtNum(e.value)} ${e.key}').join(' + ');
 
   return Container(
     decoration: const BoxDecoration(
@@ -308,10 +383,12 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('yyyy.MM.dd(E)', 'ko_KR')
-        .format(order.createdAt ?? DateTime.now());
-    final supplier = (order.supplierName.trim().isEmpty ?? true)
-        ? '(공급처 미지정)' : order.supplierName.trim();
+    final captureKey = GlobalKey();
+    final dateStr =
+        DateFormat('yyyy.MM.dd(E)', 'ko_KR').format(order.createdAt);
+    final supplier = order.supplierName.trim().isEmpty
+        ? '(공급처 미지정)'
+        : order.supplierName.trim();
 
     final sumAmount = lines.fold<double>(0, (p, e) => p + e.amount);
     final supply = sumAmount;
@@ -320,57 +397,82 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('발주서(모바일용)')),
+      appBar: AppBar(
+        title: const Text('발주서(모바일용)'),
+        actions: [
+          IconButton(
+            tooltip: '내보내기',
+            icon: const Icon(Icons.ios_share),
+            onPressed: () => _sharePurchaseOrderJpg(
+              context,
+              captureKey: captureKey,
+              order: order,
+              pixelRatio: 2,
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: DefaultTextStyle.merge(
-              style: const TextStyle(fontSize: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 4),
-                  const Text('발   주   서',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Align(alignment: Alignment.centerRight, child: Text(dateStr)),
-                  const Divider(thickness: 2),
-
-                  const SizedBox(height: 8),
-                  Text('[공급자] $supplier 귀하',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 12),
-
-                  const Text('[공급받는자] 자장노래',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  _buyerInfoTableSmall(),
-
-                  const SizedBox(height: 12),
-                  const Align(
-                    alignment: Alignment.centerRight,
-                    child: Text('아래와 같이 발주합니다.'),
-                  ),
-                  const SizedBox(height: 8),
-
-                  _itemsListTwoLine(lines),
-
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Wrap(
-                      spacing: 12,
-                      children: [
-                        Text('공급금액: ${_fmtMoney(supply)}원'),
-                        Text('부가세: ${_fmtMoney(vat)}원'),
-                        Text('합계금액: ${_fmtMoney(total)}원',
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+          child: RepaintBoundary(
+            key: captureKey,
+            child: ColoredBox(
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: DefaultTextStyle.merge(
+                  style: const TextStyle(fontSize: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 4),
+                      const Text('발   주   서',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(dateStr)),
+                      const Divider(thickness: 2),
+                      const SizedBox(height: 8),
+                      Text('[공급자] $supplier 귀하',
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 12),
+                      const Text('[공급받는자] 자장노래',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 6),
+                      _buyerInfoTableSmall(),
+                      if (_hasPrintableDelivery(order)) ...[
+                        const SizedBox(height: 10),
+                        _deliveryInfoBlock(order),
                       ],
-                    ),
+                      const SizedBox(height: 12),
+                      const Align(
+                        alignment: Alignment.centerRight,
+                        child: Text('아래와 같이 발주합니다.'),
+                      ),
+                      const SizedBox(height: 8),
+                      _itemsListTwoLine(lines),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Wrap(
+                          spacing: 12,
+                          children: [
+                            Text('공급금액: ${_fmtMoney(supply)}원'),
+                            Text('부가세: ${_fmtMoney(vat)}원'),
+                            Text('합계금액: ${_fmtMoney(total)}원',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -397,7 +499,8 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
           child: Row(
             children: [
-              SizedBox(width: 36, child: Center(child: Text('No', style: head))),
+              SizedBox(
+                  width: 36, child: Center(child: Text('No', style: head))),
               const SizedBox(width: 8),
               Expanded(child: Text('품명', style: head)),
               const SizedBox(width: 8),
@@ -431,7 +534,9 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(width: 36, child: Center(child: Text('${i + 1}', style: cell))),
+                    SizedBox(
+                        width: 36,
+                        child: Center(child: Text('${i + 1}', style: cell))),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -460,42 +565,82 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
                   spacing: 16,
                   runSpacing: 2,
                   children: [
-                    if (l.spec.isNotEmpty)
-                      Text('규격: ${l.spec}', style: const TextStyle(fontSize: 11)),
-                    if (l.colorNo.isNotEmpty)
-                      Text('색상번호: ${l.colorNo}', style: const TextStyle(fontSize: 11)),
+                    for (final attr in l.printAttrs)
+                      if (attr.label.trim().isNotEmpty &&
+                          attr.value.trim().isNotEmpty)
+                        Text(
+                          '${attr.label.trim()}: ${attr.value.trim()}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
 
                     // Text('금액: ${_fmtMoney(l.amount)}원',
                     //     style: const TextStyle(fontSize: 11)),
-                    if (l.memo.isNotEmpty)
-                      Text('적요: ${l.memo}', style: const TextStyle(fontSize: 11)),
                   ],
                 ),
-
-
               ],
             ),
           );
         }),
         _itemsTotalRow(lines), // ← 이 한 줄 추가
-
       ],
     );
   }
+}
 
+Future<void> _sharePurchaseOrderJpg(
+  BuildContext context, {
+  required GlobalKey captureKey,
+  required PurchaseOrder order,
+  required double pixelRatio,
+}) async {
+  final box = context.findRenderObject() as RenderBox?;
+  try {
+    final boundary =
+        captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) {
+      throw StateError('발주서 이미지를 만들 수 없습니다.');
+    }
 
+    final captured = await boundary.toImage(pixelRatio: pixelRatio);
+    final byteData = await captured.toByteData(format: ui.ImageByteFormat.png);
+    final pngBytes = byteData?.buffer.asUint8List();
+    if (pngBytes == null) {
+      throw StateError('발주서 이미지 변환에 실패했습니다.');
+    }
 
-  Widget _pill(String k, String v, {int? max}) {
-    final vv = (max != null && v.length > max) ? '${v.substring(0, max)}…' : v;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFDDDDDD)),
-      ),
-      child: Text('$k: $vv', style: const TextStyle(fontSize: 11)),
+    final decoded = image_lib.decodePng(pngBytes);
+    if (decoded == null) {
+      throw StateError('발주서 이미지 인코딩에 실패했습니다.');
+    }
+
+    final jpgBytes = image_lib.encodeJpg(decoded, quality: 88);
+    final tempDir = await getTemporaryDirectory();
+    final fileName = '${_purchaseOrderShareSubject(order)}.jpg';
+    final outFile = File('${tempDir.path}/$fileName');
+    await outFile.writeAsBytes(jpgBytes, flush: true);
+
+    await Share.shareXFiles(
+      [XFile(outFile.path, mimeType: 'image/jpeg', name: fileName)],
+      subject: _purchaseOrderShareSubject(order),
+      sharePositionOrigin:
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('발주서 JPG 내보내기에 실패했습니다: $e')),
     );
   }
+}
 
+String _purchaseOrderShareSubject(PurchaseOrder order) {
+  final supplier = _safeFileName(order.supplierName.trim());
+  final date = DateFormat('yyyyMMdd').format(order.createdAt);
+  return supplier.isEmpty ? '발주서_$date' : '발주서_${supplier}_$date';
+}
+
+String _safeFileName(String value) {
+  return value
+      .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+      .replaceAll(RegExp(r'\s+'), '_');
 }

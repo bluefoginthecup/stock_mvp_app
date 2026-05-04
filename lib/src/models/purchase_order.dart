@@ -2,28 +2,33 @@ import 'types.dart';
 import 'extensions/payment_status_ext.dart';
 import 'extensions/vat_invoice_status_ext.dart';
 
-
 enum PurchaseOrderStatus { draft, ordered, received, canceled }
+
 enum VatType {
   exclusive, // 부가세 별도
   inclusive, // 부가세 포함
-  exempt,    // 면세
+  exempt, // 면세
 }
 
 class PurchaseOrder {
   final String id;
   final String supplierName;
   final String? supplierId;
-  final DateTime eta;                 // 예상 입고(2단계 점선에 사용)
+  final DateTime eta; // 예상 입고(2단계 점선에 사용)
   final PurchaseOrderStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isDeleted;
   final String? memo;
+  final String? deliveryName;
+  final String? deliveryAddress;
+  final String? deliveryPhone;
+  final String? deliveryMemo;
+  final bool showDeliveryOnPrint;
 
   // ✅ 추가
-  final String? orderId;              // 주문 연동 발주만 주문 상세 타임라인에 표시
-  final DateTime? receivedAt;         // 실제 입고 완료일(막대 종료)
+  final String? orderId; // 주문 연동 발주만 주문 상세 타임라인에 표시
+  final DateTime? receivedAt; // 실제 입고 완료일(막대 종료)
   final double shippingCost;
   final double extraCost;
   final VatType vatType;
@@ -36,9 +41,7 @@ class PurchaseOrder {
   final DateTime? vatInvoiceIssuedAt;
   final DateTime? vatInvoiceDueAt;
 
-
-  PaymentStatus get paymentStatusEnum =>
-      PaymentStatusX.from(paymentStatus);
+  PaymentStatus get paymentStatusEnum => PaymentStatusX.from(paymentStatus);
 
   VatInvoiceStatus get vatInvoiceStatusEnum =>
       VatInvoiceStatusX.from(vatInvoiceStatus);
@@ -52,6 +55,11 @@ class PurchaseOrder {
     DateTime? updatedAt,
     this.isDeleted = false,
     this.memo,
+    this.deliveryName,
+    this.deliveryAddress,
+    this.deliveryPhone,
+    this.deliveryMemo,
+    this.showDeliveryOnPrint = false,
     this.orderId,
     this.receivedAt,
     this.supplierId,
@@ -74,6 +82,11 @@ class PurchaseOrder {
     bool? isDeleted,
     DateTime? updatedAt,
     String? memo,
+    String? deliveryName,
+    String? deliveryAddress,
+    String? deliveryPhone,
+    String? deliveryMemo,
+    bool? showDeliveryOnPrint,
     String? orderId,
     DateTime? receivedAt,
     String? supplierId,
@@ -87,74 +100,91 @@ class PurchaseOrder {
     DateTime? vatInvoiceIssuedAt,
     DateTime? vatInvoiceDueAt,
     DateTime? createdAt,
-  }) => PurchaseOrder(
-    id: id,
-    supplierName: supplierName ?? this.supplierName,
-    eta: eta ?? this.eta,
-    status: status ?? this.status,
-    createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? DateTime.now(),
-    isDeleted: isDeleted ?? this.isDeleted,
-    memo: memo ?? this.memo,
-    orderId: orderId ?? this.orderId,
-    receivedAt: receivedAt ?? this.receivedAt,
-    supplierId: supplierId ?? this.supplierId,
-    shippingCost: shippingCost ?? this.shippingCost,
-    extraCost: extraCost ?? this.extraCost,
-    vatType: vatType ?? this.vatType,
-    paymentStatus: paymentStatus ?? this.paymentStatus,
-    paidAt: paidAt ?? this.paidAt,
-    paymentDueAt: paymentDueAt ?? this.paymentDueAt,
-    vatInvoiceStatus: vatInvoiceStatus ?? this.vatInvoiceStatus,
-    vatInvoiceIssuedAt: vatInvoiceIssuedAt ?? this.vatInvoiceIssuedAt,
-    vatInvoiceDueAt: vatInvoiceDueAt ?? this.vatInvoiceDueAt,
-  );
+  }) =>
+      PurchaseOrder(
+        id: id,
+        supplierName: supplierName ?? this.supplierName,
+        eta: eta ?? this.eta,
+        status: status ?? this.status,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? DateTime.now(),
+        isDeleted: isDeleted ?? this.isDeleted,
+        memo: memo ?? this.memo,
+        deliveryName: deliveryName ?? this.deliveryName,
+        deliveryAddress: deliveryAddress ?? this.deliveryAddress,
+        deliveryPhone: deliveryPhone ?? this.deliveryPhone,
+        deliveryMemo: deliveryMemo ?? this.deliveryMemo,
+        showDeliveryOnPrint: showDeliveryOnPrint ?? this.showDeliveryOnPrint,
+        orderId: orderId ?? this.orderId,
+        receivedAt: receivedAt ?? this.receivedAt,
+        supplierId: supplierId ?? this.supplierId,
+        shippingCost: shippingCost ?? this.shippingCost,
+        extraCost: extraCost ?? this.extraCost,
+        vatType: vatType ?? this.vatType,
+        paymentStatus: paymentStatus ?? this.paymentStatus,
+        paidAt: paidAt ?? this.paidAt,
+        paymentDueAt: paymentDueAt ?? this.paymentDueAt,
+        vatInvoiceStatus: vatInvoiceStatus ?? this.vatInvoiceStatus,
+        vatInvoiceIssuedAt: vatInvoiceIssuedAt ?? this.vatInvoiceIssuedAt,
+        vatInvoiceDueAt: vatInvoiceDueAt ?? this.vatInvoiceDueAt,
+      );
 
   factory PurchaseOrder.fromJson(Map<String, dynamic> j) => PurchaseOrder(
-    id: j['id'] as String,
-    supplierName: j['supplierName'] as String? ?? '',
-    eta: DateTime.parse(j['eta'] as String),
-    status: PurchaseOrderStatus.values.firstWhere((e) => e.name == j['status']),
-    createdAt: DateTime.parse(j['createdAt']),
-    updatedAt: DateTime.parse(j['updatedAt']),
-    isDeleted: j['isDeleted'] == true,
-    memo: j['memo'] as String?,
-    orderId: j['orderId'] as String?,                         // ✅
-    receivedAt: (j['receivedAt'] as String?) != null          // ✅
-        ? DateTime.parse(j['receivedAt'])
-        : null,
-    supplierId: j['supplierId']?.toString(),
-    shippingCost: (j['shippingCost'] as num?)?.toDouble() ?? 0,
-    extraCost: (j['extraCost'] as num?)?.toDouble() ?? 0,
-    vatType: VatType.values[j['vatType'] ?? 0],
-    paymentStatus: j['paymentStatus'] as String? ?? 'pending',
-    paidAt: (j['paidAt'] as String?) != null
-        ? DateTime.parse(j['paidAt'])
-        : null,
-    vatInvoiceStatus: j['vatInvoiceStatus'] as String? ?? 'pending',
-    vatInvoiceIssuedAt: (j['vatInvoiceIssuedAt'] as String?) != null
-        ? DateTime.parse(j['vatInvoiceIssuedAt'])
-        : null,
-  );
+        id: j['id'] as String,
+        supplierName: j['supplierName'] as String? ?? '',
+        eta: DateTime.parse(j['eta'] as String),
+        status:
+            PurchaseOrderStatus.values.firstWhere((e) => e.name == j['status']),
+        createdAt: DateTime.parse(j['createdAt']),
+        updatedAt: DateTime.parse(j['updatedAt']),
+        isDeleted: j['isDeleted'] == true,
+        memo: j['memo'] as String?,
+        deliveryName: j['deliveryName'] as String?,
+        deliveryAddress: j['deliveryAddress'] as String?,
+        deliveryPhone: j['deliveryPhone'] as String?,
+        deliveryMemo: j['deliveryMemo'] as String?,
+        showDeliveryOnPrint: j['showDeliveryOnPrint'] == true,
+        orderId: j['orderId'] as String?, // ✅
+        receivedAt: (j['receivedAt'] as String?) != null // ✅
+            ? DateTime.parse(j['receivedAt'])
+            : null,
+        supplierId: j['supplierId']?.toString(),
+        shippingCost: (j['shippingCost'] as num?)?.toDouble() ?? 0,
+        extraCost: (j['extraCost'] as num?)?.toDouble() ?? 0,
+        vatType: VatType.values[j['vatType'] ?? 0],
+        paymentStatus: j['paymentStatus'] as String? ?? 'pending',
+        paidAt: (j['paidAt'] as String?) != null
+            ? DateTime.parse(j['paidAt'])
+            : null,
+        vatInvoiceStatus: j['vatInvoiceStatus'] as String? ?? 'pending',
+        vatInvoiceIssuedAt: (j['vatInvoiceIssuedAt'] as String?) != null
+            ? DateTime.parse(j['vatInvoiceIssuedAt'])
+            : null,
+      );
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'supplierName': supplierName,
-    'eta': eta.toIso8601String(),
-    'status': status.name,
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-    'isDeleted': isDeleted,
-    'memo': memo,
-    'orderId': orderId,                           // ✅
-    'receivedAt': receivedAt?.toIso8601String(),  // ✅
-    'supplierId': supplierId,
-    'shippingCost': shippingCost,
-    'extraCost': extraCost,
-    'vatType': vatType.index,
-    'paymentStatus': paymentStatus,
-    'paidAt': paidAt?.toIso8601String(),
-    'vatInvoiceStatus': vatInvoiceStatus,
-    'vatInvoiceIssuedAt': vatInvoiceIssuedAt?.toIso8601String(),
-  };
+        'id': id,
+        'supplierName': supplierName,
+        'eta': eta.toIso8601String(),
+        'status': status.name,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'isDeleted': isDeleted,
+        'memo': memo,
+        'deliveryName': deliveryName,
+        'deliveryAddress': deliveryAddress,
+        'deliveryPhone': deliveryPhone,
+        'deliveryMemo': deliveryMemo,
+        'showDeliveryOnPrint': showDeliveryOnPrint,
+        'orderId': orderId, // ✅
+        'receivedAt': receivedAt?.toIso8601String(), // ✅
+        'supplierId': supplierId,
+        'shippingCost': shippingCost,
+        'extraCost': extraCost,
+        'vatType': vatType.index,
+        'paymentStatus': paymentStatus,
+        'paidAt': paidAt?.toIso8601String(),
+        'vatInvoiceStatus': vatInvoiceStatus,
+        'vatInvoiceIssuedAt': vatInvoiceIssuedAt?.toIso8601String(),
+      };
 }
