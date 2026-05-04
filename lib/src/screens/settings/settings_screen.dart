@@ -958,6 +958,107 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
     }
   }
 
+  Future<void> _resetEncryption() async {
+    if (_saving) return;
+
+    final confirmed = await _showResetEncryptionDialog();
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      await _keyStore.deleteSecret();
+      await _service.clearSetup();
+      final settings = await _service.load();
+      if (!mounted) return;
+      setState(() {
+        _settings = settings;
+        _saving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('백업 암호화 설정을 초기화했습니다.')),
+      );
+    } on BackupEncryptionKeyStoreException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      await _showSimpleErrorDialog(
+        context,
+        title: '기기 보안 저장소 사용 불가',
+        message: e.message,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      await _showSimpleErrorDialog(
+        context,
+        title: '백업 암호화 초기화 실패',
+        message: '백업 암호화 설정을 초기화하지 못했습니다.\n\n$e',
+      );
+    }
+  }
+
+  Future<bool?> _showResetEncryptionDialog() {
+    var checked = false;
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('백업 암호화 초기화'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '이 기기에 저장된 백업 암호화 secret과 복구키 검증 정보를 삭제합니다.',
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '이미 클라우드에 올라간 암호화 백업은 삭제되지 않습니다. '
+                  '다만 기존 백업을 복원하려면 그 백업을 만들 때 사용한 비밀번호 또는 복구키가 계속 필요합니다.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '초기화 후에는 새 백업을 만들기 전에 백업 암호를 다시 설정해야 합니다.',
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: checked,
+                  onChanged: (value) {
+                    setDialogState(() => checked = value ?? false);
+                  },
+                  title: const Text('기존 암호화 백업 복원에 기존 비밀번호/복구키가 필요함을 이해했습니다'),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed:
+                  checked ? () => Navigator.of(dialogContext).pop(true) : null,
+              child: const Text('초기화'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<String?> _showPasswordDialog() {
     final passwordController = TextEditingController();
     final confirmController = TextEditingController();
@@ -973,8 +1074,8 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                '이 비밀번호는 이후 백업 zip 암호화에 사용할 예정입니다. '
-                '이번 단계에서는 실제 암호화 secret 저장은 Keychain/Keystore 연동 때 처리합니다.',
+                '이 비밀번호는 클라우드 백업 암호화와 복원에 사용합니다. '
+                '비밀번호 원문은 저장하지 않고 암호화용 secret만 기기 보안 저장소에 저장합니다.',
               ),
               const SizedBox(height: 12),
               TextField(
@@ -1052,7 +1153,7 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '비밀번호를 잊었을 때 이 복구키로 백업을 복원할 수 있게 할 예정입니다. '
+                  '비밀번호를 잊었을 때 이 복구키로 암호화 백업을 복원할 수 있습니다. '
                   '복구키 원문은 앱에 저장하지 않습니다.',
                 ),
                 const SizedBox(height: 12),
@@ -1154,9 +1255,9 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
               ],
               const SizedBox(height: 8),
               Text(
-                '수동 클라우드 백업은 저장된 암호화 secret으로 .stockbackup 파일만 업로드합니다. '
+                '수동/자동 클라우드 백업은 저장된 암호화 secret으로 .stockbackup 파일만 업로드합니다. '
                 '복구키 원문은 저장하지 않고 검증용 hash만 저장합니다. '
-                '자동백업 암호화 연결은 다음 단계에서 적용합니다.',
+                '다른 기기에서 복원할 때는 비밀번호 또는 복구키가 필요합니다.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context)
                           .colorScheme
@@ -1172,10 +1273,22 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
                 ),
               ],
               const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: _loading || _saving ? null : _setupEncryption,
-                icon: const Icon(Icons.lock_outline),
-                label: Text(configured ? '백업 암호 다시 설정' : '백업 암호 설정'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _loading || _saving ? null : _setupEncryption,
+                    icon: const Icon(Icons.lock_outline),
+                    label: Text(configured ? '백업 암호 다시 설정' : '백업 암호 설정'),
+                  ),
+                  if (configured)
+                    OutlinedButton.icon(
+                      onPressed: _loading || _saving ? null : _resetEncryption,
+                      icon: const Icon(Icons.lock_reset_outlined),
+                      label: const Text('암호화 초기화'),
+                    ),
+                ],
               ),
             ],
           ),
@@ -1254,6 +1367,10 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
     final service = _autoBackupService;
     if (service == null || _savingAutoSettings) return;
 
+    if (settings.enabled && !await _ensureAutoBackupEncryptionReady()) {
+      return;
+    }
+
     setState(() {
       _savingAutoSettings = true;
       _autoSettings = settings;
@@ -1283,6 +1400,53 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
       if (mounted) {
         setState(() => _savingAutoSettings = false);
       }
+    }
+  }
+
+  Future<bool> _ensureAutoBackupEncryptionReady() async {
+    const encryptionSettingsService = BackupEncryptionSettingsService();
+    const keyStore = BackupEncryptionKeyStore();
+    try {
+      final settings = await encryptionSettingsService.load();
+      if (!settings.configured) {
+        if (!mounted) return false;
+        await _showSimpleErrorDialog(
+          context,
+          title: '백업 암호화 설정 필요',
+          message: '자동 클라우드 백업은 암호화된 .stockbackup 파일만 업로드합니다.\n\n'
+              '먼저 설정 화면의 백업 암호화를 완료해주세요.',
+        );
+        return false;
+      }
+
+      final hasSecret = await keyStore.hasSecret();
+      if (!hasSecret) {
+        if (!mounted) return false;
+        await _showSimpleErrorDialog(
+          context,
+          title: '백업 암호화 재설정 필요',
+          message: '기기 보안 저장소에서 백업 암호화 secret을 찾지 못했습니다.\n\n'
+              '백업 암호화를 다시 설정한 뒤 자동 백업을 켜주세요.',
+        );
+        return false;
+      }
+      return true;
+    } on BackupEncryptionKeyStoreException catch (e) {
+      if (!mounted) return false;
+      await _showSimpleErrorDialog(
+        context,
+        title: '기기 보안 저장소 사용 불가',
+        message: e.message,
+      );
+      return false;
+    } catch (e) {
+      if (!mounted) return false;
+      await _showSimpleErrorDialog(
+        context,
+        title: '백업 암호화 설정 확인 실패',
+        message: '자동 백업 암호화 설정을 확인하지 못했습니다.\n\n$e',
+      );
+      return false;
     }
   }
 
@@ -1518,7 +1682,8 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                 '매주: 마지막 성공 백업 후 7일이 지났을 때\n'
                 '매달: 마지막 성공 백업 후 30일이 지났을 때\n'
                 '단, 이전 백업과 내용이 같으면 새 백업을 만들지 않습니다. '
-                '자동 백업 시도 후 최소 12시간 동안은 다시 시도하지 않습니다.',
+                '자동 백업은 암호화된 .stockbackup으로 업로드되며, '
+                '시도 후 최소 12시간 동안은 다시 시도하지 않습니다.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context)
                           .colorScheme

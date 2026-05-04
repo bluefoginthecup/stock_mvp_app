@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'auth_service.dart';
+import 'backup_encryption_key_store.dart';
 import 'cloud_backup_service.dart';
 
 enum CloudAutoBackupFrequency {
@@ -71,10 +72,12 @@ class CloudAutoBackupService {
   const CloudAutoBackupService({
     required this.authService,
     CloudBackupService? cloudBackupService,
+    this.keyStore = const BackupEncryptionKeyStore(),
   }) : _cloudBackupService = cloudBackupService;
 
   final AuthService authService;
   final CloudBackupService? _cloudBackupService;
+  final BackupEncryptionKeyStore keyStore;
 
   CloudBackupService get cloudBackupService =>
       _cloudBackupService ?? CloudBackupService(authService: authService);
@@ -157,10 +160,23 @@ class CloudAutoBackupService {
         );
       }
 
+      final secret = await keyStore.readSecret();
+      if (secret == null) {
+        return const CloudAutoBackupRunResult(
+          attempted: false,
+          uploaded: false,
+          message: '백업 암호화 secret이 없어 자동 백업을 건너뜁니다.',
+        );
+      }
+
       await _saveLastAttempt(uid, now);
       debugPrint('☁️ CloudAutoBackup: upload start');
       final result = await cloudBackupService.uploadFullBackup(
         skipIfContentUnchanged: true,
+        encryption: CloudBackupEncryptionRequest(
+          passwordSecret: secret.passwordSecret,
+          recoverySecret: secret.recoverySecret,
+        ),
       );
       if (result.skippedDuplicate) {
         return CloudAutoBackupRunResult(

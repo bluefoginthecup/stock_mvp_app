@@ -63,8 +63,15 @@ class BackupEncryptionSettingsService {
     );
     await prefs.setString(_recoveryKeyHashKey, draft.recoveryKeyHash);
 
-    // TODO: Store the password-derived encryption secret in Keychain/Keystore.
-    // Do not store the raw password or raw recovery key in SharedPreferences.
+    // The password/recovery-key derived encryption secrets are stored by
+    // BackupEncryptionKeyStore. SharedPreferences only keeps non-secret state.
+  }
+
+  Future<void> clearSetup() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_configuredKey);
+    await prefs.remove(_configuredAtKey);
+    await prefs.remove(_recoveryKeyHashKey);
   }
 
   bool verifyRecoveryKey({
