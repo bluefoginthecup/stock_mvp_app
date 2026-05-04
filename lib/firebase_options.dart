@@ -69,7 +69,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'chalstock.firebasestorage.app',
     iosClientId:
         '101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com',
-    iosBundleId: 'com.example.stockMvpApp',
+    iosBundleId: 'com.bluefog.chalstock',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(

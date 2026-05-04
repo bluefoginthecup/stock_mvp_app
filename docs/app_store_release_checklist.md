@@ -8,16 +8,17 @@ Last updated: 2026-05-05
 - iOS project: builds from a Flutter iOS project and has Firebase configuration.
 - Privacy manifest: added at `ios/Runner/PrivacyInfo.xcprivacy`.
 - App display name: set to `재고관리`.
-- Blocking item: replace the placeholder bundle id `com.example.stockMvpApp` with the App Store Connect bundle id.
+- Bundle ID: set locally to `com.bluefog.chalstock`.
+- Blocking item: register `com.bluefog.chalstock` in Apple Developer and Firebase, then replace Firebase config with the official downloaded file.
 
 ## 1. Apple Developer / App Store Connect
 
 - [ ] Confirm Apple Developer Program membership.
 - [ ] Create or confirm App ID.
-- [ ] Register final Bundle ID.
-- [ ] Replace `PRODUCT_BUNDLE_IDENTIFIER = com.example.stockMvpApp`.
-- [ ] Update Firebase iOS app bundle id to match the final Bundle ID.
-- [ ] Download and replace `ios/Runner/GoogleService-Info.plist` if Firebase bundle id changes.
+- [ ] Register final Bundle ID `com.bluefog.chalstock`.
+- [x] Replace `PRODUCT_BUNDLE_IDENTIFIER` with `com.bluefog.chalstock`.
+- [ ] Update Firebase iOS app bundle id to match `com.bluefog.chalstock`.
+- [ ] Download and replace `ios/Runner/GoogleService-Info.plist` from Firebase for `com.bluefog.chalstock`.
 - [ ] Confirm signing team `HMXLF59C3U` is correct.
 
 ## 2. iOS Build Settings
