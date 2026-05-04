@@ -31,11 +31,13 @@ import 'widgets/purchase_print_action.dart';
 class PurchaseDetailScreen extends StatefulWidget {
   final PurchaseOrderRepo repo;
   final String orderId;
+  final List<String>? navigationOrderIds;
 
   const PurchaseDetailScreen({
     super.key,
     required this.repo,
     required this.orderId,
+    this.navigationOrderIds,
   });
 
   @override
@@ -47,6 +49,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   List<PurchaseLine> _lines = const [];
   List<PurchaseReceipt> _receipts = const [];
   final Set<String> _collapsedReceiptIds = <String>{};
+  late String _orderId;
   bool _loading = true;
   bool _addingReceipt = false;
   final _uuid = const Uuid();
@@ -55,6 +58,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   @override
   void initState() {
     super.initState();
+    _orderId = widget.orderId;
     _reload();
   }
 
@@ -64,10 +68,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     });
 
     try {
-      final po = await widget.repo.getPurchaseOrderById(widget.orderId);
-      final lines = await widget.repo.getLines(widget.orderId);
+      final po = await widget.repo.getPurchaseOrderById(_orderId);
+      final lines = await widget.repo.getLines(_orderId);
       final receipts = await _repairReceiptFilePaths(
-        await widget.repo.getPurchaseReceipts(widget.orderId),
+        await widget.repo.getPurchaseReceipts(_orderId),
       );
 
       if (!mounted) return;
@@ -85,6 +89,55 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       setState(() {
         _loading = false;
       });
+    }
+  }
+
+  List<String> get _navigationIds {
+    final ids = widget.navigationOrderIds ?? const <String>[];
+    final seen = <String>{};
+    return [
+      for (final id in ids)
+        if (seen.add(id)) id,
+    ];
+  }
+
+  int get _navigationIndex => _navigationIds.indexOf(_orderId);
+
+  bool get _canNavigatePrevious => _navigationIndex > 0;
+
+  bool get _canNavigateNext {
+    final ids = _navigationIds;
+    final index = _navigationIndex;
+    return index >= 0 && index < ids.length - 1;
+  }
+
+  Future<void> _navigateRelative(int delta) async {
+    final ids = _navigationIds;
+    final index = ids.indexOf(_orderId);
+    if (index < 0) return;
+
+    final nextIndex = index + delta;
+    if (nextIndex < 0 || nextIndex >= ids.length) return;
+
+    setState(() {
+      _orderId = ids[nextIndex];
+      _loading = true;
+      _po = null;
+      _lines = const [];
+      _receipts = const [];
+      _collapsedReceiptIds.clear();
+    });
+    await _reload();
+  }
+
+  void _handleHorizontalSwipe(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() < 350) return;
+
+    if (velocity < 0) {
+      _navigateRelative(1);
+    } else {
+      _navigateRelative(-1);
     }
   }
 
@@ -1226,11 +1279,29 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     final total = po.vatType == VatType.inclusive
         ? itemsTotal + shipping + extra
         : itemsTotal + vat + shipping + extra;
+    final navIds = _navigationIds;
+    final navIndex = _navigationIndex;
+    final title = navIndex >= 0 && navIds.length > 1
+        ? '발주상세 ${navIndex + 1}/${navIds.length}'
+        : '발주상세';
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('발주상세'),
+        title: Text(title),
         actions: [
+          if (navIds.length > 1) ...[
+            IconButton(
+              tooltip: '이전 발주',
+              onPressed:
+                  _canNavigatePrevious ? () => _navigateRelative(-1) : null,
+              icon: const Icon(Icons.chevron_left),
+            ),
+            IconButton(
+              tooltip: '다음 발주',
+              onPressed: _canNavigateNext ? () => _navigateRelative(1) : null,
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ],
           DeleteMoreMenu<PurchaseOrder>(
             entity: po,
             onChanged: () {
@@ -1238,7 +1309,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               Navigator.of(context).maybePop();
             },
           ),
-          PurchasePrintAction(poId: widget.orderId),
+          PurchasePrintAction(poId: _orderId),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -1246,201 +1317,205 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         icon: const Icon(Icons.add),
         label: Text('추가'),
       ),
-      body: RefreshIndicator(
-        onRefresh: _reload,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FutureBuilder<Supplier?>(
-                            future: _supplierFor(po),
-                            builder: (context, supplierSnap) {
-                              final supplier = supplierSnap.data;
-                              final isLinked = po.supplierId != null &&
-                                  po.supplierId!.isNotEmpty &&
-                                  supplier != null;
-                              final name =
-                                  supplier?.name ?? _fallbackSupplierName(po);
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragEnd: navIds.length > 1 ? _handleHorizontalSwipe : null,
+        child: RefreshIndicator(
+          onRefresh: _reload,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FutureBuilder<Supplier?>(
+                              future: _supplierFor(po),
+                              builder: (context, supplierSnap) {
+                                final supplier = supplierSnap.data;
+                                final isLinked = po.supplierId != null &&
+                                    po.supplierId!.isNotEmpty &&
+                                    supplier != null;
+                                final name =
+                                    supplier?.name ?? _fallbackSupplierName(po);
 
-                              return InkWell(
-                                onTap: _changeSupplier,
-                                borderRadius: BorderRadius.circular(8),
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
+                                return InkWell(
+                                  onTap: _changeSupplier,
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 4),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                name,
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            const Icon(
+                                              Icons.edit_outlined,
+                                              size: 18,
+                                            ),
+                                          ],
+                                        ),
+                                        if (!isLinked)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 4),
                                             child: Text(
-                                              name,
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
+                                              '거래처 연결 필요',
+                                              style: TextStyle(
+                                                color: Colors.orange.shade800,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           ),
-                                          const Icon(
-                                            Icons.edit_outlined,
-                                            size: 18,
-                                          ),
-                                        ],
-                                      ),
-                                      if (!isLinked)
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 4),
-                                          child: Text(
-                                            '거래처 연결 필요',
-                                            style: TextStyle(
-                                              color: Colors.orange.shade800,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                        Chip(
-                          label: Text(_statusLabel(po.status)),
-                          backgroundColor: Colors.grey.shade200,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    PurchaseTimeline(
-                      po: po,
-                      onStepTap: _handleTimelineTap,
-                      onDateTap: _handleDateTap,
-                    ),
-                    const SizedBox(height: 8),
-                    ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.business_outlined),
-                      title: const Text('공급받는자'),
-                      subtitle: Text(_buyerSummary(po)),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _changeBuyerProfile(po),
-                    ),
-                    ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.local_shipping_outlined),
-                      title: const Text('배송지'),
-                      subtitle: Text(_deliverySummary(po)),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _editDeliveryInfo(po),
-                    ),
-                    ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('메모'),
-                      subtitle: Text(
-                        (po.memo ?? '').isEmpty ? '(없음)' : po.memo!,
+                          Chip(
+                            label: Text(_statusLabel(po.status)),
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                        ],
                       ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () async {
-                        final result = await _editText(
-                          title: '메모',
-                          initial: po.memo ?? '',
-                        );
+                      const SizedBox(height: 12),
+                      PurchaseTimeline(
+                        po: po,
+                        onStepTap: _handleTimelineTap,
+                        onDateTap: _handleDateTap,
+                      ),
+                      const SizedBox(height: 8),
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.business_outlined),
+                        title: const Text('공급받는자'),
+                        subtitle: Text(_buyerSummary(po)),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _changeBuyerProfile(po),
+                      ),
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.local_shipping_outlined),
+                        title: const Text('배송지'),
+                        subtitle: Text(_deliverySummary(po)),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => _editDeliveryInfo(po),
+                      ),
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('메모'),
+                        subtitle: Text(
+                          (po.memo ?? '').isEmpty ? '(없음)' : po.memo!,
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () async {
+                          final result = await _editText(
+                            title: '메모',
+                            initial: po.memo ?? '',
+                          );
 
-                        if (result == null) return;
+                          if (result == null) return;
 
-                        await widget.repo.updatePurchaseOrder(
-                          po.copyWith(
-                            memo: result.isEmpty ? null : result,
-                            updatedAt: DateTime.now(),
-                          ),
-                        );
-                        await _reload();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            _lines.isEmpty
-                ? const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('발주 품목이 없습니다.'),
-                    ),
-                  )
-                : Card(
-                    child: Column(
-                      children: _lines.map((ln) {
-                        final lineTotal = ln.qty * ln.unitPrice;
-                        final name =
-                            ln.name.trim().isEmpty ? ln.itemId : ln.name;
-
-                        return ListTile(
-                          title: Text('$name × ${ln.qty}'),
-                          subtitle: Text(
-                            '단가 ${_fmt(ln.unitPrice)} / 합계 ${_fmt(lineTotal)}',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => _openLineFull(ln),
-                        );
-                      }).toList(),
-                    ),
+                          await widget.repo.updatePurchaseOrder(
+                            po.copyWith(
+                              memo: result.isEmpty ? null : result,
+                              updatedAt: DateTime.now(),
+                            ),
+                          );
+                          await _reload();
+                        },
+                      ),
+                    ],
                   ),
-            const SizedBox(height: 8),
-            _buildReceiptsSection(),
-            const SizedBox(height: 8),
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '₩ ${_fmt(total)}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _calcItem('상품', itemsTotal),
-                        _calcItem('세금', vat),
-                        _calcItem('기타', shipping + extra),
-                      ],
-                    ),
-                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 80),
-          ],
+              const SizedBox(height: 12),
+              _lines.isEmpty
+                  ? const Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text('발주 품목이 없습니다.'),
+                      ),
+                    )
+                  : Card(
+                      child: Column(
+                        children: _lines.map((ln) {
+                          final lineTotal = ln.qty * ln.unitPrice;
+                          final name =
+                              ln.name.trim().isEmpty ? ln.itemId : ln.name;
+
+                          return ListTile(
+                            title: Text('$name × ${ln.qty}'),
+                            subtitle: Text(
+                              '단가 ${_fmt(ln.unitPrice)} / 합계 ${_fmt(lineTotal)}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => _openLineFull(ln),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+              const SizedBox(height: 8),
+              _buildReceiptsSection(),
+              const SizedBox(height: 8),
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '₩ ${_fmt(total)}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _calcItem('상품', itemsTotal),
+                          _calcItem('세금', vat),
+                          _calcItem('기타', shipping + extra),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 80),
+            ],
+          ),
         ),
       ),
     );

@@ -104,6 +104,31 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
     super.dispose();
   }
 
+  List<String> _uniqueOrderIds(Iterable<String> ids) {
+    final seen = <String>{};
+    return [
+      for (final id in ids)
+        if (seen.add(id)) id,
+    ];
+  }
+
+  Future<void> _openPurchaseDetail({
+    required PurchaseOrderRepo repo,
+    required String orderId,
+    required List<String> navigationOrderIds,
+  }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PurchaseDetailScreen(
+          repo: repo,
+          orderId: orderId,
+          navigationOrderIds: navigationOrderIds,
+        ),
+      ),
+    );
+  }
+
   Future<void> _createBlankPurchaseOrder(PurchaseOrderRepo repo) async {
     if (_creatingPurchase) return;
     setState(() => _creatingPurchase = true);
@@ -130,6 +155,7 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
           builder: (_) => PurchaseDetailScreen(
             repo: repo,
             orderId: id,
+            navigationOrderIds: [id],
           ),
         ),
       );
@@ -264,6 +290,9 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                     final filteredEvents = events.where((e) {
                       return _eventTypeFilter.contains(e.type);
                     }).toList();
+                    filteredEvents.sort((a, b) => b.date.compareTo(a.date));
+                    final filteredOrderIds =
+                        _uniqueOrderIds(filteredEvents.map((e) => e.refId));
 
                     if (_query.isNotEmpty) {
                       final matchedEvents = events.where((e) {
@@ -317,28 +346,20 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                             focusedDay: _focusedDay,
                             scrollEvents: false,
                             onEventTap: (e) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PurchaseDetailScreen(
-                                    repo: context.read<PurchaseOrderRepo>(),
-                                    orderId: e.refId,
-                                  ),
-                                ),
+                              _openPurchaseDetail(
+                                repo: context.read<PurchaseOrderRepo>(),
+                                orderId: e.refId,
+                                navigationOrderIds: filteredOrderIds,
                               );
                             },
                             expandedBuilder: (e) {
                               return PurchaseTimelinePreview(
                                 purchaseId: e.refId,
                                 onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => PurchaseDetailScreen(
-                                        repo: context.read<PurchaseOrderRepo>(),
-                                        orderId: e.refId,
-                                      ),
-                                    ),
+                                  _openPurchaseDetail(
+                                    repo: context.read<PurchaseOrderRepo>(),
+                                    orderId: e.refId,
+                                    navigationOrderIds: filteredOrderIds,
                                   );
                                 },
                               );
@@ -352,6 +373,7 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                   /// ============================
                   /// 🟢 리스트 뷰
                   /// ============================
+                  final listOrderIds = _uniqueOrderIds(list.map((p) => p.id));
                   return ListView.builder(
                     itemCount: list.length,
                     itemBuilder: (_, i) {
@@ -393,14 +415,10 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
                           ),
                           trailing: const Icon(Icons.chevron_right),
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => PurchaseDetailScreen(
-                                  repo: context.read<PurchaseOrderRepo>(),
-                                  orderId: p.id,
-                                ),
-                              ),
+                            _openPurchaseDetail(
+                              repo: context.read<PurchaseOrderRepo>(),
+                              orderId: p.id,
+                              navigationOrderIds: listOrderIds,
                             );
                           },
                           contentPadding: const EdgeInsets.symmetric(
