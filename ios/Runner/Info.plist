@@ -6,7 +6,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Stock Mvp App</string>
+	<string>재고관리</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -47,11 +47,11 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
     <key>NSCameraUsageDescription</key>
-    <string>카메라를 사용해 영수증을 촬영합니다.</string>
+    <string>영수증, 거래명세서, 원단 사진 등 업무 자료를 촬영해 재고와 거래 기록에 첨부하기 위해 카메라를 사용합니다.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>사진에서 영수증 이미지를 선택합니다.</string>
+    <string>사진 보관함에서 영수증, 거래명세서, 원단 사진 등 업무 자료를 선택해 재고와 거래 기록에 첨부하기 위해 사용합니다.</string>
     <key>NSContactsUsageDescription</key>
-    <string>거래처 정보를 입력하기 위해 연락처를 선택합니다.</string>
+    <string>거래처 정보를 빠르게 입력하기 위해 사용자가 선택한 연락처 정보를 가져옵니다.</string>
     <key>GIDClientID</key>
     <string>101861330698-nj8vagp79frjq2m4ds20luldof3pqh4j.apps.googleusercontent.com</string>
     <key>CFBundleURLTypes</key>
