@@ -30,6 +30,7 @@ class SettingsScreen extends StatelessWidget {
     const fullBackupService = FullBackupService();
     const fullRestoreService = FullRestoreService();
     const backupFileDeliveryService = BackupFileDeliveryService();
+    final showDeveloperSeedImport = kDebugMode && Platform.isMacOS;
 
     // 공통 실행 함수: 진행중 스피너 + 에러/성공 스낵바
     Future<void> runWithSpinner(
@@ -145,58 +146,141 @@ class SettingsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).pushNamed('/settings/language'),
           ),
-
           const _AccountSection(),
-
           const _BuyerProfileSection(),
-
           const _StorageUsageSection(),
-
           const _BackupEncryptionSection(),
-
           const _CloudBackupSection(),
-
           const _SectionHeader('데이터'),
+          if (showDeveloperSeedImport) ...[
+            const _SectionHeader('개발자 도구'),
+            ListTile(
+              leading: const Icon(Icons.download_for_offline),
+              title: const Text('시드 임포트 (전체)'),
+              subtitle: const Text('assets/seeds/2025-10-26의 JSON을 한 번에 불러옵니다'),
+              onTap: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('시드 임포트(전체)'),
+                    content: const Text(
+                        '현재 DB에 전체 시드 데이터를 가져올까요?\n기존 데이터와 병합/덮어쓰기는 SeedImporter 로직을 따릅니다.'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('취소')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('가져오기')),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
 
-          // ───────────────── 전체 임포트 (기존)
-          ListTile(
-            leading: const Icon(Icons.download_for_offline),
-            title: const Text('시드 임포트 (전체)'),
-            subtitle: const Text('assets/seeds/2025-10-26의 JSON을 한 번에 불러옵니다'),
-            onTap: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('시드 임포트(전체)'),
-                  content: const Text(
-                      '현재 DB에 전체 시드 데이터를 가져올까요?\n기존 데이터와 병합/덮어쓰기는 SeedImporter 로직을 따릅니다.'),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('취소')),
-                    FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('가져오기')),
-                  ],
-                ),
-              );
-              if (ok != true) return;
-
-              await runWithSpinner(
-                () => UnifiedSeedImporter.run(context,
-                    clearBefore: false, verbose: true),
-                okMsg: '전체 임포트 완료',
-              );
-            },
-          ),
-
-          // ───────────────── 개별 임포트 (신규)
-          const Padding(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child:
-                Text('개별 임포트', style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-
+                await runWithSpinner(
+                  () => UnifiedSeedImporter.run(context,
+                      clearBefore: false, verbose: true),
+                  okMsg: '전체 임포트 완료',
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.folder),
+              title: const Text('폴더만 임포트'),
+              subtitle: const Text('folders.json만 반영 (트리 리빌드 포함)'),
+              onTap: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('폴더만 임포트'),
+                    content: const Text('folders.json만 임포트합니다. 계속할까요?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('취소')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('가져오기')),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
+                await runPart(SeedPart.folders, '폴더 임포트 완료');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.inventory_2),
+              title: const Text('아이템만 임포트'),
+              subtitle: const Text('items.json만 반영 (폴더 경로 자동 매칭 시도)'),
+              onTap: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('아이템만 임포트'),
+                    content: const Text('items.json만 임포트합니다. 계속할까요?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('취소')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('가져오기')),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
+                await runPart(SeedPart.items, '아이템 임포트 완료');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_tree),
+              title: const Text('BOM만 임포트'),
+              subtitle: const Text('bom.json만 반영 (BOM 스냅샷/인덱스 리프레시)'),
+              onTap: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('BOM만 임포트'),
+                    content: const Text('bom.json만 임포트합니다. 계속할까요?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('취소')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('가져오기')),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
+                await runPart(SeedPart.bom, 'BOM 임포트 완료');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code_2),
+              title: const Text('로트만 임포트'),
+              subtitle: const Text('lots.json만 반영 (트랜잭션/스냅샷 갱신)'),
+              onTap: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('로트만 임포트'),
+                    content: const Text('lots.json만 임포트합니다. 계속할까요?'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('취소')),
+                      FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('가져오기')),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
+                await runPart(SeedPart.lots, '로트 임포트 완료');
+              },
+            ),
+          ],
           ListTile(
             leading: const Icon(Icons.archive_outlined, color: Colors.red),
             title: const Text(
@@ -222,106 +306,6 @@ class SettingsScreen extends StatelessWidget {
                       '전체 백업 저장이 취소되었습니다';
                 },
               );
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.folder),
-            title: const Text('폴더만 임포트'),
-            subtitle: const Text('folders.json만 반영 (트리 리빌드 포함)'),
-            onTap: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('폴더만 임포트'),
-                  content: const Text('folders.json만 임포트합니다. 계속할까요?'),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('취소')),
-                    FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('가져오기')),
-                  ],
-                ),
-              );
-              if (ok != true) return;
-              await runPart(SeedPart.folders, '폴더 임포트 완료');
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.inventory_2),
-            title: const Text('아이템만 임포트'),
-            subtitle: const Text('items.json만 반영 (폴더 경로 자동 매칭 시도)'),
-            onTap: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('아이템만 임포트'),
-                  content: const Text('items.json만 임포트합니다. 계속할까요?'),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('취소')),
-                    FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('가져오기')),
-                  ],
-                ),
-              );
-              if (ok != true) return;
-              await runPart(SeedPart.items, '아이템 임포트 완료');
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.account_tree),
-            title: const Text('BOM만 임포트'),
-            subtitle: const Text('bom.json만 반영 (BOM 스냅샷/인덱스 리프레시)'),
-            onTap: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('BOM만 임포트'),
-                  content: const Text('bom.json만 임포트합니다. 계속할까요?'),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('취소')),
-                    FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('가져오기')),
-                  ],
-                ),
-              );
-              if (ok != true) return;
-              await runPart(SeedPart.bom, 'BOM 임포트 완료');
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.qr_code_2),
-            title: const Text('로트만 임포트'),
-            subtitle: const Text('lots.json만 반영 (트랜잭션/스냅샷 갱신)'),
-            onTap: () async {
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: const Text('로트만 임포트'),
-                  content: const Text('lots.json만 임포트합니다. 계속할까요?'),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('취소')),
-                    FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('가져오기')),
-                  ],
-                ),
-              );
-              if (ok != true) return;
-              await runPart(SeedPart.lots, '로트 임포트 완료');
             },
           ),
           if (kDebugMode && Platform.isMacOS)
@@ -356,7 +340,6 @@ class SettingsScreen extends StatelessWidget {
                 }, okMsg: 'DB 초기화 완료. 앱을 다시 실행하세요.');
               },
             ),
-
           ListTile(
             leading: const Icon(Icons.save),
             title: const Text('DB만 백업'),
