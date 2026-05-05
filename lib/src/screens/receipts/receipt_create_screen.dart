@@ -12,9 +12,8 @@ class ReceiptCreateScreen extends StatefulWidget {
 
 class _ReceiptCreateScreenState extends State<ReceiptCreateScreen> {
   final _picker = ImagePicker();
-  late final TextRecognizer _recognizer;
+  TextRecognizer? _recognizer;
   File? _image;
-  List<String> _ocrLines = [];
   List<ParsedInvoiceLine> _items = [];
   String? _supplierGuess;
   final _supplierC = TextEditingController();
@@ -22,12 +21,14 @@ class _ReceiptCreateScreenState extends State<ReceiptCreateScreen> {
   @override
   void initState() {
     super.initState();
-    _recognizer = TextRecognizer(script: TextRecognitionScript.korean);
+    if (Platform.isAndroid || Platform.isIOS) {
+      _recognizer = TextRecognizer(script: TextRecognitionScript.korean);
+    }
   }
 
   @override
   void dispose() {
-    _recognizer.close();
+    _recognizer?.close();
     _supplierC.dispose();
     super.dispose();
   }
@@ -41,8 +42,15 @@ class _ReceiptCreateScreenState extends State<ReceiptCreateScreen> {
 
   Future<void> _runOcr() async {
     if (_image == null) return;
+    final recognizer = _recognizer;
+    if (recognizer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('OCR은 iPhone/Android 앱에서 사용할 수 있습니다')),
+      );
+      return;
+    }
     final input = InputImage.fromFile(_image!);
-    final result = await _recognizer.processImage(input);
+    final result = await recognizer.processImage(input);
 
     final lines = <String>[];
     for (final b in result.blocks) {
@@ -60,31 +68,43 @@ class _ReceiptCreateScreenState extends State<ReceiptCreateScreen> {
 
     final supplier = _guessSupplierName(lines);
     setState(() {
-      _ocrLines = lines;
       _items = items;
       _supplierGuess = supplier;
       _supplierC.text = supplier ?? '';
     });
 
-    // 콘솔 확인
-    // ignore: avoid_print
-    print('🔹 OCR 원문:'); for (final l in lines) { print(l); }
-    // ignore: avoid_print
-    print('🔸 파싱 결과:'); for (final p in items) { print(p); }
-    // ignore: avoid_print
-    print('🧾 공급처 후보: ${supplier ?? "(없음)"}');
+    debugPrint('OCR 원문:');
+    for (final l in lines) {
+      debugPrint(l);
+    }
+    debugPrint('파싱 결과:');
+    for (final p in items) {
+      debugPrint('$p');
+    }
+    debugPrint('공급처 후보: ${supplier ?? "(없음)"}');
   }
 
   String? _guessSupplierName(List<String> lines) {
     // 후보 키워드 우선 탐색
-    final keys = ['거래처','공급자','공급처','상호','상호명','판매자','Supplier','Seller'];
+    final keys = [
+      '거래처',
+      '공급자',
+      '공급처',
+      '상호',
+      '상호명',
+      '판매자',
+      'Supplier',
+      'Seller'
+    ];
     for (final l in lines) {
       for (final k in keys) {
         final idx = l.indexOf(k);
         if (idx >= 0) {
           // "거래처:(주)대원섬유" / "상호  자장노래홈데코" 등 패턴 분해
           final tail = l.substring(idx + k.length).replaceAll(':', '').trim();
-          if (tail.isNotEmpty && !_looksLikeAddress(tail)) return _cleanName(tail);
+          if (tail.isNotEmpty && !_looksLikeAddress(tail)) {
+            return _cleanName(tail);
+          }
         }
       }
     }
@@ -126,12 +146,18 @@ class _ReceiptCreateScreenState extends State<ReceiptCreateScreen> {
           ListTile(
             leading: const Icon(Icons.photo_library),
             title: const Text('갤러리에서 선택'),
-            onTap: () { Navigator.pop(context); _pick(ImageSource.gallery); },
+            onTap: () {
+              Navigator.pop(context);
+              _pick(ImageSource.gallery);
+            },
           ),
           ListTile(
             leading: const Icon(Icons.photo_camera),
             title: const Text('카메라로 촬영'),
-            onTap: () { Navigator.pop(context); _pick(ImageSource.camera); },
+            onTap: () {
+              Navigator.pop(context);
+              _pick(ImageSource.camera);
+            },
           ),
         ]),
       ),

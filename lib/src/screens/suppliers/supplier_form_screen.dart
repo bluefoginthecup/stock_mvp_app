@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -206,6 +208,14 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
   }
 
   Future<Contact?> _pickDeviceContact() async {
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('연락처 가져오기는 iPhone/Android 앱에서 사용할 수 있습니다')),
+      );
+      return null;
+    }
+
     final granted = await FlutterContacts.requestPermission(readonly: true);
     if (!granted) {
       if (!mounted) return null;
@@ -266,7 +276,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
 
   void _addEmptyContact() {
     setState(() {
-      _contacts.add(_SupplierContactDraft(id: _uuid.v4(), sortOrder: _contacts.length));
+      _contacts.add(
+          _SupplierContactDraft(id: _uuid.v4(), sortOrder: _contacts.length));
     });
   }
 
@@ -293,7 +304,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
 
   void _addEmptyAccount() {
     setState(() {
-      _accounts.add(_SupplierAccountDraft(id: _uuid.v4(), sortOrder: _accounts.length));
+      _accounts.add(
+          _SupplierAccountDraft(id: _uuid.v4(), sortOrder: _accounts.length));
     });
   }
 
@@ -340,7 +352,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text('기본 거래처 정보', style: Theme.of(context).textTheme.titleSmall),
+                  Text('기본 거래처 정보',
+                      style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _nameC,
@@ -349,9 +362,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
                       hintText: '예) 대원섬유',
                     ),
                     textInputAction: TextInputAction.next,
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? '거래처명을 입력하세요'
-                        : null,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? '거래처명을 입력하세요' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -376,7 +388,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,
                     initiallyExpanded: _detailExpanded,
-                    onExpansionChanged: (v) => setState(() => _detailExpanded = v),
+                    onExpansionChanged: (v) =>
+                        setState(() => _detailExpanded = v),
                     title: const Text('상세정보'),
                     children: [
                       _buildAccountSection(),
@@ -446,11 +459,12 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
                         tooltip: 'ID 복사',
                         icon: const Icon(Icons.copy),
                         onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
                           await Clipboard.setData(
                             ClipboardData(text: _supplierId!),
                           );
                           if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             const SnackBar(content: Text('거래처 ID를 복사했어요')),
                           );
                         },
@@ -819,10 +833,13 @@ class _ContactInfo {
     return _ContactInfo(
       company: company,
       name: name,
-      phone: contact.phones.isNotEmpty ? contact.phones.first.number.trim() : '',
-      email: contact.emails.isNotEmpty ? contact.emails.first.address.trim() : '',
-      address:
-          contact.addresses.isNotEmpty ? contact.addresses.first.address.trim() : '',
+      phone:
+          contact.phones.isNotEmpty ? contact.phones.first.number.trim() : '',
+      email:
+          contact.emails.isNotEmpty ? contact.emails.first.address.trim() : '',
+      address: contact.addresses.isNotEmpty
+          ? contact.addresses.first.address.trim()
+          : '',
     );
   }
 }
@@ -864,7 +881,8 @@ class _SupplierContactDraft {
     );
   }
 
-  factory _SupplierContactDraft.fromContact(Contact contact, {required int sortOrder}) {
+  factory _SupplierContactDraft.fromContact(Contact contact,
+      {required int sortOrder}) {
     final info = _ContactInfo.fromContact(contact);
     return _SupplierContactDraft(
       id: const Uuid().v4(),
