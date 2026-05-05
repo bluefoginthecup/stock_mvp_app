@@ -9,7 +9,6 @@ import '../models/purchase_order.dart';
 import '../repos/modules/memo_repo.dart';
 import '../repos/repo_interfaces.dart';
 import '../ui/common/ui.dart';
-import '../ui/intro_loading_screen.dart';
 import 'dashboard/dashboard_quick_actions.dart';
 import 'stock/stock_browser_screen.dart';
 
@@ -432,6 +431,9 @@ class _ChalstockAssistantCard extends StatefulWidget {
 }
 
 class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
+  static const _happyPuppyAsset = 'assets/images/chal_happy.png';
+  static const _discPuppyAsset = 'assets/images/chal_pup2.png';
+
   bool _expanded = false;
 
   @override
@@ -505,7 +507,7 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
                 SizedBox(
                   width: 128,
                   child: Image.asset(
-                    IntroLoadingScreen.puppyAsset,
+                    _discPuppyAsset,
                     fit: BoxFit.contain,
                     alignment: Alignment.bottomCenter,
                   ),
@@ -533,7 +535,7 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
             SizedBox(
               width: 150,
               child: Image.asset(
-                IntroLoadingScreen.puppyAsset,
+                _happyPuppyAsset,
                 fit: BoxFit.contain,
               ),
             ),
