@@ -47,6 +47,7 @@ import 'services/system_seed_service.dart';
 import 'db/app_database.dart';
 import 'repos/timeline_repo.dart';
 import 'ui/common/selection/item_selection_controller.dart';
+import 'ui/intro_loading_screen.dart';
 import 'ui/nav/item_detail_opener.dart';
 import 'utils/item_presentation.dart';
 
@@ -190,6 +191,7 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
   }
 
   Future<_AccountData> _openAccountData() async {
+    final startedAt = DateTime.now();
     AppPathService.setActiveUserId(widget.uid);
     await DbAutoBackupService.createPreMigrationBackup();
 
@@ -203,6 +205,12 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
     final repo = DriftUnifiedRepo(db);
     await SystemSeedService.ensure(db);
     Future.microtask(() => repo.refreshBomSnapshot());
+
+    final elapsed = DateTime.now().difference(startedAt);
+    const minIntroDuration = Duration(milliseconds: 1500);
+    if (elapsed < minIntroDuration) {
+      await Future<void>.delayed(minIntroDuration - elapsed);
+    }
 
     return _AccountData(db: db, repo: repo);
   }
@@ -221,9 +229,7 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const MaterialApp(
-            home: Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
+            home: IntroLoadingScreen(),
           );
         }
 

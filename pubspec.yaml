@@ -66,3 +66,8 @@ flutter:
     - assets/seeds/2025-10-26/items.json
     - assets/seeds/2025-10-26/bom.json
     - assets/seeds/2025-10-26/lots.json
+    - assets/images/chalstock_puppy.png
+    - assets/images/chalstock_intro.png
+    - assets/images/chalstock_start.png
+    - assets/images/chalstock_intro_macos.png
+    - assets/images/chalstock_start_macos.png

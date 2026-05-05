@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloud_auto_backup_service.dart';
+import '../../ui/intro_loading_screen.dart';
+import 'start_screen.dart';
 
 /// 앱 시작 시 로그인 상태를 점검하고,
 /// - 로그인 되어 있으면 child로 진입
@@ -17,6 +19,7 @@ class LaunchGate extends StatefulWidget {
 
 class _LaunchGateState extends State<LaunchGate> {
   bool _booting = true;
+  bool _showAuthForm = false;
   bool _emailModeIsSignUp = false;
   bool _authWorking = false;
   final _emailFormKey = GlobalKey<FormState>();
@@ -37,6 +40,7 @@ class _LaunchGateState extends State<LaunchGate> {
   }
 
   Future<void> _bootstrap() async {
+    final startedAt = DateTime.now();
     final auth = context.read<AuthService>();
     try {
       // 기존 로그인 세션이 있거나, 조용한 로그인 시도
@@ -45,6 +49,11 @@ class _LaunchGateState extends State<LaunchGate> {
       // 실패해도 로그인 화면으로 진행
       debugPrint('[LaunchGate] silent sign-in failed: $e');
     } finally {
+      final elapsed = DateTime.now().difference(startedAt);
+      const minIntroDuration = Duration(milliseconds: 1500);
+      if (elapsed < minIntroDuration) {
+        await Future<void>.delayed(minIntroDuration - elapsed);
+      }
       if (mounted) setState(() => _booting = false);
     }
   }
@@ -52,9 +61,7 @@ class _LaunchGateState extends State<LaunchGate> {
   @override
   Widget build(BuildContext context) {
     if (_booting) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const IntroLoadingScreen();
     }
 
     return StreamBuilder(
@@ -67,6 +74,12 @@ class _LaunchGateState extends State<LaunchGate> {
         if (user != null) {
           return _CloudAutoBackupRunner(
             child: widget.signedInBuilder(context),
+          );
+        }
+
+        if (!_showAuthForm) {
+          return StartScreen(
+            onStart: () => setState(() => _showAuthForm = true),
           );
         }
 
@@ -236,7 +249,17 @@ class _LoginPanel extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const FlutterLogo(size: 64),
+        Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: Image.asset(
+              IntroLoadingScreen.puppyAsset,
+              width: 132,
+              height: 132,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         Text(
           isSignUp ? '찰스톡 시작하기' : '찰스톡 로그인',
