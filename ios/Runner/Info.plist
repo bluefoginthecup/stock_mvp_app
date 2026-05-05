@@ -2,7 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -21,9 +22,30 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.101861330698-9rjumcn1dc88o6j7uirv3op8ce30a1u0</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>GIDClientID</key>
+	<string>101861330698-9rjumcn1dc88o6j7uirv3op8ce30a1u0.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>영수증, 거래명세서, 제품 사진 등 업무 자료를 촬영해 재고와 거래 기록에 첨부하기 위해 카메라를 사용합니다.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>거래처 정보를 빠르게 입력하기 위해 사용자가 선택한 연락처 정보를 가져옵니다.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+    <string>사진 보관함에서 영수증, 거래명세서, 제품 사진 등 업무 자료를 선택해 재고와 거래 기록에 첨부하기 위해 사용합니다.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -42,29 +64,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-    <key>NSCameraUsageDescription</key>
-    <string>영수증, 거래명세서, 원단 사진 등 업무 자료를 촬영해 재고와 거래 기록에 첨부하기 위해 카메라를 사용합니다.</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>사진 보관함에서 영수증, 거래명세서, 원단 사진 등 업무 자료를 선택해 재고와 거래 기록에 첨부하기 위해 사용합니다.</string>
-    <key>NSContactsUsageDescription</key>
-    <string>거래처 정보를 빠르게 입력하기 위해 사용자가 선택한 연락처 정보를 가져옵니다.</string>
-    <key>GIDClientID</key>
-    <string>101861330698-9rjumcn1dc88o6j7uirv3op8ce30a1u0.apps.googleusercontent.com</string>
-    <key>CFBundleURLTypes</key>
-    <array>
-      <dict>
-        <key>CFBundleTypeRole</key>
-        <string>Editor</string>
-        <key>CFBundleURLSchemes</key>
-        <array>
-          <string>com.googleusercontent.apps.101861330698-9rjumcn1dc88o6j7uirv3op8ce30a1u0</string>
-        </array>
-      </dict>
-    </array>
-
 </dict>
 </plist>

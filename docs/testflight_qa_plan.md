@@ -11,6 +11,9 @@ Last updated: 2026-05-05
 ## Smoke Test
 
 - [ ] Fresh install opens without crash.
+- [ ] Email/password sign-up works.
+- [ ] Email/password sign-in works.
+- [ ] Password reset email request works.
 - [ ] Google/Firebase sign-in works.
 - [ ] Existing login session restores correctly.
 - [ ] Dashboard loads after login.
@@ -90,4 +93,3 @@ Last updated: 2026-05-05
 - [ ] Support URL is live.
 - [ ] Demo reviewer account is ready.
 - [ ] App Store screenshots are captured.
-

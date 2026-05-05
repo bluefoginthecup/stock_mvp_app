@@ -37,6 +37,30 @@ class AuthService {
     await _auth.signInWithCredential(cred);
   }
 
+  Future<void> signInWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    await _auth.signInWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+  }
+
+  Future<void> createUserWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    await _auth.createUserWithEmailAndPassword(
+      email: email.trim(),
+      password: password,
+    );
+  }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
   Future<void> signOut() async {
     await _gsi.signOut();
     await _auth.signOut();
