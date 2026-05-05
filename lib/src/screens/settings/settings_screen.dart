@@ -161,16 +161,18 @@ class SettingsScreen extends StatelessWidget {
               onTap: () async {
                 final ok = await showDialog<bool>(
                   context: context,
-                  builder: (_) => AlertDialog(
+                  builder: (dialogContext) => AlertDialog(
                     title: const Text('시드 임포트(전체)'),
                     content: const Text(
                         '현재 DB에 전체 시드 데이터를 가져올까요?\n기존 데이터와 병합/덮어쓰기는 SeedImporter 로직을 따릅니다.'),
                     actions: [
                       TextButton(
-                          onPressed: () => Navigator.pop(context, false),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
                           child: const Text('취소')),
                       FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
                           child: const Text('가져오기')),
                     ],
                   ),
@@ -191,15 +193,17 @@ class SettingsScreen extends StatelessWidget {
               onTap: () async {
                 final ok = await showDialog<bool>(
                   context: context,
-                  builder: (_) => AlertDialog(
+                  builder: (dialogContext) => AlertDialog(
                     title: const Text('폴더만 임포트'),
                     content: const Text('folders.json만 임포트합니다. 계속할까요?'),
                     actions: [
                       TextButton(
-                          onPressed: () => Navigator.pop(context, false),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
                           child: const Text('취소')),
                       FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
                           child: const Text('가져오기')),
                     ],
                   ),
@@ -215,15 +219,17 @@ class SettingsScreen extends StatelessWidget {
               onTap: () async {
                 final ok = await showDialog<bool>(
                   context: context,
-                  builder: (_) => AlertDialog(
+                  builder: (dialogContext) => AlertDialog(
                     title: const Text('아이템만 임포트'),
                     content: const Text('items.json만 임포트합니다. 계속할까요?'),
                     actions: [
                       TextButton(
-                          onPressed: () => Navigator.pop(context, false),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
                           child: const Text('취소')),
                       FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
                           child: const Text('가져오기')),
                     ],
                   ),
@@ -239,15 +245,17 @@ class SettingsScreen extends StatelessWidget {
               onTap: () async {
                 final ok = await showDialog<bool>(
                   context: context,
-                  builder: (_) => AlertDialog(
+                  builder: (dialogContext) => AlertDialog(
                     title: const Text('BOM만 임포트'),
                     content: const Text('bom.json만 임포트합니다. 계속할까요?'),
                     actions: [
                       TextButton(
-                          onPressed: () => Navigator.pop(context, false),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
                           child: const Text('취소')),
                       FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
                           child: const Text('가져오기')),
                     ],
                   ),
@@ -263,15 +271,17 @@ class SettingsScreen extends StatelessWidget {
               onTap: () async {
                 final ok = await showDialog<bool>(
                   context: context,
-                  builder: (_) => AlertDialog(
+                  builder: (dialogContext) => AlertDialog(
                     title: const Text('로트만 임포트'),
                     content: const Text('lots.json만 임포트합니다. 계속할까요?'),
                     actions: [
                       TextButton(
-                          onPressed: () => Navigator.pop(context, false),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
                           child: const Text('취소')),
                       FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
                           child: const Text('가져오기')),
                     ],
                   ),
@@ -316,16 +326,16 @@ class SettingsScreen extends StatelessWidget {
               onTap: () async {
                 final ok = await showDialog<bool>(
                   context: context,
-                  builder: (_) => AlertDialog(
+                  builder: (dialogContext) => AlertDialog(
                     title: const Text('DB 초기화'),
                     content: const Text('로컬 데이터베이스를 삭제하고 새로 생성합니다. 계속할까요?'),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context, false),
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
                         child: const Text('취소'),
                       ),
                       FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
                         child: const Text('초기화'),
                       ),
                     ],

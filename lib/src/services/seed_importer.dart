@@ -8,10 +8,8 @@ import '../models/bom.dart';
 import '../models/lot.dart'; // ✅ Practical-MIN: Lot 모델
 import '../repos/repo_interfaces.dart';
 import '../repos/drift_unified_repo.dart'; // ✅ 폴더/lot/path 백필용 (InMemoryRepo)
-import 'package:flutter/widgets.dart';            // ⬅️ BuildContext
-import 'package:provider/provider.dart';          // ⬅️ context.read()
-
-
+import 'package:flutter/widgets.dart'; // ⬅️ BuildContext
+import 'package:provider/provider.dart'; // ⬅️ context.read()
 
 // ✅ 추가: 파트 구분용 enum
 enum SeedPart { folders, items, bom, lots }
@@ -33,8 +31,9 @@ class UnifiedSeedImporter {
   final bool verbose;
 
   // 임포트 시 초기재고 채우기 정책 (원하면 false 로 바꿔 0부터 시작)
-  static const bool useStockHintsQtyAsInitial = true; // stockHints.qty 를 qty 로 반영
-  static const bool useSeedQtyAsInitial = true;       // seedQty 를 qty 로 반영
+  static const bool useStockHintsQtyAsInitial =
+      true; // stockHints.qty 를 qty 로 반영
+  static const bool useSeedQtyAsInitial = true; // seedQty 를 qty 로 반영
 
   UnifiedSeedImporter({
     required this.itemRepo,
@@ -51,14 +50,14 @@ class UnifiedSeedImporter {
   Future<void> importUnifiedFromAssets({
     required String itemsAssetPath,
     required String foldersAssetPath,
-    String? bomAssetPath,   // optional
-    String? lotsAssetPath,  // ✅ optional (Practical-MIN)
+    String? bomAssetPath, // optional
+    String? lotsAssetPath, // ✅ optional (Practical-MIN)
     bool clearBefore = false,
   }) async {
     _log('Loading assets...');
     String itemsJson, foldersJson, bomJson = '', lotsJson = '';
     try {
-      itemsJson   = await rootBundle.loadString(itemsAssetPath);
+      itemsJson = await rootBundle.loadString(itemsAssetPath);
       foldersJson = await rootBundle.loadString(foldersAssetPath);
       if (bomAssetPath != null && bomAssetPath.isNotEmpty) {
         bomJson = await rootBundle.loadString(bomAssetPath);
@@ -66,7 +65,8 @@ class UnifiedSeedImporter {
       if (lotsAssetPath != null && lotsAssetPath.isNotEmpty) {
         lotsJson = await rootBundle.loadString(lotsAssetPath);
       }
-      _log('Loaded: items(${itemsJson.length}B), folders(${foldersJson.length}B), '
+      _log(
+          'Loaded: items(${itemsJson.length}B), folders(${foldersJson.length}B), '
           'bom(${bomJson.isEmpty ? "none" : "${bomJson.length}B"}), '
           'lots(${lotsJson.isEmpty ? "none" : "${lotsJson.length}B"})');
     } catch (e) {
@@ -97,7 +97,8 @@ class UnifiedSeedImporter {
     if (dynItems.searchItemsGlobal is Function) {
       try {
         for (final entry in (await dynItems.searchItemsGlobal('rouen_gray'))) {
-          print('🔹 Item ${entry.id}  folder=${entry.folder}/${entry.subfolder}/${entry.subsubfolder}');
+          print(
+              '🔹 Item ${entry.id}  folder=${entry.folder}/${entry.subfolder}/${entry.subsubfolder}');
           if (dynFolders.itemPathIds is Function) {
             print('   pathIds=${dynFolders.itemPathIds(entry.id)}');
           }
@@ -111,16 +112,16 @@ class UnifiedSeedImporter {
     required String itemsJson,
     required String foldersJson,
     required String bomJson, // 빈 문자열일 수 있음
-    String lotsJson = '',    // ✅ 기본값 빈 문자열
+    String lotsJson = '', // ✅ 기본값 빈 문자열
     bool clearBefore = false,
   }) async {
     dynamic itemsPayload, foldersPayload, bomPayload, lotsPayload;
 
     try {
-      itemsPayload   = jsonDecode(itemsJson);
+      itemsPayload = jsonDecode(itemsJson);
       foldersPayload = jsonDecode(foldersJson);
-      bomPayload     = bomJson.trim().isEmpty ? const [] : jsonDecode(bomJson);
-      lotsPayload    = lotsJson.trim().isEmpty ? const [] : jsonDecode(lotsJson);
+      bomPayload = bomJson.trim().isEmpty ? const [] : jsonDecode(bomJson);
+      lotsPayload = lotsJson.trim().isEmpty ? const [] : jsonDecode(lotsJson);
       _log('Decoded JSON OK.');
 
       // 가벼운 구조 로그
@@ -128,10 +129,13 @@ class UnifiedSeedImporter {
       if (itemsPayload is Map) {
         final itemsList = itemsPayload['items'] as List?;
         _log('itemsPayload["items"] len=${itemsList?.length ?? 0}');
-        if (itemsList != null && itemsList.isNotEmpty && itemsList.first is Map) {
+        if (itemsList != null &&
+            itemsList.isNotEmpty &&
+            itemsList.first is Map) {
           final first = itemsList.first as Map;
           _log('first item keys=${first.keys.toList()}');
-          _log('first item preview=${first['id']}/${first['sku']}/${first['unit']} '
+          _log(
+              'first item preview=${first['id']}/${first['sku']}/${first['unit']} '
               'folder=${first['folder']}/${first['subfolder']}/${first['subsubfolder']} kind=${first['kind']}');
         }
       }
@@ -141,13 +145,17 @@ class UnifiedSeedImporter {
     }
 
     // 파싱
-    final items   = _parseItemsV1(itemsPayload, tag: 'items.json');
+    final items = _parseItemsV1(itemsPayload, tag: 'items.json');
     final folders = _parseFoldersV1(foldersPayload, tag: 'folders.json');
     final bomRows = _parseBomV1(bomPayload, tag: 'bom.json');
-    final lotsMap = _parseLotsV1(lotsPayload, tag: 'lots.json'); // ✅ itemId -> List<Lot>
+    final lotsMap =
+        _parseLotsV1(lotsPayload, tag: 'lots.json'); // ✅ itemId -> List<Lot>
 
-    _log('Parsed -> items:${items.length}, folders:${folders.length}, bomRows:${bomRows.length}, lotsItems:${lotsMap.length}');
-    if (items.isEmpty)  _log('⚠️ items가 0개입니다. payload type=${itemsPayload.runtimeType}, top-level=${_topKeys(itemsPayload)}');
+    _log(
+        'Parsed -> items:${items.length}, folders:${folders.length}, bomRows:${bomRows.length}, lotsItems:${lotsMap.length}');
+    if (items.isEmpty)
+      _log(
+          '⚠️ items가 0개입니다. payload type=${itemsPayload.runtimeType}, top-level=${_topKeys(itemsPayload)}');
     if (bomRows.isEmpty) _log('ℹ️ bomRows가 0개입니다. (정상일 수도 있음)');
     if (lotsMap.isEmpty) _log('ℹ️ lots가 비어있습니다. (정상일 수도 있음)');
 
@@ -157,7 +165,7 @@ class UnifiedSeedImporter {
     }
 
     // Folders: 시드의 id/parentId를 **보존**하여 저장
-    if (folders.isNotEmpty) _persistFoldersIfSupported(folders);
+    if (folders.isNotEmpty) await _persistFoldersIfSupported(folders);
     // Items upsert (트리 지원 repo면 폴더 경로까지 같이 세팅, 아니면 그냥 upsertItem)
     var upsertOk = 0, upsertFail = 0;
     for (final it in items) {
@@ -186,9 +194,8 @@ class UnifiedSeedImporter {
                 createIfMissing: true,
               ) as List?;
 
-              final pathIds = (ids ?? const [])
-                  .whereType<String>()
-                  .toList(growable: false);
+              final pathIds =
+                  (ids ?? const []).whereType<String>().toList(growable: false);
 
               if (pathIds.isNotEmpty) {
                 await dyn.createItemUnderPath(
@@ -230,17 +237,18 @@ class UnifiedSeedImporter {
           bomOk++;
         } catch (e) {
           bomFail++;
-          _log('❌ upsertBomRow failed parent=${r.parentItemId} comp=${r.componentItemId}: $e');
+          _log(
+              '❌ upsertBomRow failed parent=${r.parentItemId} comp=${r.componentItemId}: $e');
         }
       }
       _log('BOM upsert done: ok=$bomOk fail=$bomFail');
       try {
-       final dyn = drift ?? itemRepo;
-       if ((dyn as dynamic).refreshBomSnapshot is Function) {
-         await (dyn as dynamic).refreshBomSnapshot();
-         _log('BOM snapshot refreshed.');
-       }
-     } catch (_) {}
+        final dyn = drift ?? itemRepo;
+        if ((dyn as dynamic).refreshBomSnapshot is Function) {
+          await (dyn as dynamic).refreshBomSnapshot();
+          _log('BOM snapshot refreshed.');
+        }
+      } catch (_) {}
     }
 
     // ✅ LOTS upsert (→ driftoryRepo 우선)
@@ -295,7 +303,8 @@ class UnifiedSeedImporter {
     }
 
     if (out.isNotEmpty) {
-      _log('[$tag] first item => id=${out.first.id}, sku=${out.first.sku}, folder=${out.first.folder}/${out.first.subfolder}/${out.first.subsubfolder}');
+      _log(
+          '[$tag] first item => id=${out.first.id}, sku=${out.first.sku}, folder=${out.first.folder}/${out.first.subfolder}/${out.first.subsubfolder}');
     }
     return out;
   }
@@ -310,10 +319,12 @@ class UnifiedSeedImporter {
       return FolderNode(
         id: (m['id'] ?? '').toString(),
         name: (m['name'] ?? '').toString(),
-        depth: (m['depth'] is int) ? m['depth'] : 1,
         parentId: (m['parentId']?.toString().isEmpty ?? true)
             ? null
             : m['parentId'].toString(),
+        depth: (m['depth'] is int)
+            ? m['depth']
+            : ((m['parentId']?.toString().isEmpty ?? true) ? 0 : 1),
         order: (m['order'] is int) ? m['order'] : 0,
       );
     }).toList();
@@ -356,7 +367,8 @@ class UnifiedSeedImporter {
     }
     if (out.isNotEmpty) {
       final r = out.first;
-      _log('[$tag] first bom => parent=${r.parentItemId}, comp=${r.componentItemId}, kind=${r.kind}, qty=${r.qtyPer}');
+      _log(
+          '[$tag] first bom => parent=${r.parentItemId}, comp=${r.componentItemId}, kind=${r.kind}, qty=${r.qtyPer}');
     }
     return out;
   }
@@ -366,8 +378,8 @@ class UnifiedSeedImporter {
     final list = (payload is List)
         ? payload
         : (payload is Map && payload['lots'] is List)
-        ? (payload['lots'] as List)
-        : const [];
+            ? (payload['lots'] as List)
+            : const [];
 
     if (list.isEmpty) {
       _log('[$tag] No lots. shape=${_topKeys(payload)}');
@@ -413,96 +425,94 @@ class UnifiedSeedImporter {
     } catch (_) {}
   }
 
-  void _persistFoldersIfSupported(List<FolderNode> folders) {
-    () async {
-      try {
-        // 폴더 트리는 drift(있으면) 우선, 없으면 itemRepo에 시도
-        final dyn = (drift ?? itemRepo) as dynamic;
+  Future<void> _persistFoldersIfSupported(List<FolderNode> folders) async {
+    try {
+      // 폴더 트리는 drift(있으면) 우선, 없으면 itemRepo에 시도
+      final dyn = (drift ?? itemRepo) as dynamic;
 
-        // depth, order 기준으로 부모 먼저
-        folders.sort((a, b) {
-          final d = a.depth.compareTo(b.depth);
-          return d != 0 ? d : a.order.compareTo(b.order);
-        });
+      // depth, order 기준으로 부모 먼저
+      folders.sort((a, b) {
+        final d = a.depth.compareTo(b.depth);
+        return d != 0 ? d : a.order.compareTo(b.order);
+      });
 
-        var ok = 0, skip = 0, warn = 0;
+      var ok = 0, skip = 0, warn = 0;
 
-        // 1) 최우선: upsertFolderNode(FolderNode)
-        if (dyn.upsertFolderNode is Function) {
-          for (final f in folders) {
-            try {
-              await dyn.upsertFolderNode(f); // id/parentId 그대로 보존
-              ok++;
-            } catch (e) {
-              skip++;
-              if (verbose) {
-                _log('Folder upsert skipped (${f.id}:${f.name}): $e');
-              }
+      // 1) 최우선: upsertFolderNode(FolderNode)
+      if (dyn.upsertFolderNode is Function) {
+        for (final f in folders) {
+          try {
+            await dyn.upsertFolderNode(f); // id/parentId 그대로 보존
+            ok++;
+          } catch (e) {
+            skip++;
+            if (verbose) {
+              _log('Folder upsert skipped (${f.id}:${f.name}): $e');
             }
           }
-          if (verbose) {
-            _log('Folders persisted via upsertFolderNode: ok=$ok skipped=$skip');
-          }
-
-          // 2) 다음: createFolderNodeWithId(...)
-        } else if (dyn.createFolderNodeWithId is Function) {
-          for (final f in folders) {
-            try {
-              await dyn.createFolderNodeWithId(
-                id: f.id,
-                parentId: f.parentId,
-                name: f.name,
-                depth: f.depth,
-                order: f.order,
-              );
-              ok++;
-            } catch (e) {
-              // 이미 존재 등 → 스킵
-              skip++;
-              if (verbose) {
-                _log('Folder createWithId skipped (${f.id}:${f.name}): $e');
-              }
-            }
-          }
-          if (verbose) {
-            _log(
-                'Folders persisted via createFolderNodeWithId: ok=$ok skipped=$skip');
-          }
-
-          // 3) 마지막 수단: createFolderNode(parentId,name) — ⚠️ id 보존 불가
-        } else if (dyn.createFolderNode is Function) {
-          _log('⚠️ Repo에 upsertFolderNode/createFolderNodeWithId가 없습니다. '
-              'createFolderNode(parentId,name)로 생성하면 시드 id가 보존되지 않습니다.');
-          for (final f in folders) {
-            try {
-              // parentId는 시드 id 이므로, repo에서 같은 id를 찾을 방법이 없으면 그대로 전달 불가
-              // 일부 repo가 getFolderById를 지원한다면 보정 가능
-              String? parentRepoId = f.parentId;
-              if (dyn.getFolderById is Function && f.parentId != null) {
-                final parent = await dyn.getFolderById(f.parentId);
-                parentRepoId = parent?.id; // 없으면 null
-              }
-              await dyn.createFolderNode(parentId: parentRepoId, name: f.name);
-              ok++;
-              warn++;
-            } catch (e) {
-              skip++;
-              if (verbose) {
-                _log('Folder create (no-id) skipped (${f.name}): $e');
-              }
-            }
-          }
-          if (verbose) {
-            _log(
-                'Folders persisted via createFolderNode: ok=$ok skipped=$skip (⚠️id 보존 안됨:$warn)');
-          }
-        } else {
-          if (verbose) _log('Folder persistence not supported by repo.');
         }
-      } catch (e) {
-        if (verbose) _log('Folder persist failed: $e');
+        if (verbose) {
+          _log('Folders persisted via upsertFolderNode: ok=$ok skipped=$skip');
+        }
+
+        // 2) 다음: createFolderNodeWithId(...)
+      } else if (dyn.createFolderNodeWithId is Function) {
+        for (final f in folders) {
+          try {
+            await dyn.createFolderNodeWithId(
+              id: f.id,
+              parentId: f.parentId,
+              name: f.name,
+              depth: f.depth,
+              order: f.order,
+            );
+            ok++;
+          } catch (e) {
+            // 이미 존재 등 → 스킵
+            skip++;
+            if (verbose) {
+              _log('Folder createWithId skipped (${f.id}:${f.name}): $e');
+            }
+          }
+        }
+        if (verbose) {
+          _log(
+              'Folders persisted via createFolderNodeWithId: ok=$ok skipped=$skip');
+        }
+
+        // 3) 마지막 수단: createFolderNode(parentId,name) — ⚠️ id 보존 불가
+      } else if (dyn.createFolderNode is Function) {
+        _log('⚠️ Repo에 upsertFolderNode/createFolderNodeWithId가 없습니다. '
+            'createFolderNode(parentId,name)로 생성하면 시드 id가 보존되지 않습니다.');
+        for (final f in folders) {
+          try {
+            // parentId는 시드 id 이므로, repo에서 같은 id를 찾을 방법이 없으면 그대로 전달 불가
+            // 일부 repo가 getFolderById를 지원한다면 보정 가능
+            String? parentRepoId = f.parentId;
+            if (dyn.getFolderById is Function && f.parentId != null) {
+              final parent = await dyn.getFolderById(f.parentId);
+              parentRepoId = parent?.id; // 없으면 null
+            }
+            await dyn.createFolderNode(parentId: parentRepoId, name: f.name);
+            ok++;
+            warn++;
+          } catch (e) {
+            skip++;
+            if (verbose) {
+              _log('Folder create (no-id) skipped (${f.name}): $e');
+            }
+          }
+        }
+        if (verbose) {
+          _log(
+              'Folders persisted via createFolderNode: ok=$ok skipped=$skip (⚠️id 보존 안됨:$warn)');
+        }
+      } else {
+        if (verbose) _log('Folder persistence not supported by repo.');
       }
-    }();
+    } catch (e) {
+      if (verbose) _log('Folder persist failed: $e');
+    }
   }
 
   /// ✅ Lots upsert: repo 가 upsertLots(itemId, List<Lot>) 지원할 때만 수행
@@ -569,15 +579,15 @@ class UnifiedSeedImporter {
       return s.isEmpty ? null : s;
     }
 
-    final qty             =
-    _numOrNull(m['stockHints_qty'] ?? m['h_qty'] ?? m['qty']); // qty는 seed 초기재고 정책과도 겹치므로 우선 보관
-    final usableQtyM      =
-    _numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
-    final unitIn          = _strOrNull(m['unit_in'] ?? m['unitIn']);
-    final unitOut         =
-    _strOrNull(m['unit_out'] ?? m['unitOut'] ?? m['unit']); // unitOut 없으면 unit 참고
-    final conversionRate  =
-    _numOrNull(m['conversion_rate'] ?? m['conversionRate']);
+    final qty = _numOrNull(m['stockHints_qty'] ??
+        m['h_qty'] ??
+        m['qty']); // qty는 seed 초기재고 정책과도 겹치므로 우선 보관
+    final usableQtyM = _numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
+    final unitIn = _strOrNull(m['unit_in'] ?? m['unitIn']);
+    final unitOut = _strOrNull(
+        m['unit_out'] ?? m['unitOut'] ?? m['unit']); // unitOut 없으면 unit 참고
+    final conversionRate =
+        _numOrNull(m['conversion_rate'] ?? m['conversionRate']);
 
     final hasAny = qty != null ||
         usableQtyM != null ||
@@ -649,9 +659,7 @@ class UnifiedSeedImporter {
           (m['stockHints']['qty'] != null)) {
         m['qty'] = m['stockHints']['qty'];
       }
-      if (m['qty'] == null &&
-          useSeedQtyAsInitial &&
-          m['seedQty'] != null) {
+      if (m['qty'] == null && useSeedQtyAsInitial && m['seedQty'] != null) {
         m['qty'] = m['seedQty'];
       }
       m['qty'] ??= 0;
@@ -701,12 +709,9 @@ class UnifiedSeedImporter {
     final l2Norm = _normName(legacyL2);
     final l3Norm = _normName(legacyL3);
 
-    // 1) depth=1, parentId=null, name=l1Name
+    // 1) depth=0, parentId=null, name=l1Name
     final l1 = folders.firstWhere(
-          (f) =>
-      f.depth == 1 &&
-          f.parentId == null &&
-          _normName(f.name) == l1Norm,
+      (f) => f.depth == 0 && f.parentId == null && _normName(f.name) == l1Norm,
       orElse: () => FolderNode(
         id: '',
         name: '',
@@ -723,10 +728,8 @@ class UnifiedSeedImporter {
     String? l2Id;
     if (legacyL2.isNotEmpty) {
       final l2 = folders.firstWhere(
-            (f) =>
-        f.depth == 2 &&
-            f.parentId == l1.id &&
-            _normName(f.name) == l2Norm,
+        (f) =>
+            f.depth == 1 && f.parentId == l1.id && _normName(f.name) == l2Norm,
         orElse: () => FolderNode(
           id: '',
           name: '',
@@ -743,10 +746,8 @@ class UnifiedSeedImporter {
     String? l3Id;
     if (legacyL3.isNotEmpty && l2Id != null) {
       final l3 = folders.firstWhere(
-            (f) =>
-        f.depth == 3 &&
-            f.parentId == l2Id &&
-            _normName(f.name) == l3Norm,
+        (f) =>
+            f.depth == 2 && f.parentId == l2Id && _normName(f.name) == l3Norm,
         orElse: () => FolderNode(
           id: '',
           name: '',
@@ -772,23 +773,27 @@ class UnifiedSeedImporter {
   /// - Provider에서 필요한 Repo들을 안전하게 읽어와서 importer를 구성
   /// - 기본 에셋 경로를 제공 (필요 시 파라미터로 덮어쓰기)
   static Future<void> run(
-      BuildContext context, {
-        String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
-        String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
-        String? bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
-        String? lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
-        bool clearBefore = false,
-        bool verbose = false,
-      }) async {
+    BuildContext context, {
+    String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
+    String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
+    String? bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
+    String? lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
+    bool clearBefore = false,
+    bool verbose = false,
+  }) async {
     // 필수
     final itemRepo = context.read<ItemRepo>();
 
     // 선택(없어도 동작)
     BomRepo? bomRepo;
-    try { bomRepo = context.read<BomRepo>(); } catch (_) {}
+    try {
+      bomRepo = context.read<BomRepo>();
+    } catch (_) {}
 
     DriftUnifiedRepo? drift;
-    try { drift = context.read<DriftUnifiedRepo>(); } catch (_) {}
+    try {
+      drift = context.read<DriftUnifiedRepo>();
+    } catch (_) {}
 
     final importer = UnifiedSeedImporter(
       itemRepo: itemRepo,
@@ -805,7 +810,8 @@ class UnifiedSeedImporter {
       clearBefore: clearBefore,
     );
   }
-/// ------------------------------------------------------------------------
+
+  /// ------------------------------------------------------------------------
 
 // ────────────────────────────────────────────────────────────────
 // UnifiedSeedImporter 클래스 내부에 아래 메서드들을 "추가"하세요
@@ -813,287 +819,290 @@ class UnifiedSeedImporter {
 
   /// ───────────────── 폴더만 임포트 ─────────────────
   Future<void> importOnlyFoldersFromAssets({
-  required String foldersAssetPath,
-  bool clearBefore = false, // 선택: 폴더만 비우는 기능이 repo에 있으면 활용
+    required String foldersAssetPath,
+    bool clearBefore = false, // 선택: 폴더만 비우는 기능이 repo에 있으면 활용
   }) async {
-  _log('Loading folders asset...');
-  final foldersJson = await rootBundle.loadString(foldersAssetPath);
+    _log('Loading folders asset...');
+    final foldersJson = await rootBundle.loadString(foldersAssetPath);
 
-  dynamic foldersPayload;
-  try {
-  foldersPayload = jsonDecode(foldersJson);
-  _log('folders.json decoded.');
-  } catch (e) {
-  _log('❌ folders decode failed: $e');
-  rethrow;
-  }
+    dynamic foldersPayload;
+    try {
+      foldersPayload = jsonDecode(foldersJson);
+      _log('folders.json decoded.');
+    } catch (e) {
+      _log('❌ folders decode failed: $e');
+      rethrow;
+    }
 
-  final folders = _parseFoldersV1(foldersPayload, tag: 'folders.json');
-  _log('Parsed folders: ${folders.length}');
+    final folders = _parseFoldersV1(foldersPayload, tag: 'folders.json');
+    _log('Parsed folders: ${folders.length}');
 
-  if (clearBefore) {
-  try {
-  final dyn = (drift ?? itemRepo) as dynamic;
-  if (dyn.clearFolders is Function) {
-  _log('Clearing folders...');
-  await dyn.clearFolders();
-  }
-  } catch (_) {}
-  }
+    if (clearBefore) {
+      try {
+        final dyn = (drift ?? itemRepo) as dynamic;
+        if (dyn.clearFolders is Function) {
+          _log('Clearing folders...');
+          await dyn.clearFolders();
+        }
+      } catch (_) {}
+    }
 
-  _persistFoldersIfSupported(folders);
+    await _persistFoldersIfSupported(folders);
 
-  // 트리 리빌드/리프레시
-  try {
-  final dyn = (drift ?? itemRepo) as dynamic;
-  if (dyn.reloadTree is Function) await dyn.reloadTree();
-  if (dyn.notifyListeners is Function) dyn.notifyListeners();
-  } catch (_) {}
+    // 트리 리빌드/리프레시
+    try {
+      final dyn = (drift ?? itemRepo) as dynamic;
+      if (dyn.reloadTree is Function) await dyn.reloadTree();
+      if (dyn.notifyListeners is Function) dyn.notifyListeners();
+    } catch (_) {}
   }
 
   /// ───────────────── 아이템만 임포트 ─────────────────
   Future<void> importOnlyItemsFromAssets({
-  required String itemsAssetPath,
-  bool clearBefore = false,
+    required String itemsAssetPath,
+    bool clearBefore = false,
   }) async {
-  _log('Loading items asset...');
-  final itemsJson = await rootBundle.loadString(itemsAssetPath);
+    _log('Loading items asset...');
+    final itemsJson = await rootBundle.loadString(itemsAssetPath);
 
-  dynamic itemsPayload;
-  try {
-  itemsPayload = jsonDecode(itemsJson);
-  _log('items.json decoded.');
-  } catch (e) {
-  _log('❌ items decode failed: $e');
-  rethrow;
-  }
+    dynamic itemsPayload;
+    try {
+      itemsPayload = jsonDecode(itemsJson);
+      _log('items.json decoded.');
+    } catch (e) {
+      _log('❌ items decode failed: $e');
+      rethrow;
+    }
 
-  final items = _parseItemsV1(itemsPayload, tag: 'items.json');
-  _log('Parsed items: ${items.length}');
+    final items = _parseItemsV1(itemsPayload, tag: 'items.json');
+    _log('Parsed items: ${items.length}');
 
-  if (clearBefore) {
-  await _clearAllIfSupported(); // 아이템만 비우는 API가 없으면 전체 클리어
-  }
+    if (clearBefore) {
+      await _clearAllIfSupported(); // 아이템만 비우는 API가 없으면 전체 클리어
+    }
 
-  var ok = 0, fail = 0;
-  for (final it in items) {
-  try {
-  bool handledByTree = false;
-  try {
-  final dyn = itemRepo as dynamic;
-  final hasPathIdsByNames = dyn.pathIdsByNames is Function;
-  final hasCreateItemUnderPath = dyn.createItemUnderPath is Function;
+    var ok = 0, fail = 0;
+    for (final it in items) {
+      try {
+        bool handledByTree = false;
+        try {
+          final dyn = itemRepo as dynamic;
+          final hasPathIdsByNames = dyn.pathIdsByNames is Function;
+          final hasCreateItemUnderPath = dyn.createItemUnderPath is Function;
 
-  if (hasPathIdsByNames && hasCreateItemUnderPath) {
-  final l1 = (it.folder ?? '').toString();
-  final l2 = (it.subfolder ?? '').toString();
-  final l3 = (it.subsubfolder ?? '').toString();
+          if (hasPathIdsByNames && hasCreateItemUnderPath) {
+            final l1 = (it.folder ?? '').toString();
+            final l2 = (it.subfolder ?? '').toString();
+            final l3 = (it.subsubfolder ?? '').toString();
 
-  if (l1.isNotEmpty) {
-  final ids = await dyn.pathIdsByNames(
-  l1Name: l1,
-  l2Name: l2.isEmpty ? null : l2,
-  l3Name: l3.isEmpty ? null : l3,
-  createIfMissing: true,
-  ) as List?;
-  final pathIds = (ids ?? const []).whereType<String>().toList(growable: false);
-  if (pathIds.isNotEmpty) {
-  await dyn.createItemUnderPath(pathIds: pathIds, item: it);
-  handledByTree = true;
-  }
-  }
-  }
-  } catch (_) {}
+            if (l1.isNotEmpty) {
+              final ids = await dyn.pathIdsByNames(
+                l1Name: l1,
+                l2Name: l2.isEmpty ? null : l2,
+                l3Name: l3.isEmpty ? null : l3,
+                createIfMissing: true,
+              ) as List?;
+              final pathIds =
+                  (ids ?? const []).whereType<String>().toList(growable: false);
+              if (pathIds.isNotEmpty) {
+                await dyn.createItemUnderPath(pathIds: pathIds, item: it);
+                handledByTree = true;
+              }
+            }
+          }
+        } catch (_) {}
 
-  if (!handledByTree) {
-  await itemRepo.upsertItem(it);
-  }
-  ok++;
-  } catch (e) {
-  fail++;
-  _log('❌ upsertItem failed id=${it.id}: $e');
-  }
-  }
-  _log('Items upsert: ok=$ok fail=$fail');
+        if (!handledByTree) {
+          await itemRepo.upsertItem(it);
+        }
+        ok++;
+      } catch (e) {
+        fail++;
+        _log('❌ upsertItem failed id=${it.id}: $e');
+      }
+    }
+    _log('Items upsert: ok=$ok fail=$fail');
 
-  // UI 갱신
-  try {
-  final dyn = itemRepo as dynamic;
-  if (dyn.listItems is Function) await dyn.listItems();
-  if (dyn.notifyListeners is Function) dyn.notifyListeners();
-  } catch (_) {}
+    // UI 갱신
+    try {
+      final dyn = itemRepo as dynamic;
+      if (dyn.listItems is Function) await dyn.listItems();
+      if (dyn.notifyListeners is Function) dyn.notifyListeners();
+    } catch (_) {}
   }
 
   /// ───────────────── BOM만 임포트 ─────────────────
   Future<void> importOnlyBomFromAssets({
-  required String bomAssetPath,
-  bool clearBefore = false,
+    required String bomAssetPath,
+    bool clearBefore = false,
   }) async {
-  if (bomRepo == null) {
-  _log('⚠️ bomRepo == null → BOM 저장 생략');
-  return;
-  }
+    if (bomRepo == null) {
+      _log('⚠️ bomRepo == null → BOM 저장 생략');
+      return;
+    }
 
-  _log('Loading bom asset...');
-  final bomJson = await rootBundle.loadString(bomAssetPath);
+    _log('Loading bom asset...');
+    final bomJson = await rootBundle.loadString(bomAssetPath);
 
-  dynamic bomPayload;
-  try {
-  bomPayload = bomJson.trim().isEmpty ? const [] : jsonDecode(bomJson);
-  _log('bom.json decoded.');
-  } catch (e) {
-  _log('❌ bom decode failed: $e');
-  rethrow;
-  }
+    dynamic bomPayload;
+    try {
+      bomPayload = bomJson.trim().isEmpty ? const [] : jsonDecode(bomJson);
+      _log('bom.json decoded.');
+    } catch (e) {
+      _log('❌ bom decode failed: $e');
+      rethrow;
+    }
 
-  final rows = _parseBomV1(bomPayload, tag: 'bom.json');
-  _log('Parsed bom rows: ${rows.length}');
+    final rows = _parseBomV1(bomPayload, tag: 'bom.json');
+    _log('Parsed bom rows: ${rows.length}');
 
-  if (clearBefore) {
-  try {
-  final dyn = (drift ?? bomRepo) as dynamic;
-  if (dyn.clearBom is Function) {
-  _log('Clearing BOM...');
-  await dyn.clearBom();
-  }
-  } catch (_) {}
-  }
+    if (clearBefore) {
+      try {
+        final dyn = (drift ?? bomRepo) as dynamic;
+        if (dyn.clearBom is Function) {
+          _log('Clearing BOM...');
+          await dyn.clearBom();
+        }
+      } catch (_) {}
+    }
 
-  var ok = 0, fail = 0;
-  for (final r in rows) {
-  try {
-  await bomRepo!.upsertBomRow(r);
-  ok++;
-  } catch (e) {
-  fail++;
-  _log('❌ upsertBomRow failed parent=${r.parentItemId}, comp=${r.componentItemId}: $e');
-  }
-  }
-  _log('BOM upsert: ok=$ok fail=$fail');
+    var ok = 0, fail = 0;
+    for (final r in rows) {
+      try {
+        await bomRepo!.upsertBomRow(r);
+        ok++;
+      } catch (e) {
+        fail++;
+        _log(
+            '❌ upsertBomRow failed parent=${r.parentItemId}, comp=${r.componentItemId}: $e');
+      }
+    }
+    _log('BOM upsert: ok=$ok fail=$fail');
 
-  // BOM 스냅샷/인덱스 리프레시
-  try {
-  final dyn = (drift ?? itemRepo) as dynamic;
-  if ((dyn as dynamic).refreshBomSnapshot is Function) {
-  await (dyn as dynamic).refreshBomSnapshot();
-  _log('BOM snapshot refreshed.');
-  } else if ((bomRepo as dynamic).reloadBomIndex is Function) {
-  await (bomRepo as dynamic).reloadBomIndex();
-  _log('BOM index reloaded.');
-  }
-  } catch (_) {}
+    // BOM 스냅샷/인덱스 리프레시
+    try {
+      final dyn = (drift ?? itemRepo) as dynamic;
+      if ((dyn as dynamic).refreshBomSnapshot is Function) {
+        await (dyn as dynamic).refreshBomSnapshot();
+        _log('BOM snapshot refreshed.');
+      } else if ((bomRepo as dynamic).reloadBomIndex is Function) {
+        await (bomRepo as dynamic).reloadBomIndex();
+        _log('BOM index reloaded.');
+      }
+    } catch (_) {}
   }
 
   /// ───────────────── LOTS만 임포트 ─────────────────
   Future<void> importOnlyLotsFromAssets({
-  required String lotsAssetPath,
-  bool clearBefore = false,
+    required String lotsAssetPath,
+    bool clearBefore = false,
   }) async {
-  _log('Loading lots asset...');
-  final lotsJson = await rootBundle.loadString(lotsAssetPath);
+    _log('Loading lots asset...');
+    final lotsJson = await rootBundle.loadString(lotsAssetPath);
 
-  dynamic lotsPayload;
-  try {
-  lotsPayload = lotsJson.trim().isEmpty ? const [] : jsonDecode(lotsJson);
-  _log('lots.json decoded.');
-  } catch (e) {
-  _log('❌ lots decode failed: $e');
-  rethrow;
-  }
+    dynamic lotsPayload;
+    try {
+      lotsPayload = lotsJson.trim().isEmpty ? const [] : jsonDecode(lotsJson);
+      _log('lots.json decoded.');
+    } catch (e) {
+      _log('❌ lots decode failed: $e');
+      rethrow;
+    }
 
-  final byItem = _parseLotsV1(lotsPayload, tag: 'lots.json');
-  _log('Parsed lots map: items=${byItem.length}');
+    final byItem = _parseLotsV1(lotsPayload, tag: 'lots.json');
+    _log('Parsed lots map: items=${byItem.length}');
 
-  if (clearBefore) {
-  try {
-  final dyn = (drift ?? itemRepo) as dynamic;
-  if (dyn.clearLots is Function) {
-  _log('Clearing lots...');
-  await dyn.clearLots();
-  }
-  } catch (_) {}
-  }
+    if (clearBefore) {
+      try {
+        final dyn = (drift ?? itemRepo) as dynamic;
+        if (dyn.clearLots is Function) {
+          _log('Clearing lots...');
+          await dyn.clearLots();
+        }
+      } catch (_) {}
+    }
 
-  _persistLotsIfSupported(byItem);
+    _persistLotsIfSupported(byItem);
 
-  // 트랜잭션/스냅샷 갱신
-  try {
-  final dyn = (drift ?? itemRepo) as dynamic;
-  if (dyn.listTxns is Function) await dyn.listTxns();
-  if (dyn.notifyListeners is Function) dyn.notifyListeners();
-  } catch (_) {}
+    // 트랜잭션/스냅샷 갱신
+    try {
+      final dyn = (drift ?? itemRepo) as dynamic;
+      if (dyn.listTxns is Function) await dyn.listTxns();
+      if (dyn.notifyListeners is Function) dyn.notifyListeners();
+    } catch (_) {}
   }
 
   /// ───────────────── 파트별 실행기(에셋 경로 받음) ─────────────────
   Future<void> importPartFromAssets({
-  required SeedPart part,
-  String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
-  String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
-  String bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
-  String lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
-  bool clearBefore = false,
+    required SeedPart part,
+    String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
+    String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
+    String bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
+    String lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
+    bool clearBefore = false,
   }) async {
-  switch (part) {
-  case SeedPart.folders:
-  return importOnlyFoldersFromAssets(
-  foldersAssetPath: foldersAssetPath,
-  clearBefore: clearBefore,
-  );
-  case SeedPart.items:
-  return importOnlyItemsFromAssets(
-  itemsAssetPath: itemsAssetPath,
-  clearBefore: clearBefore,
-  );
-  case SeedPart.bom:
-  return importOnlyBomFromAssets(
-  bomAssetPath: bomAssetPath,
-  clearBefore: clearBefore,
-  );
-  case SeedPart.lots:
-  return importOnlyLotsFromAssets(
-  lotsAssetPath: lotsAssetPath,
-  clearBefore: clearBefore,
-  );
-  }
+    switch (part) {
+      case SeedPart.folders:
+        return importOnlyFoldersFromAssets(
+          foldersAssetPath: foldersAssetPath,
+          clearBefore: clearBefore,
+        );
+      case SeedPart.items:
+        return importOnlyItemsFromAssets(
+          itemsAssetPath: itemsAssetPath,
+          clearBefore: clearBefore,
+        );
+      case SeedPart.bom:
+        return importOnlyBomFromAssets(
+          bomAssetPath: bomAssetPath,
+          clearBefore: clearBefore,
+        );
+      case SeedPart.lots:
+        return importOnlyLotsFromAssets(
+          lotsAssetPath: lotsAssetPath,
+          clearBefore: clearBefore,
+        );
+    }
   }
 
   /// ------------------------------------------------------------------------
   /// ✅ 정적 헬퍼: 화면에서 간단히 파트별 실행
   static Future<void> runPart(
-  BuildContext context, {
-  required SeedPart part,
-  String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
-  String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
-  String bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
-  String lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
-  bool clearBefore = false,
-  bool verbose = false,
+    BuildContext context, {
+    required SeedPart part,
+    String itemsAssetPath = 'assets/seeds/2025-10-26/items.json',
+    String foldersAssetPath = 'assets/seeds/2025-10-26/folders.json',
+    String bomAssetPath = 'assets/seeds/2025-10-26/bom.json',
+    String lotsAssetPath = 'assets/seeds/2025-10-26/lots.json',
+    bool clearBefore = false,
+    bool verbose = false,
   }) async {
-  final itemRepo = context.read<ItemRepo>();
+    final itemRepo = context.read<ItemRepo>();
 
-  BomRepo? bomRepo;
-  try { bomRepo = context.read<BomRepo>(); } catch (_) {}
+    BomRepo? bomRepo;
+    try {
+      bomRepo = context.read<BomRepo>();
+    } catch (_) {}
 
-  DriftUnifiedRepo? drift;
-  try { drift = context.read<DriftUnifiedRepo>(); } catch (_) {}
+    DriftUnifiedRepo? drift;
+    try {
+      drift = context.read<DriftUnifiedRepo>();
+    } catch (_) {}
 
-  final importer = UnifiedSeedImporter(
-  itemRepo: itemRepo,
-  bomRepo: bomRepo,
-  drift: drift,
-  verbose: verbose,
-  );
+    final importer = UnifiedSeedImporter(
+      itemRepo: itemRepo,
+      bomRepo: bomRepo,
+      drift: drift,
+      verbose: verbose,
+    );
 
-  await importer.importPartFromAssets(
-  part: part,
-  itemsAssetPath: itemsAssetPath,
-  foldersAssetPath: foldersAssetPath,
-  bomAssetPath: bomAssetPath,
-  lotsAssetPath: lotsAssetPath,
-  clearBefore: clearBefore,
-  );
+    await importer.importPartFromAssets(
+      part: part,
+      itemsAssetPath: itemsAssetPath,
+      foldersAssetPath: foldersAssetPath,
+      bomAssetPath: bomAssetPath,
+      lotsAssetPath: lotsAssetPath,
+      clearBefore: clearBefore,
+    );
   }
-
-
 }
-

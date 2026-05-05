@@ -1,1 +1,29 @@
-[]
+{
+  "version": 1,
+  "folders": [
+    {
+      "id": "Finished",
+      "name": "완제품",
+      "depth": 0,
+      "order": 0
+    },
+    {
+      "id": "SemiFinished",
+      "name": "반제품",
+      "depth": 0,
+      "order": 1
+    },
+    {
+      "id": "Raw",
+      "name": "원자재",
+      "depth": 0,
+      "order": 2
+    },
+    {
+      "id": "Sub",
+      "name": "부자재",
+      "depth": 0,
+      "order": 3
+    }
+  ]
+}

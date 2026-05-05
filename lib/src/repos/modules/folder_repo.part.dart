@@ -4,6 +4,9 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
   @override
   FolderSortMode get sortMode => _sortMode;
 
+  bool isSystemRootFolder(String id) =>
+      SystemSeedService.systemRootFolders.containsKey(id);
+
   @override
   Future<void> setSortMode(FolderSortMode mode) async {
     _sortMode = mode;
@@ -17,6 +20,9 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
             name: Value(node.name),
             parentId: Value(node.parentId),
             depth: Value(node.depth),
+            order: Value(node.order),
+            isDeleted: const Value(false),
+            deletedAt: const Value(null),
           ),
         );
   }
@@ -151,6 +157,10 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
 
   @override
   Future<void> deleteFolderNode(String id, {bool force = false}) async {
+    if (isSystemRootFolder(id)) {
+      throw StateError('SYSTEM_FOLDER');
+    }
+
     final now = DateTime.now().toIso8601String();
 
     final children = await (db.select(db.folders)
@@ -209,6 +219,8 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
             name: Value(l1),
             parentId: const Value(null),
             depth: const Value(0),
+            isDeleted: const Value(false),
+            deletedAt: const Value(null),
           ),
         );
 
@@ -219,6 +231,8 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
               name: Value(l2!),
               parentId: Value(l1Id),
               depth: const Value(1),
+              isDeleted: const Value(false),
+              deletedAt: const Value(null),
             ),
           );
     }
@@ -230,6 +244,8 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
               name: Value(l3!),
               parentId: Value(l2Id),
               depth: const Value(2),
+              isDeleted: const Value(false),
+              deletedAt: const Value(null),
             ),
           );
     }

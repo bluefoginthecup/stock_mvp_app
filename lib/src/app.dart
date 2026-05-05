@@ -43,6 +43,7 @@ import 'services/export_service.dart';
 import 'services/folder_service.dart';
 import 'services/inventory_service.dart';
 import 'services/shortage_service.dart';
+import 'services/system_seed_service.dart';
 import 'db/app_database.dart';
 import 'repos/timeline_repo.dart';
 import 'ui/common/selection/item_selection_controller.dart';
@@ -200,6 +201,7 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
     await DbAutoBackupService.run();
 
     final repo = DriftUnifiedRepo(db);
+    await SystemSeedService.ensure(db);
     Future.microtask(() => repo.refreshBomSnapshot());
 
     return _AccountData(db: db, repo: repo);

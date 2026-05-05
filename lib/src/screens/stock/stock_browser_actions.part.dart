@@ -5,6 +5,7 @@ part of 'stock_browser_screen.dart';
 // ───────────────────────── 삭제 에러 메시지 매핑 ─────────────────────────
 String _friendlyDeleteError(Object e) {
   final s = e.toString();
+  if (s.contains('SYSTEM_FOLDER')) return '기본 대분류 폴더는 삭제할 수 없습니다.';
   if (s.contains('subfolders')) return '하위 폴더가 있어서 삭제할 수 없습니다.';
   if (s.contains('referenced by items')) return '아이템이 포함되어 있어서 삭제할 수 없습니다.';
   return '삭제할 수 없습니다: $s';
@@ -32,7 +33,7 @@ Future<void> _tryDeleteFolder(
   } on StateError catch (e) {
     if (!context.mounted) return;
 
-    final msg = e.message?.toString();
+    final msg = e.message.toString();
 
     // 🔥 핵심: 막혔을 때 처리
     if (msg == 'HAS_CHILDREN' || msg == 'HAS_ITEMS') {
