@@ -1,20 +1,17 @@
 import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import '../db/app_database.dart';
+import 'app_path_service.dart';
 
 class DbAutoBackupService {
-
   static const int maxBackups = 10;
 
   /// 앱 시작 시 실행
   static Future<void> run() async {
-
-    final dir = await getApplicationSupportDirectory();
-    final dbPath = p.join(dir.path, 'stockapp.db');
-
-    final dbFile = File(dbPath);
+    const pathService = AppPathService();
+    final dbFile = await pathService.stockDatabaseFile();
+    final dir = dbFile.parent;
 
     if (!await dbFile.exists()) {
       return;
@@ -26,11 +23,11 @@ class DbAutoBackupService {
 
   /// migration 전에 실행 (Crash-safe)
   static Future<void> createPreMigrationBackup() async {
+    const pathService = AppPathService();
+    await pathService.migrateLegacyDatabaseToActiveUserIfNeeded();
 
-    final dir = await getApplicationSupportDirectory();
-    final dbPath = p.join(dir.path, 'stockapp.db');
-
-    final dbFile = File(dbPath);
+    final dbFile = await pathService.stockDatabaseFile();
+    final dir = dbFile.parent;
 
     if (!await dbFile.exists()) {
       return;
@@ -43,7 +40,6 @@ class DbAutoBackupService {
 
   /// 하루 1회 백업
   static Future<void> _backupOncePerDay(File dbFile, Directory dir) async {
-
     final backupDir = Directory(p.join(dir.path, 'db_backups'));
 
     if (!await backupDir.exists()) {
@@ -74,7 +70,6 @@ class DbAutoBackupService {
 
   /// 오래된 백업 삭제
   static Future<void> _cleanupOldBackups(Directory dir) async {
-
     final backupDir = Directory(p.join(dir.path, 'db_backups'));
 
     if (!await backupDir.exists()) return;
@@ -85,8 +80,7 @@ class DbAutoBackupService {
         .where((f) => f.path.endsWith('.db'))
         .toList();
 
-    files.sort((a, b) =>
-        b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+    files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
 
     if (files.length <= maxBackups) return;
 

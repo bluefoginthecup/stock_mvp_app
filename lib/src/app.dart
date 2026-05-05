@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stockapp_mvp/src/app/main_tab_screen.dart';
+import 'models/purchase_order.dart';
+import 'models/txn.dart';
+import 'providers/cart_manager.dart';
 import 'screens/orders/order_list_screen.dart';
 import 'screens/stock/stock_browser_screen.dart';
 import 'screens/txns/txn_list_screen.dart';
@@ -29,7 +32,22 @@ import 'screens/receipts/receipt_create_screen.dart';
 import 'screens/receipts/receipts_home_screen.dart';
 import 'features/fabric_cutting/screens/fabric_cutting_home_screen.dart';
 
+import 'app/main_tab_controller.dart';
 import 'repos/repo_interfaces.dart';
+import 'repos/drift_unified_repo.dart';
+import 'services/app_path_service.dart';
+import 'services/auth_service.dart';
+import 'services/bom_service.dart';
+import 'services/db_auto_backup_service.dart';
+import 'services/export_service.dart';
+import 'services/folder_service.dart';
+import 'services/inventory_service.dart';
+import 'services/shortage_service.dart';
+import 'db/app_database.dart';
+import 'repos/timeline_repo.dart';
+import 'ui/common/selection/item_selection_controller.dart';
+import 'ui/nav/item_detail_opener.dart';
+import 'utils/item_presentation.dart';
 
 // ✅ 추가: 로그인 게이트
 import 'screens/auth/launch_gate.dart';
@@ -49,77 +67,251 @@ class StockApp extends StatelessWidget {
               GlobalKey<ScaffoldMessengerState>();
           final lang = context.watch<LangController>();
 
-          return MaterialApp(
-            navigatorKey: rootNavKey,
-            scaffoldMessengerKey: messengerKey,
-            locale: lang.locale,
-            onGenerateTitle: (ctx) => L10n.of(ctx).app_title,
-            localizationsDelegates: L10n.localizationsDelegates,
-            supportedLocales: const [
-              Locale('ko'),
-              Locale('en'),
-              Locale('es'),
-            ],
-            theme: ThemeData(/* ... */),
+          return StreamBuilder(
+            stream: context.read<AuthService>().userStream,
+            initialData: context.read<AuthService>().currentUser,
+            builder: (context, snapshot) {
+              final user = snapshot.data;
+              final app = _StockMaterialApp(
+                rootNavKey: rootNavKey,
+                messengerKey: messengerKey,
+                locale: lang.locale,
+              );
 
-            // ✅ 앱 첫 화면: 로그인 게이트
-            home: LaunchGate(
-              // 로그인된 상태라면 여기로 진입
-              signedInBuilder: (_) => const MainTabScreen(),
-            ),
+              if (user == null) return app;
 
-            // 나머지 라우트는 그대로 유지
-            routes: {
-              '/orders': (_) => const OrderListScreen(),
-              '/stock': (_) => const StockBrowserScreen(),
-              '/txns': (_) => const TxnListScreen(),
-              '/works': (_) => const WorkListScreen(),
-              '/purchases': (_) => const PurchaseListScreen(),
-              '/quotes': (_) => const QuoteListScreen(),
-              '/settings/language': (_) => const LanguageSettingsScreen(),
-              '/items/detail': (context) {
-                final itemId =
-                    ModalRoute.of(context)!.settings.arguments as String;
-                return StockItemDetailScreen(itemId: itemId);
-              },
-              '/purchases/detail': (context) {
-                debugPrint('[Route] /purchases/detail builder called');
-                final orderId =
-                    ModalRoute.of(context)!.settings.arguments as String;
-                final poRepo = context.read<PurchaseOrderRepo>();
-                return PurchaseDetailScreen(orderId: orderId, repo: poRepo);
-              },
-              '/quotes/detail': (context) {
-                final quoteId =
-                    ModalRoute.of(context)!.settings.arguments as String;
-                return QuoteDetailScreen(quoteId: quoteId);
-              },
-              '/trash': (_) =>
-                  const TrashScreen(), // ← 여기서만 TrashScreen을 import
-              '/cart': (_) => const CartScreen(),
-              '/orders/detail': (context) {
-                final orderId =
-                    ModalRoute.of(context)!.settings.arguments as String;
-                return OrderDetailScreen(orderId: orderId);
-              },
-              '/settings': (_) => const SettingsScreen(),
-              '/settings/cloud-backups': (_) => const CloudBackupListScreen(),
-              '/suppliers/new': (context) => const SupplierFormScreen(),
-              '/suppliers/edit': (context) {
-                final id = ModalRoute.of(context)!.settings.arguments as String;
-                return SupplierFormScreen(supplierId: id);
-              },
-              '/suppliers': (_) => const SupplierListScreen(),
-              '/receipts': (_) => const ReceiptsHomeScreen(),
-              '/receipts/new': (_) => const ReceiptCreateScreen(),
-              '/fabric-cutting': (_) => const FabricCuttingHomeScreen(),
+              return _AccountDataScope(
+                key: ValueKey(user.uid),
+                uid: user.uid,
+                child: app,
+              );
             },
-
-            // ⚠️ home을 쓰면 initialRoute는 무시되므로 제거해도 됩니다.
-            // initialRoute: '/',
           );
         },
       ),
     );
   }
+}
+
+class _StockMaterialApp extends StatelessWidget {
+  final GlobalKey<NavigatorState> rootNavKey;
+  final GlobalKey<ScaffoldMessengerState> messengerKey;
+  final Locale? locale;
+
+  const _StockMaterialApp({
+    required this.rootNavKey,
+    required this.messengerKey,
+    required this.locale,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      navigatorKey: rootNavKey,
+      scaffoldMessengerKey: messengerKey,
+      locale: locale,
+      onGenerateTitle: (ctx) => L10n.of(ctx).app_title,
+      localizationsDelegates: L10n.localizationsDelegates,
+      supportedLocales: const [
+        Locale('ko'),
+        Locale('en'),
+        Locale('es'),
+      ],
+      theme: ThemeData(/* ... */),
+      home: LaunchGate(
+        signedInBuilder: (_) => const MainTabScreen(),
+      ),
+      routes: {
+        '/orders': (_) => const OrderListScreen(),
+        '/stock': (_) => const StockBrowserScreen(),
+        '/txns': (_) => const TxnListScreen(),
+        '/works': (_) => const WorkListScreen(),
+        '/purchases': (_) => const PurchaseListScreen(),
+        '/quotes': (_) => const QuoteListScreen(),
+        '/settings/language': (_) => const LanguageSettingsScreen(),
+        '/items/detail': (context) {
+          final itemId = ModalRoute.of(context)!.settings.arguments as String;
+          return StockItemDetailScreen(itemId: itemId);
+        },
+        '/purchases/detail': (context) {
+          debugPrint('[Route] /purchases/detail builder called');
+          final orderId = ModalRoute.of(context)!.settings.arguments as String;
+          final poRepo = context.read<PurchaseOrderRepo>();
+          return PurchaseDetailScreen(orderId: orderId, repo: poRepo);
+        },
+        '/quotes/detail': (context) {
+          final quoteId = ModalRoute.of(context)!.settings.arguments as String;
+          return QuoteDetailScreen(quoteId: quoteId);
+        },
+        '/trash': (_) => const TrashScreen(),
+        '/cart': (_) => const CartScreen(),
+        '/orders/detail': (context) {
+          final orderId = ModalRoute.of(context)!.settings.arguments as String;
+          return OrderDetailScreen(orderId: orderId);
+        },
+        '/settings': (_) => const SettingsScreen(),
+        '/settings/cloud-backups': (_) => const CloudBackupListScreen(),
+        '/suppliers/new': (context) => const SupplierFormScreen(),
+        '/suppliers/edit': (context) {
+          final id = ModalRoute.of(context)!.settings.arguments as String;
+          return SupplierFormScreen(supplierId: id);
+        },
+        '/suppliers': (_) => const SupplierListScreen(),
+        '/receipts': (_) => const ReceiptsHomeScreen(),
+        '/receipts/new': (_) => const ReceiptCreateScreen(),
+        '/fabric-cutting': (_) => const FabricCuttingHomeScreen(),
+      },
+    );
+  }
+}
+
+class _AccountDataScope extends StatefulWidget {
+  final String uid;
+  final Widget child;
+
+  const _AccountDataScope({
+    super.key,
+    required this.uid,
+    required this.child,
+  });
+
+  @override
+  State<_AccountDataScope> createState() => _AccountDataScopeState();
+}
+
+class _AccountDataScopeState extends State<_AccountDataScope> {
+  late final Future<_AccountData> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _openAccountData();
+  }
+
+  Future<_AccountData> _openAccountData() async {
+    AppPathService.setActiveUserId(widget.uid);
+    await DbAutoBackupService.createPreMigrationBackup();
+
+    final db = AppDatabase();
+    debugPrint('DB schemaVersion: ${db.schemaVersion}');
+    debugPrint(
+        'DB path: ${(await const AppPathService().stockDatabaseFile()).path}');
+
+    await DbAutoBackupService.run();
+
+    final repo = DriftUnifiedRepo(db);
+    Future.microtask(() => repo.refreshBomSnapshot());
+
+    return _AccountData(db: db, repo: repo);
+  }
+
+  @override
+  void dispose() {
+    AppDatabase.closeInstance();
+    AppPathService.setActiveUserId(null);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_AccountData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const MaterialApp(
+            home: Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+          );
+        }
+
+        final data = snapshot.data!;
+        final repo = data.repo;
+
+        return MultiProvider(
+          providers: [
+            Provider<AppDatabase>.value(value: data.db),
+            ChangeNotifierProvider<DriftUnifiedRepo>.value(value: repo),
+            Provider<ItemRepo>.value(value: repo),
+            Provider<TxnRepo>.value(value: repo),
+            Provider<BomRepo>.value(value: repo),
+            Provider<OrderRepo>.value(value: repo),
+            Provider<WorkRepo>.value(value: repo),
+            Provider<PurchaseOrderRepo>.value(value: repo),
+            Provider<QuoteRepo>.value(value: repo),
+            Provider<SupplierRepo>.value(value: repo),
+            Provider<FolderTreeRepo>.value(value: repo),
+            Provider<TrashRepo>.value(value: repo),
+            Provider<ExportService>(
+              create: (ctx) => ExportService(
+                itemRepo: ctx.read<ItemRepo>(),
+                folderRepo: ctx.read<FolderTreeRepo>(),
+              ),
+            ),
+            Provider<FolderService>(
+              create: (context) =>
+                  FolderService(context.read<DriftUnifiedRepo>()),
+            ),
+            Provider<TimelineRepo>(
+              create: (_) => TimelineRepo(
+                getOrderById: (id) async {
+                  final order = await repo.getOrder(id);
+                  if (order == null) throw Exception('Order not found: $id');
+                  return order;
+                },
+                listPOsByOrderId: (id) => repo.listPurchaseOrdersByOrderId(id),
+                listWorksByOrderId: (id) => repo.listWorksByOrderId(id),
+              ),
+            ),
+            StreamProvider<List<Txn>>(
+              create: (ctx) => repo.watchTxns(),
+              initialData: const [],
+            ),
+            StreamProvider<List<PurchaseOrder>>(
+              create: (ctx) =>
+                  ctx.read<PurchaseOrderRepo>().watchAllPurchaseOrders(),
+              initialData: const [],
+            ),
+            ChangeNotifierProvider(create: (_) => CartManager()),
+            ChangeNotifierProvider(create: (_) => MainTabController()),
+            ChangeNotifierProvider(create: (_) => ItemSelectionController()),
+            Provider<ItemDetailOpener>(create: (_) => AppItemDetailOpener()),
+            Provider<ItemPathProvider>(
+              create: (ctx) => RepoItemPathFacade(ctx.read<ItemRepo>()),
+            ),
+            Provider<InventoryService>(
+              create: (ctx) => InventoryService(
+                works: ctx.read<WorkRepo>(),
+                purchases: ctx.read<PurchaseOrderRepo>(),
+                txns: ctx.read<TxnRepo>(),
+                boms: ctx.read<BomRepo>(),
+                orders: ctx.read<OrderRepo>(),
+                items: ctx.read<ItemRepo>(),
+              ),
+            ),
+            Provider<BomService>(
+              create: (ctx) => BomService(ctx.read<ItemRepo>()),
+            ),
+            Provider<ShortageService>(
+              create: (ctx) => ShortageService(
+                repo: ctx.read<ItemRepo>(),
+                bom: ctx.read<BomService>(),
+              ),
+            ),
+          ],
+          child: widget.child,
+        );
+      },
+    );
+  }
+}
+
+class _AccountData {
+  final AppDatabase db;
+  final DriftUnifiedRepo repo;
+
+  const _AccountData({
+    required this.db,
+    required this.repo,
+  });
 }

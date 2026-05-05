@@ -13,6 +13,7 @@ import 'package:share_plus/share_plus.dart';
 import '../repos/repo_interfaces.dart';
 import '../models/folder_node.dart';
 import '../db/app_database.dart';
+import 'app_path_service.dart';
 import 'backup_file_delivery_service.dart';
 
 class ExportService {
@@ -76,7 +77,7 @@ class ExportService {
   Future<String> exportDatabase() async {
     final db = AppDatabase(); // 현재 DB instance
 
-    final dir = await getApplicationSupportDirectory();
+    final dir = await const AppPathService().userSupportDirectory();
 
     final stamp = DateFormat('yyyyMMdd-HHmmss').format(DateTime.now());
 
@@ -112,18 +113,16 @@ class ExportService {
 
     await AppDatabase.closeInstance();
 
-    final dir = await getApplicationSupportDirectory();
-    final dbPath = p.join(dir.path, 'stockapp.db');
-
-    final dbFile = File(dbPath);
-    final wal = File('$dbPath-wal');
-    final shm = File('$dbPath-shm');
+    final dbFile = await const AppPathService().stockDatabaseFile();
+    final wal = File('${dbFile.path}-wal');
+    final shm = File('${dbFile.path}-shm');
 
     if (await wal.exists()) await wal.delete();
     if (await shm.exists()) await shm.delete();
     if (await dbFile.exists()) await dbFile.delete();
 
-    await backupFile.copy(dbPath);
+    await dbFile.parent.create(recursive: true);
+    await backupFile.copy(dbFile.path);
 
     debugPrint("🟢 DB 복원 완료");
 

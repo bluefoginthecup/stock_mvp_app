@@ -7,13 +7,11 @@ import 'package:csv/csv.dart';
 import 'package:provider/provider.dart';
 
 import '../../repos/repo_interfaces.dart';
+import '../../services/app_path_service.dart';
 import '../../services/shortage_service.dart';
 
 import 'dart:io';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-
 
 class DemandRow {
   final String itemId;
@@ -44,10 +42,8 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
   // 결과(품목별)
   List<FinishedResult> finishedResults = [];
 
-
-    // itemId -> name 캐시 (한 번에 로드해서 UI에서 즉시 lookup)
-    Map<String, String> itemNameCache = {};
-
+  // itemId -> name 캐시 (한 번에 로드해서 UI에서 즉시 lookup)
+  Map<String, String> itemNameCache = {};
 
   // 전체 합산(요약용)
   Map<String, double> semiShortTotal = {};
@@ -88,34 +84,35 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
     return -1;
   }
 
-  String _fmt(double v) => (v % 1 == 0) ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  String _fmt(double v) =>
+      (v % 1 == 0) ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
 
-    String _nameOf(String id) => itemNameCache[id] ?? id;
+  String _nameOf(String id) => itemNameCache[id] ?? id;
 
-    Future<void> _loadItemNames(Set<String> ids) async {
-        final repo = context.read<ItemRepo>();
-        final m = <String, String>{};
+  Future<void> _loadItemNames(Set<String> ids) async {
+    final repo = context.read<ItemRepo>();
+    final m = <String, String>{};
 
-        for (final id in ids) {
-          try {
-            final name = await repo.nameOf(id); // Future<String?>
-            if (name != null && name.trim().isNotEmpty) {
-              m[id] = name;
-            }
-          } catch (_) {
-            // 실패해도 id로 fallback
-          }
+    for (final id in ids) {
+      try {
+        final name = await repo.nameOf(id); // Future<String?>
+        if (name != null && name.trim().isNotEmpty) {
+          m[id] = name;
         }
-
-        if (!mounted) return;
-        setState(() => itemNameCache.addAll(m));
+      } catch (_) {
+        // 실패해도 id로 fallback
       }
+    }
 
+    if (!mounted) return;
+    setState(() => itemNameCache.addAll(m));
+  }
 
   Widget _shortageLines(Map<String, double> m, {int limit = 50}) {
     if (m.isEmpty) return const Text('부족 없음');
 
-    final entries = m.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final entries = m.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: entries.take(limit).map((e) {
@@ -177,7 +174,8 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
       if (table.isEmpty) throw StateError('CSV가 비어있습니다.');
 
       final header = table.first;
-      final itemIdIdx = _findHeaderIndex(header, const ['item_id', 'itemid', 'id']);
+      final itemIdIdx =
+          _findHeaderIndex(header, const ['item_id', 'itemid', 'id']);
       final qtyIdx = _findHeaderIndex(header, const ['qty', 'quantity']);
 
       if (itemIdIdx < 0 || qtyIdx < 0) {
@@ -287,22 +285,22 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
         return b.demand.qty.compareTo(a.demand.qty);
       });
 
-    // ✅ 화면에 표시할 모든 itemId 모아서 이름 캐싱
-          final ids = <String>{};
-          for (final fr in perItem) {
-            ids.add(fr.demand.itemId); // 완제품
-            fr.res.semiShortage.keys.forEach(ids.add);
-            fr.res.rawShortage.keys.forEach(ids.add);
-            fr.res.subShortage.keys.forEach(ids.add);
-          }
-           //(원하면 need까지도 이름 표시하게 포함 가능)
-           for (final fr in perItem) {
-            fr.res.semiNeed.keys.forEach(ids.add);
-             fr.res.rawNeed.keys.forEach(ids.add);
-            fr.res.subNeed.keys.forEach(ids.add);
-           }
+      // ✅ 화면에 표시할 모든 itemId 모아서 이름 캐싱
+      final ids = <String>{};
+      for (final fr in perItem) {
+        ids.add(fr.demand.itemId); // 완제품
+        fr.res.semiShortage.keys.forEach(ids.add);
+        fr.res.rawShortage.keys.forEach(ids.add);
+        fr.res.subShortage.keys.forEach(ids.add);
+      }
+      //(원하면 need까지도 이름 표시하게 포함 가능)
+      for (final fr in perItem) {
+        fr.res.semiNeed.keys.forEach(ids.add);
+        fr.res.rawNeed.keys.forEach(ids.add);
+        fr.res.subNeed.keys.forEach(ids.add);
+      }
 
-          await _loadItemNames(ids);
+      await _loadItemNames(ids);
 
       setState(() {
         finishedResults = perItem;
@@ -325,7 +323,9 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
 
   Widget _summaryCard() {
     if (_loading) return const SizedBox.shrink();
-    if (finishedResults.isEmpty && unknownItemIds.isEmpty) return const SizedBox.shrink();
+    if (finishedResults.isEmpty && unknownItemIds.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Card(
       child: Padding(
@@ -350,24 +350,24 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
     final r = fr.res;
     final d = fr.demand;
 
-    final bomEmpty = r.semiNeed.isEmpty && r.rawNeed.isEmpty && r.subNeed.isEmpty;
+    final bomEmpty =
+        r.semiNeed.isEmpty && r.rawNeed.isEmpty && r.subNeed.isEmpty;
 
-    final hasAnyShort =
-        r.finishedShortage > 0 ||
-            r.semiShortage.isNotEmpty ||
-            r.rawShortage.isNotEmpty ||
-            r.subShortage.isNotEmpty;
+    final hasAnyShort = r.finishedShortage > 0 ||
+        r.semiShortage.isNotEmpty ||
+        r.rawShortage.isNotEmpty ||
+        r.subShortage.isNotEmpty;
 
     return Card(
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         title: Text(
-                    _nameOf(d.itemId),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-        subtitle: Text('주문 ${d.qty} · 현재고 ${_fmt(r.finishedStock)} · 부족 ${_fmt(r.finishedShortage)}'),
-
+          _nameOf(d.itemId),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+            '주문 ${d.qty} · 현재고 ${_fmt(r.finishedStock)} · 부족 ${_fmt(r.finishedShortage)}'),
         trailing: hasAnyShort
             ? const Icon(Icons.warning_amber_rounded)
             : const Icon(Icons.check_circle_outline),
@@ -390,15 +390,18 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
                 ],
 
                 const SizedBox(height: 10),
-                const Text('반제품 부족', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('반제품 부족',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 _shortageLines(r.semiShortage),
 
                 const SizedBox(height: 10),
-                const Text('원자재 부족', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('원자재 부족',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 _shortageLines(r.rawShortage),
 
                 const SizedBox(height: 10),
-                const Text('부자재 부족', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('부자재 부족',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 _shortageLines(r.subShortage),
               ],
             ),
@@ -421,7 +424,6 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
             if (_fileName != null) Text('파일: $_fileName'),
             Text('업로드 라인(합산 후): ${_rows.length}'),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -447,26 +449,21 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
                     label: const Text('db추출'),
                   ),
                 ),
-
               ],
             ),
-
             if (_loading) ...[
               const SizedBox(height: 12),
               const LinearProgressIndicator(),
             ],
-
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: const TextStyle(color: Colors.red)),
             ],
-
             const SizedBox(height: 12),
             Expanded(
               child: ListView(
                 children: [
                   _summaryCard(),
-
                   if (unknownItemIds.isNotEmpty) ...[
                     Card(
                       child: Padding(
@@ -485,7 +482,6 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
                       ),
                     ),
                   ],
-
                   ...finishedResults.map(_finishedCard),
                 ],
               ),
@@ -495,10 +491,11 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
       ),
     );
   }
+
   Future<void> _exportDb() async {
     try {
-      final dir = await getApplicationSupportDirectory();
-      final dbFile = File(p.join(dir.path, 'stockapp.db'));
+      final dbFile = await const AppPathService().stockDatabaseFile();
+      final dir = dbFile.parent;
 
       if (!await dbFile.exists()) {
         debugPrint('DB 파일이 존재하지 않음: ${dbFile.path}');
@@ -524,6 +521,4 @@ class _ShortageCalcScreenState extends State<ShortageCalcScreen> {
       debugPrint('DB export error: $e');
     }
   }
-
-
 }
