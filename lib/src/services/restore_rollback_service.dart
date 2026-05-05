@@ -82,13 +82,33 @@ class RestoreRollbackService {
     );
   }
 
+  Future<RestoreRollbackCleanupResult> cleanupAllRollbacks() async {
+    final rollbacks = await _listRollbacks();
+    var deletedCount = 0;
+    var deletedBytes = 0;
+
+    for (final rollback in rollbacks) {
+      final dir = Directory(rollback.path);
+      if (!await dir.exists()) continue;
+
+      deletedBytes += rollback.bytes;
+      await dir.delete(recursive: true);
+      deletedCount += 1;
+    }
+
+    return RestoreRollbackCleanupResult(
+      deletedCount: deletedCount,
+      deletedBytes: deletedBytes,
+    );
+  }
+
   Future<List<RestoreRollbackInfo>> _listRollbacks() async {
-    final appSupportDir = await paths.appSupportDirectory();
-    if (!await appSupportDir.exists()) return const [];
+    final userSupportDir = await paths.userSupportDirectory();
+    if (!await userSupportDir.exists()) return const [];
 
     final rollbacks = <RestoreRollbackInfo>[];
     await for (final entity
-        in appSupportDir.list(recursive: false, followLinks: false)) {
+        in userSupportDir.list(recursive: false, followLinks: false)) {
       if (entity is! Directory) continue;
       if (!p.basename(entity.path).startsWith(rollbackPrefix)) continue;
 

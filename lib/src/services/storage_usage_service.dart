@@ -59,7 +59,7 @@ class StorageUsageService {
   final AppPathService paths;
 
   Future<StorageUsageSummary> calculate() async {
-    final baseDir = await paths.appSupportDirectory();
+    final baseDir = await paths.userSupportDirectory();
     final usages = <StorageFolderUsage>[];
 
     for (final folder in folders) {

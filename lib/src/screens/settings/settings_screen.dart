@@ -1118,7 +1118,7 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
                         ? null
                         : _cleanupRollbacks,
                     icon: const Icon(Icons.cleaning_services_outlined),
-                    label: const Text('오래된 rollback 정리'),
+                    label: const Text('rollback 모두 삭제'),
                   ),
                 ],
               ),
@@ -1147,7 +1147,7 @@ class _StorageUsageSectionState extends State<_StorageUsageSection> {
     });
 
     try {
-      final result = await _rollbackService.cleanupOldRollbacks();
+      final result = await _rollbackService.cleanupAllRollbacks();
       final summary = await _service.calculate();
       final rollbackSummary = await _rollbackService.calculateUsage();
       if (!mounted) return;
@@ -1933,7 +1933,7 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                         .format(_lastAutoAttemptAt!.toLocal()),
               ),
               const SizedBox(height: 12),
-              SwitchListTile.adaptive(
+              CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('자동 백업 사용'),
                 subtitle: const Text('앱 실행 시와 앱이 다시 활성화될 때 자동 백업 여부를 확인합니다.'),
@@ -1942,7 +1942,7 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                     ? null
                     : (value) => _saveAutoSettings(
                           CloudAutoBackupSettings(
-                            enabled: value,
+                            enabled: value ?? false,
                             frequency: _autoSettings.frequency,
                           ),
                         ),

@@ -108,9 +108,24 @@ class AppPathService {
   }
 
   Future<File> resolveAppFile(String storedPath) async {
-    if (p.isAbsolute(storedPath)) return File(storedPath);
-
     final dir = await userSupportDirectory();
+    if (p.isAbsolute(storedPath)) {
+      if (p.equals(storedPath, dir.path) || p.isWithin(dir.path, storedPath)) {
+        return File(storedPath);
+      }
+
+      final parts = p.split(storedPath);
+      final receiptsIndex = parts.lastIndexOf(purchaseReceiptsRelativeRoot);
+      if (receiptsIndex >= 0 && receiptsIndex < parts.length - 1) {
+        return File(p.joinAll([
+          dir.path,
+          ...parts.skip(receiptsIndex),
+        ]));
+      }
+
+      return File(storedPath);
+    }
+
     return File(p.joinAll([dir.path, ...p.posix.split(storedPath)]));
   }
 
@@ -119,11 +134,11 @@ class AppPathService {
       return _normalizeRelativePath(absoluteOrRelativePath);
     }
 
-    final dir = await appSupportDirectory();
-    if (p.equals(absoluteOrRelativePath, dir.path) ||
-        p.isWithin(dir.path, absoluteOrRelativePath)) {
+    final userDir = await userSupportDirectory();
+    if (p.equals(absoluteOrRelativePath, userDir.path) ||
+        p.isWithin(userDir.path, absoluteOrRelativePath)) {
       return _normalizeRelativePath(
-        p.relative(absoluteOrRelativePath, from: dir.path),
+        p.relative(absoluteOrRelativePath, from: userDir.path),
       );
     }
 

@@ -471,7 +471,7 @@ class FullRestoreService {
   }
 
   Future<Directory> _createRollback(String stamp) async {
-    final appSupportDir = await paths.appSupportDirectory();
+    final appSupportDir = await paths.userSupportDirectory();
     final rollbackDir = Directory(
       p.join(appSupportDir.path, 'full_restore_rollback_$stamp'),
     );
