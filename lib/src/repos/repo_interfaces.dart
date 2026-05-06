@@ -11,6 +11,7 @@ import '../models/quote_line.dart';
 import '../models/app_schedule.dart';
 import '../models/purchase_receipt.dart';
 import '../models/shipping_destination.dart';
+import '../models/storage_location.dart';
 import '../models/types.dart';
 import '../models/suppliers.dart';
 import '../models/folder_node.dart';
@@ -368,6 +369,36 @@ abstract class ShippingDestinationRepo {
   Future<void> setDefaultDestinationForSuppliers({
     required String destinationId,
     required Set<String> supplierIds,
+  });
+}
+
+abstract class StorageLocationRepo {
+  Future<String> createLocation(StorageLocation location);
+  Future<void> updateLocation(StorageLocation location);
+  Future<void> archiveLocation(String locationId);
+
+  Future<StorageLocation?> getLocation(String locationId);
+  Future<List<StorageLocation>> listRootLocations();
+  Future<List<StorageLocation>> listChildLocations(String parentId);
+  Future<List<StorageLocation>> searchLocations(String query);
+  Future<List<StorageLocation>> listLocationsForItem(String itemId);
+  Future<List<ItemLocation>> listItemLocationLinks(String itemId);
+  Future<List<Item>> listItemsForLocation(String locationId);
+  Future<List<ItemLocation>> listItemLocationsForLocation(String locationId);
+  Future<List<StorageLocation>> buildLocationBreadcrumb(String locationId);
+  Future<int> countChildLocations(String locationId);
+  Future<int> countItemsForLocation(String locationId);
+  Future<List<ItemWithLocations>> searchItemsWithLocations(String query);
+
+  Future<void> setLocationsForItem({
+    required String itemId,
+    required List<String> locationIds,
+    String? primaryLocationId,
+  });
+
+  Future<void> setPrimaryLocationForItem({
+    required String itemId,
+    required String locationId,
   });
 }
 

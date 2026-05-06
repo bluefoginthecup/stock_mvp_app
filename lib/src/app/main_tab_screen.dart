@@ -22,6 +22,7 @@ import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart'
 import 'package:stockapp_mvp/src/screens/settings/cloud_backup_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/settings/settings_screen.dart';
 import 'package:stockapp_mvp/src/screens/settings/shipping_destination_screen.dart';
+import 'package:stockapp_mvp/src/screens/settings/storage_location_screen.dart';
 import 'package:stockapp_mvp/src/screens/shortage/shortage_calc_screen.dart';
 import 'package:stockapp_mvp/src/screens/suppliers/supplier_form_screen.dart';
 import 'package:stockapp_mvp/src/screens/suppliers/supplier_list_screen.dart';
@@ -212,6 +213,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
             break;
           case '/settings/shipping-destinations':
             screen = const ShippingDestinationScreen();
+            break;
+          case '/settings/storage-locations':
+            screen = const StorageLocationScreen();
             break;
           case '/suppliers':
             screen = const SupplierListScreen();

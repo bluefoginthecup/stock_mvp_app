@@ -10004,6 +10004,796 @@ class SupplierShippingDestinationsCompanion
   }
 }
 
+class $StorageLocationsTable extends StorageLocations
+    with TableInfo<$StorageLocationsTable, StorageLocationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $StorageLocationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _parentIdMeta =
+      const VerificationMeta('parentId');
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+      'parent_id', aliasedName, true,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES storage_locations (id) ON DELETE SET NULL'));
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+      'type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _memoMeta = const VerificationMeta('memo');
+  @override
+  late final GeneratedColumn<String> memo = GeneratedColumn<String>(
+      'memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sortOrderMeta =
+      const VerificationMeta('sortOrder');
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+      'sort_order', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _isArchivedMeta =
+      const VerificationMeta('isArchived');
+  @override
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
+      'is_archived', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_archived" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        parentId,
+        type,
+        memo,
+        sortOrder,
+        isArchived,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'storage_locations';
+  @override
+  VerificationContext validateIntegrity(Insertable<StorageLocationRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(_parentIdMeta,
+          parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta));
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('memo')) {
+      context.handle(
+          _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(_sortOrderMeta,
+          sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta));
+    }
+    if (data.containsKey('is_archived')) {
+      context.handle(
+          _isArchivedMeta,
+          isArchived.isAcceptableOrUnknown(
+              data['is_archived']!, _isArchivedMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  StorageLocationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return StorageLocationRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      parentId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}parent_id']),
+      type: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      memo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}memo']),
+      sortOrder: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sort_order'])!,
+      isArchived: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_archived'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $StorageLocationsTable createAlias(String alias) {
+    return $StorageLocationsTable(attachedDatabase, alias);
+  }
+}
+
+class StorageLocationRow extends DataClass
+    implements Insertable<StorageLocationRow> {
+  final String id;
+  final String name;
+  final String? parentId;
+  final String type;
+  final String? memo;
+  final int sortOrder;
+  final bool isArchived;
+  final String createdAt;
+  final String updatedAt;
+  const StorageLocationRow(
+      {required this.id,
+      required this.name,
+      this.parentId,
+      required this.type,
+      this.memo,
+      required this.sortOrder,
+      required this.isArchived,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<String>(parentId);
+    }
+    map['type'] = Variable<String>(type);
+    if (!nullToAbsent || memo != null) {
+      map['memo'] = Variable<String>(memo);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['is_archived'] = Variable<bool>(isArchived);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    return map;
+  }
+
+  StorageLocationsCompanion toCompanion(bool nullToAbsent) {
+    return StorageLocationsCompanion(
+      id: Value(id),
+      name: Value(name),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
+      type: Value(type),
+      memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      sortOrder: Value(sortOrder),
+      isArchived: Value(isArchived),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory StorageLocationRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return StorageLocationRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
+      type: serializer.fromJson<String>(json['type']),
+      memo: serializer.fromJson<String?>(json['memo']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isArchived: serializer.fromJson<bool>(json['isArchived']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'parentId': serializer.toJson<String?>(parentId),
+      'type': serializer.toJson<String>(type),
+      'memo': serializer.toJson<String?>(memo),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'isArchived': serializer.toJson<bool>(isArchived),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+    };
+  }
+
+  StorageLocationRow copyWith(
+          {String? id,
+          String? name,
+          Value<String?> parentId = const Value.absent(),
+          String? type,
+          Value<String?> memo = const Value.absent(),
+          int? sortOrder,
+          bool? isArchived,
+          String? createdAt,
+          String? updatedAt}) =>
+      StorageLocationRow(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        parentId: parentId.present ? parentId.value : this.parentId,
+        type: type ?? this.type,
+        memo: memo.present ? memo.value : this.memo,
+        sortOrder: sortOrder ?? this.sortOrder,
+        isArchived: isArchived ?? this.isArchived,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  StorageLocationRow copyWithCompanion(StorageLocationsCompanion data) {
+    return StorageLocationRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      type: data.type.present ? data.type.value : this.type,
+      memo: data.memo.present ? data.memo.value : this.memo,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isArchived:
+          data.isArchived.present ? data.isArchived.value : this.isArchived,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StorageLocationRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('parentId: $parentId, ')
+          ..write('type: $type, ')
+          ..write('memo: $memo, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, parentId, type, memo, sortOrder,
+      isArchived, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is StorageLocationRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.parentId == this.parentId &&
+          other.type == this.type &&
+          other.memo == this.memo &&
+          other.sortOrder == this.sortOrder &&
+          other.isArchived == this.isArchived &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class StorageLocationsCompanion extends UpdateCompanion<StorageLocationRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> parentId;
+  final Value<String> type;
+  final Value<String?> memo;
+  final Value<int> sortOrder;
+  final Value<bool> isArchived;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<int> rowid;
+  const StorageLocationsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.memo = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  StorageLocationsCompanion.insert({
+    required String id,
+    required String name,
+    this.parentId = const Value.absent(),
+    required String type,
+    this.memo = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        type = Value(type),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<StorageLocationRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? parentId,
+    Expression<String>? type,
+    Expression<String>? memo,
+    Expression<int>? sortOrder,
+    Expression<bool>? isArchived,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (parentId != null) 'parent_id': parentId,
+      if (type != null) 'type': type,
+      if (memo != null) 'memo': memo,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (isArchived != null) 'is_archived': isArchived,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  StorageLocationsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String?>? parentId,
+      Value<String>? type,
+      Value<String?>? memo,
+      Value<int>? sortOrder,
+      Value<bool>? isArchived,
+      Value<String>? createdAt,
+      Value<String>? updatedAt,
+      Value<int>? rowid}) {
+    return StorageLocationsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      parentId: parentId ?? this.parentId,
+      type: type ?? this.type,
+      memo: memo ?? this.memo,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isArchived: isArchived ?? this.isArchived,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (memo.present) {
+      map['memo'] = Variable<String>(memo.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (isArchived.present) {
+      map['is_archived'] = Variable<bool>(isArchived.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('StorageLocationsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('parentId: $parentId, ')
+          ..write('type: $type, ')
+          ..write('memo: $memo, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ItemLocationsTable extends ItemLocations
+    with TableInfo<$ItemLocationsTable, ItemLocationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ItemLocationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+      'item_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES items (id) ON DELETE CASCADE'));
+  static const VerificationMeta _locationIdMeta =
+      const VerificationMeta('locationId');
+  @override
+  late final GeneratedColumn<String> locationId = GeneratedColumn<String>(
+      'location_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES storage_locations (id) ON DELETE CASCADE'));
+  static const VerificationMeta _isPrimaryMeta =
+      const VerificationMeta('isPrimary');
+  @override
+  late final GeneratedColumn<bool> isPrimary = GeneratedColumn<bool>(
+      'is_primary', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_primary" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _memoMeta = const VerificationMeta('memo');
+  @override
+  late final GeneratedColumn<String> memo = GeneratedColumn<String>(
+      'memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [itemId, locationId, isPrimary, memo, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'item_locations';
+  @override
+  VerificationContext validateIntegrity(Insertable<ItemLocationRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('item_id')) {
+      context.handle(_itemIdMeta,
+          itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta));
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('location_id')) {
+      context.handle(
+          _locationIdMeta,
+          locationId.isAcceptableOrUnknown(
+              data['location_id']!, _locationIdMeta));
+    } else if (isInserting) {
+      context.missing(_locationIdMeta);
+    }
+    if (data.containsKey('is_primary')) {
+      context.handle(_isPrimaryMeta,
+          isPrimary.isAcceptableOrUnknown(data['is_primary']!, _isPrimaryMeta));
+    }
+    if (data.containsKey('memo')) {
+      context.handle(
+          _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {itemId, locationId};
+  @override
+  ItemLocationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ItemLocationRow(
+      itemId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}item_id'])!,
+      locationId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}location_id'])!,
+      isPrimary: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_primary'])!,
+      memo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}memo']),
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $ItemLocationsTable createAlias(String alias) {
+    return $ItemLocationsTable(attachedDatabase, alias);
+  }
+}
+
+class ItemLocationRow extends DataClass implements Insertable<ItemLocationRow> {
+  final String itemId;
+  final String locationId;
+  final bool isPrimary;
+  final String? memo;
+  final String updatedAt;
+  const ItemLocationRow(
+      {required this.itemId,
+      required this.locationId,
+      required this.isPrimary,
+      this.memo,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['item_id'] = Variable<String>(itemId);
+    map['location_id'] = Variable<String>(locationId);
+    map['is_primary'] = Variable<bool>(isPrimary);
+    if (!nullToAbsent || memo != null) {
+      map['memo'] = Variable<String>(memo);
+    }
+    map['updated_at'] = Variable<String>(updatedAt);
+    return map;
+  }
+
+  ItemLocationsCompanion toCompanion(bool nullToAbsent) {
+    return ItemLocationsCompanion(
+      itemId: Value(itemId),
+      locationId: Value(locationId),
+      isPrimary: Value(isPrimary),
+      memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ItemLocationRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ItemLocationRow(
+      itemId: serializer.fromJson<String>(json['itemId']),
+      locationId: serializer.fromJson<String>(json['locationId']),
+      isPrimary: serializer.fromJson<bool>(json['isPrimary']),
+      memo: serializer.fromJson<String?>(json['memo']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'itemId': serializer.toJson<String>(itemId),
+      'locationId': serializer.toJson<String>(locationId),
+      'isPrimary': serializer.toJson<bool>(isPrimary),
+      'memo': serializer.toJson<String?>(memo),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+    };
+  }
+
+  ItemLocationRow copyWith(
+          {String? itemId,
+          String? locationId,
+          bool? isPrimary,
+          Value<String?> memo = const Value.absent(),
+          String? updatedAt}) =>
+      ItemLocationRow(
+        itemId: itemId ?? this.itemId,
+        locationId: locationId ?? this.locationId,
+        isPrimary: isPrimary ?? this.isPrimary,
+        memo: memo.present ? memo.value : this.memo,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  ItemLocationRow copyWithCompanion(ItemLocationsCompanion data) {
+    return ItemLocationRow(
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      locationId:
+          data.locationId.present ? data.locationId.value : this.locationId,
+      isPrimary: data.isPrimary.present ? data.isPrimary.value : this.isPrimary,
+      memo: data.memo.present ? data.memo.value : this.memo,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ItemLocationRow(')
+          ..write('itemId: $itemId, ')
+          ..write('locationId: $locationId, ')
+          ..write('isPrimary: $isPrimary, ')
+          ..write('memo: $memo, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(itemId, locationId, isPrimary, memo, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ItemLocationRow &&
+          other.itemId == this.itemId &&
+          other.locationId == this.locationId &&
+          other.isPrimary == this.isPrimary &&
+          other.memo == this.memo &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ItemLocationsCompanion extends UpdateCompanion<ItemLocationRow> {
+  final Value<String> itemId;
+  final Value<String> locationId;
+  final Value<bool> isPrimary;
+  final Value<String?> memo;
+  final Value<String> updatedAt;
+  final Value<int> rowid;
+  const ItemLocationsCompanion({
+    this.itemId = const Value.absent(),
+    this.locationId = const Value.absent(),
+    this.isPrimary = const Value.absent(),
+    this.memo = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ItemLocationsCompanion.insert({
+    required String itemId,
+    required String locationId,
+    this.isPrimary = const Value.absent(),
+    this.memo = const Value.absent(),
+    required String updatedAt,
+    this.rowid = const Value.absent(),
+  })  : itemId = Value(itemId),
+        locationId = Value(locationId),
+        updatedAt = Value(updatedAt);
+  static Insertable<ItemLocationRow> custom({
+    Expression<String>? itemId,
+    Expression<String>? locationId,
+    Expression<bool>? isPrimary,
+    Expression<String>? memo,
+    Expression<String>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (itemId != null) 'item_id': itemId,
+      if (locationId != null) 'location_id': locationId,
+      if (isPrimary != null) 'is_primary': isPrimary,
+      if (memo != null) 'memo': memo,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ItemLocationsCompanion copyWith(
+      {Value<String>? itemId,
+      Value<String>? locationId,
+      Value<bool>? isPrimary,
+      Value<String?>? memo,
+      Value<String>? updatedAt,
+      Value<int>? rowid}) {
+    return ItemLocationsCompanion(
+      itemId: itemId ?? this.itemId,
+      locationId: locationId ?? this.locationId,
+      isPrimary: isPrimary ?? this.isPrimary,
+      memo: memo ?? this.memo,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (locationId.present) {
+      map['location_id'] = Variable<String>(locationId.value);
+    }
+    if (isPrimary.present) {
+      map['is_primary'] = Variable<bool>(isPrimary.value);
+    }
+    if (memo.present) {
+      map['memo'] = Variable<String>(memo.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ItemLocationsCompanion(')
+          ..write('itemId: $itemId, ')
+          ..write('locationId: $locationId, ')
+          ..write('isPrimary: $isPrimary, ')
+          ..write('memo: $memo, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $LotsTable extends Lots with TableInfo<$LotsTable, LotRow> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -11304,6 +12094,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ShippingDestinationsTable(this);
   late final $SupplierShippingDestinationsTable supplierShippingDestinations =
       $SupplierShippingDestinationsTable(this);
+  late final $StorageLocationsTable storageLocations =
+      $StorageLocationsTable(this);
+  late final $ItemLocationsTable itemLocations = $ItemLocationsTable(this);
   late final $LotsTable lots = $LotsTable(this);
   late final $MemosTable memos = $MemosTable(this);
   late final $AppSchedulesTable appSchedules = $AppSchedulesTable(this);
@@ -11329,6 +12122,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         suppliers,
         shippingDestinations,
         supplierShippingDestinations,
+        storageLocations,
+        itemLocations,
         lots,
         memos,
         appSchedules,
@@ -11435,6 +12230,27 @@ abstract class _$AppDatabase extends GeneratedDatabase {
             result: [
               TableUpdate('supplier_shipping_destinations',
                   kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('storage_locations',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('storage_locations', kind: UpdateKind.update),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('items',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('item_locations', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('storage_locations',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('item_locations', kind: UpdateKind.delete),
             ],
           ),
           WritePropagation(
@@ -11605,6 +12421,21 @@ final class $$ItemsTableReferences
         .filter((f) => f.itemId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_quoteLinesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$ItemLocationsTable, List<ItemLocationRow>>
+      _itemLocationsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.itemLocations,
+              aliasName:
+                  $_aliasNameGenerator(db.items.id, db.itemLocations.itemId));
+
+  $$ItemLocationsTableProcessedTableManager get itemLocationsRefs {
+    final manager = $$ItemLocationsTableTableManager($_db, $_db.itemLocations)
+        .filter((f) => f.itemId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_itemLocationsRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -11846,6 +12677,27 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
             $$QuoteLinesTableFilterComposer(
               $db: $db,
               $table: $db.quoteLines,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> itemLocationsRefs(
+      Expression<bool> Function($$ItemLocationsTableFilterComposer f) f) {
+    final $$ItemLocationsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.itemLocations,
+        getReferencedColumn: (t) => t.itemId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemLocationsTableFilterComposer(
+              $db: $db,
+              $table: $db.itemLocations,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -12207,6 +13059,27 @@ class $$ItemsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> itemLocationsRefs<T extends Object>(
+      Expression<T> Function($$ItemLocationsTableAnnotationComposer a) f) {
+    final $$ItemLocationsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.itemLocations,
+        getReferencedColumn: (t) => t.itemId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemLocationsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.itemLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
   Expression<T> lotsRefs<T extends Object>(
       Expression<T> Function($$LotsTableAnnotationComposer a) f) {
     final $$LotsTableAnnotationComposer composer = $composerBuilder(
@@ -12247,6 +13120,7 @@ class $$ItemsTableTableManager extends RootTableManager<
         bool worksRefs,
         bool purchaseLinesRefs,
         bool quoteLinesRefs,
+        bool itemLocationsRefs,
         bool lotsRefs})> {
   $$ItemsTableTableManager(_$AppDatabase db, $ItemsTable table)
       : super(TableManagerState(
@@ -12397,6 +13271,7 @@ class $$ItemsTableTableManager extends RootTableManager<
               worksRefs = false,
               purchaseLinesRefs = false,
               quoteLinesRefs = false,
+              itemLocationsRefs = false,
               lotsRefs = false}) {
             return PrefetchHooks(
               db: db,
@@ -12407,6 +13282,7 @@ class $$ItemsTableTableManager extends RootTableManager<
                 if (worksRefs) db.works,
                 if (purchaseLinesRefs) db.purchaseLines,
                 if (quoteLinesRefs) db.quoteLines,
+                if (itemLocationsRefs) db.itemLocations,
                 if (lotsRefs) db.lots
               ],
               addJoins: null,
@@ -12485,6 +13361,19 @@ class $$ItemsTableTableManager extends RootTableManager<
                                 referencedItems) =>
                             referencedItems.where((e) => e.itemId == item.id),
                         typedResults: items),
+                  if (itemLocationsRefs)
+                    await $_getPrefetchedData<ItemRow, $ItemsTable,
+                            ItemLocationRow>(
+                        currentTable: table,
+                        referencedTable:
+                            $$ItemsTableReferences._itemLocationsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ItemsTableReferences(db, table, p0)
+                                .itemLocationsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.itemId == item.id),
+                        typedResults: items),
                   if (lotsRefs)
                     await $_getPrefetchedData<ItemRow, $ItemsTable, LotRow>(
                         currentTable: table,
@@ -12521,6 +13410,7 @@ typedef $$ItemsTableProcessedTableManager = ProcessedTableManager<
         bool worksRefs,
         bool purchaseLinesRefs,
         bool quoteLinesRefs,
+        bool itemLocationsRefs,
         bool lotsRefs})>;
 typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
   required String id,
@@ -18630,6 +19520,770 @@ typedef $$SupplierShippingDestinationsTableProcessedTableManager
         ),
         SupplierShippingDestinationRow,
         PrefetchHooks Function({bool supplierId, bool shippingDestinationId})>;
+typedef $$StorageLocationsTableCreateCompanionBuilder
+    = StorageLocationsCompanion Function({
+  required String id,
+  required String name,
+  Value<String?> parentId,
+  required String type,
+  Value<String?> memo,
+  Value<int> sortOrder,
+  Value<bool> isArchived,
+  required String createdAt,
+  required String updatedAt,
+  Value<int> rowid,
+});
+typedef $$StorageLocationsTableUpdateCompanionBuilder
+    = StorageLocationsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String?> parentId,
+  Value<String> type,
+  Value<String?> memo,
+  Value<int> sortOrder,
+  Value<bool> isArchived,
+  Value<String> createdAt,
+  Value<String> updatedAt,
+  Value<int> rowid,
+});
+
+final class $$StorageLocationsTableReferences extends BaseReferences<
+    _$AppDatabase, $StorageLocationsTable, StorageLocationRow> {
+  $$StorageLocationsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $StorageLocationsTable _parentIdTable(_$AppDatabase db) =>
+      db.storageLocations.createAlias($_aliasNameGenerator(
+          db.storageLocations.parentId, db.storageLocations.id));
+
+  $$StorageLocationsTableProcessedTableManager? get parentId {
+    final $_column = $_itemColumn<String>('parent_id');
+    if ($_column == null) return null;
+    final manager =
+        $$StorageLocationsTableTableManager($_db, $_db.storageLocations)
+            .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_parentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static MultiTypedResultKey<$ItemLocationsTable, List<ItemLocationRow>>
+      _itemLocationsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.itemLocations,
+              aliasName: $_aliasNameGenerator(
+                  db.storageLocations.id, db.itemLocations.locationId));
+
+  $$ItemLocationsTableProcessedTableManager get itemLocationsRefs {
+    final manager = $$ItemLocationsTableTableManager($_db, $_db.itemLocations)
+        .filter((f) => f.locationId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_itemLocationsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$StorageLocationsTableFilterComposer
+    extends Composer<_$AppDatabase, $StorageLocationsTable> {
+  $$StorageLocationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+      column: $table.sortOrder, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  $$StorageLocationsTableFilterComposer get parentId {
+    final $$StorageLocationsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.parentId,
+        referencedTable: $db.storageLocations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StorageLocationsTableFilterComposer(
+              $db: $db,
+              $table: $db.storageLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<bool> itemLocationsRefs(
+      Expression<bool> Function($$ItemLocationsTableFilterComposer f) f) {
+    final $$ItemLocationsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.itemLocations,
+        getReferencedColumn: (t) => t.locationId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemLocationsTableFilterComposer(
+              $db: $db,
+              $table: $db.itemLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$StorageLocationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $StorageLocationsTable> {
+  $$StorageLocationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get type => $composableBuilder(
+      column: $table.type, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+      column: $table.sortOrder, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  $$StorageLocationsTableOrderingComposer get parentId {
+    final $$StorageLocationsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.parentId,
+        referencedTable: $db.storageLocations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StorageLocationsTableOrderingComposer(
+              $db: $db,
+              $table: $db.storageLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$StorageLocationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $StorageLocationsTable> {
+  $$StorageLocationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get memo =>
+      $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$StorageLocationsTableAnnotationComposer get parentId {
+    final $$StorageLocationsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.parentId,
+        referencedTable: $db.storageLocations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StorageLocationsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.storageLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<T> itemLocationsRefs<T extends Object>(
+      Expression<T> Function($$ItemLocationsTableAnnotationComposer a) f) {
+    final $$ItemLocationsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.itemLocations,
+        getReferencedColumn: (t) => t.locationId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemLocationsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.itemLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$StorageLocationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $StorageLocationsTable,
+    StorageLocationRow,
+    $$StorageLocationsTableFilterComposer,
+    $$StorageLocationsTableOrderingComposer,
+    $$StorageLocationsTableAnnotationComposer,
+    $$StorageLocationsTableCreateCompanionBuilder,
+    $$StorageLocationsTableUpdateCompanionBuilder,
+    (StorageLocationRow, $$StorageLocationsTableReferences),
+    StorageLocationRow,
+    PrefetchHooks Function({bool parentId, bool itemLocationsRefs})> {
+  $$StorageLocationsTableTableManager(
+      _$AppDatabase db, $StorageLocationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$StorageLocationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$StorageLocationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$StorageLocationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String?> parentId = const Value.absent(),
+            Value<String> type = const Value.absent(),
+            Value<String?> memo = const Value.absent(),
+            Value<int> sortOrder = const Value.absent(),
+            Value<bool> isArchived = const Value.absent(),
+            Value<String> createdAt = const Value.absent(),
+            Value<String> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              StorageLocationsCompanion(
+            id: id,
+            name: name,
+            parentId: parentId,
+            type: type,
+            memo: memo,
+            sortOrder: sortOrder,
+            isArchived: isArchived,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            Value<String?> parentId = const Value.absent(),
+            required String type,
+            Value<String?> memo = const Value.absent(),
+            Value<int> sortOrder = const Value.absent(),
+            Value<bool> isArchived = const Value.absent(),
+            required String createdAt,
+            required String updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              StorageLocationsCompanion.insert(
+            id: id,
+            name: name,
+            parentId: parentId,
+            type: type,
+            memo: memo,
+            sortOrder: sortOrder,
+            isArchived: isArchived,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$StorageLocationsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: (
+              {parentId = false, itemLocationsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (itemLocationsRefs) db.itemLocations
+              ],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (parentId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.parentId,
+                    referencedTable:
+                        $$StorageLocationsTableReferences._parentIdTable(db),
+                    referencedColumn:
+                        $$StorageLocationsTableReferences._parentIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (itemLocationsRefs)
+                    await $_getPrefetchedData<StorageLocationRow,
+                            $StorageLocationsTable, ItemLocationRow>(
+                        currentTable: table,
+                        referencedTable: $$StorageLocationsTableReferences
+                            ._itemLocationsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$StorageLocationsTableReferences(db, table, p0)
+                                .itemLocationsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.locationId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$StorageLocationsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $StorageLocationsTable,
+    StorageLocationRow,
+    $$StorageLocationsTableFilterComposer,
+    $$StorageLocationsTableOrderingComposer,
+    $$StorageLocationsTableAnnotationComposer,
+    $$StorageLocationsTableCreateCompanionBuilder,
+    $$StorageLocationsTableUpdateCompanionBuilder,
+    (StorageLocationRow, $$StorageLocationsTableReferences),
+    StorageLocationRow,
+    PrefetchHooks Function({bool parentId, bool itemLocationsRefs})>;
+typedef $$ItemLocationsTableCreateCompanionBuilder = ItemLocationsCompanion
+    Function({
+  required String itemId,
+  required String locationId,
+  Value<bool> isPrimary,
+  Value<String?> memo,
+  required String updatedAt,
+  Value<int> rowid,
+});
+typedef $$ItemLocationsTableUpdateCompanionBuilder = ItemLocationsCompanion
+    Function({
+  Value<String> itemId,
+  Value<String> locationId,
+  Value<bool> isPrimary,
+  Value<String?> memo,
+  Value<String> updatedAt,
+  Value<int> rowid,
+});
+
+final class $$ItemLocationsTableReferences extends BaseReferences<_$AppDatabase,
+    $ItemLocationsTable, ItemLocationRow> {
+  $$ItemLocationsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $ItemsTable _itemIdTable(_$AppDatabase db) => db.items
+      .createAlias($_aliasNameGenerator(db.itemLocations.itemId, db.items.id));
+
+  $$ItemsTableProcessedTableManager get itemId {
+    final $_column = $_itemColumn<String>('item_id')!;
+
+    final manager = $$ItemsTableTableManager($_db, $_db.items)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_itemIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $StorageLocationsTable _locationIdTable(_$AppDatabase db) =>
+      db.storageLocations.createAlias($_aliasNameGenerator(
+          db.itemLocations.locationId, db.storageLocations.id));
+
+  $$StorageLocationsTableProcessedTableManager get locationId {
+    final $_column = $_itemColumn<String>('location_id')!;
+
+    final manager =
+        $$StorageLocationsTableTableManager($_db, $_db.storageLocations)
+            .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_locationIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$ItemLocationsTableFilterComposer
+    extends Composer<_$AppDatabase, $ItemLocationsTable> {
+  $$ItemLocationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<bool> get isPrimary => $composableBuilder(
+      column: $table.isPrimary, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  $$ItemsTableFilterComposer get itemId {
+    final $$ItemsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableFilterComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$StorageLocationsTableFilterComposer get locationId {
+    final $$StorageLocationsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.locationId,
+        referencedTable: $db.storageLocations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StorageLocationsTableFilterComposer(
+              $db: $db,
+              $table: $db.storageLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ItemLocationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ItemLocationsTable> {
+  $$ItemLocationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<bool> get isPrimary => $composableBuilder(
+      column: $table.isPrimary, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  $$ItemsTableOrderingComposer get itemId {
+    final $$ItemsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableOrderingComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$StorageLocationsTableOrderingComposer get locationId {
+    final $$StorageLocationsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.locationId,
+        referencedTable: $db.storageLocations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StorageLocationsTableOrderingComposer(
+              $db: $db,
+              $table: $db.storageLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ItemLocationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ItemLocationsTable> {
+  $$ItemLocationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<bool> get isPrimary =>
+      $composableBuilder(column: $table.isPrimary, builder: (column) => column);
+
+  GeneratedColumn<String> get memo =>
+      $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$ItemsTableAnnotationComposer get itemId {
+    final $$ItemsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$StorageLocationsTableAnnotationComposer get locationId {
+    final $$StorageLocationsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.locationId,
+        referencedTable: $db.storageLocations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StorageLocationsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.storageLocations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ItemLocationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ItemLocationsTable,
+    ItemLocationRow,
+    $$ItemLocationsTableFilterComposer,
+    $$ItemLocationsTableOrderingComposer,
+    $$ItemLocationsTableAnnotationComposer,
+    $$ItemLocationsTableCreateCompanionBuilder,
+    $$ItemLocationsTableUpdateCompanionBuilder,
+    (ItemLocationRow, $$ItemLocationsTableReferences),
+    ItemLocationRow,
+    PrefetchHooks Function({bool itemId, bool locationId})> {
+  $$ItemLocationsTableTableManager(_$AppDatabase db, $ItemLocationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ItemLocationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ItemLocationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ItemLocationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> itemId = const Value.absent(),
+            Value<String> locationId = const Value.absent(),
+            Value<bool> isPrimary = const Value.absent(),
+            Value<String?> memo = const Value.absent(),
+            Value<String> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ItemLocationsCompanion(
+            itemId: itemId,
+            locationId: locationId,
+            isPrimary: isPrimary,
+            memo: memo,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String itemId,
+            required String locationId,
+            Value<bool> isPrimary = const Value.absent(),
+            Value<String?> memo = const Value.absent(),
+            required String updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ItemLocationsCompanion.insert(
+            itemId: itemId,
+            locationId: locationId,
+            isPrimary: isPrimary,
+            memo: memo,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$ItemLocationsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({itemId = false, locationId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (itemId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.itemId,
+                    referencedTable:
+                        $$ItemLocationsTableReferences._itemIdTable(db),
+                    referencedColumn:
+                        $$ItemLocationsTableReferences._itemIdTable(db).id,
+                  ) as T;
+                }
+                if (locationId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.locationId,
+                    referencedTable:
+                        $$ItemLocationsTableReferences._locationIdTable(db),
+                    referencedColumn:
+                        $$ItemLocationsTableReferences._locationIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$ItemLocationsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ItemLocationsTable,
+    ItemLocationRow,
+    $$ItemLocationsTableFilterComposer,
+    $$ItemLocationsTableOrderingComposer,
+    $$ItemLocationsTableAnnotationComposer,
+    $$ItemLocationsTableCreateCompanionBuilder,
+    $$ItemLocationsTableUpdateCompanionBuilder,
+    (ItemLocationRow, $$ItemLocationsTableReferences),
+    ItemLocationRow,
+    PrefetchHooks Function({bool itemId, bool locationId})>;
 typedef $$LotsTableCreateCompanionBuilder = LotsCompanion Function({
   required String id,
   required String itemId,
@@ -19644,6 +21298,10 @@ class $AppDatabaseManager {
       get supplierShippingDestinations =>
           $$SupplierShippingDestinationsTableTableManager(
               _db, _db.supplierShippingDestinations);
+  $$StorageLocationsTableTableManager get storageLocations =>
+      $$StorageLocationsTableTableManager(_db, _db.storageLocations);
+  $$ItemLocationsTableTableManager get itemLocations =>
+      $$ItemLocationsTableTableManager(_db, _db.itemLocations);
   $$LotsTableTableManager get lots => $$LotsTableTableManager(_db, _db.lots);
   $$MemosTableTableManager get memos =>
       $$MemosTableTableManager(_db, _db.memos);

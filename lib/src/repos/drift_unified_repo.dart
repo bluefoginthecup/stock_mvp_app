@@ -26,6 +26,7 @@ import '../models/quote_line.dart';
 import '../models/app_schedule.dart';
 import '../models/suppliers.dart';
 import '../models/shipping_destination.dart';
+import '../models/storage_location.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
 import 'package:uuid/uuid.dart';
@@ -46,6 +47,7 @@ part 'modules/quote_repo.part.dart';
 part 'modules/schedule_repo.part.dart';
 part 'modules/supplier_repo.part.dart';
 part 'modules/shipping_destination_repo.part.dart';
+part 'modules/storage_location_repo.part.dart';
 part 'modules/lot_repo.part.dart';
 part 'modules/trash_repo.part.dart';
 
@@ -139,6 +141,7 @@ class DriftUnifiedRepo extends _RepoCore
         ScheduleRepoMixin,
         SupplierRepoMixin,
         _ShippingDestinationRepoMixin,
+        _StorageLocationRepoMixin,
         LotRepoMixin,
         TrashRepoMixin
     implements
@@ -152,6 +155,7 @@ class DriftUnifiedRepo extends _RepoCore
         ScheduleRepo,
         SupplierRepo,
         ShippingDestinationRepo,
+        StorageLocationRepo,
         FolderTreeRepo,
         TrashRepo {
   final _uuid = const Uuid();

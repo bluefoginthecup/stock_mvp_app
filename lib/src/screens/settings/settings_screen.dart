@@ -148,14 +148,6 @@ class SettingsScreen extends StatelessWidget {
           ),
           const _AccountSection(),
           const _BuyerProfileSection(),
-          ListTile(
-            leading: const Icon(Icons.local_shipping_outlined),
-            title: const Text('배송지 관리'),
-            subtitle: const Text('배송지와 거래처별 기본 배송지를 관리합니다'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context)
-                .pushNamed('/settings/shipping-destinations'),
-          ),
           const _StorageUsageSection(),
           const _BackupEncryptionSection(),
           const _CloudBackupSection(),

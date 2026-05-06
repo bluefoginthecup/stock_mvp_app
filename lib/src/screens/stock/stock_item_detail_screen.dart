@@ -2,6 +2,7 @@
 import 'package:provider/provider.dart';
 
 import '../../models/item.dart';
+import '../../models/storage_location.dart';
 import '../../repos/repo_interfaces.dart';
 
 import '../../ui/common/ui.dart';
@@ -33,6 +34,18 @@ class StockItemDetailScreen extends StatefulWidget {
 
   @override
   State<StockItemDetailScreen> createState() => _StockItemDetailScreenState();
+}
+
+class _ItemLocationViewData {
+  final List<StorageLocation> locations;
+  final List<ItemLocation> links;
+  final List<StorageLocation> allLocations;
+
+  const _ItemLocationViewData({
+    required this.locations,
+    required this.links,
+    required this.allLocations,
+  });
 }
 
 class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
@@ -154,6 +167,343 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
         SnackBar(content: Text('최근 입출고 내역을 불러올 수 없습니다: $e')),
       );
     }
+  }
+
+  Future<_ItemLocationViewData> _loadItemLocationViewData(String itemId) async {
+    final repo = context.read<StorageLocationRepo>();
+    final results = await Future.wait([
+      repo.listLocationsForItem(itemId),
+      repo.listItemLocationLinks(itemId),
+      repo.searchLocations(''),
+    ]);
+    return _ItemLocationViewData(
+      locations: results[0] as List<StorageLocation>,
+      links: results[1] as List<ItemLocation>,
+      allLocations: results[2] as List<StorageLocation>,
+    );
+  }
+
+  String _locationPathLabel(
+    StorageLocation location,
+    List<StorageLocation> allLocations,
+  ) {
+    final byId = {for (final loc in allLocations) loc.id: loc};
+    final names = <String>[location.name];
+    var cursor = location.parentId == null ? null : byId[location.parentId];
+    while (cursor != null) {
+      names.insert(0, cursor.name);
+      cursor = cursor.parentId == null ? null : byId[cursor.parentId];
+    }
+    return names.join(' > ');
+  }
+
+  Future<void> _openStorageLocationPicker(Item item) async {
+    final repo = context.read<StorageLocationRepo>();
+    final allLocations = await repo.searchLocations('');
+    final links = await repo.listItemLocationLinks(item.id);
+
+    if (!mounted) return;
+    if (allLocations.isEmpty) {
+      final goSettings = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('보관 위치가 없습니다'),
+          content: const Text('설정에서 작업실, 창고, 선반 같은 보관 위치를 먼저 추가할까요?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('위치 관리로 이동'),
+            ),
+          ],
+        ),
+      );
+      if (goSettings == true && mounted) {
+        await context
+            .read<MainTabController>()
+            .openShellRoute('/settings/storage-locations', tabIndex: 0);
+      }
+      return;
+    }
+
+    final selectedIds = links.map((link) => link.locationId).toSet();
+    String? primaryId = links
+        .where((link) => link.isPrimary)
+        .map((link) => link.locationId)
+        .cast<String?>()
+        .firstWhere((id) => id != null, orElse: () => null);
+    primaryId ??= selectedIds.isEmpty ? null : selectedIds.first;
+
+    final searchC = TextEditingController();
+    var query = '';
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final q = query.toLowerCase();
+            final filtered = q.isEmpty
+                ? allLocations
+                : allLocations.where((location) {
+                    final path = _locationPathLabel(location, allLocations);
+                    return path.toLowerCase().contains(q) ||
+                        StorageLocationType.label(location.type)
+                            .toLowerCase()
+                            .contains(q) ||
+                        (location.memo ?? '').toLowerCase().contains(q);
+                  }).toList();
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                ),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.78,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '보관 위치 선택',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(false),
+                            child: const Text('취소'),
+                          ),
+                          FilledButton(
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(true),
+                            child: const Text('저장'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: searchC,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          labelText: '위치 검색',
+                        ),
+                        onChanged: (value) {
+                          setSheetState(() => query = value.trim());
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final location = filtered[index];
+                            final selected = selectedIds.contains(location.id);
+                            final isPrimary = primaryId == location.id;
+                            return CheckboxListTile(
+                              value: selected,
+                              secondary: Radio<String>(
+                                value: location.id,
+                                groupValue: primaryId,
+                                onChanged: selected
+                                    ? (value) {
+                                        setSheetState(() => primaryId = value);
+                                      }
+                                    : null,
+                              ),
+                              title: Text(
+                                _locationPathLabel(location, allLocations),
+                              ),
+                              subtitle: Text(isPrimary
+                                  ? '기본 위치'
+                                  : StorageLocationType.label(location.type)),
+                              onChanged: (value) {
+                                setSheetState(() {
+                                  if (value == true) {
+                                    selectedIds.add(location.id);
+                                    primaryId ??= location.id;
+                                  } else {
+                                    selectedIds.remove(location.id);
+                                    if (primaryId == location.id) {
+                                      primaryId = selectedIds.isEmpty
+                                          ? null
+                                          : selectedIds.first;
+                                    }
+                                  }
+                                });
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+    searchC.dispose();
+
+    if (saved != true) return;
+    await repo.setLocationsForItem(
+      itemId: item.id,
+      locationIds: selectedIds.toList(),
+      primaryLocationId: primaryId,
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _removeStorageLocation({
+    required String itemId,
+    required String locationId,
+  }) async {
+    final repo = context.read<StorageLocationRepo>();
+    final links = await repo.listItemLocationLinks(itemId);
+    final remaining = links
+        .where((link) => link.locationId != locationId)
+        .map((link) => link.locationId)
+        .toList();
+    final currentPrimary = links
+        .where((link) => link.isPrimary && link.locationId != locationId)
+        .map((link) => link.locationId)
+        .cast<String?>()
+        .firstWhere((id) => id != null, orElse: () => null);
+
+    await repo.setLocationsForItem(
+      itemId: itemId,
+      locationIds: remaining,
+      primaryLocationId:
+          currentPrimary ?? (remaining.isEmpty ? null : remaining.first),
+    );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Future<void> _setPrimaryStorageLocation({
+    required String itemId,
+    required String locationId,
+  }) async {
+    await context.read<StorageLocationRepo>().setPrimaryLocationForItem(
+          itemId: itemId,
+          locationId: locationId,
+        );
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  Widget _buildStorageLocationSection(Item item) {
+    return FutureBuilder<_ItemLocationViewData>(
+      future: _loadItemLocationViewData(item.id),
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        final locations = data?.locations ?? const <StorageLocation>[];
+        final links = data?.links ?? const <ItemLocation>[];
+        final allLocations = data?.allLocations ?? const <StorageLocation>[];
+        final primaryIds = links
+            .where((link) => link.isPrimary)
+            .map((link) => link.locationId)
+            .toSet();
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '보관 위치',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _openStorageLocationPicker(item),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('위치 추가'),
+                    ),
+                  ],
+                ),
+                if (snapshot.connectionState != ConnectionState.done)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: LinearProgressIndicator(),
+                  )
+                else if (locations.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text('아직 연결된 보관 위치가 없습니다'),
+                  )
+                else
+                  ...locations.map((location) {
+                    final isPrimary = primaryIds.contains(location.id);
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        isPrimary ? Icons.star : Icons.place_outlined,
+                        color: isPrimary
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
+                      ),
+                      title: Text(_locationPathLabel(location, allLocations)),
+                      subtitle: Text(isPrimary
+                          ? '기본 위치 · ${StorageLocationType.label(location.type)}'
+                          : StorageLocationType.label(location.type)),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'primary') {
+                            _setPrimaryStorageLocation(
+                              itemId: item.id,
+                              locationId: location.id,
+                            );
+                          } else if (value == 'remove') {
+                            _removeStorageLocation(
+                              itemId: item.id,
+                              locationId: location.id,
+                            );
+                          }
+                        },
+                        itemBuilder: (_) => [
+                          if (!isPrimary)
+                            const PopupMenuItem(
+                              value: 'primary',
+                              child: ListTile(
+                                leading: Icon(Icons.star_outline),
+                                title: Text('기본 위치로 지정'),
+                              ),
+                            ),
+                          const PopupMenuItem(
+                            value: 'remove',
+                            child: ListTile(
+                              leading: Icon(Icons.remove_circle_outline),
+                              title: Text('위치 제거'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // ✅ 입출고 폼 열기(일반 모드)
@@ -447,6 +797,8 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
 
                     const SizedBox(height: 12),
                     ItemMetaOverview(item: item),
+                    const SizedBox(height: 12),
+                    _buildStorageLocationSection(item),
                     const SizedBox(height: 12),
 
                     Wrap(

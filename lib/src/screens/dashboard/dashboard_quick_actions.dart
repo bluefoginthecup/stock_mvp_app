@@ -13,6 +13,8 @@ enum QuickActionType {
   quotes,
   settings,
   suppliers,
+  shippingDestinations,
+  storageLocations,
   receipts,
   trash,
   shortage,
@@ -30,6 +32,8 @@ const defaultQuickActionOrder = <QuickActionType>[
   QuickActionType.quotes,
   QuickActionType.settings,
   QuickActionType.suppliers,
+  QuickActionType.shippingDestinations,
+  QuickActionType.storageLocations,
   QuickActionType.receipts,
   QuickActionType.trash,
   QuickActionType.shortage,
@@ -165,6 +169,28 @@ DashboardQuickAction buildDashboardQuickAction(
           final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
           tabs.openShellRoute('/suppliers');
+        },
+      );
+    case QuickActionType.shippingDestinations:
+      return DashboardQuickAction(
+        key: const ValueKey('shippingDestinations'),
+        icon: Icons.local_shipping_outlined,
+        label: '배송지 관리',
+        onTap: () {
+          final tabs = context.read<MainTabController>();
+          onBeforeNavigate?.call();
+          tabs.openShellRoute('/settings/shipping-destinations');
+        },
+      );
+    case QuickActionType.storageLocations:
+      return DashboardQuickAction(
+        key: const ValueKey('storageLocations'),
+        icon: Icons.location_on_outlined,
+        label: '보관 위치 관리',
+        onTap: () {
+          final tabs = context.read<MainTabController>();
+          onBeforeNavigate?.call();
+          tabs.openShellRoute('/settings/storage-locations');
         },
       );
     case QuickActionType.receipts:

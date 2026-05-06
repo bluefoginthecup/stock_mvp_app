@@ -479,6 +479,41 @@ class SupplierShippingDestinations extends Table {
   Set<Column> get primaryKey => {supplierId, shippingDestinationId};
 }
 
+@DataClassName('StorageLocationRow')
+class StorageLocations extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get parentId => text()
+      .nullable()
+      .references(StorageLocations, #id, onDelete: KeyAction.setNull)();
+  TextColumn get type => text()();
+  TextColumn get memo => text().nullable()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('ItemLocationRow')
+class ItemLocations extends Table {
+  TextColumn get itemId =>
+      text().references(Items, #id, onDelete: KeyAction.cascade)();
+  TextColumn get locationId => text().references(
+        StorageLocations,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
+  BoolColumn get isPrimary => boolean().withDefault(const Constant(false))();
+  TextColumn get memo => text().nullable()();
+  TextColumn get updatedAt => text()();
+
+  @override
+  Set<Column> get primaryKey => {itemId, locationId};
+}
+
 /// =======================
 ///  Lots (롤/필지 단위 재고)
 /// =======================
@@ -568,6 +603,8 @@ class QuickActionOrders extends Table {
     Suppliers,
     ShippingDestinations,
     SupplierShippingDestinations,
+    StorageLocations,
+    ItemLocations,
     Lots,
     Memos,
     AppSchedules,
@@ -600,7 +637,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 30; //
+  int get schemaVersion => 31; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -612,6 +649,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensurePurchaseReceiptsTable();
           await _ensureBuyerProfilesTable();
           await _ensureShippingDestinationTables();
+          await _ensureStorageLocationTables();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -867,6 +905,9 @@ class AppDatabase extends _$AppDatabase {
             await _addColumnIfMissing(
                 'purchase_orders', 'shipping_destination_id', 'TEXT');
           }
+          if (from < 31) {
+            await _ensureStorageLocationTables();
+          }
         },
       );
   Future<void> _backfillItemSearchKeys() async {
@@ -1087,6 +1128,56 @@ class AppDatabase extends _$AppDatabase {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_one_default_destination
       ON supplier_shipping_destinations(supplier_id)
       WHERE is_default = 1
+    ''');
+  }
+
+  Future<void> _ensureStorageLocationTables() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS storage_locations (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        parent_id TEXT NULL,
+        type TEXT NOT NULL,
+        memo TEXT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (parent_id) REFERENCES storage_locations(id) ON DELETE SET NULL
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS item_locations (
+        item_id TEXT NOT NULL,
+        location_id TEXT NOT NULL,
+        is_primary INTEGER NOT NULL DEFAULT 0,
+        memo TEXT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (item_id, location_id),
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+        FOREIGN KEY (location_id) REFERENCES storage_locations(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_storage_locations_parent
+      ON storage_locations(parent_id, sort_order)
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_storage_locations_name
+      ON storage_locations(name)
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_item_locations_item
+      ON item_locations(item_id)
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_item_locations_location
+      ON item_locations(location_id)
+    ''');
+    await customStatement('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_item_one_primary_location
+      ON item_locations(item_id)
+      WHERE is_primary = 1
     ''');
   }
 
