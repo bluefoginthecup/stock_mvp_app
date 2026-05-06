@@ -393,14 +393,118 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
       return;
     }
     if (req.kind == EntityKind.folder) {
-      final newParentId = req.pathIds.isNotEmpty ? req.pathIds.last : null;
-      final newDepth = req.pathIds.length;
-      await (db.update(db.folders)..where((t) => t.id.equals(req.id))).write(
-        FoldersCompanion(parentId: Value(newParentId), depth: Value(newDepth)),
-      );
+      await db.transaction(() => _moveFolderToPath(req.id, req.pathIds));
+      notifyListeners();
       return;
     }
     throw UnsupportedError('Unknown entity kind');
+  }
+
+  Future<void> _moveFolderToPath(String folderId, List<String> pathIds) async {
+    if (isSystemRootFolder(folderId)) {
+      throw StateError('SYSTEM_FOLDER');
+    }
+    if (pathIds.length > 2) {
+      throw StateError('Invalid folder target depth: ${pathIds.length}');
+    }
+
+    final moving = await _readActiveFolder(folderId);
+    final newParentPath = await _validateFolderMoveTarget(pathIds);
+    final newParentId = pathIds.isNotEmpty ? pathIds.last : null;
+    final newDepth = pathIds.length;
+
+    if (newParentId == moving.id) {
+      throw StateError('Cannot move a folder into itself.');
+    }
+    if (pathIds.contains(moving.id)) {
+      throw StateError('Cannot move a folder into its own child.');
+    }
+
+    final descendants = await _folderDescendants(moving.id);
+    if (descendants.any((f) => pathIds.contains(f.id))) {
+      throw StateError('Cannot move a folder into its own child.');
+    }
+
+    final depthDelta = newDepth - moving.depth;
+    final maxDepthAfterMove = [
+      moving,
+      ...descendants,
+    ].map((f) => f.depth + depthDelta).fold<int>(0, (a, b) => a > b ? a : b);
+    if (maxDepthAfterMove > 2) {
+      throw StateError('하위 폴더가 있어 이 위치로 이동할 수 없습니다.');
+    }
+
+    await (db.update(db.folders)..where((t) => t.id.equals(moving.id))).write(
+      FoldersCompanion(parentId: Value(newParentId), depth: Value(newDepth)),
+    );
+
+    for (final child in descendants) {
+      await (db.update(db.folders)..where((t) => t.id.equals(child.id))).write(
+        FoldersCompanion(depth: Value(child.depth + depthDelta)),
+      );
+    }
+
+    final movedFolderIds = {moving.id, ...descendants.map((f) => f.id)};
+    final pathRows = await (db.select(db.itemPaths)
+          ..where((t) =>
+              t.l1Id.isIn(movedFolderIds) |
+              t.l2Id.isIn(movedFolderIds) |
+              t.l3Id.isIn(movedFolderIds)))
+        .get();
+
+    final newPrefix = [...newParentPath.map((f) => f.id), moving.id];
+    for (final row in pathRows) {
+      final oldItemPath = [row.l1Id, row.l2Id, row.l3Id]
+          .whereType<String>()
+          .where((id) => id.isNotEmpty)
+          .toList();
+      final movingIndex = oldItemPath.indexOf(moving.id);
+      if (movingIndex < 0) continue;
+
+      final suffix = oldItemPath.skip(movingIndex + 1);
+      final nextPath = [...newPrefix, ...suffix];
+      if (nextPath.isEmpty || nextPath.length > 3) {
+        throw StateError('Invalid item path after folder move.');
+      }
+
+      final target = await _validateMoveTarget(nextPath);
+      await _moveSingleItem(row.itemId, target);
+    }
+  }
+
+  Future<FolderRow> _readActiveFolder(String id) async {
+    final row = await (db.select(db.folders)
+          ..where((t) => t.id.equals(id) & t.isDeleted.equals(false)))
+        .getSingleOrNull();
+    if (row == null) throw StateError('Folder not found: $id');
+    return row;
+  }
+
+  Future<List<FolderRow>> _validateFolderMoveTarget(
+      List<String> pathIds) async {
+    if (pathIds.isEmpty) return const [];
+    final target = await _validateMoveTarget(pathIds);
+    return [
+      target.l1,
+      if (target.l2 != null) target.l2!,
+    ];
+  }
+
+  Future<List<FolderRow>> _folderDescendants(String folderId) async {
+    final result = <FolderRow>[];
+    final queue = <String>[folderId];
+
+    while (queue.isNotEmpty) {
+      final parentId = queue.removeAt(0);
+      final children = await (db.select(db.folders)
+            ..where(
+                (t) => t.parentId.equals(parentId) & t.isDeleted.equals(false)))
+          .get();
+      result.addAll(children);
+      queue.addAll(children.map((f) => f.id));
+    }
+
+    return result;
   }
 
   Future<void> debugPrintAllFolders() async {
