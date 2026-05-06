@@ -116,6 +116,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
     final nav = _keyOf(tabIndex).currentState;
     if (nav == null) return null;
     nav.popUntil((route) => route.isFirst);
+    if (routeName == Navigator.defaultRouteName || routeName == '/') {
+      return null;
+    }
     return nav.pushNamed(routeName, arguments: arguments);
   }
 

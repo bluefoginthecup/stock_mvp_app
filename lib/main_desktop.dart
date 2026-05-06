@@ -7,6 +7,7 @@ import 'firebase_options.dart';
 import 'src/app.dart';
 
 import 'src/repos/repo_interfaces.dart';
+import 'src/services/dashboard_activity_service.dart';
 import 'src/services/inventory_service.dart';
 import 'src/ui/nav/item_detail_opener.dart';
 import 'src/providers/cart_manager.dart';
@@ -66,6 +67,9 @@ Future<void> main() async {
         Provider<SupplierRepo>.value(value: unifiedRepo),
         Provider<FolderTreeRepo>.value(value: unifiedRepo),
         Provider<TrashRepo>.value(value: unifiedRepo),
+        Provider<DashboardActivityService>(
+          create: (ctx) => DashboardActivityService(ctx.read<AppDatabase>()),
+        ),
 
         // 타임라인 리포 (기존 main.dart와 동일한 팩토리)
         Provider<TimelineRepo>(

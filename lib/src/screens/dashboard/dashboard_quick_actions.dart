@@ -290,10 +290,12 @@ class DashboardQuickActionGridTile extends StatelessWidget {
 
 class DashboardQuickActionListTile extends StatelessWidget {
   final DashboardQuickAction action;
+  final Widget? trailing;
 
   const DashboardQuickActionListTile({
     super.key,
     required this.action,
+    this.trailing,
   });
 
   @override
@@ -325,6 +327,10 @@ class DashboardQuickActionListTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                trailing!,
+              ],
             ],
           ),
         ),

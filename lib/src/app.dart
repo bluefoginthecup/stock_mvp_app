@@ -39,6 +39,7 @@ import 'repos/drift_unified_repo.dart';
 import 'services/app_path_service.dart';
 import 'services/auth_service.dart';
 import 'services/bom_service.dart';
+import 'services/dashboard_activity_service.dart';
 import 'services/db_auto_backup_service.dart';
 import 'services/export_service.dart';
 import 'services/folder_service.dart';
@@ -262,6 +263,10 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
             Provider<FolderService>(
               create: (context) =>
                   FolderService(context.read<DriftUnifiedRepo>()),
+            ),
+            Provider<DashboardActivityService>(
+              create: (context) =>
+                  DashboardActivityService(context.read<AppDatabase>()),
             ),
             Provider<TimelineRepo>(
               create: (_) => TimelineRepo(

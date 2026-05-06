@@ -1,13 +1,16 @@
 // lib/src/screens/dashboard_screen.dart
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:provider/provider.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 
 import '../app/main_tab_controller.dart';
 import '../db/app_database.dart';
 import '../db/quick_actions_order_dao.dart';
-import '../models/purchase_order.dart';
-import '../repos/modules/memo_repo.dart';
+import '../models/today_activity_summary.dart';
 import '../repos/repo_interfaces.dart';
+import '../services/dashboard_activity_service.dart';
 import '../ui/common/ui.dart';
 import 'dashboard/dashboard_quick_actions.dart';
 import 'stock/stock_browser_screen.dart';
@@ -21,13 +24,11 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late List<QuickActionType> _order;
-  late Future<String> _memoFuture;
 
   @override
   void initState() {
     super.initState();
     _order = [...defaultQuickActionOrder];
-    _memoFuture = MemoRepo().load();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadOrderFromDb();
     });
@@ -64,7 +65,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final itemRepo = context.read<ItemRepo>();
-    final purchaseRepo = context.read<PurchaseOrderRepo>();
+    final activityService = context.read<DashboardActivityService>();
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFAFF),
@@ -125,49 +126,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           );
 
-          return StreamBuilder<List<PurchaseOrder>>(
-            stream: purchaseRepo.watchAllPurchaseOrders(),
-            builder: (context, purchaseSnap) {
-              final purchaseDueCount =
-                  _countTodayPurchaseOrders(purchaseSnap.data ?? const []);
-
-              return FutureBuilder<String>(
-                future: _memoFuture,
-                builder: (context, memoSnap) {
-                  final memoCount =
-                      (memoSnap.data ?? '').trim().isEmpty ? 0 : 1;
-
-                  return _DashboardContent(
-                    itemCount: items.length,
-                    totalQty: totalQty,
-                    lowCount: low.length,
-                    purchaseDueCount: purchaseDueCount,
-                    memoCount: memoCount,
-                    actions: actions.toList(),
-                    onStockTap: () =>
-                        context.read<MainTabController>().setIndex(2),
-                    onLowStockTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const StockBrowserScreen(showLowStockOnly: true),
-                        ),
-                      );
-                    },
-                    onPurchaseTap: () =>
-                        context.read<MainTabController>().setIndex(5),
-                    onMemoTap: () => context
-                        .read<MainTabController>()
-                        .openShellRoute('/memo'),
-                    onReorder: (oldIndex, newIndex) async {
-                      setState(() {
-                        final item = _order.removeAt(oldIndex);
-                        _order.insert(newIndex, item);
-                      });
-                      await _persistOrderToDb();
-                    },
+          return StreamBuilder<TodayActivitySummary>(
+            stream: activityService.watchTodaySummary(),
+            initialData: TodayActivitySummary.empty,
+            builder: (context, activitySnap) {
+              return _DashboardContent(
+                itemCount: items.length,
+                totalQty: totalQty,
+                lowCount: low.length,
+                todaySummary: activitySnap.data ?? TodayActivitySummary.empty,
+                actions: actions.toList(),
+                onStockTap: () => context.read<MainTabController>().setIndex(2),
+                onLowStockTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const StockBrowserScreen(showLowStockOnly: true),
+                    ),
                   );
+                },
+                onReorder: (oldIndex, newIndex) async {
+                  setState(() {
+                    final item = _order.removeAt(oldIndex);
+                    _order.insert(newIndex, item);
+                  });
+                  await _persistOrderToDb();
                 },
               );
             },
@@ -176,48 +160,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
-  int _countTodayPurchaseOrders(List<PurchaseOrder> orders) {
-    final now = DateTime.now();
-    return orders.where((order) {
-      if (order.isDeleted) return false;
-      if (order.status == PurchaseOrderStatus.received ||
-          order.status == PurchaseOrderStatus.canceled) {
-        return false;
-      }
-
-      final eta = order.eta;
-      return eta.year == now.year &&
-          eta.month == now.month &&
-          eta.day == now.day;
-    }).length;
-  }
 }
 
 class _DashboardContent extends StatelessWidget {
   final int itemCount;
   final int totalQty;
   final int lowCount;
-  final int purchaseDueCount;
-  final int memoCount;
+  final TodayActivitySummary todaySummary;
   final List<DashboardQuickAction> actions;
   final VoidCallback onStockTap;
   final VoidCallback onLowStockTap;
-  final VoidCallback onPurchaseTap;
-  final VoidCallback onMemoTap;
   final ReorderCallback onReorder;
 
   const _DashboardContent({
     required this.itemCount,
     required this.totalQty,
     required this.lowCount,
-    required this.purchaseDueCount,
-    required this.memoCount,
+    required this.todaySummary,
     required this.actions,
     required this.onStockTap,
     required this.onLowStockTap,
-    required this.onPurchaseTap,
-    required this.onMemoTap,
     required this.onReorder,
   });
 
@@ -263,11 +225,7 @@ class _DashboardContent extends StatelessWidget {
                       flex: 2,
                       child: _ChalstockAssistantCard(
                         lowCount: lowCount,
-                        purchaseDueCount: purchaseDueCount,
-                        memoCount: memoCount,
-                        onLowStockTap: onLowStockTap,
-                        onPurchaseTap: onPurchaseTap,
-                        onMemoTap: onMemoTap,
+                        todaySummary: todaySummary,
                       ),
                     ),
                   ],
@@ -283,11 +241,7 @@ class _DashboardContent extends StatelessWidget {
                 const SizedBox(height: 12),
                 _ChalstockAssistantCard(
                   lowCount: lowCount,
-                  purchaseDueCount: purchaseDueCount,
-                  memoCount: memoCount,
-                  onLowStockTap: onLowStockTap,
-                  onPurchaseTap: onPurchaseTap,
-                  onMemoTap: onMemoTap,
+                  todaySummary: todaySummary,
                 ),
               ],
               const SizedBox(height: 28),
@@ -410,19 +364,11 @@ class _SummaryDivider extends StatelessWidget {
 
 class _ChalstockAssistantCard extends StatefulWidget {
   final int lowCount;
-  final int purchaseDueCount;
-  final int memoCount;
-  final VoidCallback onLowStockTap;
-  final VoidCallback onPurchaseTap;
-  final VoidCallback onMemoTap;
+  final TodayActivitySummary todaySummary;
 
   const _ChalstockAssistantCard({
     required this.lowCount,
-    required this.purchaseDueCount,
-    required this.memoCount,
-    required this.onLowStockTap,
-    required this.onPurchaseTap,
-    required this.onMemoTap,
+    required this.todaySummary,
   });
 
   @override
@@ -433,8 +379,89 @@ class _ChalstockAssistantCard extends StatefulWidget {
 class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
   static const _happyPuppyAsset = 'assets/images/chal_happy.png';
   static const _discPuppyAsset = 'assets/images/chal_pup2.png';
+  static const _compactMessages = [
+    '사장님… 저 간식비는 재고로 안 잡히나요?',
+    '오늘도 뭔가 많이 열려 있네요. 아주 좋아요.',
+    '발주서는 늘 왜 급할 때만 생각날까요?',
+    '방금 뭔가 정리한 척했죠? 제가 봤어요.',
+    '오늘도 찰스톡에 출근 완료입니다 🐶',
+    '커피 마시고 오면 일이 줄어들 수도 있어요. 아마도.',
+    '체크 하나 하면 왠지 똑똑해진 기분이에요.',
+    '저는 누워있었는데 사장님은 계속 일하네요.',
+    '재고는 조용히 줄어드는데 저는 조용히 배고파져요.',
+    '오늘 창고 공기… 약간 프로의 냄새예요.',
+    '급하게 뛰면 저도 같이 미끄러져요.',
+    '오늘은 뭘 먼저 잊어버릴 예정인가요?',
+    '이상하게 바쁜 날은 탭도 많아져요.',
+    '이 정도면 거의 작업실 레이드 아닌가요?',
+    '장부는 차가운데 손은 뜨겁네요.',
+    '사장님 손이 바쁜 걸 보니 오늘도 살아있네요.',
+    '가끔은 정리보다 앉아있는 것도 중요해요.',
+    '제가 보기엔 지금 꽤 잘 굴러가고 있어요.',
+    '일단 하나만 끝내도 분위기가 달라져요.',
+    '너무 완벽하게 하려다 배고파지지 말기!',
+    '오늘도 작은 완료 하나 응원할게요.',
+    '천천히 해도 괜찮아요. 저는 원래 느려요.',
+    '바쁜 와중에 여기 들어온 건 잘한 거예요.',
+    '오늘 할 일들이 줄 서 있는 중이에요.',
+    '방금 저장 버튼 누른 거 아주 훌륭했어요.',
+    '어질러져도 기록하면 뭔가 있어 보여요.',
+    '저는 전문가가 아니고 그냥 강아지입니다.',
+    '근데 사장님은 약간 전문가 같아요.',
+    '오늘도 작업실이 살아 움직이고 있어요.',
+    '메모는 미래의 사장님에게 보내는 편지래요.',
+    '저는 돕고 싶지만 발이 짧아요.',
+    '지금 시작한 것만으로도 꽤 괜찮아요.',
+    '사장님, 물 한 잔 마셨어요?',
+    '일이 많아 보일 땐 확대하지 말고 축소해서 보기!',
+    '가끔은 모르는 척 지나가는 것도 기술이에요.',
+    '오늘 재고들도 열심히 살아가고 있어요.',
+    '사장님 오늘 표정이 약간 장인 같아요.',
+    '저는 오늘도 귀엽고 사장님은 오늘도 바빠요.',
+    '체크박스는 왠지 누르면 기분이 좋아요.',
+    '오늘도 한 칸씩 정리해봐요.',
+    '뭔가 복잡할 땐 일단 앉는 게 중요해요.',
+    '저는 누워있지만 마음만은 근무중입니다.',
+    '오늘은 덜 피곤한 하루였으면 좋겠어요.',
+    '할 일이 많다는 건 살아있다는 뜻이래요.',
+    '이 앱도 사장님처럼 열심히 돌아가는 중이에요.',
+    '지금 정도면 꽤 잘하고 있는 흐름이에요.',
+    '저는 강아지고 사장님은 사장님이에요. 둘 다 힘내요.',
+    '멍!',
+    '꼬리 흔드는 중…',
+    '오늘도 무사히 지나가보자구요 🐶',
+  ];
 
+  final _random = math.Random();
+  Timer? _messageTimer;
+  int _compactMessageIndex = 0;
   bool _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _compactMessageIndex = _random.nextInt(_compactMessages.length);
+    _messageTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted) return;
+      setState(_selectNextCompactMessage);
+    });
+  }
+
+  @override
+  void dispose() {
+    _messageTimer?.cancel();
+    super.dispose();
+  }
+
+  void _selectNextCompactMessage() {
+    if (_compactMessages.length < 2) return;
+
+    var next = _random.nextInt(_compactMessages.length);
+    while (next == _compactMessageIndex) {
+      next = _random.nextInt(_compactMessages.length);
+    }
+    _compactMessageIndex = next;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -497,15 +524,15 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
             child: Row(
               children: [
                 Expanded(
+                  flex: 5,
                   child: _SpeechBubble(
-                    text: widget.lowCount > 0
-                        ? '재고 ${widget.lowCount}개가\n부족해요!'
-                        : '오늘도 재고가\n든든해요!',
+                    text: _compactMessages[_compactMessageIndex],
+                    compact: true,
                   ),
                 ),
                 const SizedBox(width: 8),
-                SizedBox(
-                  width: 128,
+                Flexible(
+                  flex: 3,
                   child: Image.asset(
                     _discPuppyAsset,
                     fit: BoxFit.contain,
@@ -542,50 +569,9 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
           ],
         ),
         const SizedBox(height: 14),
-        _AssistantTaskPanel(
-          lowCount: widget.lowCount,
-          purchaseDueCount: widget.purchaseDueCount,
-          memoCount: widget.memoCount,
-          onLowStockTap: widget.onLowStockTap,
-          onPurchaseTap: widget.onPurchaseTap,
-          onMemoTap: widget.onMemoTap,
-        ),
+        _TodayActivityPanel(summary: widget.todaySummary),
         const SizedBox(height: 12),
         const _TipPanel(),
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: widget.onLowStockTap,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF7C5BEA),
-                  side: const BorderSide(color: Color(0xFF8B6BEF)),
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('자세히 보기'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: FilledButton(
-                onPressed: widget.onLowStockTap,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C5BEA),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('바로가기'),
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -593,8 +579,12 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
 
 class _SpeechBubble extends StatelessWidget {
   final String text;
+  final bool compact;
 
-  const _SpeechBubble({required this.text});
+  const _SpeechBubble({
+    required this.text,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -612,13 +602,27 @@ class _SpeechBubble extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        child: Text(
-          text,
-          style: const TextStyle(
-            height: 1.35,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF2B2930),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 14 : 18,
+          vertical: compact ? 12 : 14,
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 260),
+            child: Text(
+              text,
+              maxLines: compact ? 3 : null,
+              overflow: TextOverflow.ellipsis,
+              softWrap: true,
+              style: TextStyle(
+                fontSize: compact ? 14 : 14,
+                height: compact ? 1.28 : 1.35,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF2B2930),
+              ),
+            ),
           ),
         ),
       ),
@@ -626,109 +630,138 @@ class _SpeechBubble extends StatelessWidget {
   }
 }
 
-class _AssistantTaskPanel extends StatelessWidget {
-  final int lowCount;
-  final int purchaseDueCount;
-  final int memoCount;
-  final VoidCallback onLowStockTap;
-  final VoidCallback onPurchaseTap;
-  final VoidCallback onMemoTap;
+class _TodayActivityPanel extends StatelessWidget {
+  final TodayActivitySummary summary;
 
-  const _AssistantTaskPanel({
-    required this.lowCount,
-    required this.purchaseDueCount,
-    required this.memoCount,
-    required this.onLowStockTap,
-    required this.onPurchaseTap,
-    required this.onMemoTap,
-  });
+  const _TodayActivityPanel({required this.summary});
+
+  List<_TodayActivityLine> _lines() {
+    final lines = <_TodayActivityLine>[];
+    if (summary.newOrders > 0) {
+      lines.add(_TodayActivityLine(
+        icon: Icons.assignment_rounded,
+        color: const Color(0xFF6A7AF5),
+        text: '오늘 새 주문이 ${summary.newOrders}개 들어왔어요 🐶',
+      ));
+    }
+    if (summary.purchases > 0) {
+      lines.add(_TodayActivityLine(
+        icon: Icons.local_shipping_rounded,
+        color: const Color(0xFF4E9F7B),
+        text: '발주 ${summary.purchases}건을 챙겼어요',
+      ));
+    }
+    if (summary.inbound > 0 || summary.outbound > 0) {
+      lines.add(_TodayActivityLine(
+        icon: Icons.swap_vert_rounded,
+        color: const Color(0xFF5C8DF6),
+        text: '입고 ${summary.inbound}건, 출고 ${summary.outbound}건이 움직였어요',
+      ));
+    }
+    if (summary.pendingTodos > 0) {
+      lines.add(_TodayActivityLine(
+        icon: Icons.pending_actions_rounded,
+        color: const Color(0xFF8B6BEF),
+        text: '오늘 할일 ${summary.pendingTodos}개가 기다리고 있어요',
+      ));
+    }
+    if (summary.doneTodos > 0) {
+      lines.add(_TodayActivityLine(
+        icon: Icons.task_alt_rounded,
+        color: const Color(0xFF37A66B),
+        text: '한일 ${summary.doneTodos}개 완료! 잘했어요',
+      ));
+    }
+    if (summary.inProgressWorks > 0) {
+      lines.add(_TodayActivityLine(
+        icon: Icons.precision_manufacturing_rounded,
+        color: const Color(0xFFED8A3D),
+        text: '진행중 작업 ${summary.inProgressWorks}개가 있어요',
+      ));
+    }
+    return lines;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final lines = _lines();
+
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE9E2F5)),
       ),
-      child: Column(
-        children: [
-          _AssistantTaskRow(
-            icon: Icons.warning_rounded,
-            iconColor: const Color(0xFFFF7474),
-            label: '재고 부족 아이템',
-            value: '$lowCount개',
-            onTap: onLowStockTap,
-          ),
-          _AssistantTaskRow(
-            icon: Icons.local_shipping_rounded,
-            iconColor: const Color(0xFF6A7AF5),
-            label: '오늘 발주 예정',
-            value: '$purchaseDueCount건',
-            onTap: onPurchaseTap,
-          ),
-          _AssistantTaskRow(
-            icon: Icons.note_alt_rounded,
-            iconColor: const Color(0xFF8B6BEF),
-            label: '미확인 메모',
-            value: '$memoCount개',
-            onTap: onMemoTap,
-            showDivider: false,
-          ),
-        ],
-      ),
+      child: lines.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+              child: Text(
+                '오늘은 아직 기록된 활동이 없어요. 첫 기록을 남겨볼까요?',
+                style: TextStyle(
+                  height: 1.35,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF2B2930),
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                for (var i = 0; i < lines.length; i++)
+                  _TodayActivityRow(
+                    line: lines[i],
+                    showDivider: i != lines.length - 1,
+                  ),
+              ],
+            ),
     );
   }
 }
 
-class _AssistantTaskRow extends StatelessWidget {
+class _TodayActivityLine {
   final IconData icon;
-  final Color iconColor;
-  final String label;
-  final String value;
-  final VoidCallback onTap;
+  final Color color;
+  final String text;
+
+  const _TodayActivityLine({
+    required this.icon,
+    required this.color,
+    required this.text,
+  });
+}
+
+class _TodayActivityRow extends StatelessWidget {
+  final _TodayActivityLine line;
   final bool showDivider;
 
-  const _AssistantTaskRow({
-    required this.icon,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-    required this.onTap,
-    this.showDivider = true,
+  const _TodayActivityRow({
+    required this.line,
+    required this.showDivider,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-            child: Row(
-              children: [
-                Icon(icon, color: iconColor, size: 22),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                    overflow: TextOverflow.ellipsis,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Row(
+            children: [
+              Icon(line.icon, color: line.color, size: 22),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  line.text,
+                  style: const TextStyle(
+                    height: 1.25,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                Text(
-                  value,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(width: 6),
-                const Icon(Icons.chevron_right_rounded, color: Colors.black38),
-              ],
-            ),
+              ),
+            ],
           ),
-          if (showDivider) const Divider(height: 1, indent: 52, endIndent: 16),
-        ],
-      ),
+        ),
+        if (showDivider) const Divider(height: 1, indent: 52, endIndent: 16),
+      ],
     );
   }
 }
@@ -760,7 +793,7 @@ class _TipPanel extends StatelessWidget {
             SizedBox(width: 12),
             Expanded(
               child: Text(
-                '임계치 설정을 하면 재고 부족을 더 빨리 발견할 수 있어요!',
+                '기록을 남길수록 찰스톡이 오늘 흐름을 더 똑똑하게 모아드려요!',
                 style: TextStyle(height: 1.35, fontWeight: FontWeight.w600),
               ),
             ),

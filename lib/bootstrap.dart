@@ -6,6 +6,7 @@ import 'src/app/main_tab_controller.dart';
 import 'src/db/app_database.dart';
 import 'src/repos/drift_unified_repo.dart';
 import 'src/repos/repo_interfaces.dart';
+import 'src/services/dashboard_activity_service.dart';
 
 /// 아주 심플한 부트스트랩:
 /// - rootBuilder가 주어지면 그 위젯을 사용
@@ -50,6 +51,9 @@ class AppBootstrap {
         Provider<FolderTreeRepo>.value(
             value: unified), // ← FolderRepo가 아니라 FolderTreeRepo
         Provider<TrashRepo>.value(value: unified),
+        Provider<DashboardActivityService>(
+          create: (ctx) => DashboardActivityService(ctx.read<AppDatabase>()),
+        ),
         // e.g. Provider<TimelineRepo>(create: (_) => TimelineRepo(unified)),
       ],
       child: body,
