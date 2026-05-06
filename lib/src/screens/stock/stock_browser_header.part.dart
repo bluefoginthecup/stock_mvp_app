@@ -37,6 +37,7 @@ PreferredSizeWidget buildAppBar(
     BuildContext context, FolderTreeRepo folderRepo, ItemRepo itemRepo) {
   return AppBar(
     title: const Text('재고 브라우저'),
+    centerTitle: true,
     actions: [
       IconButton(
         icon: const Icon(Icons.ios_share),

@@ -352,6 +352,7 @@ class _TxnListScreenState extends State<TxnListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('입출고기록'),
+        centerTitle: true,
         actions: [
           IconButton(
             tooltip: '검색 TIP',

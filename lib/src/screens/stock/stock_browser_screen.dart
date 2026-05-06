@@ -304,10 +304,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                     }
 
                     return _buildStackWithList(
-                      sel: sel,
-                      folders: folders,
-                      items: items,
-                      slivers: slivers,
+                      sel,
+                      folders,
+                      items,
+                      slivers,
                     );
                   },
                 );
@@ -385,10 +385,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
                   // 리스트 + 멀티선택바
                   return _buildStackWithList(
-                    sel: sel,
-                    folders: folders,
-                    items: items,
-                    slivers: slivers,
+                    sel,
+                    folders,
+                    items,
+                    slivers,
                   );
                 },
               );
@@ -672,12 +672,12 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
   //------빌드 스택 위드 리스트 ------//
 
-  Widget _buildStackWithList({
-    required ItemSelectionController sel,
-    required List<FolderNode> folders,
-    required List<Item> items,
-    required List<Widget> slivers,
-  }) {
+  Widget _buildStackWithList(
+    ItemSelectionController sel,
+    List<FolderNode> folders,
+    List<Item> items,
+    List<Widget> slivers,
+  ) {
     return Stack(
       children: [
         CustomScrollView(slivers: slivers),

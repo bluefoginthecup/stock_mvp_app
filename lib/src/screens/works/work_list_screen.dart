@@ -329,6 +329,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('작업 목록'),
+        centerTitle: true,
         actions: [
           IconButton(
             tooltip: '검색 TIP',
