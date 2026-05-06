@@ -131,6 +131,27 @@ class _WorkListScreenState extends State<WorkListScreen> {
     );
   }
 
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      child: TextField(
+        controller: _controller,
+        decoration: InputDecoration(
+          hintText: '아이템명(초성) / 주문자명 검색',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _query.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _controller.clear(),
+                )
+              : null,
+          border: const OutlineInputBorder(),
+          isDense: true,
+        ),
+      ),
+    );
+  }
+
   DateTime _calendarDateOf(Work w) {
     switch (w.status) {
       case WorkStatus.done:
@@ -307,20 +328,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: _controller,
-          decoration: InputDecoration(
-            hintText: '아이템명(초성) / 주문자명 검색',
-            border: InputBorder.none,
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _query.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () => _controller.clear(),
-                  )
-                : null,
-          ),
-        ),
+        title: const Text('작업 목록'),
         actions: [
           IconButton(
             tooltip: '검색 TIP',
@@ -345,6 +353,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
           if (rawList.isEmpty) {
             return Column(
               children: [
+                _buildSearchField(),
                 _buildStatusFilterBar(),
                 Expanded(child: Center(child: Text(context.t.work_list_empty))),
               ],
@@ -374,6 +383,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
                     _query.isEmpty ? '선택한 상태의 작업이 없습니다.' : '"$_query" 검색 결과 없음';
                 return Column(
                   children: [
+                    _buildSearchField(),
                     _buildStatusFilterBar(),
                     Expanded(child: Center(child: Text(message))),
                   ],
@@ -390,6 +400,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
                 return SingleChildScrollView(
                   child: Column(
                     children: [
+                      _buildSearchField(),
                       _buildStatusFilterBar(),
                       CommonCalendarView(
                         events: events,
@@ -421,6 +432,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
 
               return Column(
                 children: [
+                  _buildSearchField(),
                   _buildStatusFilterBar(),
                   Expanded(
                     child: ListView.separated(

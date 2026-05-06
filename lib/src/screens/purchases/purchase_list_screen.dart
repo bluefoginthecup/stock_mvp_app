@@ -80,6 +80,27 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
         ));
   }
 
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      child: TextField(
+        controller: _controller,
+        decoration: InputDecoration(
+          hintText: '거래처 / 상품 검색',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _query.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _controller.clear(),
+                )
+              : null,
+          border: const OutlineInputBorder(),
+          isDense: true,
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -180,22 +201,7 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: _controller,
-          decoration: InputDecoration(
-            hintText: '거래처 / 상품 검색',
-            border: InputBorder.none,
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _query.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () {
-                      _controller.clear();
-                    },
-                  )
-                : null,
-          ),
-        ),
+        title: const Text('발주목록'),
         actions: [
           IconButton(
             icon: Icon(
@@ -209,229 +215,245 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<Map<String, List<PurchaseLine>>>(
-        future: poRepo.getLinesMap(), // 🔥 한 번만 가져옴
-        builder: (context, linesSnap) {
-          if (!linesSnap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          _buildSearchField(),
+          Expanded(
+            child: FutureBuilder<Map<String, List<PurchaseLine>>>(
+              future: poRepo.getLinesMap(), // 🔥 한 번만 가져옴
+              builder: (context, linesSnap) {
+                if (!linesSnap.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          final linesMap = linesSnap.data!;
+                final linesMap = linesSnap.data!;
 
-          return FutureBuilder<List<Supplier>>(
-            future: supplierRepo.list(onlyActive: false),
-            builder: (context, supplierSnap) {
-              final suppliers = supplierSnap.data ?? const [];
-              final supplierNameById = {
-                for (final s in suppliers) s.id: s.name,
-              };
+                return FutureBuilder<List<Supplier>>(
+                  future: supplierRepo.list(onlyActive: false),
+                  builder: (context, supplierSnap) {
+                    final suppliers = supplierSnap.data ?? const [];
+                    final supplierNameById = {
+                      for (final s in suppliers) s.id: s.name,
+                    };
 
-              String supplierNameFor(PurchaseOrder p) {
-                final supplierId = p.supplierId;
-                final linkedName = supplierId == null || supplierId.isEmpty
-                    ? null
-                    : supplierNameById[supplierId];
-                final fallback = p.supplierName.trim();
-                return linkedName ??
-                    (fallback.isEmpty ? '(거래처 미지정)' : fallback);
-              }
-
-              bool needsSupplierLink(PurchaseOrder p) {
-                final supplierId = p.supplierId;
-                return supplierId == null ||
-                    supplierId.isEmpty ||
-                    !supplierNameById.containsKey(supplierId);
-              }
-
-              return StreamBuilder<List<PurchaseOrder>>(
-                stream: poRepo.watchAllPurchaseOrders(),
-                builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snap.hasError) {
-                    return Center(child: Text('불러오기 실패: ${snap.error}'));
-                  }
-
-                  final rawList = snap.data ?? const <PurchaseOrder>[];
-
-                  // 🔥🔥 검색 필터 핵심
-                  final list = rawList.where((p) {
-                    if (_query.isEmpty) return true;
-
-                    final supplier = supplierNameFor(p).toLowerCase();
-
-                    /// 🔹 아이템 이름 검색
-                    final lines = linesMap[p.id] ?? [];
-
-                    final hasItem = lines.any((l) {
-                      final item = itemRepo.getCachedItem(l.itemId);
-                      final name = (item?.name ?? '').toLowerCase();
-                      return name.contains(_query);
-                    });
-
-                    return supplier.contains(_query) || hasItem;
-                  }).toList();
-
-                  if (list.isEmpty) {
-                    return Center(child: Text('"$_query" 검색 결과 없음'));
-                  }
-
-                  /// ============================
-                  /// 🔵 캘린더 뷰
-                  /// ============================
-                  if (isCalendarView) {
-                    final events = mapPurchaseToEvents(
-                      list,
-                      linesMap,
-                      supplierNameOf: supplierNameFor,
-                    );
-
-                    final filteredEvents = events.where((e) {
-                      return _eventTypeFilter.contains(e.type);
-                    }).toList();
-                    filteredEvents.sort((a, b) => b.date.compareTo(a.date));
-                    final filteredOrderIds =
-                        _uniqueOrderIds(filteredEvents.map((e) => e.refId));
-
-                    if (_query.isNotEmpty) {
-                      final matchedEvents = events.where((e) {
-                        if (!_eventTypeFilter.contains(e.type)) return false;
-
-                        final title = e.title.toLowerCase();
-                        final subtitle = (e.subtitle ?? '').toLowerCase();
-                        final search = (e.searchText ?? '');
-
-                        return title.contains(_query) ||
-                            subtitle.contains(_query) ||
-                            search.contains(_query);
-                      }).toList();
-
-                      if (matchedEvents.isNotEmpty) {
-                        matchedEvents.sort((a, b) => b.date.compareTo(a.date));
-                        final newDate = matchedEvents.first.date;
-                        if (_focusedDay != newDate) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (!mounted) return;
-                            setState(() {
-                              _focusedDay = newDate;
-                            });
-                          });
-                        }
-                      }
+                    String supplierNameFor(PurchaseOrder p) {
+                      final supplierId = p.supplierId;
+                      final linkedName =
+                          supplierId == null || supplierId.isEmpty
+                              ? null
+                              : supplierNameById[supplierId];
+                      final fallback = p.supplierName.trim();
+                      return linkedName ??
+                          (fallback.isEmpty ? '(거래처 미지정)' : fallback);
                     }
 
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          /// 👇 필터 버튼
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
+                    bool needsSupplierLink(PurchaseOrder p) {
+                      final supplierId = p.supplierId;
+                      return supplierId == null ||
+                          supplierId.isEmpty ||
+                          !supplierNameById.containsKey(supplierId);
+                    }
+
+                    return StreamBuilder<List<PurchaseOrder>>(
+                      stream: poRepo.watchAllPurchaseOrders(),
+                      builder: (context, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+                        if (snap.hasError) {
+                          return Center(child: Text('불러오기 실패: ${snap.error}'));
+                        }
+
+                        final rawList = snap.data ?? const <PurchaseOrder>[];
+
+                        // 🔥🔥 검색 필터 핵심
+                        final list = rawList.where((p) {
+                          if (_query.isEmpty) return true;
+
+                          final supplier = supplierNameFor(p).toLowerCase();
+
+                          /// 🔹 아이템 이름 검색
+                          final lines = linesMap[p.id] ?? [];
+
+                          final hasItem = lines.any((l) {
+                            final item = itemRepo.getCachedItem(l.itemId);
+                            final name = (item?.name ?? '').toLowerCase();
+                            return name.contains(_query);
+                          });
+
+                          return supplier.contains(_query) || hasItem;
+                        }).toList();
+
+                        if (list.isEmpty) {
+                          return Center(child: Text('"$_query" 검색 결과 없음'));
+                        }
+
+                        /// ============================
+                        /// 🔵 캘린더 뷰
+                        /// ============================
+                        if (isCalendarView) {
+                          final events = mapPurchaseToEvents(
+                            list,
+                            linesMap,
+                            supplierNameOf: supplierNameFor,
+                          );
+
+                          final filteredEvents = events.where((e) {
+                            return _eventTypeFilter.contains(e.type);
+                          }).toList();
+                          filteredEvents
+                              .sort((a, b) => b.date.compareTo(a.date));
+                          final filteredOrderIds = _uniqueOrderIds(
+                              filteredEvents.map((e) => e.refId));
+
+                          if (_query.isNotEmpty) {
+                            final matchedEvents = events.where((e) {
+                              if (!_eventTypeFilter.contains(e.type)) {
+                                return false;
+                              }
+
+                              final title = e.title.toLowerCase();
+                              final subtitle = (e.subtitle ?? '').toLowerCase();
+                              final search = (e.searchText ?? '');
+
+                              return title.contains(_query) ||
+                                  subtitle.contains(_query) ||
+                                  search.contains(_query);
+                            }).toList();
+
+                            if (matchedEvents.isNotEmpty) {
+                              matchedEvents
+                                  .sort((a, b) => b.date.compareTo(a.date));
+                              final newDate = matchedEvents.first.date;
+                              if (_focusedDay != newDate) {
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _focusedDay = newDate;
+                                  });
+                                });
+                              }
+                            }
+                          }
+
+                          return SingleChildScrollView(
+                            child: Column(
                               children: [
-                                _buildFilterChip(
-                                    '발주', CalendarEventType.purchaseOrderDate),
-                                _buildFilterChip(
-                                    '입고', CalendarEventType.purchaseEta),
-                                _buildFilterChip(
-                                    '결제', CalendarEventType.paymentDate),
-                                _buildFilterChip(
-                                    '계산서', CalendarEventType.vatInvoiceDate),
+                                /// 👇 필터 버튼
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      _buildFilterChip('발주',
+                                          CalendarEventType.purchaseOrderDate),
+                                      _buildFilterChip(
+                                          '입고', CalendarEventType.purchaseEta),
+                                      _buildFilterChip(
+                                          '결제', CalendarEventType.paymentDate),
+                                      _buildFilterChip('계산서',
+                                          CalendarEventType.vatInvoiceDate),
+                                    ],
+                                  ),
+                                ),
+
+                                CommonCalendarView(
+                                  events: filteredEvents,
+                                  focusedDay: _focusedDay,
+                                  scrollEvents: false,
+                                  onEventTap: (e) {
+                                    _openPurchaseDetail(
+                                      repo: context.read<PurchaseOrderRepo>(),
+                                      orderId: e.refId,
+                                      navigationOrderIds: filteredOrderIds,
+                                    );
+                                  },
+                                  expandedBuilder: (e) {
+                                    return PurchaseTimelinePreview(
+                                      purchaseId: e.refId,
+                                      onTap: () {
+                                        _openPurchaseDetail(
+                                          repo:
+                                              context.read<PurchaseOrderRepo>(),
+                                          orderId: e.refId,
+                                          navigationOrderIds: filteredOrderIds,
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
                               ],
                             ),
-                          ),
+                          );
+                        }
 
-                          CommonCalendarView(
-                            events: filteredEvents,
-                            focusedDay: _focusedDay,
-                            scrollEvents: false,
-                            onEventTap: (e) {
-                              _openPurchaseDetail(
-                                repo: context.read<PurchaseOrderRepo>(),
-                                orderId: e.refId,
-                                navigationOrderIds: filteredOrderIds,
-                              );
-                            },
-                            expandedBuilder: (e) {
-                              return PurchaseTimelinePreview(
-                                purchaseId: e.refId,
+                        /// ============================
+                        /// 🟢 리스트 뷰
+                        /// ============================
+                        final listOrderIds =
+                            _uniqueOrderIds(list.map((p) => p.id));
+                        return ListView.builder(
+                          itemCount: list.length,
+                          itemBuilder: (_, i) {
+                            final p = list[i];
+                            final supplierName = supplierNameFor(p);
+                            final needsLink = needsSupplierLink(p);
+
+                            String fmtDate(DateTime? d) {
+                              if (d == null) return '-';
+                              final m = d.month.toString().padLeft(2, '0');
+                              final day = d.day.toString().padLeft(2, '0');
+                              return '${d.year}-$m-$day';
+                            }
+
+                            String statusLabel() {
+                              switch (p.status.name) {
+                                case 'draft':
+                                  return '임시저장';
+                                case 'ordered':
+                                  return '발주완료';
+                                case 'received':
+                                  return '입고완료';
+                                case 'canceled':
+                                  return '취소';
+                                default:
+                                  return p.status.name;
+                              }
+                            }
+
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              child: ListTile(
+                                title: Text('발주: $supplierName'),
+                                subtitle: Text(
+                                  needsLink
+                                      ? '거래처 연결 필요 • 상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}'
+                                      : '상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}',
+                                ),
+                                trailing: const Icon(Icons.chevron_right),
                                 onTap: () {
                                   _openPurchaseDetail(
                                     repo: context.read<PurchaseOrderRepo>(),
-                                    orderId: e.refId,
-                                    navigationOrderIds: filteredOrderIds,
+                                    orderId: p.id,
+                                    navigationOrderIds: listOrderIds,
                                   );
                                 },
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  /// ============================
-                  /// 🟢 리스트 뷰
-                  /// ============================
-                  final listOrderIds = _uniqueOrderIds(list.map((p) => p.id));
-                  return ListView.builder(
-                    itemCount: list.length,
-                    itemBuilder: (_, i) {
-                      final p = list[i];
-                      final supplierName = supplierNameFor(p);
-                      final needsLink = needsSupplierLink(p);
-
-                      String fmtDate(DateTime? d) {
-                        if (d == null) return '-';
-                        final m = d.month.toString().padLeft(2, '0');
-                        final day = d.day.toString().padLeft(2, '0');
-                        return '${d.year}-$m-$day';
-                      }
-
-                      String statusLabel() {
-                        switch (p.status.name) {
-                          case 'draft':
-                            return '임시저장';
-                          case 'ordered':
-                            return '발주완료';
-                          case 'received':
-                            return '입고완료';
-                          case 'canceled':
-                            return '취소';
-                          default:
-                            return p.status.name;
-                        }
-                      }
-
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        child: ListTile(
-                          title: Text('발주: $supplierName'),
-                          subtitle: Text(
-                            needsLink
-                                ? '거래처 연결 필요 • 상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}'
-                                : '상태: ${statusLabel()} • ETA: ${fmtDate(p.eta)}',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () {
-                            _openPurchaseDetail(
-                              repo: context.read<PurchaseOrderRepo>(),
-                              orderId: p.id,
-                              navigationOrderIds: listOrderIds,
-                            );
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                              ),
+                            ).copyWithButtonBar(context, p, poRepo, inv);
                           },
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
-                        ),
-                      ).copyWithButtonBar(context, p, poRepo, inv);
-                    },
-                  );
-                },
-              );
-            },
-          );
-        },
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: DraggableFab(
         storageKey: 'fab_offset_purchase_list',

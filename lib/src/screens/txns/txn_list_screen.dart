@@ -128,6 +128,27 @@ class _TxnListScreenState extends State<TxnListScreen> {
     );
   }
 
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      child: TextField(
+        controller: _controller,
+        decoration: InputDecoration(
+          hintText: '아이템명(초성) / 거래처 / 참조 검색',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _query.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _controller.clear(),
+                )
+              : null,
+          border: const OutlineInputBorder(),
+          isDense: true,
+        ),
+      ),
+    );
+  }
+
   Future<Map<String, String>> _loadItemNames(
     ItemRepo itemRepo,
     List<Txn> txns,
@@ -330,20 +351,7 @@ class _TxnListScreenState extends State<TxnListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          controller: _controller,
-          decoration: InputDecoration(
-            hintText: '아이템명(초성) / 거래처 / 참조 검색',
-            border: InputBorder.none,
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _query.isNotEmpty
-                ? IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: () => _controller.clear(),
-                  )
-                : null,
-          ),
-        ),
+        title: const Text('입출고기록'),
         actions: [
           IconButton(
             tooltip: '검색 TIP',
@@ -391,6 +399,7 @@ class _TxnListScreenState extends State<TxnListScreen> {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
+          _buildSearchField(),
           _buildTypeFilterBar(),
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.5,
@@ -404,6 +413,7 @@ class _TxnListScreenState extends State<TxnListScreen> {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
+          _buildSearchField(),
           _buildTypeFilterBar(),
           SizedBox(
             height: MediaQuery.of(context).size.height * 0.5,
@@ -439,6 +449,7 @@ class _TxnListScreenState extends State<TxnListScreen> {
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
+              _buildSearchField(),
               _buildTypeFilterBar(),
               SizedBox(
                 height: MediaQuery.of(context).size.height * 0.5,
@@ -454,6 +465,7 @@ class _TxnListScreenState extends State<TxnListScreen> {
 
         return Column(
           children: [
+            _buildSearchField(),
             _buildTypeFilterBar(),
             Expanded(
               child: ListView.separated(
@@ -481,6 +493,7 @@ class _TxnListScreenState extends State<TxnListScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
+            _buildSearchField(),
             _buildTypeFilterBar(),
             CommonCalendarView(
               events: events,
