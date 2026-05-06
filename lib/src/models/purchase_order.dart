@@ -2,6 +2,7 @@ import 'types.dart';
 import 'buyer_profile.dart';
 import 'extensions/payment_status_ext.dart';
 import 'extensions/vat_invoice_status_ext.dart';
+import 'shipping_destination.dart';
 
 enum PurchaseOrderStatus { draft, ordered, received, canceled }
 
@@ -26,6 +27,7 @@ class PurchaseOrder {
   final String? deliveryPhone;
   final String? deliveryMemo;
   final bool showDeliveryOnPrint;
+  final String? shippingDestinationId;
   final int? buyerProfileId;
   final String? buyerProfileName;
   final String? buyerBusinessNumber;
@@ -100,6 +102,7 @@ class PurchaseOrder {
     this.deliveryPhone,
     this.deliveryMemo,
     this.showDeliveryOnPrint = false,
+    this.shippingDestinationId,
     this.buyerProfileId,
     this.buyerProfileName,
     this.buyerBusinessNumber,
@@ -136,6 +139,7 @@ class PurchaseOrder {
     String? deliveryPhone,
     String? deliveryMemo,
     bool? showDeliveryOnPrint,
+    String? shippingDestinationId,
     int? buyerProfileId,
     String? buyerProfileName,
     String? buyerBusinessNumber,
@@ -173,6 +177,8 @@ class PurchaseOrder {
         deliveryPhone: deliveryPhone ?? this.deliveryPhone,
         deliveryMemo: deliveryMemo ?? this.deliveryMemo,
         showDeliveryOnPrint: showDeliveryOnPrint ?? this.showDeliveryOnPrint,
+        shippingDestinationId:
+            shippingDestinationId ?? this.shippingDestinationId,
         buyerProfileId: buyerProfileId ?? this.buyerProfileId,
         buyerProfileName: buyerProfileName ?? this.buyerProfileName,
         buyerBusinessNumber: buyerBusinessNumber ?? this.buyerBusinessNumber,
@@ -196,6 +202,46 @@ class PurchaseOrder {
         vatInvoiceDueAt: vatInvoiceDueAt ?? this.vatInvoiceDueAt,
       );
 
+  PurchaseOrder copyWithShippingDestination(ShippingDestination destination) {
+    return PurchaseOrder(
+      id: id,
+      supplierName: supplierName,
+      eta: eta,
+      status: status,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+      isDeleted: isDeleted,
+      memo: memo,
+      deliveryName: destination.name,
+      deliveryAddress: destination.address,
+      deliveryPhone: destination.phone,
+      deliveryMemo: destination.memo,
+      showDeliveryOnPrint: showDeliveryOnPrint,
+      shippingDestinationId: destination.id,
+      buyerProfileId: buyerProfileId,
+      buyerProfileName: buyerProfileName,
+      buyerBusinessNumber: buyerBusinessNumber,
+      buyerCompanyName: buyerCompanyName,
+      buyerRepresentative: buyerRepresentative,
+      buyerAddress: buyerAddress,
+      buyerBusinessType: buyerBusinessType,
+      buyerBusinessItem: buyerBusinessItem,
+      buyerPhoneFax: buyerPhoneFax,
+      orderId: orderId,
+      receivedAt: receivedAt,
+      supplierId: supplierId,
+      shippingCost: shippingCost,
+      extraCost: extraCost,
+      vatType: vatType,
+      paymentStatus: paymentStatus,
+      paidAt: paidAt,
+      paymentDueAt: paymentDueAt,
+      vatInvoiceStatus: vatInvoiceStatus,
+      vatInvoiceIssuedAt: vatInvoiceIssuedAt,
+      vatInvoiceDueAt: vatInvoiceDueAt,
+    );
+  }
+
   factory PurchaseOrder.fromJson(Map<String, dynamic> j) => PurchaseOrder(
         id: j['id'] as String,
         supplierName: j['supplierName'] as String? ?? '',
@@ -211,6 +257,7 @@ class PurchaseOrder {
         deliveryPhone: j['deliveryPhone'] as String?,
         deliveryMemo: j['deliveryMemo'] as String?,
         showDeliveryOnPrint: j['showDeliveryOnPrint'] == true,
+        shippingDestinationId: j['shippingDestinationId'] as String?,
         buyerProfileId: (j['buyerProfileId'] as num?)?.toInt(),
         buyerProfileName: j['buyerProfileName'] as String?,
         buyerBusinessNumber: j['buyerBusinessNumber'] as String?,
@@ -252,6 +299,7 @@ class PurchaseOrder {
         'deliveryPhone': deliveryPhone,
         'deliveryMemo': deliveryMemo,
         'showDeliveryOnPrint': showDeliveryOnPrint,
+        'shippingDestinationId': shippingDestinationId,
         'buyerProfileId': buyerProfileId,
         'buyerProfileName': buyerProfileName,
         'buyerBusinessNumber': buyerBusinessNumber,

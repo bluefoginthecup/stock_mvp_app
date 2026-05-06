@@ -4800,6 +4800,12 @@ class $PurchaseOrdersTable extends PurchaseOrders
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("show_delivery_on_print" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _shippingDestinationIdMeta =
+      const VerificationMeta('shippingDestinationId');
+  @override
+  late final GeneratedColumn<String> shippingDestinationId =
+      GeneratedColumn<String>('shipping_destination_id', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _buyerProfileIdMeta =
       const VerificationMeta('buyerProfileId');
   @override
@@ -4899,6 +4905,7 @@ class $PurchaseOrdersTable extends PurchaseOrders
         deliveryPhone,
         deliveryMemo,
         showDeliveryOnPrint,
+        shippingDestinationId,
         buyerProfileId,
         buyerProfileName,
         buyerBusinessNumber,
@@ -5061,6 +5068,12 @@ class $PurchaseOrdersTable extends PurchaseOrders
           showDeliveryOnPrint.isAcceptableOrUnknown(
               data['show_delivery_on_print']!, _showDeliveryOnPrintMeta));
     }
+    if (data.containsKey('shipping_destination_id')) {
+      context.handle(
+          _shippingDestinationIdMeta,
+          shippingDestinationId.isAcceptableOrUnknown(
+              data['shipping_destination_id']!, _shippingDestinationIdMeta));
+    }
     if (data.containsKey('buyer_profile_id')) {
       context.handle(
           _buyerProfileIdMeta,
@@ -5188,6 +5201,9 @@ class $PurchaseOrdersTable extends PurchaseOrders
           .read(DriftSqlType.string, data['${effectivePrefix}delivery_memo']),
       showDeliveryOnPrint: attachedDatabase.typeMapping.read(
           DriftSqlType.bool, data['${effectivePrefix}show_delivery_on_print'])!,
+      shippingDestinationId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}shipping_destination_id']),
       buyerProfileId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}buyer_profile_id']),
       buyerProfileName: attachedDatabase.typeMapping.read(
@@ -5248,6 +5264,7 @@ class PurchaseOrderRow extends DataClass
   final String? deliveryPhone;
   final String? deliveryMemo;
   final bool showDeliveryOnPrint;
+  final String? shippingDestinationId;
   final int? buyerProfileId;
   final String? buyerProfileName;
   final String? buyerBusinessNumber;
@@ -5286,6 +5303,7 @@ class PurchaseOrderRow extends DataClass
       this.deliveryPhone,
       this.deliveryMemo,
       required this.showDeliveryOnPrint,
+      this.shippingDestinationId,
       this.buyerProfileId,
       this.buyerProfileName,
       this.buyerBusinessNumber,
@@ -5346,6 +5364,9 @@ class PurchaseOrderRow extends DataClass
       map['delivery_memo'] = Variable<String>(deliveryMemo);
     }
     map['show_delivery_on_print'] = Variable<bool>(showDeliveryOnPrint);
+    if (!nullToAbsent || shippingDestinationId != null) {
+      map['shipping_destination_id'] = Variable<String>(shippingDestinationId);
+    }
     if (!nullToAbsent || buyerProfileId != null) {
       map['buyer_profile_id'] = Variable<int>(buyerProfileId);
     }
@@ -5429,6 +5450,9 @@ class PurchaseOrderRow extends DataClass
           ? const Value.absent()
           : Value(deliveryMemo),
       showDeliveryOnPrint: Value(showDeliveryOnPrint),
+      shippingDestinationId: shippingDestinationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(shippingDestinationId),
       buyerProfileId: buyerProfileId == null && nullToAbsent
           ? const Value.absent()
           : Value(buyerProfileId),
@@ -5499,6 +5523,8 @@ class PurchaseOrderRow extends DataClass
       deliveryMemo: serializer.fromJson<String?>(json['deliveryMemo']),
       showDeliveryOnPrint:
           serializer.fromJson<bool>(json['showDeliveryOnPrint']),
+      shippingDestinationId:
+          serializer.fromJson<String?>(json['shippingDestinationId']),
       buyerProfileId: serializer.fromJson<int?>(json['buyerProfileId']),
       buyerProfileName: serializer.fromJson<String?>(json['buyerProfileName']),
       buyerBusinessNumber:
@@ -5546,6 +5572,8 @@ class PurchaseOrderRow extends DataClass
       'deliveryPhone': serializer.toJson<String?>(deliveryPhone),
       'deliveryMemo': serializer.toJson<String?>(deliveryMemo),
       'showDeliveryOnPrint': serializer.toJson<bool>(showDeliveryOnPrint),
+      'shippingDestinationId':
+          serializer.toJson<String?>(shippingDestinationId),
       'buyerProfileId': serializer.toJson<int?>(buyerProfileId),
       'buyerProfileName': serializer.toJson<String?>(buyerProfileName),
       'buyerBusinessNumber': serializer.toJson<String?>(buyerBusinessNumber),
@@ -5587,6 +5615,7 @@ class PurchaseOrderRow extends DataClass
           Value<String?> deliveryPhone = const Value.absent(),
           Value<String?> deliveryMemo = const Value.absent(),
           bool? showDeliveryOnPrint,
+          Value<String?> shippingDestinationId = const Value.absent(),
           Value<int?> buyerProfileId = const Value.absent(),
           Value<String?> buyerProfileName = const Value.absent(),
           Value<String?> buyerBusinessNumber = const Value.absent(),
@@ -5635,6 +5664,9 @@ class PurchaseOrderRow extends DataClass
         deliveryMemo:
             deliveryMemo.present ? deliveryMemo.value : this.deliveryMemo,
         showDeliveryOnPrint: showDeliveryOnPrint ?? this.showDeliveryOnPrint,
+        shippingDestinationId: shippingDestinationId.present
+            ? shippingDestinationId.value
+            : this.shippingDestinationId,
         buyerProfileId:
             buyerProfileId.present ? buyerProfileId.value : this.buyerProfileId,
         buyerProfileName: buyerProfileName.present
@@ -5716,6 +5748,9 @@ class PurchaseOrderRow extends DataClass
       showDeliveryOnPrint: data.showDeliveryOnPrint.present
           ? data.showDeliveryOnPrint.value
           : this.showDeliveryOnPrint,
+      shippingDestinationId: data.shippingDestinationId.present
+          ? data.shippingDestinationId.value
+          : this.shippingDestinationId,
       buyerProfileId: data.buyerProfileId.present
           ? data.buyerProfileId.value
           : this.buyerProfileId,
@@ -5778,6 +5813,7 @@ class PurchaseOrderRow extends DataClass
           ..write('deliveryPhone: $deliveryPhone, ')
           ..write('deliveryMemo: $deliveryMemo, ')
           ..write('showDeliveryOnPrint: $showDeliveryOnPrint, ')
+          ..write('shippingDestinationId: $shippingDestinationId, ')
           ..write('buyerProfileId: $buyerProfileId, ')
           ..write('buyerProfileName: $buyerProfileName, ')
           ..write('buyerBusinessNumber: $buyerBusinessNumber, ')
@@ -5821,6 +5857,7 @@ class PurchaseOrderRow extends DataClass
         deliveryPhone,
         deliveryMemo,
         showDeliveryOnPrint,
+        shippingDestinationId,
         buyerProfileId,
         buyerProfileName,
         buyerBusinessNumber,
@@ -5863,6 +5900,7 @@ class PurchaseOrderRow extends DataClass
           other.deliveryPhone == this.deliveryPhone &&
           other.deliveryMemo == this.deliveryMemo &&
           other.showDeliveryOnPrint == this.showDeliveryOnPrint &&
+          other.shippingDestinationId == this.shippingDestinationId &&
           other.buyerProfileId == this.buyerProfileId &&
           other.buyerProfileName == this.buyerProfileName &&
           other.buyerBusinessNumber == this.buyerBusinessNumber &&
@@ -5903,6 +5941,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
   final Value<String?> deliveryPhone;
   final Value<String?> deliveryMemo;
   final Value<bool> showDeliveryOnPrint;
+  final Value<String?> shippingDestinationId;
   final Value<int?> buyerProfileId;
   final Value<String?> buyerProfileName;
   final Value<String?> buyerBusinessNumber;
@@ -5942,6 +5981,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.deliveryPhone = const Value.absent(),
     this.deliveryMemo = const Value.absent(),
     this.showDeliveryOnPrint = const Value.absent(),
+    this.shippingDestinationId = const Value.absent(),
     this.buyerProfileId = const Value.absent(),
     this.buyerProfileName = const Value.absent(),
     this.buyerBusinessNumber = const Value.absent(),
@@ -5982,6 +6022,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     this.deliveryPhone = const Value.absent(),
     this.deliveryMemo = const Value.absent(),
     this.showDeliveryOnPrint = const Value.absent(),
+    this.shippingDestinationId = const Value.absent(),
     this.buyerProfileId = const Value.absent(),
     this.buyerProfileName = const Value.absent(),
     this.buyerBusinessNumber = const Value.absent(),
@@ -6027,6 +6068,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     Expression<String>? deliveryPhone,
     Expression<String>? deliveryMemo,
     Expression<bool>? showDeliveryOnPrint,
+    Expression<String>? shippingDestinationId,
     Expression<int>? buyerProfileId,
     Expression<String>? buyerProfileName,
     Expression<String>? buyerBusinessNumber,
@@ -6069,6 +6111,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       if (deliveryMemo != null) 'delivery_memo': deliveryMemo,
       if (showDeliveryOnPrint != null)
         'show_delivery_on_print': showDeliveryOnPrint,
+      if (shippingDestinationId != null)
+        'shipping_destination_id': shippingDestinationId,
       if (buyerProfileId != null) 'buyer_profile_id': buyerProfileId,
       if (buyerProfileName != null) 'buyer_profile_name': buyerProfileName,
       if (buyerBusinessNumber != null)
@@ -6113,6 +6157,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       Value<String?>? deliveryPhone,
       Value<String?>? deliveryMemo,
       Value<bool>? showDeliveryOnPrint,
+      Value<String?>? shippingDestinationId,
       Value<int?>? buyerProfileId,
       Value<String?>? buyerProfileName,
       Value<String?>? buyerBusinessNumber,
@@ -6152,6 +6197,8 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
       deliveryPhone: deliveryPhone ?? this.deliveryPhone,
       deliveryMemo: deliveryMemo ?? this.deliveryMemo,
       showDeliveryOnPrint: showDeliveryOnPrint ?? this.showDeliveryOnPrint,
+      shippingDestinationId:
+          shippingDestinationId ?? this.shippingDestinationId,
       buyerProfileId: buyerProfileId ?? this.buyerProfileId,
       buyerProfileName: buyerProfileName ?? this.buyerProfileName,
       buyerBusinessNumber: buyerBusinessNumber ?? this.buyerBusinessNumber,
@@ -6246,6 +6293,10 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
     if (showDeliveryOnPrint.present) {
       map['show_delivery_on_print'] = Variable<bool>(showDeliveryOnPrint.value);
     }
+    if (shippingDestinationId.present) {
+      map['shipping_destination_id'] =
+          Variable<String>(shippingDestinationId.value);
+    }
     if (buyerProfileId.present) {
       map['buyer_profile_id'] = Variable<int>(buyerProfileId.value);
     }
@@ -6317,6 +6368,7 @@ class PurchaseOrdersCompanion extends UpdateCompanion<PurchaseOrderRow> {
           ..write('deliveryPhone: $deliveryPhone, ')
           ..write('deliveryMemo: $deliveryMemo, ')
           ..write('showDeliveryOnPrint: $showDeliveryOnPrint, ')
+          ..write('shippingDestinationId: $shippingDestinationId, ')
           ..write('buyerProfileId: $buyerProfileId, ')
           ..write('buyerProfileName: $buyerProfileName, ')
           ..write('buyerBusinessNumber: $buyerBusinessNumber, ')
@@ -9096,6 +9148,862 @@ class SuppliersCompanion extends UpdateCompanion<SupplierRow> {
   }
 }
 
+class $ShippingDestinationsTable extends ShippingDestinations
+    with TableInfo<$ShippingDestinationsTable, ShippingDestinationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ShippingDestinationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _addressMeta =
+      const VerificationMeta('address');
+  @override
+  late final GeneratedColumn<String> address = GeneratedColumn<String>(
+      'address', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _contactNameMeta =
+      const VerificationMeta('contactName');
+  @override
+  late final GeneratedColumn<String> contactName = GeneratedColumn<String>(
+      'contact_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _phoneMeta = const VerificationMeta('phone');
+  @override
+  late final GeneratedColumn<String> phone = GeneratedColumn<String>(
+      'phone', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _memoMeta = const VerificationMeta('memo');
+  @override
+  late final GeneratedColumn<String> memo = GeneratedColumn<String>(
+      'memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _mapImagePathMeta =
+      const VerificationMeta('mapImagePath');
+  @override
+  late final GeneratedColumn<String> mapImagePath = GeneratedColumn<String>(
+      'map_image_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _isArchivedMeta =
+      const VerificationMeta('isArchived');
+  @override
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
+      'is_archived', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_archived" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        address,
+        contactName,
+        phone,
+        memo,
+        mapImagePath,
+        isArchived,
+        createdAt,
+        updatedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'shipping_destinations';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<ShippingDestinationRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('address')) {
+      context.handle(_addressMeta,
+          address.isAcceptableOrUnknown(data['address']!, _addressMeta));
+    }
+    if (data.containsKey('contact_name')) {
+      context.handle(
+          _contactNameMeta,
+          contactName.isAcceptableOrUnknown(
+              data['contact_name']!, _contactNameMeta));
+    }
+    if (data.containsKey('phone')) {
+      context.handle(
+          _phoneMeta, phone.isAcceptableOrUnknown(data['phone']!, _phoneMeta));
+    }
+    if (data.containsKey('memo')) {
+      context.handle(
+          _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
+    }
+    if (data.containsKey('map_image_path')) {
+      context.handle(
+          _mapImagePathMeta,
+          mapImagePath.isAcceptableOrUnknown(
+              data['map_image_path']!, _mapImagePathMeta));
+    }
+    if (data.containsKey('is_archived')) {
+      context.handle(
+          _isArchivedMeta,
+          isArchived.isAcceptableOrUnknown(
+              data['is_archived']!, _isArchivedMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ShippingDestinationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ShippingDestinationRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      address: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}address'])!,
+      contactName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}contact_name']),
+      phone: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}phone']),
+      memo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}memo']),
+      mapImagePath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}map_image_path']),
+      isArchived: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_archived'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $ShippingDestinationsTable createAlias(String alias) {
+    return $ShippingDestinationsTable(attachedDatabase, alias);
+  }
+}
+
+class ShippingDestinationRow extends DataClass
+    implements Insertable<ShippingDestinationRow> {
+  final String id;
+  final String name;
+  final String address;
+  final String? contactName;
+  final String? phone;
+  final String? memo;
+  final String? mapImagePath;
+  final bool isArchived;
+  final String createdAt;
+  final String updatedAt;
+  const ShippingDestinationRow(
+      {required this.id,
+      required this.name,
+      required this.address,
+      this.contactName,
+      this.phone,
+      this.memo,
+      this.mapImagePath,
+      required this.isArchived,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['address'] = Variable<String>(address);
+    if (!nullToAbsent || contactName != null) {
+      map['contact_name'] = Variable<String>(contactName);
+    }
+    if (!nullToAbsent || phone != null) {
+      map['phone'] = Variable<String>(phone);
+    }
+    if (!nullToAbsent || memo != null) {
+      map['memo'] = Variable<String>(memo);
+    }
+    if (!nullToAbsent || mapImagePath != null) {
+      map['map_image_path'] = Variable<String>(mapImagePath);
+    }
+    map['is_archived'] = Variable<bool>(isArchived);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    return map;
+  }
+
+  ShippingDestinationsCompanion toCompanion(bool nullToAbsent) {
+    return ShippingDestinationsCompanion(
+      id: Value(id),
+      name: Value(name),
+      address: Value(address),
+      contactName: contactName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contactName),
+      phone:
+          phone == null && nullToAbsent ? const Value.absent() : Value(phone),
+      memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      mapImagePath: mapImagePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mapImagePath),
+      isArchived: Value(isArchived),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ShippingDestinationRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ShippingDestinationRow(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      address: serializer.fromJson<String>(json['address']),
+      contactName: serializer.fromJson<String?>(json['contactName']),
+      phone: serializer.fromJson<String?>(json['phone']),
+      memo: serializer.fromJson<String?>(json['memo']),
+      mapImagePath: serializer.fromJson<String?>(json['mapImagePath']),
+      isArchived: serializer.fromJson<bool>(json['isArchived']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'address': serializer.toJson<String>(address),
+      'contactName': serializer.toJson<String?>(contactName),
+      'phone': serializer.toJson<String?>(phone),
+      'memo': serializer.toJson<String?>(memo),
+      'mapImagePath': serializer.toJson<String?>(mapImagePath),
+      'isArchived': serializer.toJson<bool>(isArchived),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+    };
+  }
+
+  ShippingDestinationRow copyWith(
+          {String? id,
+          String? name,
+          String? address,
+          Value<String?> contactName = const Value.absent(),
+          Value<String?> phone = const Value.absent(),
+          Value<String?> memo = const Value.absent(),
+          Value<String?> mapImagePath = const Value.absent(),
+          bool? isArchived,
+          String? createdAt,
+          String? updatedAt}) =>
+      ShippingDestinationRow(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        address: address ?? this.address,
+        contactName: contactName.present ? contactName.value : this.contactName,
+        phone: phone.present ? phone.value : this.phone,
+        memo: memo.present ? memo.value : this.memo,
+        mapImagePath:
+            mapImagePath.present ? mapImagePath.value : this.mapImagePath,
+        isArchived: isArchived ?? this.isArchived,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  ShippingDestinationRow copyWithCompanion(ShippingDestinationsCompanion data) {
+    return ShippingDestinationRow(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      address: data.address.present ? data.address.value : this.address,
+      contactName:
+          data.contactName.present ? data.contactName.value : this.contactName,
+      phone: data.phone.present ? data.phone.value : this.phone,
+      memo: data.memo.present ? data.memo.value : this.memo,
+      mapImagePath: data.mapImagePath.present
+          ? data.mapImagePath.value
+          : this.mapImagePath,
+      isArchived:
+          data.isArchived.present ? data.isArchived.value : this.isArchived,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShippingDestinationRow(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('address: $address, ')
+          ..write('contactName: $contactName, ')
+          ..write('phone: $phone, ')
+          ..write('memo: $memo, ')
+          ..write('mapImagePath: $mapImagePath, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, address, contactName, phone, memo,
+      mapImagePath, isArchived, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ShippingDestinationRow &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.address == this.address &&
+          other.contactName == this.contactName &&
+          other.phone == this.phone &&
+          other.memo == this.memo &&
+          other.mapImagePath == this.mapImagePath &&
+          other.isArchived == this.isArchived &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ShippingDestinationsCompanion
+    extends UpdateCompanion<ShippingDestinationRow> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> address;
+  final Value<String?> contactName;
+  final Value<String?> phone;
+  final Value<String?> memo;
+  final Value<String?> mapImagePath;
+  final Value<bool> isArchived;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<int> rowid;
+  const ShippingDestinationsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.address = const Value.absent(),
+    this.contactName = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.memo = const Value.absent(),
+    this.mapImagePath = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ShippingDestinationsCompanion.insert({
+    required String id,
+    required String name,
+    this.address = const Value.absent(),
+    this.contactName = const Value.absent(),
+    this.phone = const Value.absent(),
+    this.memo = const Value.absent(),
+    this.mapImagePath = const Value.absent(),
+    this.isArchived = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<ShippingDestinationRow> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? address,
+    Expression<String>? contactName,
+    Expression<String>? phone,
+    Expression<String>? memo,
+    Expression<String>? mapImagePath,
+    Expression<bool>? isArchived,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (address != null) 'address': address,
+      if (contactName != null) 'contact_name': contactName,
+      if (phone != null) 'phone': phone,
+      if (memo != null) 'memo': memo,
+      if (mapImagePath != null) 'map_image_path': mapImagePath,
+      if (isArchived != null) 'is_archived': isArchived,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ShippingDestinationsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String>? address,
+      Value<String?>? contactName,
+      Value<String?>? phone,
+      Value<String?>? memo,
+      Value<String?>? mapImagePath,
+      Value<bool>? isArchived,
+      Value<String>? createdAt,
+      Value<String>? updatedAt,
+      Value<int>? rowid}) {
+    return ShippingDestinationsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      address: address ?? this.address,
+      contactName: contactName ?? this.contactName,
+      phone: phone ?? this.phone,
+      memo: memo ?? this.memo,
+      mapImagePath: mapImagePath ?? this.mapImagePath,
+      isArchived: isArchived ?? this.isArchived,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (address.present) {
+      map['address'] = Variable<String>(address.value);
+    }
+    if (contactName.present) {
+      map['contact_name'] = Variable<String>(contactName.value);
+    }
+    if (phone.present) {
+      map['phone'] = Variable<String>(phone.value);
+    }
+    if (memo.present) {
+      map['memo'] = Variable<String>(memo.value);
+    }
+    if (mapImagePath.present) {
+      map['map_image_path'] = Variable<String>(mapImagePath.value);
+    }
+    if (isArchived.present) {
+      map['is_archived'] = Variable<bool>(isArchived.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShippingDestinationsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('address: $address, ')
+          ..write('contactName: $contactName, ')
+          ..write('phone: $phone, ')
+          ..write('memo: $memo, ')
+          ..write('mapImagePath: $mapImagePath, ')
+          ..write('isArchived: $isArchived, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SupplierShippingDestinationsTable extends SupplierShippingDestinations
+    with
+        TableInfo<$SupplierShippingDestinationsTable,
+            SupplierShippingDestinationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SupplierShippingDestinationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _supplierIdMeta =
+      const VerificationMeta('supplierId');
+  @override
+  late final GeneratedColumn<String> supplierId = GeneratedColumn<String>(
+      'supplier_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES suppliers (id) ON DELETE CASCADE'));
+  static const VerificationMeta _shippingDestinationIdMeta =
+      const VerificationMeta('shippingDestinationId');
+  @override
+  late final GeneratedColumn<String> shippingDestinationId =
+      GeneratedColumn<String>('shipping_destination_id', aliasedName, false,
+          type: DriftSqlType.string,
+          requiredDuringInsert: true,
+          defaultConstraints: GeneratedColumn.constraintIsAlways(
+              'REFERENCES shipping_destinations (id) ON DELETE CASCADE'));
+  static const VerificationMeta _isDefaultMeta =
+      const VerificationMeta('isDefault');
+  @override
+  late final GeneratedColumn<bool> isDefault = GeneratedColumn<bool>(
+      'is_default', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_default" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [supplierId, shippingDestinationId, isDefault, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'supplier_shipping_destinations';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<SupplierShippingDestinationRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('supplier_id')) {
+      context.handle(
+          _supplierIdMeta,
+          supplierId.isAcceptableOrUnknown(
+              data['supplier_id']!, _supplierIdMeta));
+    } else if (isInserting) {
+      context.missing(_supplierIdMeta);
+    }
+    if (data.containsKey('shipping_destination_id')) {
+      context.handle(
+          _shippingDestinationIdMeta,
+          shippingDestinationId.isAcceptableOrUnknown(
+              data['shipping_destination_id']!, _shippingDestinationIdMeta));
+    } else if (isInserting) {
+      context.missing(_shippingDestinationIdMeta);
+    }
+    if (data.containsKey('is_default')) {
+      context.handle(_isDefaultMeta,
+          isDefault.isAcceptableOrUnknown(data['is_default']!, _isDefaultMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {supplierId, shippingDestinationId};
+  @override
+  SupplierShippingDestinationRow map(Map<String, dynamic> data,
+      {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SupplierShippingDestinationRow(
+      supplierId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}supplier_id'])!,
+      shippingDestinationId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}shipping_destination_id'])!,
+      isDefault: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_default'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $SupplierShippingDestinationsTable createAlias(String alias) {
+    return $SupplierShippingDestinationsTable(attachedDatabase, alias);
+  }
+}
+
+class SupplierShippingDestinationRow extends DataClass
+    implements Insertable<SupplierShippingDestinationRow> {
+  final String supplierId;
+  final String shippingDestinationId;
+  final bool isDefault;
+  final String createdAt;
+  final String updatedAt;
+  const SupplierShippingDestinationRow(
+      {required this.supplierId,
+      required this.shippingDestinationId,
+      required this.isDefault,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['supplier_id'] = Variable<String>(supplierId);
+    map['shipping_destination_id'] = Variable<String>(shippingDestinationId);
+    map['is_default'] = Variable<bool>(isDefault);
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    return map;
+  }
+
+  SupplierShippingDestinationsCompanion toCompanion(bool nullToAbsent) {
+    return SupplierShippingDestinationsCompanion(
+      supplierId: Value(supplierId),
+      shippingDestinationId: Value(shippingDestinationId),
+      isDefault: Value(isDefault),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SupplierShippingDestinationRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SupplierShippingDestinationRow(
+      supplierId: serializer.fromJson<String>(json['supplierId']),
+      shippingDestinationId:
+          serializer.fromJson<String>(json['shippingDestinationId']),
+      isDefault: serializer.fromJson<bool>(json['isDefault']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'supplierId': serializer.toJson<String>(supplierId),
+      'shippingDestinationId': serializer.toJson<String>(shippingDestinationId),
+      'isDefault': serializer.toJson<bool>(isDefault),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+    };
+  }
+
+  SupplierShippingDestinationRow copyWith(
+          {String? supplierId,
+          String? shippingDestinationId,
+          bool? isDefault,
+          String? createdAt,
+          String? updatedAt}) =>
+      SupplierShippingDestinationRow(
+        supplierId: supplierId ?? this.supplierId,
+        shippingDestinationId:
+            shippingDestinationId ?? this.shippingDestinationId,
+        isDefault: isDefault ?? this.isDefault,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  SupplierShippingDestinationRow copyWithCompanion(
+      SupplierShippingDestinationsCompanion data) {
+    return SupplierShippingDestinationRow(
+      supplierId:
+          data.supplierId.present ? data.supplierId.value : this.supplierId,
+      shippingDestinationId: data.shippingDestinationId.present
+          ? data.shippingDestinationId.value
+          : this.shippingDestinationId,
+      isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SupplierShippingDestinationRow(')
+          ..write('supplierId: $supplierId, ')
+          ..write('shippingDestinationId: $shippingDestinationId, ')
+          ..write('isDefault: $isDefault, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      supplierId, shippingDestinationId, isDefault, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SupplierShippingDestinationRow &&
+          other.supplierId == this.supplierId &&
+          other.shippingDestinationId == this.shippingDestinationId &&
+          other.isDefault == this.isDefault &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SupplierShippingDestinationsCompanion
+    extends UpdateCompanion<SupplierShippingDestinationRow> {
+  final Value<String> supplierId;
+  final Value<String> shippingDestinationId;
+  final Value<bool> isDefault;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<int> rowid;
+  const SupplierShippingDestinationsCompanion({
+    this.supplierId = const Value.absent(),
+    this.shippingDestinationId = const Value.absent(),
+    this.isDefault = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SupplierShippingDestinationsCompanion.insert({
+    required String supplierId,
+    required String shippingDestinationId,
+    this.isDefault = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+    this.rowid = const Value.absent(),
+  })  : supplierId = Value(supplierId),
+        shippingDestinationId = Value(shippingDestinationId),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<SupplierShippingDestinationRow> custom({
+    Expression<String>? supplierId,
+    Expression<String>? shippingDestinationId,
+    Expression<bool>? isDefault,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (supplierId != null) 'supplier_id': supplierId,
+      if (shippingDestinationId != null)
+        'shipping_destination_id': shippingDestinationId,
+      if (isDefault != null) 'is_default': isDefault,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SupplierShippingDestinationsCompanion copyWith(
+      {Value<String>? supplierId,
+      Value<String>? shippingDestinationId,
+      Value<bool>? isDefault,
+      Value<String>? createdAt,
+      Value<String>? updatedAt,
+      Value<int>? rowid}) {
+    return SupplierShippingDestinationsCompanion(
+      supplierId: supplierId ?? this.supplierId,
+      shippingDestinationId:
+          shippingDestinationId ?? this.shippingDestinationId,
+      isDefault: isDefault ?? this.isDefault,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (supplierId.present) {
+      map['supplier_id'] = Variable<String>(supplierId.value);
+    }
+    if (shippingDestinationId.present) {
+      map['shipping_destination_id'] =
+          Variable<String>(shippingDestinationId.value);
+    }
+    if (isDefault.present) {
+      map['is_default'] = Variable<bool>(isDefault.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SupplierShippingDestinationsCompanion(')
+          ..write('supplierId: $supplierId, ')
+          ..write('shippingDestinationId: $shippingDestinationId, ')
+          ..write('isDefault: $isDefault, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $LotsTable extends Lots with TableInfo<$LotsTable, LotRow> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -10392,6 +11300,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $QuotesTable quotes = $QuotesTable(this);
   late final $QuoteLinesTable quoteLines = $QuoteLinesTable(this);
   late final $SuppliersTable suppliers = $SuppliersTable(this);
+  late final $ShippingDestinationsTable shippingDestinations =
+      $ShippingDestinationsTable(this);
+  late final $SupplierShippingDestinationsTable supplierShippingDestinations =
+      $SupplierShippingDestinationsTable(this);
   late final $LotsTable lots = $LotsTable(this);
   late final $MemosTable memos = $MemosTable(this);
   late final $AppSchedulesTable appSchedules = $AppSchedulesTable(this);
@@ -10415,6 +11327,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         quotes,
         quoteLines,
         suppliers,
+        shippingDestinations,
+        supplierShippingDestinations,
         lots,
         memos,
         appSchedules,
@@ -10505,6 +11419,22 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('quote_lines', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('suppliers',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('supplier_shipping_destinations',
+                  kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('shipping_destinations',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('supplier_shipping_destinations',
+                  kind: UpdateKind.delete),
             ],
           ),
           WritePropagation(
@@ -14431,6 +15361,7 @@ typedef $$PurchaseOrdersTableCreateCompanionBuilder = PurchaseOrdersCompanion
   Value<String?> deliveryPhone,
   Value<String?> deliveryMemo,
   Value<bool> showDeliveryOnPrint,
+  Value<String?> shippingDestinationId,
   Value<int?> buyerProfileId,
   Value<String?> buyerProfileName,
   Value<String?> buyerBusinessNumber,
@@ -14472,6 +15403,7 @@ typedef $$PurchaseOrdersTableUpdateCompanionBuilder = PurchaseOrdersCompanion
   Value<String?> deliveryPhone,
   Value<String?> deliveryMemo,
   Value<bool> showDeliveryOnPrint,
+  Value<String?> shippingDestinationId,
   Value<int?> buyerProfileId,
   Value<String?> buyerProfileName,
   Value<String?> buyerBusinessNumber,
@@ -14595,6 +15527,10 @@ class $$PurchaseOrdersTableFilterComposer
 
   ColumnFilters<bool> get showDeliveryOnPrint => $composableBuilder(
       column: $table.showDeliveryOnPrint,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get shippingDestinationId => $composableBuilder(
+      column: $table.shippingDestinationId,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get buyerProfileId => $composableBuilder(
@@ -14758,6 +15694,10 @@ class $$PurchaseOrdersTableOrderingComposer
       column: $table.showDeliveryOnPrint,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get shippingDestinationId => $composableBuilder(
+      column: $table.shippingDestinationId,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get buyerProfileId => $composableBuilder(
       column: $table.buyerProfileId,
       builder: (column) => ColumnOrderings(column));
@@ -14888,6 +15828,9 @@ class $$PurchaseOrdersTableAnnotationComposer
   GeneratedColumn<bool> get showDeliveryOnPrint => $composableBuilder(
       column: $table.showDeliveryOnPrint, builder: (column) => column);
 
+  GeneratedColumn<String> get shippingDestinationId => $composableBuilder(
+      column: $table.shippingDestinationId, builder: (column) => column);
+
   GeneratedColumn<int> get buyerProfileId => $composableBuilder(
       column: $table.buyerProfileId, builder: (column) => column);
 
@@ -14995,6 +15938,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<String?> deliveryPhone = const Value.absent(),
             Value<String?> deliveryMemo = const Value.absent(),
             Value<bool> showDeliveryOnPrint = const Value.absent(),
+            Value<String?> shippingDestinationId = const Value.absent(),
             Value<int?> buyerProfileId = const Value.absent(),
             Value<String?> buyerProfileName = const Value.absent(),
             Value<String?> buyerBusinessNumber = const Value.absent(),
@@ -15035,6 +15979,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             deliveryPhone: deliveryPhone,
             deliveryMemo: deliveryMemo,
             showDeliveryOnPrint: showDeliveryOnPrint,
+            shippingDestinationId: shippingDestinationId,
             buyerProfileId: buyerProfileId,
             buyerProfileName: buyerProfileName,
             buyerBusinessNumber: buyerBusinessNumber,
@@ -15075,6 +16020,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             Value<String?> deliveryPhone = const Value.absent(),
             Value<String?> deliveryMemo = const Value.absent(),
             Value<bool> showDeliveryOnPrint = const Value.absent(),
+            Value<String?> shippingDestinationId = const Value.absent(),
             Value<int?> buyerProfileId = const Value.absent(),
             Value<String?> buyerProfileName = const Value.absent(),
             Value<String?> buyerBusinessNumber = const Value.absent(),
@@ -15115,6 +16061,7 @@ class $$PurchaseOrdersTableTableManager extends RootTableManager<
             deliveryPhone: deliveryPhone,
             deliveryMemo: deliveryMemo,
             showDeliveryOnPrint: showDeliveryOnPrint,
+            shippingDestinationId: shippingDestinationId,
             buyerProfileId: buyerProfileId,
             buyerProfileName: buyerProfileName,
             buyerBusinessNumber: buyerBusinessNumber,
@@ -16640,6 +17587,30 @@ typedef $$SuppliersTableUpdateCompanionBuilder = SuppliersCompanion Function({
   Value<int> rowid,
 });
 
+final class $$SuppliersTableReferences
+    extends BaseReferences<_$AppDatabase, $SuppliersTable, SupplierRow> {
+  $$SuppliersTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$SupplierShippingDestinationsTable,
+          List<SupplierShippingDestinationRow>>
+      _supplierShippingDestinationsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.supplierShippingDestinations,
+              aliasName: $_aliasNameGenerator(
+                  db.suppliers.id, db.supplierShippingDestinations.supplierId));
+
+  $$SupplierShippingDestinationsTableProcessedTableManager
+      get supplierShippingDestinationsRefs {
+    final manager = $$SupplierShippingDestinationsTableTableManager(
+            $_db, $_db.supplierShippingDestinations)
+        .filter((f) => f.supplierId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult
+        .readTableOrNull(_supplierShippingDestinationsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
 class $$SuppliersTableFilterComposer
     extends Composer<_$AppDatabase, $SuppliersTable> {
   $$SuppliersTableFilterComposer({
@@ -16678,6 +17649,30 @@ class $$SuppliersTableFilterComposer
 
   ColumnFilters<String> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> supplierShippingDestinationsRefs(
+      Expression<bool> Function(
+              $$SupplierShippingDestinationsTableFilterComposer f)
+          f) {
+    final $$SupplierShippingDestinationsTableFilterComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.supplierShippingDestinations,
+            getReferencedColumn: (t) => t.supplierId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$SupplierShippingDestinationsTableFilterComposer(
+                  $db: $db,
+                  $table: $db.supplierShippingDestinations,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$SuppliersTableOrderingComposer
@@ -16758,6 +17753,30 @@ class $$SuppliersTableAnnotationComposer
 
   GeneratedColumn<String> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> supplierShippingDestinationsRefs<T extends Object>(
+      Expression<T> Function(
+              $$SupplierShippingDestinationsTableAnnotationComposer a)
+          f) {
+    final $$SupplierShippingDestinationsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.supplierShippingDestinations,
+            getReferencedColumn: (t) => t.supplierId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$SupplierShippingDestinationsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.supplierShippingDestinations,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$SuppliersTableTableManager extends RootTableManager<
@@ -16769,9 +17788,9 @@ class $$SuppliersTableTableManager extends RootTableManager<
     $$SuppliersTableAnnotationComposer,
     $$SuppliersTableCreateCompanionBuilder,
     $$SuppliersTableUpdateCompanionBuilder,
-    (SupplierRow, BaseReferences<_$AppDatabase, $SuppliersTable, SupplierRow>),
+    (SupplierRow, $$SuppliersTableReferences),
     SupplierRow,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool supplierShippingDestinationsRefs})> {
   $$SuppliersTableTableManager(_$AppDatabase db, $SuppliersTable table)
       : super(TableManagerState(
           db: db,
@@ -16835,9 +17854,38 @@ class $$SuppliersTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable(table),
+                    $$SuppliersTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({supplierShippingDestinationsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (supplierShippingDestinationsRefs)
+                  db.supplierShippingDestinations
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (supplierShippingDestinationsRefs)
+                    await $_getPrefetchedData<SupplierRow, $SuppliersTable,
+                            SupplierShippingDestinationRow>(
+                        currentTable: table,
+                        referencedTable: $$SuppliersTableReferences
+                            ._supplierShippingDestinationsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SuppliersTableReferences(db, table, p0)
+                                .supplierShippingDestinationsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.supplierId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
@@ -16850,9 +17898,738 @@ typedef $$SuppliersTableProcessedTableManager = ProcessedTableManager<
     $$SuppliersTableAnnotationComposer,
     $$SuppliersTableCreateCompanionBuilder,
     $$SuppliersTableUpdateCompanionBuilder,
-    (SupplierRow, BaseReferences<_$AppDatabase, $SuppliersTable, SupplierRow>),
+    (SupplierRow, $$SuppliersTableReferences),
     SupplierRow,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool supplierShippingDestinationsRefs})>;
+typedef $$ShippingDestinationsTableCreateCompanionBuilder
+    = ShippingDestinationsCompanion Function({
+  required String id,
+  required String name,
+  Value<String> address,
+  Value<String?> contactName,
+  Value<String?> phone,
+  Value<String?> memo,
+  Value<String?> mapImagePath,
+  Value<bool> isArchived,
+  required String createdAt,
+  required String updatedAt,
+  Value<int> rowid,
+});
+typedef $$ShippingDestinationsTableUpdateCompanionBuilder
+    = ShippingDestinationsCompanion Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String> address,
+  Value<String?> contactName,
+  Value<String?> phone,
+  Value<String?> memo,
+  Value<String?> mapImagePath,
+  Value<bool> isArchived,
+  Value<String> createdAt,
+  Value<String> updatedAt,
+  Value<int> rowid,
+});
+
+final class $$ShippingDestinationsTableReferences extends BaseReferences<
+    _$AppDatabase, $ShippingDestinationsTable, ShippingDestinationRow> {
+  $$ShippingDestinationsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$SupplierShippingDestinationsTable,
+          List<SupplierShippingDestinationRow>>
+      _supplierShippingDestinationsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.supplierShippingDestinations,
+              aliasName: $_aliasNameGenerator(db.shippingDestinations.id,
+                  db.supplierShippingDestinations.shippingDestinationId));
+
+  $$SupplierShippingDestinationsTableProcessedTableManager
+      get supplierShippingDestinationsRefs {
+    final manager = $$SupplierShippingDestinationsTableTableManager(
+            $_db, $_db.supplierShippingDestinations)
+        .filter((f) =>
+            f.shippingDestinationId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult
+        .readTableOrNull(_supplierShippingDestinationsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$ShippingDestinationsTableFilterComposer
+    extends Composer<_$AppDatabase, $ShippingDestinationsTable> {
+  $$ShippingDestinationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get address => $composableBuilder(
+      column: $table.address, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get contactName => $composableBuilder(
+      column: $table.contactName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get phone => $composableBuilder(
+      column: $table.phone, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get mapImagePath => $composableBuilder(
+      column: $table.mapImagePath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> supplierShippingDestinationsRefs(
+      Expression<bool> Function(
+              $$SupplierShippingDestinationsTableFilterComposer f)
+          f) {
+    final $$SupplierShippingDestinationsTableFilterComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.supplierShippingDestinations,
+            getReferencedColumn: (t) => t.shippingDestinationId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$SupplierShippingDestinationsTableFilterComposer(
+                  $db: $db,
+                  $table: $db.supplierShippingDestinations,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+}
+
+class $$ShippingDestinationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ShippingDestinationsTable> {
+  $$ShippingDestinationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get address => $composableBuilder(
+      column: $table.address, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get contactName => $composableBuilder(
+      column: $table.contactName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get phone => $composableBuilder(
+      column: $table.phone, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get memo => $composableBuilder(
+      column: $table.memo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get mapImagePath => $composableBuilder(
+      column: $table.mapImagePath,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$ShippingDestinationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ShippingDestinationsTable> {
+  $$ShippingDestinationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get address =>
+      $composableBuilder(column: $table.address, builder: (column) => column);
+
+  GeneratedColumn<String> get contactName => $composableBuilder(
+      column: $table.contactName, builder: (column) => column);
+
+  GeneratedColumn<String> get phone =>
+      $composableBuilder(column: $table.phone, builder: (column) => column);
+
+  GeneratedColumn<String> get memo =>
+      $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<String> get mapImagePath => $composableBuilder(
+      column: $table.mapImagePath, builder: (column) => column);
+
+  GeneratedColumn<bool> get isArchived => $composableBuilder(
+      column: $table.isArchived, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> supplierShippingDestinationsRefs<T extends Object>(
+      Expression<T> Function(
+              $$SupplierShippingDestinationsTableAnnotationComposer a)
+          f) {
+    final $$SupplierShippingDestinationsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.supplierShippingDestinations,
+            getReferencedColumn: (t) => t.shippingDestinationId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$SupplierShippingDestinationsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.supplierShippingDestinations,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+}
+
+class $$ShippingDestinationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ShippingDestinationsTable,
+    ShippingDestinationRow,
+    $$ShippingDestinationsTableFilterComposer,
+    $$ShippingDestinationsTableOrderingComposer,
+    $$ShippingDestinationsTableAnnotationComposer,
+    $$ShippingDestinationsTableCreateCompanionBuilder,
+    $$ShippingDestinationsTableUpdateCompanionBuilder,
+    (ShippingDestinationRow, $$ShippingDestinationsTableReferences),
+    ShippingDestinationRow,
+    PrefetchHooks Function({bool supplierShippingDestinationsRefs})> {
+  $$ShippingDestinationsTableTableManager(
+      _$AppDatabase db, $ShippingDestinationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ShippingDestinationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ShippingDestinationsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ShippingDestinationsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> address = const Value.absent(),
+            Value<String?> contactName = const Value.absent(),
+            Value<String?> phone = const Value.absent(),
+            Value<String?> memo = const Value.absent(),
+            Value<String?> mapImagePath = const Value.absent(),
+            Value<bool> isArchived = const Value.absent(),
+            Value<String> createdAt = const Value.absent(),
+            Value<String> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ShippingDestinationsCompanion(
+            id: id,
+            name: name,
+            address: address,
+            contactName: contactName,
+            phone: phone,
+            memo: memo,
+            mapImagePath: mapImagePath,
+            isArchived: isArchived,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            Value<String> address = const Value.absent(),
+            Value<String?> contactName = const Value.absent(),
+            Value<String?> phone = const Value.absent(),
+            Value<String?> memo = const Value.absent(),
+            Value<String?> mapImagePath = const Value.absent(),
+            Value<bool> isArchived = const Value.absent(),
+            required String createdAt,
+            required String updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ShippingDestinationsCompanion.insert(
+            id: id,
+            name: name,
+            address: address,
+            contactName: contactName,
+            phone: phone,
+            memo: memo,
+            mapImagePath: mapImagePath,
+            isArchived: isArchived,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$ShippingDestinationsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({supplierShippingDestinationsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (supplierShippingDestinationsRefs)
+                  db.supplierShippingDestinations
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (supplierShippingDestinationsRefs)
+                    await $_getPrefetchedData<
+                            ShippingDestinationRow,
+                            $ShippingDestinationsTable,
+                            SupplierShippingDestinationRow>(
+                        currentTable: table,
+                        referencedTable: $$ShippingDestinationsTableReferences
+                            ._supplierShippingDestinationsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ShippingDestinationsTableReferences(db, table, p0)
+                                .supplierShippingDestinationsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems.where(
+                                (e) => e.shippingDestinationId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$ShippingDestinationsTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $ShippingDestinationsTable,
+        ShippingDestinationRow,
+        $$ShippingDestinationsTableFilterComposer,
+        $$ShippingDestinationsTableOrderingComposer,
+        $$ShippingDestinationsTableAnnotationComposer,
+        $$ShippingDestinationsTableCreateCompanionBuilder,
+        $$ShippingDestinationsTableUpdateCompanionBuilder,
+        (ShippingDestinationRow, $$ShippingDestinationsTableReferences),
+        ShippingDestinationRow,
+        PrefetchHooks Function({bool supplierShippingDestinationsRefs})>;
+typedef $$SupplierShippingDestinationsTableCreateCompanionBuilder
+    = SupplierShippingDestinationsCompanion Function({
+  required String supplierId,
+  required String shippingDestinationId,
+  Value<bool> isDefault,
+  required String createdAt,
+  required String updatedAt,
+  Value<int> rowid,
+});
+typedef $$SupplierShippingDestinationsTableUpdateCompanionBuilder
+    = SupplierShippingDestinationsCompanion Function({
+  Value<String> supplierId,
+  Value<String> shippingDestinationId,
+  Value<bool> isDefault,
+  Value<String> createdAt,
+  Value<String> updatedAt,
+  Value<int> rowid,
+});
+
+final class $$SupplierShippingDestinationsTableReferences
+    extends BaseReferences<_$AppDatabase, $SupplierShippingDestinationsTable,
+        SupplierShippingDestinationRow> {
+  $$SupplierShippingDestinationsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $SuppliersTable _supplierIdTable(_$AppDatabase db) =>
+      db.suppliers.createAlias($_aliasNameGenerator(
+          db.supplierShippingDestinations.supplierId, db.suppliers.id));
+
+  $$SuppliersTableProcessedTableManager get supplierId {
+    final $_column = $_itemColumn<String>('supplier_id')!;
+
+    final manager = $$SuppliersTableTableManager($_db, $_db.suppliers)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_supplierIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static $ShippingDestinationsTable _shippingDestinationIdTable(
+          _$AppDatabase db) =>
+      db.shippingDestinations.createAlias($_aliasNameGenerator(
+          db.supplierShippingDestinations.shippingDestinationId,
+          db.shippingDestinations.id));
+
+  $$ShippingDestinationsTableProcessedTableManager get shippingDestinationId {
+    final $_column = $_itemColumn<String>('shipping_destination_id')!;
+
+    final manager =
+        $$ShippingDestinationsTableTableManager($_db, $_db.shippingDestinations)
+            .filter((f) => f.id.sqlEquals($_column));
+    final item =
+        $_typedResult.readTableOrNull(_shippingDestinationIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$SupplierShippingDestinationsTableFilterComposer
+    extends Composer<_$AppDatabase, $SupplierShippingDestinationsTable> {
+  $$SupplierShippingDestinationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<bool> get isDefault => $composableBuilder(
+      column: $table.isDefault, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  $$SuppliersTableFilterComposer get supplierId {
+    final $$SuppliersTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.supplierId,
+        referencedTable: $db.suppliers,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SuppliersTableFilterComposer(
+              $db: $db,
+              $table: $db.suppliers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ShippingDestinationsTableFilterComposer get shippingDestinationId {
+    final $$ShippingDestinationsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.shippingDestinationId,
+        referencedTable: $db.shippingDestinations,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ShippingDestinationsTableFilterComposer(
+              $db: $db,
+              $table: $db.shippingDestinations,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SupplierShippingDestinationsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SupplierShippingDestinationsTable> {
+  $$SupplierShippingDestinationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<bool> get isDefault => $composableBuilder(
+      column: $table.isDefault, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  $$SuppliersTableOrderingComposer get supplierId {
+    final $$SuppliersTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.supplierId,
+        referencedTable: $db.suppliers,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SuppliersTableOrderingComposer(
+              $db: $db,
+              $table: $db.suppliers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ShippingDestinationsTableOrderingComposer get shippingDestinationId {
+    final $$ShippingDestinationsTableOrderingComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.shippingDestinationId,
+            referencedTable: $db.shippingDestinations,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$ShippingDestinationsTableOrderingComposer(
+                  $db: $db,
+                  $table: $db.shippingDestinations,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return composer;
+  }
+}
+
+class $$SupplierShippingDestinationsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SupplierShippingDestinationsTable> {
+  $$SupplierShippingDestinationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<bool> get isDefault =>
+      $composableBuilder(column: $table.isDefault, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$SuppliersTableAnnotationComposer get supplierId {
+    final $$SuppliersTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.supplierId,
+        referencedTable: $db.suppliers,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SuppliersTableAnnotationComposer(
+              $db: $db,
+              $table: $db.suppliers,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$ShippingDestinationsTableAnnotationComposer get shippingDestinationId {
+    final $$ShippingDestinationsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.shippingDestinationId,
+            referencedTable: $db.shippingDestinations,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$ShippingDestinationsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.shippingDestinations,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return composer;
+  }
+}
+
+class $$SupplierShippingDestinationsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SupplierShippingDestinationsTable,
+    SupplierShippingDestinationRow,
+    $$SupplierShippingDestinationsTableFilterComposer,
+    $$SupplierShippingDestinationsTableOrderingComposer,
+    $$SupplierShippingDestinationsTableAnnotationComposer,
+    $$SupplierShippingDestinationsTableCreateCompanionBuilder,
+    $$SupplierShippingDestinationsTableUpdateCompanionBuilder,
+    (
+      SupplierShippingDestinationRow,
+      $$SupplierShippingDestinationsTableReferences
+    ),
+    SupplierShippingDestinationRow,
+    PrefetchHooks Function({bool supplierId, bool shippingDestinationId})> {
+  $$SupplierShippingDestinationsTableTableManager(
+      _$AppDatabase db, $SupplierShippingDestinationsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SupplierShippingDestinationsTableFilterComposer(
+                  $db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SupplierShippingDestinationsTableOrderingComposer(
+                  $db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SupplierShippingDestinationsTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> supplierId = const Value.absent(),
+            Value<String> shippingDestinationId = const Value.absent(),
+            Value<bool> isDefault = const Value.absent(),
+            Value<String> createdAt = const Value.absent(),
+            Value<String> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SupplierShippingDestinationsCompanion(
+            supplierId: supplierId,
+            shippingDestinationId: shippingDestinationId,
+            isDefault: isDefault,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String supplierId,
+            required String shippingDestinationId,
+            Value<bool> isDefault = const Value.absent(),
+            required String createdAt,
+            required String updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SupplierShippingDestinationsCompanion.insert(
+            supplierId: supplierId,
+            shippingDestinationId: shippingDestinationId,
+            isDefault: isDefault,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$SupplierShippingDestinationsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: (
+              {supplierId = false, shippingDestinationId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (supplierId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.supplierId,
+                    referencedTable:
+                        $$SupplierShippingDestinationsTableReferences
+                            ._supplierIdTable(db),
+                    referencedColumn:
+                        $$SupplierShippingDestinationsTableReferences
+                            ._supplierIdTable(db)
+                            .id,
+                  ) as T;
+                }
+                if (shippingDestinationId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.shippingDestinationId,
+                    referencedTable:
+                        $$SupplierShippingDestinationsTableReferences
+                            ._shippingDestinationIdTable(db),
+                    referencedColumn:
+                        $$SupplierShippingDestinationsTableReferences
+                            ._shippingDestinationIdTable(db)
+                            .id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$SupplierShippingDestinationsTableProcessedTableManager
+    = ProcessedTableManager<
+        _$AppDatabase,
+        $SupplierShippingDestinationsTable,
+        SupplierShippingDestinationRow,
+        $$SupplierShippingDestinationsTableFilterComposer,
+        $$SupplierShippingDestinationsTableOrderingComposer,
+        $$SupplierShippingDestinationsTableAnnotationComposer,
+        $$SupplierShippingDestinationsTableCreateCompanionBuilder,
+        $$SupplierShippingDestinationsTableUpdateCompanionBuilder,
+        (
+          SupplierShippingDestinationRow,
+          $$SupplierShippingDestinationsTableReferences
+        ),
+        SupplierShippingDestinationRow,
+        PrefetchHooks Function({bool supplierId, bool shippingDestinationId})>;
 typedef $$LotsTableCreateCompanionBuilder = LotsCompanion Function({
   required String id,
   required String itemId,
@@ -17861,6 +19638,12 @@ class $AppDatabaseManager {
       $$QuoteLinesTableTableManager(_db, _db.quoteLines);
   $$SuppliersTableTableManager get suppliers =>
       $$SuppliersTableTableManager(_db, _db.suppliers);
+  $$ShippingDestinationsTableTableManager get shippingDestinations =>
+      $$ShippingDestinationsTableTableManager(_db, _db.shippingDestinations);
+  $$SupplierShippingDestinationsTableTableManager
+      get supplierShippingDestinations =>
+          $$SupplierShippingDestinationsTableTableManager(
+              _db, _db.supplierShippingDestinations);
   $$LotsTableTableManager get lots => $$LotsTableTableManager(_db, _db.lots);
   $$MemosTableTableManager get memos =>
       $$MemosTableTableManager(_db, _db.memos);

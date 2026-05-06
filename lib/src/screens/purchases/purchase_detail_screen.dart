@@ -16,6 +16,7 @@ import '../../models/buyer_profile.dart';
 import '../../models/purchase_line.dart';
 import '../../models/purchase_order.dart';
 import '../../models/purchase_receipt.dart';
+import '../../models/shipping_destination.dart';
 import '../../models/suppliers.dart';
 import '../../models/types.dart';
 import '../../repos/repo_interfaces.dart';
@@ -694,13 +695,20 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     );
     if (selected == null) return;
 
-    await widget.repo.updatePurchaseOrder(
-      po.copyWith(
-        supplierId: selected.id,
-        supplierName: selected.name,
-        updatedAt: DateTime.now(),
-      ),
+    final shippingRepo = context.read<ShippingDestinationRepo>();
+    final defaultDestination =
+        await shippingRepo.getDefaultDestinationForSupplier(selected.id);
+
+    var updated = po.copyWith(
+      supplierId: selected.id,
+      supplierName: selected.name,
+      updatedAt: DateTime.now(),
     );
+    if (defaultDestination != null) {
+      updated = updated.copyWithShippingDestination(defaultDestination);
+    }
+
+    await widget.repo.updatePurchaseOrder(updated);
 
     await _reload();
 
@@ -761,10 +769,15 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }
 
   Future<void> _editDeliveryInfo(PurchaseOrder po) async {
+    final shippingRepo = context.read<ShippingDestinationRepo>();
+    final destinations = (po.supplierId ?? '').isEmpty
+        ? <ShippingDestination>[]
+        : await shippingRepo.listDestinationsForSupplier(po.supplierId!);
     final nameC = TextEditingController(text: po.deliveryName ?? '');
     final addressC = TextEditingController(text: po.deliveryAddress ?? '');
     final phoneC = TextEditingController(text: po.deliveryPhone ?? '');
     final memoC = TextEditingController(text: po.deliveryMemo ?? '');
+    var selectedDestinationId = po.shippingDestinationId;
     var showOnPrint = po.showDeliveryOnPrint;
 
     try {
@@ -801,6 +814,60 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           setSheetState(() => showOnPrint = value);
                         },
                       ),
+                      if ((po.supplierId ?? '').isEmpty) ...[
+                        const SizedBox(height: 8),
+                        const ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.info_outline),
+                          title: Text('거래처를 먼저 연결해주세요'),
+                          subtitle: Text('거래처 기본 배송지를 기준으로 선택할 수 있습니다.'),
+                        ),
+                      ] else if (destinations.isEmpty) ...[
+                        const SizedBox(height: 8),
+                        const ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.info_outline),
+                          title: Text('연결된 배송지가 없습니다'),
+                          subtitle: Text('설정 > 배송지 관리에서 거래처 기본 배송지를 지정해주세요.'),
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: destinations.any(
+                            (destination) =>
+                                destination.id == selectedDestinationId,
+                          )
+                              ? selectedDestinationId
+                              : null,
+                          decoration:
+                              const InputDecoration(labelText: '배송지 선택'),
+                          items: [
+                            for (final destination in destinations)
+                              DropdownMenuItem(
+                                value: destination.id,
+                                child: Text(destination.name),
+                              ),
+                          ],
+                          onChanged: (value) {
+                            ShippingDestination? destination;
+                            for (final item in destinations) {
+                              if (item.id == value) {
+                                destination = item;
+                                break;
+                              }
+                            }
+                            if (destination == null) return;
+                            final picked = destination;
+                            setSheetState(() {
+                              selectedDestinationId = picked.id;
+                              nameC.text = picked.name;
+                              addressC.text = picked.address;
+                              phoneC.text = picked.phone ?? '';
+                              memoC.text = picked.memo ?? '';
+                            });
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       TextField(
                         controller: nameC,
@@ -846,6 +913,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                               deliveryPhone: phoneC.text.trim(),
                               deliveryMemo: memoC.text.trim(),
                               showDeliveryOnPrint: showOnPrint,
+                              shippingDestinationId: selectedDestinationId,
                               updatedAt: DateTime.now(),
                             ),
                           );

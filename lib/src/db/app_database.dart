@@ -317,6 +317,7 @@ class PurchaseOrders extends Table {
   TextColumn get deliveryMemo => text().nullable()();
   BoolColumn get showDeliveryOnPrint =>
       boolean().withDefault(const Constant(false))();
+  TextColumn get shippingDestinationId => text().nullable()();
   IntColumn get buyerProfileId => integer().nullable()();
   TextColumn get buyerProfileName => text().nullable()();
   TextColumn get buyerBusinessNumber => text().nullable()();
@@ -444,6 +445,40 @@ class Suppliers extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('ShippingDestinationRow')
+class ShippingDestinations extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get address => text().withDefault(const Constant(''))();
+  TextColumn get contactName => text().nullable()();
+  TextColumn get phone => text().nullable()();
+  TextColumn get memo => text().nullable()();
+  TextColumn get mapImagePath => text().nullable()();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('SupplierShippingDestinationRow')
+class SupplierShippingDestinations extends Table {
+  TextColumn get supplierId =>
+      text().references(Suppliers, #id, onDelete: KeyAction.cascade)();
+  TextColumn get shippingDestinationId => text().references(
+        ShippingDestinations,
+        #id,
+        onDelete: KeyAction.cascade,
+      )();
+  BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+
+  @override
+  Set<Column> get primaryKey => {supplierId, shippingDestinationId};
+}
+
 /// =======================
 ///  Lots (롤/필지 단위 재고)
 /// =======================
@@ -531,6 +566,8 @@ class QuickActionOrders extends Table {
     Quotes,
     QuoteLines,
     Suppliers,
+    ShippingDestinations,
+    SupplierShippingDestinations,
     Lots,
     Memos,
     AppSchedules,
@@ -563,7 +600,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 29; //
+  int get schemaVersion => 30; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -574,6 +611,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureSupplierAccountsTable();
           await _ensurePurchaseReceiptsTable();
           await _ensureBuyerProfilesTable();
+          await _ensureShippingDestinationTables();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -824,6 +862,11 @@ class AppDatabase extends _$AppDatabase {
           if (from < 29) {
             await m.createTable(appSchedules);
           }
+          if (from < 30) {
+            await _ensureShippingDestinationTables();
+            await _addColumnIfMissing(
+                'purchase_orders', 'shipping_destination_id', 'TEXT');
+          }
         },
       );
   Future<void> _backfillItemSearchKeys() async {
@@ -999,6 +1042,52 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_supplier_accounts_supplier '
       'ON supplier_accounts(supplier_id, sort_order)',
     );
+  }
+
+  Future<void> _ensureShippingDestinationTables() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS shipping_destinations (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        address TEXT NOT NULL DEFAULT '',
+        contact_name TEXT NULL,
+        phone TEXT NULL,
+        memo TEXT NULL,
+        map_image_path TEXT NULL,
+        is_archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS supplier_shipping_destinations (
+        supplier_id TEXT NOT NULL,
+        shipping_destination_id TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (supplier_id, shipping_destination_id),
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+        FOREIGN KEY (shipping_destination_id) REFERENCES shipping_destinations(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_supplier_shipping_supplier
+      ON supplier_shipping_destinations(supplier_id)
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_supplier_shipping_destination
+      ON supplier_shipping_destinations(shipping_destination_id)
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_supplier_shipping_default
+      ON supplier_shipping_destinations(supplier_id, is_default)
+    ''');
+    await customStatement('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_one_default_destination
+      ON supplier_shipping_destinations(supplier_id)
+      WHERE is_default = 1
+    ''');
   }
 
   Future<void> _ensurePurchaseReceiptsTable() async {
@@ -1363,6 +1452,7 @@ extension PurchaseOrderRowMapping on PurchaseOrderRow {
         deliveryPhone: deliveryPhone,
         deliveryMemo: deliveryMemo,
         showDeliveryOnPrint: showDeliveryOnPrint,
+        shippingDestinationId: shippingDestinationId,
         buyerProfileId: buyerProfileId,
         buyerProfileName: buyerProfileName,
         buyerBusinessNumber: buyerBusinessNumber,
@@ -1408,6 +1498,7 @@ extension PurchaseOrderToCompanion on PurchaseOrder {
         deliveryPhone: Value(deliveryPhone),
         deliveryMemo: Value(deliveryMemo),
         showDeliveryOnPrint: Value(showDeliveryOnPrint),
+        shippingDestinationId: Value(shippingDestinationId),
         buyerProfileId: Value(buyerProfileId),
         buyerProfileName: Value(buyerProfileName),
         buyerBusinessNumber: Value(buyerBusinessNumber),

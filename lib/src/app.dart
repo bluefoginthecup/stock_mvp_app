@@ -15,6 +15,7 @@ import 'screens/trash/trash_screen.dart';
 import 'screens/cart/cart_screen.dart';
 import '/src/screens/settings/settings_screen.dart';
 import '/src/screens/settings/cloud_backup_list_screen.dart';
+import '/src/screens/settings/shipping_destination_screen.dart';
 import 'screens/orders/order_detail_screen.dart';
 
 // 다국어 앱 셋팅
@@ -155,6 +156,8 @@ class _StockMaterialApp extends StatelessWidget {
         },
         '/settings': (_) => const SettingsScreen(),
         '/settings/cloud-backups': (_) => const CloudBackupListScreen(),
+        '/settings/shipping-destinations': (_) =>
+            const ShippingDestinationScreen(),
         '/suppliers/new': (context) => const SupplierFormScreen(),
         '/suppliers/edit': (context) {
           final id = ModalRoute.of(context)!.settings.arguments as String;
@@ -252,6 +255,7 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
             Provider<QuoteRepo>.value(value: repo),
             Provider<ScheduleRepo>.value(value: repo),
             Provider<SupplierRepo>.value(value: repo),
+            Provider<ShippingDestinationRepo>.value(value: repo),
             Provider<FolderTreeRepo>.value(value: repo),
             Provider<TrashRepo>.value(value: repo),
             Provider<ExportService>(

@@ -6,6 +6,7 @@ import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../models/shipping_destination.dart';
 import '../../models/suppliers.dart';
 import '../../repos/repo_interfaces.dart';
 
@@ -37,6 +38,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
   bool _isActive = true;
   bool _loading = true;
   bool _detailExpanded = false;
+  List<ShippingDestination> _shippingDestinations = const [];
+  String? _defaultShippingDestinationId;
   final List<_SupplierContactDraft> _contacts = [];
   final List<_SupplierAccountDraft> _accounts = [];
 
@@ -48,6 +51,9 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
 
   Future<void> _loadIfEdit() async {
     final repo = context.read<SupplierRepo>();
+    final shippingRepo = context.read<ShippingDestinationRepo>();
+    final destinations = await shippingRepo.listActiveShippingDestinations();
+    ShippingDestination? defaultDestination;
     if (widget.supplierId != null) {
       final s = await repo.get(widget.supplierId!);
       if (s != null) {
@@ -66,6 +72,9 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
         _isActive = s.isActive;
       }
 
+      defaultDestination = await shippingRepo
+          .getDefaultDestinationForSupplier(widget.supplierId!);
+
       final contacts = await repo.listContacts(widget.supplierId!);
       _contacts
         ..clear()
@@ -78,7 +87,13 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
     } else if ((widget.initialName ?? '').trim().isNotEmpty) {
       _nameC.text = widget.initialName!.trim();
     }
-    if (mounted) setState(() => _loading = false);
+    if (mounted) {
+      setState(() {
+        _shippingDestinations = destinations;
+        _defaultShippingDestinationId = defaultDestination?.id;
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -162,6 +177,15 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
     await repo.upsert(supplier);
     await repo.replaceAccounts(supplierId, accounts);
     await repo.replaceContacts(supplierId, contacts);
+    final defaultDestinationId = _defaultShippingDestinationId;
+    if (defaultDestinationId != null) {
+      await context
+          .read<ShippingDestinationRepo>()
+          .setDefaultDestinationForSupplier(
+            supplierId: supplierId,
+            destinationId: defaultDestinationId,
+          );
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -330,6 +354,88 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
     }
   }
 
+  Future<void> _chooseDefaultShippingDestination() async {
+    if (_shippingDestinations.isEmpty) {
+      await Navigator.of(context).pushNamed('/settings/shipping-destinations');
+      if (!mounted) return;
+      final destinations = await context
+          .read<ShippingDestinationRepo>()
+          .listActiveShippingDestinations();
+      if (mounted) setState(() => _shippingDestinations = destinations);
+      return;
+    }
+
+    final selected = await showModalBottomSheet<ShippingDestination>(
+      context: context,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const ListTile(
+                title: Text('기본 배송지 선택'),
+                subtitle: Text('이 거래처의 발주 기본 배송지로 사용합니다.'),
+              ),
+              for (final destination in _shippingDestinations)
+                ListTile(
+                  leading: const Icon(Icons.place_outlined),
+                  title: Text(destination.name),
+                  subtitle: Text(destination.address),
+                  trailing: destination.id == _defaultShippingDestinationId
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.of(sheetContext).pop(destination),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null) return;
+
+    setState(() => _defaultShippingDestinationId = selected.id);
+    final supplierId = _supplierId;
+    if (supplierId != null) {
+      await context
+          .read<ShippingDestinationRepo>()
+          .setDefaultDestinationForSupplier(
+            supplierId: supplierId,
+            destinationId: selected.id,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${selected.name} 기본 배송지로 저장되었습니다')),
+      );
+    }
+  }
+
+  Widget _buildDefaultShippingSection() {
+    ShippingDestination? destination;
+    for (final item in _shippingDestinations) {
+      if (item.id == _defaultShippingDestinationId) {
+        destination = item;
+        break;
+      }
+    }
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.local_shipping_outlined),
+        title: const Text('기본 배송지'),
+        subtitle: Text(
+          destination == null
+              ? (_shippingDestinations.isEmpty ? '등록된 배송지가 없습니다' : '기본 배송지 없음')
+              : [
+                  destination.name,
+                  if (destination.address.trim().isNotEmpty)
+                    destination.address.trim(),
+                ].join(' · '),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _chooseDefaultShippingDestination,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.supplierId != null;
@@ -384,6 +490,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
                     icon: const Icon(Icons.contacts),
                     label: const Text('연락처에서 가져오기'),
                   ),
+                  const SizedBox(height: 12),
+                  _buildDefaultShippingSection(),
                   const SizedBox(height: 12),
                   ExpansionTile(
                     tilePadding: EdgeInsets.zero,

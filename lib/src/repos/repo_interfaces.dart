@@ -10,6 +10,7 @@ import '../models/quote.dart';
 import '../models/quote_line.dart';
 import '../models/app_schedule.dart';
 import '../models/purchase_receipt.dart';
+import '../models/shipping_destination.dart';
 import '../models/types.dart';
 import '../models/suppliers.dart';
 import '../models/folder_node.dart';
@@ -344,6 +345,30 @@ abstract class SupplierRepo {
   Future<List<SupplierAccount>> listAccounts(String supplierId);
   Future<void> replaceAccounts(
       String supplierId, List<SupplierAccount> accounts);
+}
+
+abstract class ShippingDestinationRepo {
+  Future<String> createShippingDestination(ShippingDestination destination);
+  Future<void> updateShippingDestination(ShippingDestination destination);
+  Future<void> archiveShippingDestination(String id);
+
+  Future<List<ShippingDestination>> listActiveShippingDestinations();
+  Future<List<ShippingDestination>> listDestinationsForSupplier(
+      String supplierId);
+  Future<ShippingDestination?> getDefaultDestinationForSupplier(
+      String supplierId);
+  Future<List<Supplier>> listDefaultSuppliersForDestination(
+      String destinationId);
+
+  Future<void> setDefaultDestinationForSupplier({
+    required String supplierId,
+    required String destinationId,
+  });
+
+  Future<void> setDefaultDestinationForSuppliers({
+    required String destinationId,
+    required Set<String> supplierIds,
+  });
 }
 
 abstract class QuoteRepo {
