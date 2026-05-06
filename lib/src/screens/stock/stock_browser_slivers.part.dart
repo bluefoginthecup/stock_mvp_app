@@ -1,45 +1,48 @@
 // lib/src/screens/stock/stock_browser_slivers.part.dart
 part of 'stock_browser_screen.dart';
 
-
-
 // ───────────────────────── Sliver builders ─────────────────────────
 SliverList _buildFolderSliver(
-    BuildContext context,
-    List<FolderNode> nodes,
-    void Function(void Function()) setState,
-    Future<void> Function(FolderNode n) onDelete,
-    Future<void> Function(FolderNode n)? onTapFolder, // ✅ 추가
-    ) {
+  BuildContext context,
+  List<FolderNode> nodes,
+  void Function(void Function()) setState,
+  Future<void> Function(FolderNode n) onDelete,
+  Future<void> Function(FolderNode n)? onTapFolder, // ✅ 추가
+) {
   return SliverList(
     delegate: SliverChildBuilderDelegate(
-          (context, i) => _buildFolderTile(
-            context,
-            nodes[i],
-            setState,
-            onDelete,
-            onTapFolder,
-          ),
+      (context, i) => _buildFolderTile(
+        context,
+        nodes[i],
+        setState,
+        onDelete,
+        onTapFolder,
+      ),
       childCount: nodes.length,
     ),
   );
 }
 
 Widget _buildFolderTile(
-    BuildContext context,
-    FolderNode n,
-    void Function(void Function()) setState,
-    Future<void> Function(FolderNode n) onDelete,
-    Future<void> Function(FolderNode n)? onTapFolder,
-    ) {
+  BuildContext context,
+  FolderNode n,
+  void Function(void Function()) setState,
+  Future<void> Function(FolderNode n) onDelete,
+  Future<void> Function(FolderNode n)? onTapFolder,
+) {
+  final sel = context.watch<ItemSelectionController>();
+  final picked = sel.selectedFolders.contains(n.id);
+
   return ListTile(
-    dense: true,   // ← 아이템 타일과 통일
+    dense: true, // ← 아이템 타일과 통일
     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
 
-    leading: const Icon(
-      Icons.folder,
-      size: 22, // ← 아이템 아이콘(Inventory)와 비슷하게 줄이기
-    ),
+    leading: sel.selectionMode
+        ? Checkbox(value: picked, onChanged: (_) => sel.toggleFolder(n.id))
+        : const Icon(
+            Icons.folder,
+            size: 22, // ← 아이템 아이콘(Inventory)와 비슷하게 줄이기
+          ),
 
     // 🔥 폴더 글자 크게 + 아이템과 통일
     title: Text(
@@ -52,30 +55,41 @@ Widget _buildFolderTile(
       maxLines: 1,
     ),
 
-    trailing: const Icon(
-      Icons.chevron_right,
-      size: 18, // ← 컴팩트 UI에 맞게 축소
-      color: Colors.black45,
-    ),
+    trailing: sel.selectionMode
+        ? null
+        : const Icon(
+            Icons.chevron_right,
+            size: 18, // ← 컴팩트 UI에 맞게 축소
+            color: Colors.black45,
+          ),
 
-
-  onTap: () async {
-  if (onTapFolder != null) {
-  await onTapFolder(n);
-  } else {
-      setState(() {
-        final s = context.findAncestorStateOfType<_StockBrowserScreenState>()!;
-        if (s._l1Id == null) {
-          s._l1Id = n.id;
-        } else if (s._l2Id == null) {
-          s._l2Id = n.id;
-        } else {
-          s._l3Id = n.id;
-        }
-      });
-    }
-  },
+    onTap: () async {
+      if (sel.selectionMode) {
+        sel.toggleFolder(n.id);
+        return;
+      }
+      if (onTapFolder != null) {
+        await onTapFolder(n);
+      } else {
+        setState(() {
+          final s =
+              context.findAncestorStateOfType<_StockBrowserScreenState>()!;
+          if (s._l1Id == null) {
+            s._l1Id = n.id;
+          } else if (s._l2Id == null) {
+            s._l2Id = n.id;
+          } else {
+            s._l3Id = n.id;
+          }
+        });
+      }
+    },
     onLongPress: () async {
+      if (sel.selectionMode) {
+        sel.toggleFolder(n.id);
+        return;
+      }
+
       final action = await showEntityActionsSheet(
         context,
         moveLabel: '폴더 이동',
@@ -85,8 +99,7 @@ Widget _buildFolderTile(
       final repo = context.read<FolderTreeRepo>();
       switch (action) {
         case EntityAction.rename:
-          final newName =
-          await showNewFolderSheet(context, initial: n.name);
+          final newName = await showNewFolderSheet(context, initial: n.name);
           if (newName != null && newName.trim().isNotEmpty) {
             await repo.renameFolderNode(id: n.id, newName: newName.trim());
             if (!context.mounted) return;
@@ -141,10 +154,11 @@ Widget _buildFolderTile(
     },
   );
 }
+
 SliverList _buildItemSliver(BuildContext context, List<Item> items) {
   return SliverList(
     delegate: SliverChildBuilderDelegate(
-          (context, i) {
+      (context, i) {
         final sel = context.watch<ItemSelectionController>();
         final it = items[i];
         final picked = sel.selected.contains(it.id);
@@ -167,7 +181,6 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
           },
           onLongPress: () async {
             // 롱프레스 → 수량 조정(기존 로직 유지)
-            final itemRepo = context.read<ItemRepo>();
             await runQtySetFlow(
               context,
               currentQty: it.qty,
@@ -186,6 +199,7 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
     ),
   );
 }
+
 // ───────────────────────── Compact Section Header (재추가) ─────────────────────────
 SliverToBoxAdapter _sliverHeader(String text) {
   return SliverToBoxAdapter(
@@ -206,10 +220,10 @@ SliverToBoxAdapter _sliverHeader(String text) {
 
 // ───────────────────────── Breadcrumb (로컬 구현) ─────────────────────────
 Widget _breadcrumbRow(
-    BuildContext context,
-    _StockBrowserScreenState s,
-    void Function(void Function()) setState,
-    ) {
+  BuildContext context,
+  _StockBrowserScreenState s,
+  void Function(void Function()) setState,
+) {
   final segs = <Widget>[
     TextButton(
       onPressed: () => setState(() {
@@ -268,9 +282,9 @@ Widget _breadcrumbRow(
 }
 
 SliverToBoxAdapter _sliverBreadcrumb(
-    BuildContext context,
-    void Function(void Function()) setState,
-    ) {
+  BuildContext context,
+  void Function(void Function()) setState,
+) {
   final s = context.findAncestorStateOfType<_StockBrowserScreenState>()!;
   return SliverToBoxAdapter(
     child: Column(
@@ -288,5 +302,3 @@ SliverToBoxAdapter _sliverBreadcrumb(
     ),
   );
 }
-
-

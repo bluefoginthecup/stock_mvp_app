@@ -304,7 +304,11 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                     }
 
                     return _buildStackWithList(
-                        sel: sel, items: items, slivers: slivers);
+                      sel: sel,
+                      folders: folders,
+                      items: items,
+                      slivers: slivers,
+                    );
                   },
                 );
               }
@@ -381,7 +385,11 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
                   // 리스트 + 멀티선택바
                   return _buildStackWithList(
-                      sel: sel, items: items, slivers: slivers);
+                    sel: sel,
+                    folders: folders,
+                    items: items,
+                    slivers: slivers,
+                  );
                 },
               );
             },
@@ -443,23 +451,26 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   Widget _buildMultiSelectBar({
     required BuildContext context,
     required ItemSelectionController sel,
+    required List<FolderNode> folders,
     required List<Item> items,
   }) {
+    final totalCount = folders.length + items.length;
+
     return CommonMultiSelectBar(
-      selectedCount: sel.selected.length,
-      totalCount: items.length,
+      selectedCount: sel.selectedCount,
+      totalCount: totalCount,
 
       // ✅ 기존 기능 그대로 유지
       onSelectAll: () {
-        final allIds = items.map((e) => e.id).toList();
+        final allItemIds = items.map((e) => e.id).toList();
+        final allFolderIds = folders.map((e) => e.id).toList();
 
-        final isAllSelected =
-            sel.selected.length == items.length && items.isNotEmpty;
+        final isAllSelected = sel.selectedCount == totalCount && totalCount > 0;
 
         if (isAllSelected) {
           sel.clear(); // ✅ 모드 유지
         } else {
-          sel.selectAll(allIds);
+          sel.selectAllEntities(itemIds: allItemIds, folderIds: allFolderIds);
         }
       },
       actions: [
@@ -469,8 +480,13 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           tooltip: '즐겨찾기',
           onPressed: () async {
             final picked =
-                items.where((it) => sel.selected.contains(it.id)).toList();
-            if (picked.isEmpty) return;
+                items.where((it) => sel.selectedItems.contains(it.id)).toList();
+            if (picked.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('아이템을 선택해야 즐겨찾기를 바꿀 수 있어요.')),
+              );
+              return;
+            }
 
             final repo = context.read<ItemRepo>();
             final ids = picked.map((e) => e.id).toList();
@@ -502,21 +518,38 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           tooltip: '휴지통',
           color: Colors.redAccent,
           onPressed: () async {
-            if (sel.selected.isEmpty) return;
+            if (sel.selectedCount == 0) return;
 
             final ok = await showDeleteConfirm(
               context,
-              message: '선택한 ${sel.selected.length}개를 휴지통으로 보낼까요?',
+              message: '선택한 ${sel.selectedCount}개를 휴지통으로 보낼까요?',
             );
             if (ok != true) return;
 
-            final repo = context.read<ItemRepo>();
-            await repo.moveItemsToTrash(sel.selected.toList());
+            final itemRepo = context.read<ItemRepo>();
+            final folderRepo = context.read<FolderTreeRepo>();
+
+            try {
+              if (sel.selectedItems.isNotEmpty) {
+                await itemRepo.moveItemsToTrash(sel.selectedItems.toList());
+              }
+              final foldersToDelete =
+                  await _topLevelSelectedFolders(folderRepo, sel);
+              for (final folderId in foldersToDelete) {
+                await folderRepo.deleteFolderNode(folderId, force: true);
+              }
+            } catch (e) {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(_friendlyDeleteError(e))),
+              );
+              return;
+            }
 
             if (!context.mounted) return;
             showGoSnack(
               context,
-              message: '${sel.selected.length}개 이동 완료',
+              message: '${sel.selectedCount}개 이동 완료',
               actionText: '휴지통 열기',
               onAction: (_) =>
                   context.read<MainTabController>().openShellRoute('/trash'),
@@ -531,23 +564,51 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           icon: Icons.drive_file_move,
           tooltip: '이동',
           onPressed: () async {
+            if (sel.selectedCount == 0) return;
+
             final dest = await showPathPicker(
               context,
               childrenProvider:
                   pathChildrenFromFolderRepo(context.read<FolderTreeRepo>()),
-              title: '아이템 이동..',
-              maxDepth: 3,
+              title: sel.selectedFolders.isEmpty ? '아이템 이동..' : '선택 항목 이동..',
+              maxDepth: sel.selectedFolders.isEmpty ? 3 : 2,
             );
             if (dest == null || dest.isEmpty) return;
 
-            final moved = await context.read<FolderTreeRepo>().moveItemsToPath(
-                  itemIds: sel.selected.toList(),
+            final repo = context.read<FolderTreeRepo>();
+            var movedItems = 0;
+            var movedFolders = 0;
+
+            try {
+              if (sel.selectedItems.isNotEmpty) {
+                movedItems = await repo.moveItemsToPath(
+                  itemIds: sel.selectedItems.toList(),
                   pathIds: dest,
                 );
+              }
+
+              final foldersToMove = await _topLevelSelectedFolders(repo, sel);
+              for (final folderId in foldersToMove) {
+                await repo.moveEntityToPath(
+                  MoveRequest(
+                    kind: EntityKind.folder,
+                    id: folderId,
+                    pathIds: dest,
+                  ),
+                );
+                movedFolders++;
+              }
+            } catch (e) {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('이동 실패: $e')),
+              );
+              return;
+            }
 
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('아이템 $moved개 이동')),
+              SnackBar(content: Text('아이템 $movedItems개, 폴더 $movedFolders개 이동')),
             );
 
             sel.exit();
@@ -558,17 +619,25 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           icon: Icons.copy,
           tooltip: '복사',
           onPressed: () async {
-            if (sel.selected.isEmpty) return;
+            if (sel.selectedCount == 0) return;
 
             final folderService = context.read<FolderService>();
+            final folderRepo = context.read<FolderTreeRepo>();
+            final foldersToCopy = await _topLevelSelectedFolders(
+              folderRepo,
+              sel,
+            );
 
-            for (final id in sel.selected) {
+            for (final id in sel.selectedItems) {
               await folderService.copySingleItem(id);
+            }
+            for (final id in foldersToCopy) {
+              await folderService.copyFolderTree(id);
             }
 
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${sel.selected.length}개 복사됨')),
+              SnackBar(content: Text('${sel.selectedCount}개 복사됨')),
             );
 
             sel.exit();
@@ -580,7 +649,13 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           tooltip: '담기',
           onPressed: () {
             final picked =
-                items.where((it) => sel.selected.contains(it.id)).toList();
+                items.where((it) => sel.selectedItems.contains(it.id)).toList();
+            if (picked.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('장바구니에는 아이템만 담을 수 있어요.')),
+              );
+              return;
+            }
 
             final cart = context.read<CartManager>();
             addItemsToCart(cart, picked);
@@ -599,6 +674,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
   Widget _buildStackWithList({
     required ItemSelectionController sel,
+    required List<FolderNode> folders,
     required List<Item> items,
     required List<Widget> slivers,
   }) {
@@ -608,11 +684,41 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         if (sel.selectionMode)
           Align(
             alignment: Alignment.bottomCenter,
-            child:
-                _buildMultiSelectBar(context: context, sel: sel, items: items),
+            child: _buildMultiSelectBar(
+              context: context,
+              sel: sel,
+              folders: folders,
+              items: items,
+            ),
           ),
       ],
     );
+  }
+
+  Future<List<String>> _topLevelSelectedFolders(
+    FolderTreeRepo repo,
+    ItemSelectionController sel,
+  ) async {
+    final selected = sel.selectedFolders;
+    final result = <String>[];
+
+    for (final folderId in selected) {
+      var hasSelectedAncestor = false;
+      var current = await repo.folderById(folderId);
+
+      while (current?.parentId != null) {
+        final parentId = current!.parentId!;
+        if (selected.contains(parentId)) {
+          hasSelectedAncestor = true;
+          break;
+        }
+        current = await repo.folderById(parentId);
+      }
+
+      if (!hasSelectedAncestor) result.add(folderId);
+    }
+
+    return result;
   }
 
   //----검색결과 나온 폴더로 이동 ----//
