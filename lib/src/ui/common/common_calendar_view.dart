@@ -157,6 +157,7 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
           firstDay: DateTime(2020),
           lastDay: DateTime(2100),
           focusedDay: _focusedDay ?? DateTime.now(),
+          availableGestures: AvailableGestures.horizontalSwipe,
           // 👇 이거 추가
           headerStyle: const HeaderStyle(
             formatButtonVisible: false,
