@@ -4,6 +4,7 @@ enum CalendarEventType {
   paymentDate, // 결제일
   vatInvoiceDate, // 세금계산서
   inbound,
+  outbound,
   memo,
   workPlanned,
   workInProgress,
