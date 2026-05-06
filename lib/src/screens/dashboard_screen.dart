@@ -524,7 +524,7 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
             child: Row(
               children: [
                 Expanded(
-                  flex: 5,
+                  flex: 7,
                   child: _SpeechBubble(
                     text: _compactMessages[_compactMessageIndex],
                     compact: true,
@@ -532,7 +532,7 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
                 ),
                 const SizedBox(width: 8),
                 Flexible(
-                  flex: 3,
+                  flex: 2,
                   child: Image.asset(
                     _discPuppyAsset,
                     fit: BoxFit.contain,
@@ -603,26 +603,19 @@ class _SpeechBubble extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: compact ? 14 : 18,
-          vertical: compact ? 12 : 14,
+          horizontal: compact ? 16 : 18,
+          vertical: compact ? 14 : 14,
         ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 260),
-            child: Text(
-              text,
-              maxLines: compact ? 3 : null,
-              overflow: TextOverflow.ellipsis,
-              softWrap: true,
-              style: TextStyle(
-                fontSize: compact ? 14 : 14,
-                height: compact ? 1.28 : 1.35,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF2B2930),
-              ),
-            ),
+        child: Text(
+          text,
+          maxLines: compact ? 4 : null,
+          overflow: TextOverflow.ellipsis,
+          softWrap: true,
+          style: TextStyle(
+            fontSize: compact ? 14.5 : 14,
+            height: compact ? 1.3 : 1.35,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF2B2930),
           ),
         ),
       ),
