@@ -8,6 +8,7 @@ import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
 import '../models/quote.dart';
 import '../models/quote_line.dart';
+import '../models/app_schedule.dart';
 import '../models/purchase_receipt.dart';
 import '../models/types.dart';
 import '../models/suppliers.dart';
@@ -357,6 +358,20 @@ abstract class QuoteRepo {
   Future<void> upsertQuoteLines(String quoteId, List<QuoteLine> lines);
   Future<List<QuoteLine>> getQuoteLines(String quoteId);
   Future<Map<String, List<QuoteLine>>> getQuoteLinesMap();
+}
+
+abstract class ScheduleRepo {
+  Future<String> createSchedule(AppSchedule schedule);
+  Future<void> updateSchedule(AppSchedule schedule);
+  Future<void> deleteSchedule(String id);
+  Future<AppSchedule?> getScheduleById(String id);
+  Stream<List<AppSchedule>> watchSchedules({
+    DateTime? date,
+    AppScheduleStatus? status,
+  });
+  Future<List<AppSchedule>> listSchedulesByDate(DateTime date);
+  Future<void> updateScheduleStatus(String id, AppScheduleStatus status);
+  Future<void> toggleScheduleStatus(String id);
 }
 // 맨 아래 부분만 이렇게 정리 👇
 

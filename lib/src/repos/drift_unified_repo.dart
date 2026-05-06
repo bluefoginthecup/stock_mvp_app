@@ -23,6 +23,7 @@ import '../models/purchase_line.dart';
 import '../models/purchase_receipt.dart';
 import '../models/quote.dart';
 import '../models/quote_line.dart';
+import '../models/app_schedule.dart';
 import '../models/suppliers.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
@@ -41,6 +42,7 @@ part 'modules/order_repo.part.dart';
 part 'modules/work_repo.part.dart';
 part 'modules/purchase_repo.part.dart';
 part 'modules/quote_repo.part.dart';
+part 'modules/schedule_repo.part.dart';
 part 'modules/supplier_repo.part.dart';
 part 'modules/lot_repo.part.dart';
 part 'modules/trash_repo.part.dart';
@@ -132,6 +134,7 @@ class DriftUnifiedRepo extends _RepoCore
         WorkRepoMixin,
         PurchaseRepoMixin,
         QuoteRepoMixin,
+        ScheduleRepoMixin,
         SupplierRepoMixin,
         LotRepoMixin,
         TrashRepoMixin
@@ -143,6 +146,7 @@ class DriftUnifiedRepo extends _RepoCore
         WorkRepo,
         PurchaseOrderRepo,
         QuoteRepo,
+        ScheduleRepo,
         SupplierRepo,
         FolderTreeRepo,
         TrashRepo {

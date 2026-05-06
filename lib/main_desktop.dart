@@ -62,6 +62,7 @@ Future<void> main() async {
         Provider<OrderRepo>.value(value: unifiedRepo),
         Provider<WorkRepo>.value(value: unifiedRepo),
         Provider<PurchaseOrderRepo>.value(value: unifiedRepo),
+        Provider<ScheduleRepo>.value(value: unifiedRepo),
         Provider<SupplierRepo>.value(value: unifiedRepo),
         Provider<FolderTreeRepo>.value(value: unifiedRepo),
         Provider<TrashRepo>.value(value: unifiedRepo),

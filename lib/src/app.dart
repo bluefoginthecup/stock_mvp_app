@@ -30,6 +30,7 @@ import 'screens/suppliers/supplier_form_screen.dart';
 import 'screens/suppliers/supplier_list_screen.dart';
 import 'screens/receipts/receipt_create_screen.dart';
 import 'screens/receipts/receipts_home_screen.dart';
+import 'screens/schedules/schedule_list_screen.dart';
 import 'features/fabric_cutting/screens/fabric_cutting_home_screen.dart';
 
 import 'app/main_tab_controller.dart';
@@ -161,6 +162,7 @@ class _StockMaterialApp extends StatelessWidget {
         '/suppliers': (_) => const SupplierListScreen(),
         '/receipts': (_) => const ReceiptsHomeScreen(),
         '/receipts/new': (_) => const ReceiptCreateScreen(),
+        '/schedules': (_) => const ScheduleListScreen(),
         '/fabric-cutting': (_) => const FabricCuttingHomeScreen(),
       },
     );
@@ -247,6 +249,7 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
             Provider<WorkRepo>.value(value: repo),
             Provider<PurchaseOrderRepo>.value(value: repo),
             Provider<QuoteRepo>.value(value: repo),
+            Provider<ScheduleRepo>.value(value: repo),
             Provider<SupplierRepo>.value(value: repo),
             Provider<FolderTreeRepo>.value(value: repo),
             Provider<TrashRepo>.value(value: repo),

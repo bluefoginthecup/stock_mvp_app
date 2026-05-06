@@ -17,6 +17,7 @@ enum QuickActionType {
   trash,
   shortage,
   memo,
+  schedules,
   fabricCutting,
 }
 
@@ -33,6 +34,7 @@ const defaultQuickActionOrder = <QuickActionType>[
   QuickActionType.trash,
   QuickActionType.shortage,
   QuickActionType.memo,
+  QuickActionType.schedules,
   QuickActionType.fabricCutting,
 ];
 
@@ -208,6 +210,17 @@ DashboardQuickAction buildDashboardQuickAction(
           final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
           tabs.openShellRoute('/memo');
+        },
+      );
+    case QuickActionType.schedules:
+      return DashboardQuickAction(
+        key: const ValueKey('schedules'),
+        icon: Icons.event_note,
+        label: '일정/할일',
+        onTap: () {
+          final tabs = context.read<MainTabController>();
+          onBeforeNavigate?.call();
+          tabs.openShellRoute('/schedules');
         },
       );
     case QuickActionType.fabricCutting:

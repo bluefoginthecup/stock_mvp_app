@@ -16,6 +16,7 @@ import '../models/purchase_order.dart';
 import '../models/purchase_line.dart';
 import '../models/quote.dart';
 import '../models/quote_line.dart';
+import '../models/app_schedule.dart';
 import '../models/suppliers.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
@@ -475,6 +476,34 @@ class Memos extends Table {
 }
 
 /// =======================
+///  AppSchedules (일정/할일)
+/// =======================
+
+@DataClassName('AppScheduleRow')
+class AppSchedules extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get body => text().withDefault(const Constant(''))();
+  TextColumn get date => text()();
+  TextColumn get status => text().withDefault(const Constant('pending'))();
+  IntColumn get sourceMemoId => integer()
+      .nullable()
+      .references(Memos, #id, onDelete: KeyAction.setNull)();
+  TextColumn get createdAt => text()();
+  TextColumn get updatedAt => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<Index> get indexes => [
+        Index('idx_app_schedules_date', 'date'),
+        Index('idx_app_schedules_status', 'status'),
+        Index('idx_app_schedules_source_memo', 'sourceMemoId'),
+      ];
+}
+
+/// =======================
 ///  AppDatabase
 /// =======================
 // ➊ 빠른실행 순서 저장 테이블
@@ -504,6 +533,7 @@ class QuickActionOrders extends Table {
     Suppliers,
     Lots,
     Memos,
+    AppSchedules,
     QuickActionOrders, // ➋ 등록
   ],
 )
@@ -533,7 +563,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 28; //
+  int get schemaVersion => 29; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -790,6 +820,9 @@ class AppDatabase extends _$AppDatabase {
             await _addColumnIfMissing(
                 'quotes', 'supplier_business_item', 'TEXT');
             await _addColumnIfMissing('quotes', 'supplier_phone_fax', 'TEXT');
+          }
+          if (from < 29) {
+            await m.createTable(appSchedules);
           }
         },
       );
@@ -1540,6 +1573,39 @@ extension QuoteLineToCompanion on QuoteLine {
         qty: Value(qty),
         unitPrice: Value(unitPrice),
         memo: Value(memo),
+      );
+}
+
+/// =======================
+///  Row ↔ AppSchedule
+/// =======================
+
+extension AppScheduleRowMapping on AppScheduleRow {
+  AppSchedule toDomain() => AppSchedule(
+        id: id,
+        title: title,
+        body: body,
+        date: DateTime.parse(date),
+        status: AppScheduleStatus.values.firstWhere(
+          (e) => e.name == status,
+          orElse: () => AppScheduleStatus.pending,
+        ),
+        sourceMemoId: sourceMemoId,
+        createdAt: DateTime.parse(createdAt),
+        updatedAt: DateTime.parse(updatedAt),
+      );
+}
+
+extension AppScheduleToCompanion on AppSchedule {
+  AppSchedulesCompanion toCompanion() => AppSchedulesCompanion(
+        id: Value(id),
+        title: Value(title),
+        body: Value(body),
+        date: Value(date.toIso8601String()),
+        status: Value(status.name),
+        sourceMemoId: Value(sourceMemoId),
+        createdAt: Value(createdAt.toIso8601String()),
+        updatedAt: Value(updatedAt.toIso8601String()),
       );
 }
 

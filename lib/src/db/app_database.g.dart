@@ -9756,6 +9756,430 @@ class MemosCompanion extends UpdateCompanion<MemoRow> {
   }
 }
 
+class $AppSchedulesTable extends AppSchedules
+    with TableInfo<$AppSchedulesTable, AppScheduleRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppSchedulesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+      'title', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+      'body', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<String> date = GeneratedColumn<String>(
+      'date', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('pending'));
+  static const VerificationMeta _sourceMemoIdMeta =
+      const VerificationMeta('sourceMemoId');
+  @override
+  late final GeneratedColumn<int> sourceMemoId = GeneratedColumn<int>(
+      'source_memo_id', aliasedName, true,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES memos (id) ON DELETE SET NULL'));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<String> createdAt = GeneratedColumn<String>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<String> updatedAt = GeneratedColumn<String>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, title, body, date, status, sourceMemoId, createdAt, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'app_schedules';
+  @override
+  VerificationContext validateIntegrity(Insertable<AppScheduleRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+          _titleMeta, title.isAcceptableOrUnknown(data['title']!, _titleMeta));
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+          _bodyMeta, body.isAcceptableOrUnknown(data['body']!, _bodyMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('source_memo_id')) {
+      context.handle(
+          _sourceMemoIdMeta,
+          sourceMemoId.isAcceptableOrUnknown(
+              data['source_memo_id']!, _sourceMemoIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AppScheduleRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppScheduleRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      title: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
+      body: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}body'])!,
+      date: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}date'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      sourceMemoId: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}source_memo_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}updated_at'])!,
+    );
+  }
+
+  @override
+  $AppSchedulesTable createAlias(String alias) {
+    return $AppSchedulesTable(attachedDatabase, alias);
+  }
+}
+
+class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
+  final String id;
+  final String title;
+  final String body;
+  final String date;
+  final String status;
+  final int? sourceMemoId;
+  final String createdAt;
+  final String updatedAt;
+  const AppScheduleRow(
+      {required this.id,
+      required this.title,
+      required this.body,
+      required this.date,
+      required this.status,
+      this.sourceMemoId,
+      required this.createdAt,
+      required this.updatedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['date'] = Variable<String>(date);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || sourceMemoId != null) {
+      map['source_memo_id'] = Variable<int>(sourceMemoId);
+    }
+    map['created_at'] = Variable<String>(createdAt);
+    map['updated_at'] = Variable<String>(updatedAt);
+    return map;
+  }
+
+  AppSchedulesCompanion toCompanion(bool nullToAbsent) {
+    return AppSchedulesCompanion(
+      id: Value(id),
+      title: Value(title),
+      body: Value(body),
+      date: Value(date),
+      status: Value(status),
+      sourceMemoId: sourceMemoId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceMemoId),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AppScheduleRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppScheduleRow(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      date: serializer.fromJson<String>(json['date']),
+      status: serializer.fromJson<String>(json['status']),
+      sourceMemoId: serializer.fromJson<int?>(json['sourceMemoId']),
+      createdAt: serializer.fromJson<String>(json['createdAt']),
+      updatedAt: serializer.fromJson<String>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'date': serializer.toJson<String>(date),
+      'status': serializer.toJson<String>(status),
+      'sourceMemoId': serializer.toJson<int?>(sourceMemoId),
+      'createdAt': serializer.toJson<String>(createdAt),
+      'updatedAt': serializer.toJson<String>(updatedAt),
+    };
+  }
+
+  AppScheduleRow copyWith(
+          {String? id,
+          String? title,
+          String? body,
+          String? date,
+          String? status,
+          Value<int?> sourceMemoId = const Value.absent(),
+          String? createdAt,
+          String? updatedAt}) =>
+      AppScheduleRow(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        body: body ?? this.body,
+        date: date ?? this.date,
+        status: status ?? this.status,
+        sourceMemoId:
+            sourceMemoId.present ? sourceMemoId.value : this.sourceMemoId,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  AppScheduleRow copyWithCompanion(AppSchedulesCompanion data) {
+    return AppScheduleRow(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      date: data.date.present ? data.date.value : this.date,
+      status: data.status.present ? data.status.value : this.status,
+      sourceMemoId: data.sourceMemoId.present
+          ? data.sourceMemoId.value
+          : this.sourceMemoId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppScheduleRow(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('date: $date, ')
+          ..write('status: $status, ')
+          ..write('sourceMemoId: $sourceMemoId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, title, body, date, status, sourceMemoId, createdAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppScheduleRow &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.date == this.date &&
+          other.status == this.status &&
+          other.sourceMemoId == this.sourceMemoId &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<String> date;
+  final Value<String> status;
+  final Value<int?> sourceMemoId;
+  final Value<String> createdAt;
+  final Value<String> updatedAt;
+  final Value<int> rowid;
+  const AppSchedulesCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.date = const Value.absent(),
+    this.status = const Value.absent(),
+    this.sourceMemoId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppSchedulesCompanion.insert({
+    required String id,
+    required String title,
+    this.body = const Value.absent(),
+    required String date,
+    this.status = const Value.absent(),
+    this.sourceMemoId = const Value.absent(),
+    required String createdAt,
+    required String updatedAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        title = Value(title),
+        date = Value(date),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<AppScheduleRow> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<String>? date,
+    Expression<String>? status,
+    Expression<int>? sourceMemoId,
+    Expression<String>? createdAt,
+    Expression<String>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (date != null) 'date': date,
+      if (status != null) 'status': status,
+      if (sourceMemoId != null) 'source_memo_id': sourceMemoId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppSchedulesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? title,
+      Value<String>? body,
+      Value<String>? date,
+      Value<String>? status,
+      Value<int?>? sourceMemoId,
+      Value<String>? createdAt,
+      Value<String>? updatedAt,
+      Value<int>? rowid}) {
+    return AppSchedulesCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      date: date ?? this.date,
+      status: status ?? this.status,
+      sourceMemoId: sourceMemoId ?? this.sourceMemoId,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<String>(date.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (sourceMemoId.present) {
+      map['source_memo_id'] = Variable<int>(sourceMemoId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<String>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<String>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppSchedulesCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('date: $date, ')
+          ..write('status: $status, ')
+          ..write('sourceMemoId: $sourceMemoId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $QuickActionOrdersTable extends QuickActionOrders
     with TableInfo<$QuickActionOrdersTable, QuickActionOrder> {
   @override
@@ -9970,6 +10394,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SuppliersTable suppliers = $SuppliersTable(this);
   late final $LotsTable lots = $LotsTable(this);
   late final $MemosTable memos = $MemosTable(this);
+  late final $AppSchedulesTable appSchedules = $AppSchedulesTable(this);
   late final $QuickActionOrdersTable quickActionOrders =
       $QuickActionOrdersTable(this);
   @override
@@ -9992,6 +10417,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         suppliers,
         lots,
         memos,
+        appSchedules,
         quickActionOrders
       ];
   @override
@@ -10086,6 +10512,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('lots', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('memos',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('app_schedules', kind: UpdateKind.update),
             ],
           ),
         ],
@@ -16746,6 +17179,26 @@ typedef $$MemosTableUpdateCompanionBuilder = MemosCompanion Function({
   Value<DateTime?> updatedAt,
 });
 
+final class $$MemosTableReferences
+    extends BaseReferences<_$AppDatabase, $MemosTable, MemoRow> {
+  $$MemosTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$AppSchedulesTable, List<AppScheduleRow>>
+      _appSchedulesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+          db.appSchedules,
+          aliasName:
+              $_aliasNameGenerator(db.memos.id, db.appSchedules.sourceMemoId));
+
+  $$AppSchedulesTableProcessedTableManager get appSchedulesRefs {
+    final manager = $$AppSchedulesTableTableManager($_db, $_db.appSchedules)
+        .filter((f) => f.sourceMemoId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_appSchedulesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
 class $$MemosTableFilterComposer extends Composer<_$AppDatabase, $MemosTable> {
   $$MemosTableFilterComposer({
     required super.$db,
@@ -16762,6 +17215,27 @@ class $$MemosTableFilterComposer extends Composer<_$AppDatabase, $MemosTable> {
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> appSchedulesRefs(
+      Expression<bool> Function($$AppSchedulesTableFilterComposer f) f) {
+    final $$AppSchedulesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.appSchedules,
+        getReferencedColumn: (t) => t.sourceMemoId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AppSchedulesTableFilterComposer(
+              $db: $db,
+              $table: $db.appSchedules,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$MemosTableOrderingComposer
@@ -16800,6 +17274,27 @@ class $$MemosTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> appSchedulesRefs<T extends Object>(
+      Expression<T> Function($$AppSchedulesTableAnnotationComposer a) f) {
+    final $$AppSchedulesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.appSchedules,
+        getReferencedColumn: (t) => t.sourceMemoId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AppSchedulesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.appSchedules,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$MemosTableTableManager extends RootTableManager<
@@ -16811,9 +17306,9 @@ class $$MemosTableTableManager extends RootTableManager<
     $$MemosTableAnnotationComposer,
     $$MemosTableCreateCompanionBuilder,
     $$MemosTableUpdateCompanionBuilder,
-    (MemoRow, BaseReferences<_$AppDatabase, $MemosTable, MemoRow>),
+    (MemoRow, $$MemosTableReferences),
     MemoRow,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool appSchedulesRefs})> {
   $$MemosTableTableManager(_$AppDatabase db, $MemosTable table)
       : super(TableManagerState(
           db: db,
@@ -16845,9 +17340,33 @@ class $$MemosTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) =>
+                  (e.readTable(table), $$MemosTableReferences(db, table, e)))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({appSchedulesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (appSchedulesRefs) db.appSchedules],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (appSchedulesRefs)
+                    await $_getPrefetchedData<MemoRow, $MemosTable,
+                            AppScheduleRow>(
+                        currentTable: table,
+                        referencedTable:
+                            $$MemosTableReferences._appSchedulesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$MemosTableReferences(db, table, p0)
+                                .appSchedulesRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.sourceMemoId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
@@ -16860,9 +17379,329 @@ typedef $$MemosTableProcessedTableManager = ProcessedTableManager<
     $$MemosTableAnnotationComposer,
     $$MemosTableCreateCompanionBuilder,
     $$MemosTableUpdateCompanionBuilder,
-    (MemoRow, BaseReferences<_$AppDatabase, $MemosTable, MemoRow>),
+    (MemoRow, $$MemosTableReferences),
     MemoRow,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool appSchedulesRefs})>;
+typedef $$AppSchedulesTableCreateCompanionBuilder = AppSchedulesCompanion
+    Function({
+  required String id,
+  required String title,
+  Value<String> body,
+  required String date,
+  Value<String> status,
+  Value<int?> sourceMemoId,
+  required String createdAt,
+  required String updatedAt,
+  Value<int> rowid,
+});
+typedef $$AppSchedulesTableUpdateCompanionBuilder = AppSchedulesCompanion
+    Function({
+  Value<String> id,
+  Value<String> title,
+  Value<String> body,
+  Value<String> date,
+  Value<String> status,
+  Value<int?> sourceMemoId,
+  Value<String> createdAt,
+  Value<String> updatedAt,
+  Value<int> rowid,
+});
+
+final class $$AppSchedulesTableReferences
+    extends BaseReferences<_$AppDatabase, $AppSchedulesTable, AppScheduleRow> {
+  $$AppSchedulesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $MemosTable _sourceMemoIdTable(_$AppDatabase db) =>
+      db.memos.createAlias(
+          $_aliasNameGenerator(db.appSchedules.sourceMemoId, db.memos.id));
+
+  $$MemosTableProcessedTableManager? get sourceMemoId {
+    final $_column = $_itemColumn<int>('source_memo_id');
+    if ($_column == null) return null;
+    final manager = $$MemosTableTableManager($_db, $_db.memos)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sourceMemoIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$AppSchedulesTableFilterComposer
+    extends Composer<_$AppDatabase, $AppSchedulesTable> {
+  $$AppSchedulesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get body => $composableBuilder(
+      column: $table.body, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  $$MemosTableFilterComposer get sourceMemoId {
+    final $$MemosTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sourceMemoId,
+        referencedTable: $db.memos,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$MemosTableFilterComposer(
+              $db: $db,
+              $table: $db.memos,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AppSchedulesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AppSchedulesTable> {
+  $$AppSchedulesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get title => $composableBuilder(
+      column: $table.title, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get body => $composableBuilder(
+      column: $table.body, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get date => $composableBuilder(
+      column: $table.date, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get updatedAt => $composableBuilder(
+      column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
+
+  $$MemosTableOrderingComposer get sourceMemoId {
+    final $$MemosTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sourceMemoId,
+        referencedTable: $db.memos,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$MemosTableOrderingComposer(
+              $db: $db,
+              $table: $db.memos,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AppSchedulesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AppSchedulesTable> {
+  $$AppSchedulesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$MemosTableAnnotationComposer get sourceMemoId {
+    final $$MemosTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sourceMemoId,
+        referencedTable: $db.memos,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$MemosTableAnnotationComposer(
+              $db: $db,
+              $table: $db.memos,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$AppSchedulesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $AppSchedulesTable,
+    AppScheduleRow,
+    $$AppSchedulesTableFilterComposer,
+    $$AppSchedulesTableOrderingComposer,
+    $$AppSchedulesTableAnnotationComposer,
+    $$AppSchedulesTableCreateCompanionBuilder,
+    $$AppSchedulesTableUpdateCompanionBuilder,
+    (AppScheduleRow, $$AppSchedulesTableReferences),
+    AppScheduleRow,
+    PrefetchHooks Function({bool sourceMemoId})> {
+  $$AppSchedulesTableTableManager(_$AppDatabase db, $AppSchedulesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppSchedulesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppSchedulesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppSchedulesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> title = const Value.absent(),
+            Value<String> body = const Value.absent(),
+            Value<String> date = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<int?> sourceMemoId = const Value.absent(),
+            Value<String> createdAt = const Value.absent(),
+            Value<String> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppSchedulesCompanion(
+            id: id,
+            title: title,
+            body: body,
+            date: date,
+            status: status,
+            sourceMemoId: sourceMemoId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String title,
+            Value<String> body = const Value.absent(),
+            required String date,
+            Value<String> status = const Value.absent(),
+            Value<int?> sourceMemoId = const Value.absent(),
+            required String createdAt,
+            required String updatedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              AppSchedulesCompanion.insert(
+            id: id,
+            title: title,
+            body: body,
+            date: date,
+            status: status,
+            sourceMemoId: sourceMemoId,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$AppSchedulesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({sourceMemoId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (sourceMemoId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.sourceMemoId,
+                    referencedTable:
+                        $$AppSchedulesTableReferences._sourceMemoIdTable(db),
+                    referencedColumn:
+                        $$AppSchedulesTableReferences._sourceMemoIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$AppSchedulesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $AppSchedulesTable,
+    AppScheduleRow,
+    $$AppSchedulesTableFilterComposer,
+    $$AppSchedulesTableOrderingComposer,
+    $$AppSchedulesTableAnnotationComposer,
+    $$AppSchedulesTableCreateCompanionBuilder,
+    $$AppSchedulesTableUpdateCompanionBuilder,
+    (AppScheduleRow, $$AppSchedulesTableReferences),
+    AppScheduleRow,
+    PrefetchHooks Function({bool sourceMemoId})>;
 typedef $$QuickActionOrdersTableCreateCompanionBuilder
     = QuickActionOrdersCompanion Function({
   required String action,
@@ -17025,6 +17864,8 @@ class $AppDatabaseManager {
   $$LotsTableTableManager get lots => $$LotsTableTableManager(_db, _db.lots);
   $$MemosTableTableManager get memos =>
       $$MemosTableTableManager(_db, _db.memos);
+  $$AppSchedulesTableTableManager get appSchedules =>
+      $$AppSchedulesTableTableManager(_db, _db.appSchedules);
   $$QuickActionOrdersTableTableManager get quickActionOrders =>
       $$QuickActionOrdersTableTableManager(_db, _db.quickActionOrders);
 }

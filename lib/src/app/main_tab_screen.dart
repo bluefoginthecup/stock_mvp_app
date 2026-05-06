@@ -15,6 +15,7 @@ import 'package:stockapp_mvp/src/screens/quotes/quote_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/quotes/quote_detail_screen.dart';
 import 'package:stockapp_mvp/src/screens/cart/cart_screen.dart';
 import 'package:stockapp_mvp/src/screens/memo/memo_screen.dart';
+import 'package:stockapp_mvp/src/screens/schedules/schedule_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/receipts/receipt_create_screen.dart';
 import 'package:stockapp_mvp/src/screens/receipts/receipts_home_screen.dart';
 import 'package:stockapp_mvp/src/screens/settings/language_settings_screen.dart';
@@ -229,6 +230,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
             break;
           case '/memo':
             screen = const MemoScreen();
+            break;
+          case '/schedules':
+            screen = const ScheduleListScreen();
             break;
           case '/fabric-cutting':
             screen = const FabricCuttingHomeScreen();

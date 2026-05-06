@@ -45,6 +45,7 @@ class AppBootstrap {
         Provider<WorkRepo>.value(value: unified),
         Provider<PurchaseOrderRepo>.value(value: unified),
         Provider<QuoteRepo>.value(value: unified),
+        Provider<ScheduleRepo>.value(value: unified),
         Provider<SupplierRepo>.value(value: unified),
         Provider<FolderTreeRepo>.value(
             value: unified), // ← FolderRepo가 아니라 FolderTreeRepo
