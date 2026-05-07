@@ -226,6 +226,17 @@ class _DashboardContent extends StatelessWidget {
                       child: _ChalstockAssistantCard(
                         lowCount: lowCount,
                         todaySummary: todaySummary,
+                        onOpenOrders: () =>
+                            context.read<MainTabController>().setIndex(1),
+                        onOpenTxns: () =>
+                            context.read<MainTabController>().setIndex(3),
+                        onOpenWorks: () =>
+                            context.read<MainTabController>().setIndex(4),
+                        onOpenPurchases: () =>
+                            context.read<MainTabController>().setIndex(5),
+                        onOpenSchedules: () => context
+                            .read<MainTabController>()
+                            .openShellRoute('/schedules'),
                       ),
                     ),
                   ],
@@ -242,6 +253,17 @@ class _DashboardContent extends StatelessWidget {
                 _ChalstockAssistantCard(
                   lowCount: lowCount,
                   todaySummary: todaySummary,
+                  onOpenOrders: () =>
+                      context.read<MainTabController>().setIndex(1),
+                  onOpenTxns: () =>
+                      context.read<MainTabController>().setIndex(3),
+                  onOpenWorks: () =>
+                      context.read<MainTabController>().setIndex(4),
+                  onOpenPurchases: () =>
+                      context.read<MainTabController>().setIndex(5),
+                  onOpenSchedules: () => context
+                      .read<MainTabController>()
+                      .openShellRoute('/schedules'),
                 ),
               ],
               const SizedBox(height: 28),
@@ -365,10 +387,20 @@ class _SummaryDivider extends StatelessWidget {
 class _ChalstockAssistantCard extends StatefulWidget {
   final int lowCount;
   final TodayActivitySummary todaySummary;
+  final VoidCallback onOpenOrders;
+  final VoidCallback onOpenTxns;
+  final VoidCallback onOpenWorks;
+  final VoidCallback onOpenPurchases;
+  final VoidCallback onOpenSchedules;
 
   const _ChalstockAssistantCard({
     required this.lowCount,
     required this.todaySummary,
+    required this.onOpenOrders,
+    required this.onOpenTxns,
+    required this.onOpenWorks,
+    required this.onOpenPurchases,
+    required this.onOpenSchedules,
   });
 
   @override
@@ -569,7 +601,14 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
           ],
         ),
         const SizedBox(height: 14),
-        _TodayActivityPanel(summary: widget.todaySummary),
+        _TodayActivityPanel(
+          summary: widget.todaySummary,
+          onOpenOrders: widget.onOpenOrders,
+          onOpenTxns: widget.onOpenTxns,
+          onOpenWorks: widget.onOpenWorks,
+          onOpenPurchases: widget.onOpenPurchases,
+          onOpenSchedules: widget.onOpenSchedules,
+        ),
         const SizedBox(height: 12),
         const _TipPanel(),
       ],
@@ -625,8 +664,20 @@ class _SpeechBubble extends StatelessWidget {
 
 class _TodayActivityPanel extends StatelessWidget {
   final TodayActivitySummary summary;
+  final VoidCallback onOpenOrders;
+  final VoidCallback onOpenTxns;
+  final VoidCallback onOpenWorks;
+  final VoidCallback onOpenPurchases;
+  final VoidCallback onOpenSchedules;
 
-  const _TodayActivityPanel({required this.summary});
+  const _TodayActivityPanel({
+    required this.summary,
+    required this.onOpenOrders,
+    required this.onOpenTxns,
+    required this.onOpenWorks,
+    required this.onOpenPurchases,
+    required this.onOpenSchedules,
+  });
 
   List<_TodayActivityLine> _lines() {
     final lines = <_TodayActivityLine>[];
@@ -635,6 +686,7 @@ class _TodayActivityPanel extends StatelessWidget {
         icon: Icons.assignment_rounded,
         color: const Color(0xFF6A7AF5),
         text: '오늘 새 주문이 ${summary.newOrders}개 들어왔어요 🐶',
+        onTap: onOpenOrders,
       ));
     }
     if (summary.purchases > 0) {
@@ -642,6 +694,7 @@ class _TodayActivityPanel extends StatelessWidget {
         icon: Icons.local_shipping_rounded,
         color: const Color(0xFF4E9F7B),
         text: '발주 ${summary.purchases}건을 챙겼어요',
+        onTap: onOpenPurchases,
       ));
     }
     if (summary.inbound > 0 || summary.outbound > 0) {
@@ -649,6 +702,7 @@ class _TodayActivityPanel extends StatelessWidget {
         icon: Icons.swap_vert_rounded,
         color: const Color(0xFF5C8DF6),
         text: '입고 ${summary.inbound}건, 출고 ${summary.outbound}건이 움직였어요',
+        onTap: onOpenTxns,
       ));
     }
     if (summary.pendingTodos > 0) {
@@ -656,6 +710,7 @@ class _TodayActivityPanel extends StatelessWidget {
         icon: Icons.pending_actions_rounded,
         color: const Color(0xFF8B6BEF),
         text: '오늘 할일 ${summary.pendingTodos}개가 기다리고 있어요',
+        onTap: onOpenSchedules,
       ));
     }
     if (summary.doneTodos > 0) {
@@ -663,6 +718,7 @@ class _TodayActivityPanel extends StatelessWidget {
         icon: Icons.task_alt_rounded,
         color: const Color(0xFF37A66B),
         text: '한일 ${summary.doneTodos}개 완료! 잘했어요',
+        onTap: onOpenSchedules,
       ));
     }
     if (summary.inProgressWorks > 0) {
@@ -670,6 +726,7 @@ class _TodayActivityPanel extends StatelessWidget {
         icon: Icons.precision_manufacturing_rounded,
         color: const Color(0xFFED8A3D),
         text: '진행중 작업 ${summary.inProgressWorks}개가 있어요',
+        onTap: onOpenWorks,
       ));
     }
     return lines;
@@ -714,11 +771,13 @@ class _TodayActivityLine {
   final IconData icon;
   final Color color;
   final String text;
+  final VoidCallback onTap;
 
   const _TodayActivityLine({
     required this.icon,
     required this.color,
     required this.text,
+    required this.onTap,
   });
 }
 
@@ -735,22 +794,31 @@ class _TodayActivityRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          child: Row(
-            children: [
-              Icon(line.icon, color: line.color, size: 22),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  line.text,
-                  style: const TextStyle(
-                    height: 1.25,
-                    fontWeight: FontWeight.w700,
+        InkWell(
+          onTap: line.onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+            child: Row(
+              children: [
+                Icon(line.icon, color: line.color, size: 22),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    line.text,
+                    style: const TextStyle(
+                      height: 1.25,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: line.color.withValues(alpha: 0.72),
+                  size: 20,
+                ),
+              ],
+            ),
           ),
         ),
         if (showDivider) const Divider(height: 1, indent: 52, endIndent: 16),
