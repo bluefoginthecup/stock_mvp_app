@@ -324,6 +324,101 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
   }
 
   @override
+  Future<Map<String, ItemLocationSummary>> getLocationSummariesForItems(
+    List<String> itemIds,
+  ) async {
+    final uniqueItemIds = <String>[
+      for (final id in itemIds)
+        if (id.trim().isNotEmpty) id.trim(),
+    ].toSet().toList();
+    if (uniqueItemIds.isEmpty) return const {};
+
+    final placeholders = List.filled(uniqueItemIds.length, '?').join(', ');
+    final rows = await db.customSelect(
+      '''
+      SELECT il.item_id, il.location_id, il.is_primary,
+             l.id, l.name, l.parent_id, l.type, l.memo, l.sort_order,
+             l.is_archived, l.created_at, l.updated_at
+      FROM item_locations il
+      INNER JOIN storage_locations l ON l.id = il.location_id
+      WHERE il.item_id IN ($placeholders)
+        AND l.is_archived = 0
+      ORDER BY il.item_id ASC, il.is_primary DESC, l.sort_order ASC, l.name COLLATE NOCASE ASC
+      ''',
+      variables: uniqueItemIds.map(Variable.withString).toList(),
+    ).get();
+
+    final allLocations = await searchLocations('');
+    final pathByLocationId = <String, String>{
+      for (final location in allLocations)
+        location.id: _locationPathLabel(location, allLocations),
+    };
+
+    final locationsByItem = <String, List<StorageLocation>>{};
+    final primaryByItem = <String, StorageLocation>{};
+    for (final row in rows) {
+      final itemId = row.data['item_id'] as String;
+      final location = _storageLocationFromRow(row);
+      (locationsByItem[itemId] ??= <StorageLocation>[]).add(location);
+      if ((row.data['is_primary'] as int? ?? 0) == 1) {
+        primaryByItem[itemId] = location;
+      }
+    }
+
+    final result = <String, ItemLocationSummary>{};
+    for (final itemId in uniqueItemIds) {
+      final locations = locationsByItem[itemId] ?? const <StorageLocation>[];
+      if (locations.isEmpty) continue;
+      final primary = primaryByItem[itemId] ?? locations.first;
+      result[itemId] = ItemLocationSummary(
+        primaryLocation: primary,
+        primaryLocationPath: pathByLocationId[primary.id] ?? primary.name,
+        locationCount: locations.length,
+      );
+    }
+    return result;
+  }
+
+  @override
+  Future<void> setPrimaryLocationForItems({
+    required List<String> itemIds,
+    required String locationId,
+  }) async {
+    final uniqueItemIds = <String>[
+      for (final id in itemIds)
+        if (id.trim().isNotEmpty) id.trim(),
+    ].toSet().toList();
+    if (uniqueItemIds.isEmpty || locationId.trim().isEmpty) return;
+
+    final now = DateTime.now().toIso8601String();
+    await db.transaction(() async {
+      for (final itemId in uniqueItemIds) {
+        await db.customStatement(
+          '''
+          UPDATE item_locations
+          SET is_primary = 0, updated_at = ?
+          WHERE item_id = ?
+          ''',
+          [now, itemId],
+        );
+        await db.customStatement(
+          '''
+          INSERT INTO item_locations
+            (item_id, location_id, is_primary, memo, updated_at)
+          VALUES (?, ?, 1, NULL, ?)
+          ON CONFLICT(item_id, location_id) DO UPDATE SET
+            is_primary = 1,
+            updated_at = excluded.updated_at
+          ''',
+          [itemId, locationId, now],
+        );
+      }
+    });
+
+    db.notifyUpdates({const TableUpdate('item_locations')});
+  }
+
+  @override
   Future<void> setLocationsForItem({
     required String itemId,
     required List<String> locationIds,

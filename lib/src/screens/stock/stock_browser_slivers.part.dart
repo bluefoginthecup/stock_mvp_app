@@ -155,7 +155,12 @@ Widget _buildFolderTile(
   );
 }
 
-SliverList _buildItemSliver(BuildContext context, List<Item> items) {
+SliverList _buildItemSliver(
+  BuildContext context,
+  List<Item> items, {
+  Map<String, ItemLocationSummary> locationSummaries = const {},
+  VoidCallback? onLocationChanged,
+}) {
   return SliverList(
     delegate: SliverChildBuilderDelegate(
       (context, i) {
@@ -177,6 +182,7 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
                   builder: (_) => StockItemDetailScreen(itemId: it.id),
                 ),
               );
+              onLocationChanged?.call();
             }
           },
           onLongPress: () async {
@@ -193,6 +199,20 @@ SliverList _buildItemSliver(BuildContext context, List<Item> items) {
             );
           },
           onTogglePick: () => sel.toggle(it.id),
+          locationSummary: locationSummaries[it.id],
+          onTapLocation: locationSummaries[it.id]?.primaryLocation == null
+              ? null
+              : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StorageLocationDetailScreen(
+                        locationId:
+                            locationSummaries[it.id]!.primaryLocation!.id,
+                      ),
+                    ),
+                  );
+                },
         );
       },
       childCount: items.length,

@@ -84,6 +84,25 @@ class ItemWithLocations {
   }
 }
 
+class ItemLocationSummary {
+  final StorageLocation? primaryLocation;
+  final String? primaryLocationPath;
+  final int locationCount;
+
+  const ItemLocationSummary({
+    required this.primaryLocation,
+    required this.primaryLocationPath,
+    required this.locationCount,
+  });
+
+  bool get hasLocation => locationCount > 0;
+
+  int get extraLocationCount {
+    if (locationCount <= 1) return 0;
+    return locationCount - 1;
+  }
+}
+
 class StorageLocationType {
   static const room = 'room';
   static const shelf = 'shelf';

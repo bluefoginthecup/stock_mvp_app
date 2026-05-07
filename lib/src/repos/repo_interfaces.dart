@@ -389,6 +389,13 @@ abstract class StorageLocationRepo {
   Future<int> countChildLocations(String locationId);
   Future<int> countItemsForLocation(String locationId);
   Future<List<ItemWithLocations>> searchItemsWithLocations(String query);
+  Future<Map<String, ItemLocationSummary>> getLocationSummariesForItems(
+    List<String> itemIds,
+  );
+  Future<void> setPrimaryLocationForItems({
+    required List<String> itemIds,
+    required String locationId,
+  });
 
   Future<void> setLocationsForItem({
     required String itemId,

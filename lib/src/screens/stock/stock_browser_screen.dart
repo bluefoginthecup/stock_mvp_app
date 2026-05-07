@@ -7,6 +7,7 @@ import '../../repos/drift_unified_repo.dart';
 import '../../ui/common/ui.dart';
 import '../../models/folder_node.dart';
 import '../../models/item.dart';
+import '../../models/storage_location.dart';
 import 'sheet_new_folder.dart';
 import 'stock_new_item_sheet.dart';
 import '../../ui/common/search_field.dart';
@@ -22,6 +23,8 @@ import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
 import '../../ui/common/selection/multi_select_bar.dart';
 import '../../app/main_tab_controller.dart';
+import '../settings/storage_location_screen.dart';
+import '../settings/widgets/storage_location_picker_sheet.dart';
 
 import 'widgets/new_item_result.dart';
 import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
@@ -61,6 +64,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   bool _lowOnly = false;
   bool _showFavoriteOnly = false;
   bool _needsReviewOnly = false;
+  List<String> _locationSummaryItemIds = const [];
+  Future<Map<String, ItemLocationSummary>>? _locationSummaryFuture;
 
   String? get _selectedId => _l3Id ?? _l2Id ?? _l1Id;
   int get _selectedDepth => _l3Id != null
@@ -99,6 +104,32 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<Map<String, ItemLocationSummary>> _locationSummariesForItems(
+    List<Item> items,
+  ) {
+    final ids = items.map((item) => item.id).toList();
+    if (_locationSummaryFuture == null ||
+        !_sameStringList(_locationSummaryItemIds, ids)) {
+      _locationSummaryItemIds = ids;
+      _locationSummaryFuture =
+          context.read<StorageLocationRepo>().getLocationSummariesForItems(ids);
+    }
+    return _locationSummaryFuture!;
+  }
+
+  void _invalidateLocationSummaries() {
+    _locationSummaryItemIds = const [];
+    _locationSummaryFuture = null;
+  }
+
+  bool _sameStringList(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   @override
@@ -296,7 +327,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
                     if (items.isNotEmpty) {
                       slivers.add(_sliverHeader('📦 아이템'));
-                      slivers.add(_buildItemSliver(context, items));
+                      slivers.add(_buildItemSliverWithLocationSummaries(
+                          context, items));
                     }
 
                     if (folders.isEmpty && items.isEmpty) {
@@ -336,7 +368,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                     if (items.isEmpty) {
                       return const Center(child: Text('조건에 맞는 아이템이 없습니다.'));
                     }
-                    slivers.add(_buildItemSliver(context, items));
+                    slivers.add(
+                        _buildItemSliverWithLocationSummaries(context, items));
                   } else if (hasKeyword) {
                     if (folders.isNotEmpty) {
                       slivers.add(_sliverHeader('📁 폴더'));
@@ -352,7 +385,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       );
                     }
                     if (items.isNotEmpty) {
-                      slivers.add(_buildItemSliver(context, items));
+                      slivers.add(_buildItemSliverWithLocationSummaries(
+                          context, items));
                     }
                   } else if (depth == 0) {
                     slivers.add(
@@ -379,7 +413,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       );
                     }
                     if (items.isNotEmpty) {
-                      slivers.add(_buildItemSliver(context, items));
+                      slivers.add(_buildItemSliverWithLocationSummaries(
+                          context, items));
                     }
                   }
 
@@ -396,6 +431,27 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildItemSliverWithLocationSummaries(
+    BuildContext context,
+    List<Item> items,
+  ) {
+    return FutureBuilder<Map<String, ItemLocationSummary>>(
+      future: _locationSummariesForItems(items),
+      builder: (context, snapshot) {
+        return _buildItemSliver(
+          context,
+          items,
+          locationSummaries:
+              snapshot.data ?? const <String, ItemLocationSummary>{},
+          onLocationChanged: () {
+            _invalidateLocationSummaries();
+            if (mounted) setState(() {});
+          },
+        );
+      },
     );
   }
 
@@ -509,6 +565,44 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                       ? '선택한 ${ids.length}개 즐겨찾기 추가'
                       : '선택한 ${ids.length}개 즐겨찾기 해제')),
             );
+          },
+        ),
+
+        // 📍 보관 위치 지정
+        MultiSelectAction(
+          icon: Icons.location_on_outlined,
+          tooltip: '보관 위치 지정',
+          onPressed: () async {
+            final itemIds = sel.selectedItems.toList();
+            if (itemIds.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('아이템을 선택해야 위치를 지정할 수 있어요.')),
+              );
+              return;
+            }
+
+            final location = await showStorageLocationPickerSheet(context);
+            if (location == null) return;
+
+            await context
+                .read<StorageLocationRepo>()
+                .setPrimaryLocationForItems(
+                  itemIds: itemIds,
+                  locationId: location.id,
+                );
+
+            if (!context.mounted) return;
+            _invalidateLocationSummaries();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '선택한 ${itemIds.length}개 아이템의 기본 위치를 지정했어요.',
+                ),
+              ),
+            );
+
+            sel.exit();
+            setState(() {});
           },
         ),
 
