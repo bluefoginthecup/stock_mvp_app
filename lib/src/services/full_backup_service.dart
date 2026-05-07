@@ -43,6 +43,7 @@ class FullBackupService {
     'memos',
     'quick_action_orders',
     'purchase_receipts',
+    'schedule_attachments',
     'buyer_profiles',
   ];
 
@@ -84,15 +85,23 @@ class FullBackupService {
 
       final includedFolders = <String>[
         AppPathService.purchaseReceiptsRelativeRoot,
+        AppPathService.scheduleAttachmentsRelativeRoot,
       ];
       final receiptFilesSize = await _directorySize(
         await paths.purchaseReceiptsRoot(),
       );
+      final scheduleAttachmentFilesSize = await _directorySize(
+        await paths.scheduleAttachmentsRoot(),
+      );
       final receiptFilesCount = await _directoryFileCount(
         await paths.purchaseReceiptsRoot(),
       );
+      final scheduleAttachmentFilesCount = await _directoryFileCount(
+        await paths.scheduleAttachmentsRoot(),
+      );
       final dbSize = await dbBackup.length();
-      final totalSizeBytes = dbSize + receiptFilesSize;
+      final totalSizeBytes =
+          dbSize + receiptFilesSize + scheduleAttachmentFilesSize;
       final dbHash = await hashService.hashFile(
         file: dbBackup,
         relativePath: 'stockapp.db',
@@ -101,9 +110,14 @@ class FullBackupService {
         root: await paths.purchaseReceiptsRoot(),
         relativeRoot: AppPathService.purchaseReceiptsRelativeRoot,
       );
+      final scheduleAttachmentFileHashes = await hashService.hashDirectoryFiles(
+        root: await paths.scheduleAttachmentsRoot(),
+        relativeRoot: AppPathService.scheduleAttachmentsRelativeRoot,
+      );
       final contentHash = _buildContentHash(
         dbHash: dbHash,
         receiptFileHashes: receiptFileHashes,
+        scheduleAttachmentFileHashes: scheduleAttachmentFileHashes,
       );
 
       final manifest = <String, Object?>{
@@ -121,6 +135,9 @@ class FullBackupService {
         'purchaseReceiptFiles': receiptFileHashes
             .map((fileHash) => fileHash.toJson())
             .toList(growable: false),
+        'scheduleAttachmentFiles': scheduleAttachmentFileHashes
+            .map((fileHash) => fileHash.toJson())
+            .toList(growable: false),
       };
 
       await manifestFile.writeAsString(
@@ -130,8 +147,8 @@ class FullBackupService {
       await _writeHtmlReport(
         reportFile: reportFile,
         manifest: manifest,
-        attachmentFileCount: receiptFilesCount,
-        attachmentSizeBytes: receiptFilesSize,
+        attachmentFileCount: receiptFilesCount + scheduleAttachmentFilesCount,
+        attachmentSizeBytes: receiptFilesSize + scheduleAttachmentFilesSize,
       );
 
       await _writeZip(
@@ -152,10 +169,14 @@ class FullBackupService {
   String _buildContentHash({
     required BackupFileHash dbHash,
     required List<BackupFileHash> receiptFileHashes,
+    required List<BackupFileHash> scheduleAttachmentFileHashes,
   }) {
     final content = <String, Object?>{
       'stockappDb': dbHash.toJson(),
       'purchaseReceiptFiles': receiptFileHashes
+          .map((fileHash) => fileHash.toJson())
+          .toList(growable: false),
+      'scheduleAttachmentFiles': scheduleAttachmentFileHashes
           .map((fileHash) => fileHash.toJson())
           .toList(growable: false),
     };
@@ -193,6 +214,20 @@ class FullBackupService {
       if (await receiptsRoot.exists()) {
         await encoder.addDirectory(
           receiptsRoot,
+          includeDirName: true,
+          level: ZipFileEncoder.gzip,
+          followLinks: false,
+        );
+      }
+
+      encoder.addArchiveFile(
+        ArchiveFile.directory(AppPathService.scheduleAttachmentsRelativeRoot),
+      );
+
+      final scheduleAttachmentsRoot = await paths.scheduleAttachmentsRoot();
+      if (await scheduleAttachmentsRoot.exists()) {
+        await encoder.addDirectory(
+          scheduleAttachmentsRoot,
           includeDirName: true,
           level: ZipFileEncoder.gzip,
           followLinks: false,

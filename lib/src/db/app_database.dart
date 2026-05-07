@@ -637,7 +637,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 31; //
+  int get schemaVersion => 32; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -650,6 +650,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureBuyerProfilesTable();
           await _ensureShippingDestinationTables();
           await _ensureStorageLocationTables();
+          await _ensureScheduleAttachmentsTable();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -907,6 +908,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 31) {
             await _ensureStorageLocationTables();
+          }
+          if (from < 32) {
+            await _ensureScheduleAttachmentsTable();
           }
         },
       );
@@ -1197,6 +1201,24 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_purchase_receipts_order '
       'ON purchase_receipts(purchase_order_id, created_at)',
+    );
+  }
+
+  Future<void> _ensureScheduleAttachmentsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS schedule_attachments (
+        id TEXT PRIMARY KEY NOT NULL,
+        schedule_id TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (schedule_id) REFERENCES app_schedules(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_schedule_attachments_schedule '
+      'ON schedule_attachments(schedule_id, created_at)',
     );
   }
 

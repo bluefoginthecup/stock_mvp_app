@@ -9,6 +9,7 @@ import '../models/purchase_line.dart';
 import '../models/quote.dart';
 import '../models/quote_line.dart';
 import '../models/app_schedule.dart';
+import '../models/schedule_attachment.dart';
 import '../models/purchase_receipt.dart';
 import '../models/shipping_destination.dart';
 import '../models/storage_location.dart';
@@ -435,6 +436,10 @@ abstract class ScheduleRepo {
   Future<List<AppSchedule>> listSchedulesByDate(DateTime date);
   Future<void> updateScheduleStatus(String id, AppScheduleStatus status);
   Future<void> toggleScheduleStatus(String id);
+  Future<void> addScheduleAttachment(ScheduleAttachment attachment);
+  Future<List<ScheduleAttachment>> getScheduleAttachments(String scheduleId);
+  Stream<List<ScheduleAttachment>> watchScheduleAttachments(String scheduleId);
+  Future<void> deleteScheduleAttachment(String id);
 }
 // 맨 아래 부분만 이렇게 정리 👇
 

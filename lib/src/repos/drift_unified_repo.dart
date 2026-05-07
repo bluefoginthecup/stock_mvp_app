@@ -24,6 +24,7 @@ import '../models/purchase_receipt.dart';
 import '../models/quote.dart';
 import '../models/quote_line.dart';
 import '../models/app_schedule.dart';
+import '../models/schedule_attachment.dart';
 import '../models/suppliers.dart';
 import '../models/shipping_destination.dart';
 import '../models/storage_location.dart';

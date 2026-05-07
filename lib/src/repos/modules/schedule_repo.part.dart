@@ -31,8 +31,32 @@ mixin ScheduleRepoMixin on _RepoCore implements ScheduleRepo {
 
   @override
   Future<void> deleteSchedule(String id) async {
+    final attachments = await getScheduleAttachments(id);
+    const paths = AppPathService();
+    for (final attachment in attachments) {
+      try {
+        final file = await paths.resolveAppFile(attachment.filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+    }
+
     await (db.delete(db.appSchedules)..where((t) => t.id.equals(id))).go();
+    await db.customStatement(
+      'DELETE FROM schedule_attachments WHERE schedule_id = ?',
+      [id],
+    );
+
+    try {
+      final dir = await paths.scheduleAttachmentDirectory(id);
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+    } catch (_) {}
+
     notifyListeners();
+    db.notifyUpdates({const TableUpdate('schedule_attachments')});
   }
 
   @override
@@ -103,5 +127,98 @@ mixin ScheduleRepoMixin on _RepoCore implements ScheduleRepo {
         ? AppScheduleStatus.done
         : AppScheduleStatus.pending;
     await updateScheduleStatus(id, next);
+  }
+
+  @override
+  Future<void> addScheduleAttachment(ScheduleAttachment attachment) async {
+    final filePath = await const AppPathService()
+        .normalizeToRelativePath(attachment.filePath);
+    await db.customStatement(
+      '''
+      INSERT OR REPLACE INTO schedule_attachments
+        (id, schedule_id, file_name, file_path, mime_type, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ''',
+      [
+        attachment.id,
+        attachment.scheduleId,
+        attachment.fileName,
+        filePath,
+        attachment.mimeType,
+        attachment.createdAt.toIso8601String(),
+      ],
+    );
+    db.notifyUpdates({const TableUpdate('schedule_attachments')});
+    notifyListeners();
+  }
+
+  @override
+  Future<List<ScheduleAttachment>> getScheduleAttachments(
+      String scheduleId) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT id, schedule_id, file_name, file_path, mime_type, created_at
+      FROM schedule_attachments
+      WHERE schedule_id = ?
+      ORDER BY created_at DESC
+      ''',
+      variables: [Variable.withString(scheduleId)],
+    ).get();
+    return rows.map(_scheduleAttachmentFromRow).toList();
+  }
+
+  @override
+  Stream<List<ScheduleAttachment>> watchScheduleAttachments(
+      String scheduleId) async* {
+    yield await getScheduleAttachments(scheduleId);
+
+    final updates = db
+        .tableUpdates(
+            const TableUpdateQuery.onTableName('schedule_attachments'))
+        .map((_) => null);
+    await for (final _ in updates) {
+      yield await getScheduleAttachments(scheduleId);
+    }
+  }
+
+  @override
+  Future<void> deleteScheduleAttachment(String id) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT file_path
+      FROM schedule_attachments
+      WHERE id = ?
+      ''',
+      variables: [Variable.withString(id)],
+    ).get();
+
+    if (rows.isNotEmpty) {
+      final filePath = rows.first.data['file_path'] as String;
+      try {
+        final file = await const AppPathService().resolveAppFile(filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+    }
+
+    await db.customStatement(
+      'DELETE FROM schedule_attachments WHERE id = ?',
+      [id],
+    );
+    db.notifyUpdates({const TableUpdate('schedule_attachments')});
+    notifyListeners();
+  }
+
+  ScheduleAttachment _scheduleAttachmentFromRow(QueryRow row) {
+    final data = row.data;
+    return ScheduleAttachment(
+      id: data['id'] as String,
+      scheduleId: data['schedule_id'] as String,
+      fileName: data['file_name'] as String,
+      filePath: data['file_path'] as String,
+      mimeType: data['mime_type'] as String,
+      createdAt: DateTime.parse(data['created_at'] as String),
+    );
   }
 }

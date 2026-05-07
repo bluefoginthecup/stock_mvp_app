@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 class AppPathService {
   static const purchaseReceiptsRelativeRoot = 'purchase_receipts';
+  static const scheduleAttachmentsRelativeRoot = 'schedule_attachments';
   static String? _activeUserId;
 
   const AppPathService();
@@ -90,6 +91,11 @@ class AppPathService {
     return Directory(p.join(dir.path, purchaseReceiptsRelativeRoot));
   }
 
+  Future<Directory> scheduleAttachmentsRoot() async {
+    final dir = await userSupportDirectory();
+    return Directory(p.join(dir.path, scheduleAttachmentsRelativeRoot));
+  }
+
   Future<Directory> purchaseReceiptOrderDirectory(
       String purchaseOrderId) async {
     final root = await purchaseReceiptsRoot();
@@ -107,6 +113,22 @@ class AppPathService {
     );
   }
 
+  Future<Directory> scheduleAttachmentDirectory(String scheduleId) async {
+    final root = await scheduleAttachmentsRoot();
+    return Directory(p.join(root.path, scheduleId));
+  }
+
+  String scheduleAttachmentRelativePath(
+    String scheduleId,
+    String fileName,
+  ) {
+    return p.posix.join(
+      scheduleAttachmentsRelativeRoot,
+      scheduleId,
+      fileName,
+    );
+  }
+
   Future<File> resolveAppFile(String storedPath) async {
     final dir = await userSupportDirectory();
     if (p.isAbsolute(storedPath)) {
@@ -120,6 +142,16 @@ class AppPathService {
         return File(p.joinAll([
           dir.path,
           ...parts.skip(receiptsIndex),
+        ]));
+      }
+
+      final scheduleAttachmentsIndex =
+          parts.lastIndexOf(scheduleAttachmentsRelativeRoot);
+      if (scheduleAttachmentsIndex >= 0 &&
+          scheduleAttachmentsIndex < parts.length - 1) {
+        return File(p.joinAll([
+          dir.path,
+          ...parts.skip(scheduleAttachmentsIndex),
         ]));
       }
 
@@ -146,6 +178,13 @@ class AppPathService {
     final receiptsIndex = parts.lastIndexOf(purchaseReceiptsRelativeRoot);
     if (receiptsIndex >= 0 && receiptsIndex < parts.length - 1) {
       return p.posix.joinAll(parts.skip(receiptsIndex));
+    }
+
+    final scheduleAttachmentsIndex =
+        parts.lastIndexOf(scheduleAttachmentsRelativeRoot);
+    if (scheduleAttachmentsIndex >= 0 &&
+        scheduleAttachmentsIndex < parts.length - 1) {
+      return p.posix.joinAll(parts.skip(scheduleAttachmentsIndex));
     }
 
     return absoluteOrRelativePath;
