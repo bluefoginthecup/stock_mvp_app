@@ -9,12 +9,14 @@ import 'src/app.dart';
 
 // ✅ 추가: Auth & Gate
 import 'src/services/auth_service.dart';
+import 'src/services/reorder_reminder_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform, // ✅ macOS 포함 모든 플랫폼에서 필수
   );
+  await ReorderReminderService.initialize();
 
   // Provider 경고 끄기 (필요 시)
   Provider.debugCheckInvalidValueType = null;

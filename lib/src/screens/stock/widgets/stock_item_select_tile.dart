@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../models/item.dart';
 import '../../../models/storage_location.dart';
 import '../../../utils/item_registration.dart';
+import 'reorder_badge.dart';
 
 class StockItemSelectTile extends StatelessWidget {
   final Item item;
@@ -79,6 +80,7 @@ class StockItemSelectTile extends StatelessWidget {
               ],
             ),
           ),
+          ReorderBadge(item: item, dense: true),
         ],
       ),
       dense: true,

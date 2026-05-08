@@ -20,6 +20,7 @@ import 'src/ui/common/selection/item_selection_controller.dart';
 
 // Auth (있으면)
 import 'src/services/auth_service.dart';
+import 'src/services/reorder_reminder_service.dart';
 
 // Drift + SQLite
 import 'src/db/app_database.dart';
@@ -35,6 +36,7 @@ Future<void> main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
+  await ReorderReminderService.initialize();
 
   // ✅ Provider 타입 체크 완화 (기존 main.dart와 동일)
   Provider.debugCheckInvalidValueType = null;

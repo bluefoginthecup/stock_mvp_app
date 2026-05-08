@@ -318,7 +318,7 @@ class _CartScreenState extends State<CartScreen> {
                 final selected = _selected.contains(i);
 
                 return Dismissible(
-                  key: ValueKey('cart_i_${it.itemId}_$i'),
+                  key: ObjectKey(it),
                   direction: DismissDirection.endToStart,
                   background: Container(
                     alignment: Alignment.centerRight,
@@ -328,7 +328,11 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                   onDismissed: (_) {
                     final removed = it;
-                    cart.removeAt(i);
+                    final currentIndex =
+                        cart.items.indexWhere((entry) => identical(entry, it));
+                    if (currentIndex >= 0) {
+                      cart.removeAt(currentIndex);
+                    }
                     // ✅ 인덱스 기반 선택은 삭제 시 깨질 수 있으니 안전하게 초기화
                     _clearSelection();
 

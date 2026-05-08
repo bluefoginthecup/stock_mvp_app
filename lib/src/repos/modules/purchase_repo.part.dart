@@ -21,6 +21,12 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
         updatedAt: Value(DateTime.now().toIso8601String()),
       ),
     );
+    if (status == PurchaseOrderStatus.received) {
+      final lines = await getLines(id);
+      await (this as ItemRepo).markItemsOrderedNow(
+        lines.map((line) => line.itemId),
+      );
+    }
   }
 
   @override

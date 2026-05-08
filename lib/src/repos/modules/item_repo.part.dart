@@ -267,6 +267,40 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
     final fresh = await getItem(item.id);
     if (fresh != null) _cacheItem(fresh);
+    await ReorderReminderService.rescheduleForItem(fresh ?? item);
+  }
+
+  @override
+  Future<void> markItemOrderedNow(String itemId) async {
+    await markItemsOrderedNow([itemId]);
+  }
+
+  @override
+  Future<void> markItemsOrderedNow(Iterable<String> itemIds) async {
+    final ids = itemIds.toSet();
+    if (ids.isEmpty) return;
+    final today = ReorderScheduleUtils.dateOnly(DateTime.now());
+
+    for (final itemId in ids) {
+      final item = await getItem(itemId);
+      if (item == null || item.reorderIntervalDays == null) continue;
+
+      final next = ReorderScheduleUtils.calculateNextReorderDate(
+        lastOrderedAt: today,
+        intervalDays: item.reorderIntervalDays,
+      );
+      await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+        ItemsCompanion(
+          lastOrderedAt: Value(today.toIso8601String()),
+          nextReorderDate: Value(next?.toIso8601String()),
+        ),
+      );
+      final fresh = await getItem(itemId);
+      if (fresh != null) {
+        _cacheItem(fresh);
+        await ReorderReminderService.rescheduleForItem(fresh);
+      }
+    }
   }
 
   Future<void> upsertItemWithPath(
@@ -345,6 +379,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     // 5) 캐시 리프레시
     final fresh = await getItem(item.id);
     if (fresh != null) _cacheItem(fresh);
+    await ReorderReminderService.rescheduleForItem(fresh ?? item);
   }
 
   @override
@@ -370,6 +405,10 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     await db.update(db.items).replace(updated);
 
     final check = await getItem(item.id);
+    if (check != null) {
+      _cacheItem(check);
+      await ReorderReminderService.rescheduleForItem(check);
+    }
     print(
         'DB 저장 후: ${check?.defaultPurchasePrice} / ${check?.defaultSalePrice}');
   }

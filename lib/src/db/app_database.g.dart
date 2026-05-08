@@ -167,6 +167,39 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
   late final GeneratedColumn<double> defaultSalePrice = GeneratedColumn<double>(
       'default_sale_price', aliasedName, true,
       type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _reorderIntervalDaysMeta =
+      const VerificationMeta('reorderIntervalDays');
+  @override
+  late final GeneratedColumn<int> reorderIntervalDays = GeneratedColumn<int>(
+      'reorder_interval_days', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _lastOrderedAtMeta =
+      const VerificationMeta('lastOrderedAt');
+  @override
+  late final GeneratedColumn<String> lastOrderedAt = GeneratedColumn<String>(
+      'last_ordered_at', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _nextReorderDateMeta =
+      const VerificationMeta('nextReorderDate');
+  @override
+  late final GeneratedColumn<String> nextReorderDate = GeneratedColumn<String>(
+      'next_reorder_date', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _reorderReminderEnabledMeta =
+      const VerificationMeta('reorderReminderEnabled');
+  @override
+  late final GeneratedColumn<bool> reorderReminderEnabled =
+      GeneratedColumn<bool>('reorder_reminder_enabled', aliasedName, true,
+          type: DriftSqlType.bool,
+          requiredDuringInsert: false,
+          defaultConstraints: GeneratedColumn.constraintIsAlways(
+              'CHECK ("reorder_reminder_enabled" IN (0, 1))'));
+  static const VerificationMeta _reorderReminderDaysBeforeMeta =
+      const VerificationMeta('reorderReminderDaysBefore');
+  @override
+  late final GeneratedColumn<int> reorderReminderDaysBefore =
+      GeneratedColumn<int>('reorder_reminder_days_before', aliasedName, true,
+          type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _isFavoriteMeta =
       const VerificationMeta('isFavorite');
   @override
@@ -225,6 +258,11 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
         defaultPrice,
         defaultPurchasePrice,
         defaultSalePrice,
+        reorderIntervalDays,
+        lastOrderedAt,
+        nextReorderDate,
+        reorderReminderEnabled,
+        reorderReminderDaysBefore,
         isFavorite,
         isDeleted,
         deletedAt,
@@ -375,6 +413,37 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           defaultSalePrice.isAcceptableOrUnknown(
               data['default_sale_price']!, _defaultSalePriceMeta));
     }
+    if (data.containsKey('reorder_interval_days')) {
+      context.handle(
+          _reorderIntervalDaysMeta,
+          reorderIntervalDays.isAcceptableOrUnknown(
+              data['reorder_interval_days']!, _reorderIntervalDaysMeta));
+    }
+    if (data.containsKey('last_ordered_at')) {
+      context.handle(
+          _lastOrderedAtMeta,
+          lastOrderedAt.isAcceptableOrUnknown(
+              data['last_ordered_at']!, _lastOrderedAtMeta));
+    }
+    if (data.containsKey('next_reorder_date')) {
+      context.handle(
+          _nextReorderDateMeta,
+          nextReorderDate.isAcceptableOrUnknown(
+              data['next_reorder_date']!, _nextReorderDateMeta));
+    }
+    if (data.containsKey('reorder_reminder_enabled')) {
+      context.handle(
+          _reorderReminderEnabledMeta,
+          reorderReminderEnabled.isAcceptableOrUnknown(
+              data['reorder_reminder_enabled']!, _reorderReminderEnabledMeta));
+    }
+    if (data.containsKey('reorder_reminder_days_before')) {
+      context.handle(
+          _reorderReminderDaysBeforeMeta,
+          reorderReminderDaysBefore.isAcceptableOrUnknown(
+              data['reorder_reminder_days_before']!,
+              _reorderReminderDaysBeforeMeta));
+    }
     if (data.containsKey('is_favorite')) {
       context.handle(
           _isFavoriteMeta,
@@ -454,6 +523,18 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           data['${effectivePrefix}default_purchase_price']),
       defaultSalePrice: attachedDatabase.typeMapping.read(
           DriftSqlType.double, data['${effectivePrefix}default_sale_price']),
+      reorderIntervalDays: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}reorder_interval_days']),
+      lastOrderedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}last_ordered_at']),
+      nextReorderDate: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}next_reorder_date']),
+      reorderReminderEnabled: attachedDatabase.typeMapping.read(
+          DriftSqlType.bool,
+          data['${effectivePrefix}reorder_reminder_enabled']),
+      reorderReminderDaysBefore: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}reorder_reminder_days_before']),
       isFavorite: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
       isDeleted: attachedDatabase.typeMapping
@@ -497,6 +578,11 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
   final double? defaultPrice;
   final double? defaultPurchasePrice;
   final double? defaultSalePrice;
+  final int? reorderIntervalDays;
+  final String? lastOrderedAt;
+  final String? nextReorderDate;
+  final bool? reorderReminderEnabled;
+  final int? reorderReminderDaysBefore;
   final bool isFavorite;
   final bool isDeleted;
   final String? deletedAt;
@@ -527,6 +613,11 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       this.defaultPrice,
       this.defaultPurchasePrice,
       this.defaultSalePrice,
+      this.reorderIntervalDays,
+      this.lastOrderedAt,
+      this.nextReorderDate,
+      this.reorderReminderEnabled,
+      this.reorderReminderDaysBefore,
       required this.isFavorite,
       required this.isDeleted,
       this.deletedAt,
@@ -580,6 +671,22 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     }
     if (!nullToAbsent || defaultSalePrice != null) {
       map['default_sale_price'] = Variable<double>(defaultSalePrice);
+    }
+    if (!nullToAbsent || reorderIntervalDays != null) {
+      map['reorder_interval_days'] = Variable<int>(reorderIntervalDays);
+    }
+    if (!nullToAbsent || lastOrderedAt != null) {
+      map['last_ordered_at'] = Variable<String>(lastOrderedAt);
+    }
+    if (!nullToAbsent || nextReorderDate != null) {
+      map['next_reorder_date'] = Variable<String>(nextReorderDate);
+    }
+    if (!nullToAbsent || reorderReminderEnabled != null) {
+      map['reorder_reminder_enabled'] = Variable<bool>(reorderReminderEnabled);
+    }
+    if (!nullToAbsent || reorderReminderDaysBefore != null) {
+      map['reorder_reminder_days_before'] =
+          Variable<int>(reorderReminderDaysBefore);
     }
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['is_deleted'] = Variable<bool>(isDeleted);
@@ -639,6 +746,22 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       defaultSalePrice: defaultSalePrice == null && nullToAbsent
           ? const Value.absent()
           : Value(defaultSalePrice),
+      reorderIntervalDays: reorderIntervalDays == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reorderIntervalDays),
+      lastOrderedAt: lastOrderedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastOrderedAt),
+      nextReorderDate: nextReorderDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextReorderDate),
+      reorderReminderEnabled: reorderReminderEnabled == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reorderReminderEnabled),
+      reorderReminderDaysBefore:
+          reorderReminderDaysBefore == null && nullToAbsent
+              ? const Value.absent()
+              : Value(reorderReminderDaysBefore),
       isFavorite: Value(isFavorite),
       isDeleted: Value(isDeleted),
       deletedAt: deletedAt == null && nullToAbsent
@@ -680,6 +803,14 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       defaultPurchasePrice:
           serializer.fromJson<double?>(json['defaultPurchasePrice']),
       defaultSalePrice: serializer.fromJson<double?>(json['defaultSalePrice']),
+      reorderIntervalDays:
+          serializer.fromJson<int?>(json['reorderIntervalDays']),
+      lastOrderedAt: serializer.fromJson<String?>(json['lastOrderedAt']),
+      nextReorderDate: serializer.fromJson<String?>(json['nextReorderDate']),
+      reorderReminderEnabled:
+          serializer.fromJson<bool?>(json['reorderReminderEnabled']),
+      reorderReminderDaysBefore:
+          serializer.fromJson<int?>(json['reorderReminderDaysBefore']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
@@ -715,6 +846,13 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       'defaultPrice': serializer.toJson<double?>(defaultPrice),
       'defaultPurchasePrice': serializer.toJson<double?>(defaultPurchasePrice),
       'defaultSalePrice': serializer.toJson<double?>(defaultSalePrice),
+      'reorderIntervalDays': serializer.toJson<int?>(reorderIntervalDays),
+      'lastOrderedAt': serializer.toJson<String?>(lastOrderedAt),
+      'nextReorderDate': serializer.toJson<String?>(nextReorderDate),
+      'reorderReminderEnabled':
+          serializer.toJson<bool?>(reorderReminderEnabled),
+      'reorderReminderDaysBefore':
+          serializer.toJson<int?>(reorderReminderDaysBefore),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
@@ -748,6 +886,11 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           Value<double?> defaultPrice = const Value.absent(),
           Value<double?> defaultPurchasePrice = const Value.absent(),
           Value<double?> defaultSalePrice = const Value.absent(),
+          Value<int?> reorderIntervalDays = const Value.absent(),
+          Value<String?> lastOrderedAt = const Value.absent(),
+          Value<String?> nextReorderDate = const Value.absent(),
+          Value<bool?> reorderReminderEnabled = const Value.absent(),
+          Value<int?> reorderReminderDaysBefore = const Value.absent(),
           bool? isFavorite,
           bool? isDeleted,
           Value<String?> deletedAt = const Value.absent(),
@@ -788,6 +931,20 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         defaultSalePrice: defaultSalePrice.present
             ? defaultSalePrice.value
             : this.defaultSalePrice,
+        reorderIntervalDays: reorderIntervalDays.present
+            ? reorderIntervalDays.value
+            : this.reorderIntervalDays,
+        lastOrderedAt:
+            lastOrderedAt.present ? lastOrderedAt.value : this.lastOrderedAt,
+        nextReorderDate: nextReorderDate.present
+            ? nextReorderDate.value
+            : this.nextReorderDate,
+        reorderReminderEnabled: reorderReminderEnabled.present
+            ? reorderReminderEnabled.value
+            : this.reorderReminderEnabled,
+        reorderReminderDaysBefore: reorderReminderDaysBefore.present
+            ? reorderReminderDaysBefore.value
+            : this.reorderReminderDaysBefore,
         isFavorite: isFavorite ?? this.isFavorite,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -845,6 +1002,21 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       defaultSalePrice: data.defaultSalePrice.present
           ? data.defaultSalePrice.value
           : this.defaultSalePrice,
+      reorderIntervalDays: data.reorderIntervalDays.present
+          ? data.reorderIntervalDays.value
+          : this.reorderIntervalDays,
+      lastOrderedAt: data.lastOrderedAt.present
+          ? data.lastOrderedAt.value
+          : this.lastOrderedAt,
+      nextReorderDate: data.nextReorderDate.present
+          ? data.nextReorderDate.value
+          : this.nextReorderDate,
+      reorderReminderEnabled: data.reorderReminderEnabled.present
+          ? data.reorderReminderEnabled.value
+          : this.reorderReminderEnabled,
+      reorderReminderDaysBefore: data.reorderReminderDaysBefore.present
+          ? data.reorderReminderDaysBefore.value
+          : this.reorderReminderDaysBefore,
       isFavorite:
           data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
@@ -881,6 +1053,11 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           ..write('defaultPrice: $defaultPrice, ')
           ..write('defaultPurchasePrice: $defaultPurchasePrice, ')
           ..write('defaultSalePrice: $defaultSalePrice, ')
+          ..write('reorderIntervalDays: $reorderIntervalDays, ')
+          ..write('lastOrderedAt: $lastOrderedAt, ')
+          ..write('nextReorderDate: $nextReorderDate, ')
+          ..write('reorderReminderEnabled: $reorderReminderEnabled, ')
+          ..write('reorderReminderDaysBefore: $reorderReminderDaysBefore, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
@@ -916,6 +1093,11 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         defaultPrice,
         defaultPurchasePrice,
         defaultSalePrice,
+        reorderIntervalDays,
+        lastOrderedAt,
+        nextReorderDate,
+        reorderReminderEnabled,
+        reorderReminderDaysBefore,
         isFavorite,
         isDeleted,
         deletedAt,
@@ -950,6 +1132,11 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           other.defaultPrice == this.defaultPrice &&
           other.defaultPurchasePrice == this.defaultPurchasePrice &&
           other.defaultSalePrice == this.defaultSalePrice &&
+          other.reorderIntervalDays == this.reorderIntervalDays &&
+          other.lastOrderedAt == this.lastOrderedAt &&
+          other.nextReorderDate == this.nextReorderDate &&
+          other.reorderReminderEnabled == this.reorderReminderEnabled &&
+          other.reorderReminderDaysBefore == this.reorderReminderDaysBefore &&
           other.isFavorite == this.isFavorite &&
           other.isDeleted == this.isDeleted &&
           other.deletedAt == this.deletedAt &&
@@ -982,6 +1169,11 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
   final Value<double?> defaultPrice;
   final Value<double?> defaultPurchasePrice;
   final Value<double?> defaultSalePrice;
+  final Value<int?> reorderIntervalDays;
+  final Value<String?> lastOrderedAt;
+  final Value<String?> nextReorderDate;
+  final Value<bool?> reorderReminderEnabled;
+  final Value<int?> reorderReminderDaysBefore;
   final Value<bool> isFavorite;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
@@ -1013,6 +1205,11 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.defaultPrice = const Value.absent(),
     this.defaultPurchasePrice = const Value.absent(),
     this.defaultSalePrice = const Value.absent(),
+    this.reorderIntervalDays = const Value.absent(),
+    this.lastOrderedAt = const Value.absent(),
+    this.nextReorderDate = const Value.absent(),
+    this.reorderReminderEnabled = const Value.absent(),
+    this.reorderReminderDaysBefore = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1045,6 +1242,11 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.defaultPrice = const Value.absent(),
     this.defaultPurchasePrice = const Value.absent(),
     this.defaultSalePrice = const Value.absent(),
+    this.reorderIntervalDays = const Value.absent(),
+    this.lastOrderedAt = const Value.absent(),
+    this.nextReorderDate = const Value.absent(),
+    this.reorderReminderEnabled = const Value.absent(),
+    this.reorderReminderDaysBefore = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -1081,6 +1283,11 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     Expression<double>? defaultPrice,
     Expression<double>? defaultPurchasePrice,
     Expression<double>? defaultSalePrice,
+    Expression<int>? reorderIntervalDays,
+    Expression<String>? lastOrderedAt,
+    Expression<String>? nextReorderDate,
+    Expression<bool>? reorderReminderEnabled,
+    Expression<int>? reorderReminderDaysBefore,
     Expression<bool>? isFavorite,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
@@ -1115,6 +1322,14 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       if (defaultPurchasePrice != null)
         'default_purchase_price': defaultPurchasePrice,
       if (defaultSalePrice != null) 'default_sale_price': defaultSalePrice,
+      if (reorderIntervalDays != null)
+        'reorder_interval_days': reorderIntervalDays,
+      if (lastOrderedAt != null) 'last_ordered_at': lastOrderedAt,
+      if (nextReorderDate != null) 'next_reorder_date': nextReorderDate,
+      if (reorderReminderEnabled != null)
+        'reorder_reminder_enabled': reorderReminderEnabled,
+      if (reorderReminderDaysBefore != null)
+        'reorder_reminder_days_before': reorderReminderDaysBefore,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -1149,6 +1364,11 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       Value<double?>? defaultPrice,
       Value<double?>? defaultPurchasePrice,
       Value<double?>? defaultSalePrice,
+      Value<int?>? reorderIntervalDays,
+      Value<String?>? lastOrderedAt,
+      Value<String?>? nextReorderDate,
+      Value<bool?>? reorderReminderEnabled,
+      Value<int?>? reorderReminderDaysBefore,
       Value<bool>? isFavorite,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
@@ -1180,6 +1400,13 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       defaultPrice: defaultPrice ?? this.defaultPrice,
       defaultPurchasePrice: defaultPurchasePrice ?? this.defaultPurchasePrice,
       defaultSalePrice: defaultSalePrice ?? this.defaultSalePrice,
+      reorderIntervalDays: reorderIntervalDays ?? this.reorderIntervalDays,
+      lastOrderedAt: lastOrderedAt ?? this.lastOrderedAt,
+      nextReorderDate: nextReorderDate ?? this.nextReorderDate,
+      reorderReminderEnabled:
+          reorderReminderEnabled ?? this.reorderReminderEnabled,
+      reorderReminderDaysBefore:
+          reorderReminderDaysBefore ?? this.reorderReminderDaysBefore,
       isFavorite: isFavorite ?? this.isFavorite,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -1268,6 +1495,23 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     if (defaultSalePrice.present) {
       map['default_sale_price'] = Variable<double>(defaultSalePrice.value);
     }
+    if (reorderIntervalDays.present) {
+      map['reorder_interval_days'] = Variable<int>(reorderIntervalDays.value);
+    }
+    if (lastOrderedAt.present) {
+      map['last_ordered_at'] = Variable<String>(lastOrderedAt.value);
+    }
+    if (nextReorderDate.present) {
+      map['next_reorder_date'] = Variable<String>(nextReorderDate.value);
+    }
+    if (reorderReminderEnabled.present) {
+      map['reorder_reminder_enabled'] =
+          Variable<bool>(reorderReminderEnabled.value);
+    }
+    if (reorderReminderDaysBefore.present) {
+      map['reorder_reminder_days_before'] =
+          Variable<int>(reorderReminderDaysBefore.value);
+    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -1314,6 +1558,11 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
           ..write('defaultPrice: $defaultPrice, ')
           ..write('defaultPurchasePrice: $defaultPurchasePrice, ')
           ..write('defaultSalePrice: $defaultSalePrice, ')
+          ..write('reorderIntervalDays: $reorderIntervalDays, ')
+          ..write('lastOrderedAt: $lastOrderedAt, ')
+          ..write('nextReorderDate: $nextReorderDate, ')
+          ..write('reorderReminderEnabled: $reorderReminderEnabled, ')
+          ..write('reorderReminderDaysBefore: $reorderReminderDaysBefore, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
@@ -12386,6 +12635,11 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<double?> defaultPrice,
   Value<double?> defaultPurchasePrice,
   Value<double?> defaultSalePrice,
+  Value<int?> reorderIntervalDays,
+  Value<String?> lastOrderedAt,
+  Value<String?> nextReorderDate,
+  Value<bool?> reorderReminderEnabled,
+  Value<int?> reorderReminderDaysBefore,
   Value<bool> isFavorite,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
@@ -12418,6 +12672,11 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<double?> defaultPrice,
   Value<double?> defaultPurchasePrice,
   Value<double?> defaultSalePrice,
+  Value<int?> reorderIntervalDays,
+  Value<String?> lastOrderedAt,
+  Value<String?> nextReorderDate,
+  Value<bool?> reorderReminderEnabled,
+  Value<int?> reorderReminderDaysBefore,
   Value<bool> isFavorite,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
@@ -12634,6 +12893,25 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<double> get defaultSalePrice => $composableBuilder(
       column: $table.defaultSalePrice,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get reorderIntervalDays => $composableBuilder(
+      column: $table.reorderIntervalDays,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastOrderedAt => $composableBuilder(
+      column: $table.lastOrderedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get nextReorderDate => $composableBuilder(
+      column: $table.nextReorderDate,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get reorderReminderEnabled => $composableBuilder(
+      column: $table.reorderReminderEnabled,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get reorderReminderDaysBefore => $composableBuilder(
+      column: $table.reorderReminderDaysBefore,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get isFavorite => $composableBuilder(
@@ -12913,6 +13191,26 @@ class $$ItemsTableOrderingComposer
       column: $table.defaultSalePrice,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get reorderIntervalDays => $composableBuilder(
+      column: $table.reorderIntervalDays,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastOrderedAt => $composableBuilder(
+      column: $table.lastOrderedAt,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get nextReorderDate => $composableBuilder(
+      column: $table.nextReorderDate,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get reorderReminderEnabled => $composableBuilder(
+      column: $table.reorderReminderEnabled,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get reorderReminderDaysBefore => $composableBuilder(
+      column: $table.reorderReminderDaysBefore,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get isFavorite => $composableBuilder(
       column: $table.isFavorite, builder: (column) => ColumnOrderings(column));
 
@@ -13009,6 +13307,21 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<double> get defaultSalePrice => $composableBuilder(
       column: $table.defaultSalePrice, builder: (column) => column);
+
+  GeneratedColumn<int> get reorderIntervalDays => $composableBuilder(
+      column: $table.reorderIntervalDays, builder: (column) => column);
+
+  GeneratedColumn<String> get lastOrderedAt => $composableBuilder(
+      column: $table.lastOrderedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get nextReorderDate => $composableBuilder(
+      column: $table.nextReorderDate, builder: (column) => column);
+
+  GeneratedColumn<bool> get reorderReminderEnabled => $composableBuilder(
+      column: $table.reorderReminderEnabled, builder: (column) => column);
+
+  GeneratedColumn<int> get reorderReminderDaysBefore => $composableBuilder(
+      column: $table.reorderReminderDaysBefore, builder: (column) => column);
 
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
       column: $table.isFavorite, builder: (column) => column);
@@ -13247,6 +13560,11 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<double?> defaultPrice = const Value.absent(),
             Value<double?> defaultPurchasePrice = const Value.absent(),
             Value<double?> defaultSalePrice = const Value.absent(),
+            Value<int?> reorderIntervalDays = const Value.absent(),
+            Value<String?> lastOrderedAt = const Value.absent(),
+            Value<String?> nextReorderDate = const Value.absent(),
+            Value<bool?> reorderReminderEnabled = const Value.absent(),
+            Value<int?> reorderReminderDaysBefore = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
@@ -13279,6 +13597,11 @@ class $$ItemsTableTableManager extends RootTableManager<
             defaultPrice: defaultPrice,
             defaultPurchasePrice: defaultPurchasePrice,
             defaultSalePrice: defaultSalePrice,
+            reorderIntervalDays: reorderIntervalDays,
+            lastOrderedAt: lastOrderedAt,
+            nextReorderDate: nextReorderDate,
+            reorderReminderEnabled: reorderReminderEnabled,
+            reorderReminderDaysBefore: reorderReminderDaysBefore,
             isFavorite: isFavorite,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
@@ -13311,6 +13634,11 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<double?> defaultPrice = const Value.absent(),
             Value<double?> defaultPurchasePrice = const Value.absent(),
             Value<double?> defaultSalePrice = const Value.absent(),
+            Value<int?> reorderIntervalDays = const Value.absent(),
+            Value<String?> lastOrderedAt = const Value.absent(),
+            Value<String?> nextReorderDate = const Value.absent(),
+            Value<bool?> reorderReminderEnabled = const Value.absent(),
+            Value<int?> reorderReminderDaysBefore = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
@@ -13343,6 +13671,11 @@ class $$ItemsTableTableManager extends RootTableManager<
             defaultPrice: defaultPrice,
             defaultPurchasePrice: defaultPurchasePrice,
             defaultSalePrice: defaultSalePrice,
+            reorderIntervalDays: reorderIntervalDays,
+            lastOrderedAt: lastOrderedAt,
+            nextReorderDate: nextReorderDate,
+            reorderReminderEnabled: reorderReminderEnabled,
+            reorderReminderDaysBefore: reorderReminderDaysBefore,
             isFavorite: isFavorite,
             isDeleted: isDeleted,
             deletedAt: deletedAt,

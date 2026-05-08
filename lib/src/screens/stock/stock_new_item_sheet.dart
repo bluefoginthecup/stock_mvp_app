@@ -10,13 +10,9 @@ class StockNewItemSheet extends StatefulWidget {
 
   final List<String> pathIds; // [l1Id, l2Id, l3Id]
 
-
   @override
   State<StockNewItemSheet> createState() => _StockNewItemSheetState();
 }
-
-
-
 
 class _StockNewItemSheetState extends State<StockNewItemSheet> {
   final _nameC = TextEditingController();
@@ -27,6 +23,7 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
   final _uuid = const Uuid();
   final _purchasePriceC = TextEditingController();
   final _salePriceC = TextEditingController();
+  final _supplierC = TextEditingController();
 
   @override
   void dispose() {
@@ -37,6 +34,7 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
     _qtyC.dispose();
     _purchasePriceC.dispose();
     _salePriceC.dispose();
+    _supplierC.dispose();
     super.dispose();
   }
 
@@ -71,39 +69,58 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       conversionRate: null,
       conversionMode: 'fixed',
       stockHints: null,
-      supplierName: null,
+      supplierName:
+          _supplierC.text.trim().isEmpty ? null : _supplierC.text.trim(),
       isFavorite: false,
       defaultPurchasePrice: purchasePrice,
       defaultSalePrice: salePrice,
     );
     if (!mounted) return;
-        // 아이템 + 최종 pathIds(ID 체인)를 함께 반환
-        Navigator.pop<NewItemResult>(context, NewItemResult(item, List<String>.from(widget.pathIds)));
-
+    // 아이템 + 최종 pathIds(ID 체인)를 함께 반환
+    Navigator.pop<NewItemResult>(
+        context, NewItemResult(item, List<String>.from(widget.pathIds)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('새 아이템', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('새 아이템',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
-            TextField(controller: _nameC, decoration: const InputDecoration(labelText: '이름')),
+            TextField(
+                controller: _nameC,
+                decoration: const InputDecoration(labelText: '이름')),
             const SizedBox(height: 8),
-            TextField(controller: _skuC, decoration: const InputDecoration(labelText: 'SKU(코드)')),
+            TextField(
+                controller: _skuC,
+                decoration: const InputDecoration(labelText: 'SKU(코드)')),
             const SizedBox(height: 8),
-            TextField(controller: _unitC, decoration: const InputDecoration(labelText: '단위(EA/M 등)')),
+            TextField(
+                controller: _unitC,
+                decoration: const InputDecoration(labelText: '단위(EA/M 등)')),
             const SizedBox(height: 8),
-            TextField(controller: _qtyC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '초기 재고 수량')),
+            TextField(
+              controller: _supplierC,
+              decoration: const InputDecoration(labelText: '공급처 (선택)'),
+            ),
             const SizedBox(height: 8),
-            TextField(controller: _minC, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '임계치(재주문 최소)')),
+            TextField(
+                controller: _qtyC,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: '초기 재고 수량')),
             const SizedBox(height: 8),
-
+            TextField(
+                controller: _minC,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: '임계치(재주문 최소)')),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(

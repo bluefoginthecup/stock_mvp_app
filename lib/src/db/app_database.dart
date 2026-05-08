@@ -74,6 +74,14 @@ class Items extends Table {
   RealColumn get defaultPurchasePrice => real().nullable()();
   RealColumn get defaultSalePrice => real().nullable()();
 
+  // 정기 발주/발주 알림. nullable로 두고 도메인 모델에서 기본값을 보정해
+  // 기존 DB와 hot reload 중간 상태에서도 안전하게 읽는다.
+  IntColumn get reorderIntervalDays => integer().nullable()();
+  TextColumn get lastOrderedAt => text().nullable()();
+  TextColumn get nextReorderDate => text().nullable()();
+  BoolColumn get reorderReminderEnabled => boolean().nullable()();
+  IntColumn get reorderReminderDaysBefore => integer().nullable()();
+
   //즐겨찾기
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
@@ -639,7 +647,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 34; //
+  int get schemaVersion => 35; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -921,6 +929,16 @@ class AppDatabase extends _$AppDatabase {
           if (from < 34) {
             await _addColumnIfMissing('app_schedules', 'tags_json', 'TEXT');
             await _addColumnIfMissing('app_schedules', 'is_pinned', 'INTEGER');
+          }
+          if (from < 35) {
+            await _addColumnIfMissing(
+                'items', 'reorder_interval_days', 'INTEGER');
+            await _addColumnIfMissing('items', 'last_ordered_at', 'TEXT');
+            await _addColumnIfMissing('items', 'next_reorder_date', 'TEXT');
+            await _addColumnIfMissing(
+                'items', 'reorder_reminder_enabled', 'INTEGER');
+            await _addColumnIfMissing(
+                'items', 'reorder_reminder_days_before', 'INTEGER');
           }
         },
       );
@@ -1336,6 +1354,13 @@ extension ItemRowMapping on ItemRow {
       isFavorite: isFavorite,
       defaultPurchasePrice: defaultPurchasePrice,
       defaultSalePrice: defaultSalePrice,
+      reorderIntervalDays: reorderIntervalDays,
+      lastOrderedAt:
+          lastOrderedAt == null ? null : DateTime.tryParse(lastOrderedAt!),
+      nextReorderDate:
+          nextReorderDate == null ? null : DateTime.tryParse(nextReorderDate!),
+      reorderReminderEnabled: reorderReminderEnabled ?? false,
+      reorderReminderDaysBefore: reorderReminderDaysBefore ?? 0,
     );
   }
 }
@@ -1372,6 +1397,11 @@ extension ItemToCompanion on Item {
       stockHintsJson: Value(stockHintsJson),
       supplierName: Value(supplierName),
       isFavorite: Value(isFavorite),
+      reorderIntervalDays: Value(reorderIntervalDays),
+      lastOrderedAt: Value(lastOrderedAt?.toIso8601String()),
+      nextReorderDate: Value(nextReorderDate?.toIso8601String()),
+      reorderReminderEnabled: Value(reorderReminderEnabled),
+      reorderReminderDaysBefore: Value(reorderReminderDaysBefore),
     );
   }
 }

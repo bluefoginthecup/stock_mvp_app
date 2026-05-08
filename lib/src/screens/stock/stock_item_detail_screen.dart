@@ -25,6 +25,7 @@ import '../txns/widgets/txn_row.dart';
 import 'stock_item_edit_sheet.dart';
 import 'stock_item_full_edit_screen.dart';
 import 'widgets/item_meta_overview.dart';
+import 'widgets/reorder_badge.dart';
 import '../../ui/common/qty_set_sheet.dart';
 import '../../ui/common/inout_flow.dart';
 import '../../ui/common/path_picker.dart';
@@ -37,6 +38,7 @@ import '../../services/app_path_service.dart';
 import '../../services/attachment_file_service.dart';
 import '../../services/attachment_policy_service.dart';
 import '../../utils/item_registration.dart';
+import '../../utils/reorder_schedule_utils.dart';
 import '../../app/main_tab_controller.dart';
 
 class StockItemDetailScreen extends StatefulWidget {
@@ -982,6 +984,10 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                     const SizedBox(height: 12),
                     _buildItemImageSection(item),
                     const SizedBox(height: 12),
+                    if (ReorderScheduleUtils.statusFor(item).shouldShow) ...[
+                      ReorderBadge(item: item),
+                      const SizedBox(height: 12),
+                    ],
 
                     // 재고 수량 / 단위
                     Wrap(
