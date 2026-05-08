@@ -1,6 +1,6 @@
 name: stockapp_mvp
 description: Stock/Order MVP based on user's spec
-version: 1.0.0+2
+version: 1.0.0+3
 
 publish_to: "none"
 
