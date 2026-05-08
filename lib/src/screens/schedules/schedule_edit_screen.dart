@@ -184,6 +184,31 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
     );
   }
 
+  void _insertKnownTag(String tag) {
+    final controller =
+        _titleFocusNode.hasFocus ? _titleController : _bodyController;
+    if (!_titleFocusNode.hasFocus && !_bodyFocusNode.hasFocus) {
+      _bodyFocusNode.requestFocus();
+    }
+
+    final selection = controller.selection;
+    final offset =
+        selection.isValid ? selection.baseOffset : controller.text.length;
+    final safeOffset = offset.clamp(0, controller.text.length);
+    final prefix =
+        safeOffset == 0 || controller.text[safeOffset - 1].trim().isEmpty
+            ? ''
+            : ' ';
+    final insertText = '$prefix#${normalizeTag(tag)} ';
+    final nextText =
+        controller.text.replaceRange(safeOffset, safeOffset, insertText);
+    controller.value = TextEditingValue(
+      text: nextText,
+      selection:
+          TextSelection.collapsed(offset: safeOffset + insertText.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateText = DateFormat('yyyy-MM-dd').format(_date);
@@ -240,6 +265,13 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
               _TagSuggestionChips(
                 suggestions: suggestions,
                 onSelected: (tag) => _applyTagSuggestion(activeTagInput, tag),
+              ),
+            ],
+            if (_knownTags.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _KnownTagChips(
+                tags: _knownTags.take(12).toList(growable: false),
+                onSelected: _insertKnownTag,
               ),
             ],
             const SizedBox(height: 12),
@@ -313,6 +345,47 @@ class _TagSuggestionChips extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class _KnownTagChips extends StatelessWidget {
+  final List<String> tags;
+  final ValueChanged<String> onSelected;
+
+  const _KnownTagChips({
+    required this.tags,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '최근 태그',
+          style: textTheme.labelMedium?.copyWith(color: Colors.grey.shade700),
+        ),
+        const SizedBox(height: 6),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (final tag in tags)
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ActionChip(
+                    label: Text('#$tag'),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => onSelected(tag),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
