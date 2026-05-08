@@ -2,16 +2,9 @@ import 'package:drift/drift.dart';
 
 import '../db/app_database.dart';
 import '../models/attachment_domain.dart';
-
-class AttachmentPolicy {
-  final int? freeMaxOwnersWithAttachments;
-  final int freeMaxFilesPerOwner;
-
-  const AttachmentPolicy({
-    this.freeMaxOwnersWithAttachments,
-    required this.freeMaxFilesPerOwner,
-  });
-}
+import '../models/subscription_plan.dart';
+import 'attachment_limit_config.dart';
+import 'subscription_plan_service.dart';
 
 class AttachmentPolicyResult {
   final bool allowed;
@@ -25,45 +18,44 @@ class AttachmentPolicyResult {
 }
 
 class AttachmentPolicyService {
-  const AttachmentPolicyService(this.db);
+  const AttachmentPolicyService(
+    this.db, {
+    this.planService = const SubscriptionPlanService(),
+    this.limitConfig = AttachmentLimitConfig.defaults,
+  });
 
   final AppDatabase db;
+  final SubscriptionPlanService planService;
+  final AttachmentLimitConfig limitConfig;
 
-  AttachmentPolicy policyFor(AttachmentDomain domain) {
-    switch (domain) {
-      case AttachmentDomain.itemImages:
-        return const AttachmentPolicy(
-          freeMaxOwnersWithAttachments: 10,
-          freeMaxFilesPerOwner: 1,
-        );
-      case AttachmentDomain.purchaseReceipts:
-        return const AttachmentPolicy(freeMaxFilesPerOwner: 10);
-      case AttachmentDomain.scheduleAttachments:
-        return const AttachmentPolicy(freeMaxFilesPerOwner: 3);
-    }
+  Future<AttachmentLimit> policyFor(AttachmentDomain domain) async {
+    final plan = await planService.loadPlan();
+    return limitConfig.limitFor(plan: plan, domain: domain);
   }
 
   Future<AttachmentPolicyResult> canAttach({
     required AttachmentDomain domain,
     required String ownerId,
   }) async {
-    final policy = policyFor(domain);
+    final plan = await planService.loadPlan();
+    final policy = limitConfig.limitFor(plan: plan, domain: domain);
     final filesForOwner = await _countFilesForOwner(domain, ownerId);
-    if (filesForOwner >= policy.freeMaxFilesPerOwner) {
+    final maxFilesPerOwner = policy.maxFilesPerOwner;
+    if (maxFilesPerOwner != null && filesForOwner >= maxFilesPerOwner) {
       return AttachmentPolicyResult.denied(
-        '무료 플랜에서는 ${domain.label}을(를) 항목당 '
-        '${policy.freeMaxFilesPerOwner}개까지 첨부할 수 있습니다.',
+        '${plan.label}에서는 ${domain.label}을(를) 항목당 '
+        '$maxFilesPerOwner개까지 첨부할 수 있습니다.',
       );
     }
 
-    final ownerLimit = policy.freeMaxOwnersWithAttachments;
+    final ownerLimit = policy.maxOwnersWithAttachments;
     if (ownerLimit != null && filesForOwner == 0) {
       final ownersWithAttachments = await _countOwnersWithAttachments(domain);
       if (ownersWithAttachments >= ownerLimit) {
         return AttachmentPolicyResult.denied(
-          '무료 플랜에서는 ${domain.label}이(가) 있는 품목을 '
+          '${plan.label}에서는 ${domain.label}이(가) 있는 품목을 '
           '$ownerLimit개까지 사용할 수 있습니다. 기존 이미지를 삭제하거나 '
-          'Pro에서 더 많이 사용할 수 있습니다.',
+          '상위 플랜에서 더 많이 사용할 수 있습니다.',
         );
       }
     }
