@@ -455,25 +455,9 @@ class _DashboardQuickPanelState extends State<DashboardQuickPanel> {
   }
 
   Widget _buildFavoriteList(BuildContext context) {
-    return ReorderableListView.builder(
-      buildDefaultDragHandles: false,
+    return ListView.builder(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
       itemCount: _favorites.length,
-      onReorder: _reorder,
-      proxyDecorator: (child, index, animation) {
-        return Material(
-          color: Colors.transparent,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 1, end: 1.02).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOut,
-              ),
-            ),
-            child: child,
-          ),
-        );
-      },
       itemBuilder: (context, index) {
         final type = _favorites[index];
         final action = buildDashboardQuickAction(
@@ -489,13 +473,6 @@ class _DashboardQuickPanelState extends State<DashboardQuickPanel> {
           ),
           child: DashboardQuickActionListTile(
             action: action,
-            trailing: ReorderableDragStartListener(
-              index: index,
-              child: const Padding(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.drag_handle, size: 20),
-              ),
-            ),
           ),
         );
       },
