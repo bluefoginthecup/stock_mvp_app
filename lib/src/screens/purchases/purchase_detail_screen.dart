@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../db/app_database.dart';
+import '../../models/attachment_domain.dart';
 import '../../models/extensions/payment_status_ext.dart';
 import '../../models/extensions/vat_invoice_status_ext.dart';
 import '../../models/buyer_profile.dart';
@@ -21,6 +22,7 @@ import '../../models/suppliers.dart';
 import '../../models/types.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/app_path_service.dart';
+import '../../services/attachment_policy_service.dart';
 import '../../services/buyer_profile_service.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/delete_more_menu.dart';
@@ -336,6 +338,19 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   }) async {
     final po = _po;
     if (po == null) return;
+
+    final policy =
+        await AttachmentPolicyService(context.read<AppDatabase>()).canAttach(
+      domain: AttachmentDomain.purchaseReceipts,
+      ownerId: po.id,
+    );
+    if (!policy.allowed) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(policy.message ?? '첨부할 수 없습니다.')),
+      );
+      return;
+    }
 
     final receiptDir = await _paths.purchaseReceiptOrderDirectory(po.id);
     if (!await receiptDir.exists()) {

@@ -434,6 +434,11 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
   @override
   Future<void> deleteItem(String id) async {
+    await _deleteItemImageFiles(id);
+    await db.customStatement(
+      'DELETE FROM item_images WHERE item_id = ?',
+      [id],
+    );
     await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
     await (db.delete(db.itemPaths)..where((t) => t.itemId.equals(id))).go();
     _itemsById.remove(id);
@@ -689,9 +694,131 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
 
   @override
   Future<void> purgeItem(String id) async {
+    await _deleteItemImageFiles(id);
+    await db.customStatement(
+      'DELETE FROM item_images WHERE item_id = ?',
+      [id],
+    );
     // 자식 테이블(FK) 정리 필요 시 여기서 먼저 처리하거나 FK를 CASCADE로
     await (db.delete(db.items)..where((t) => t.id.equals(id))).go();
     notifyListeners();
+  }
+
+  Future<void> _deleteItemImageFiles(String itemId) async {
+    final images = await getItemImages(itemId);
+    const paths = AppPathService();
+    for (final image in images) {
+      try {
+        final file = await paths.resolveAppFile(image.filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+    }
+
+    try {
+      final dir = await paths.itemImageDirectory(itemId);
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> addItemImage(ItemImage image) async {
+    final filePath =
+        await const AppPathService().normalizeToRelativePath(image.filePath);
+    await db.customStatement(
+      '''
+      INSERT OR REPLACE INTO item_images
+        (id, item_id, file_name, file_path, mime_type, created_at, sort_order, is_primary)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ''',
+      [
+        image.id,
+        image.itemId,
+        image.fileName,
+        filePath,
+        image.mimeType,
+        image.createdAt.toIso8601String(),
+        image.sortOrder,
+        image.isPrimary ? 1 : 0,
+      ],
+    );
+    db.notifyUpdates({const TableUpdate('item_images')});
+    notifyListeners();
+  }
+
+  @override
+  Future<List<ItemImage>> getItemImages(String itemId) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT id, item_id, file_name, file_path, mime_type, created_at, sort_order, is_primary
+      FROM item_images
+      WHERE item_id = ?
+      ORDER BY is_primary DESC, sort_order ASC, created_at DESC
+      ''',
+      variables: [Variable.withString(itemId)],
+    ).get();
+    return rows.map(_itemImageFromRow).toList();
+  }
+
+  @override
+  Stream<List<ItemImage>> watchItemImages(String itemId) async* {
+    yield await getItemImages(itemId);
+
+    final updates = db
+        .tableUpdates(const TableUpdateQuery.onTableName('item_images'))
+        .map((_) => null);
+    await for (final _ in updates) {
+      yield await getItemImages(itemId);
+    }
+  }
+
+  @override
+  Future<void> deleteItemImage(String id) async {
+    final rows = await db.customSelect(
+      'SELECT file_path FROM item_images WHERE id = ?',
+      variables: [Variable.withString(id)],
+    ).get();
+
+    if (rows.isNotEmpty) {
+      final filePath = rows.first.data['file_path'] as String;
+      try {
+        final file = await const AppPathService().resolveAppFile(filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+    }
+
+    await db.customStatement('DELETE FROM item_images WHERE id = ?', [id]);
+    db.notifyUpdates({const TableUpdate('item_images')});
+    notifyListeners();
+  }
+
+  @override
+  Future<int> countItemsWithImages() async {
+    final rows = await db
+        .customSelect(
+          'SELECT COUNT(DISTINCT item_id) AS count FROM item_images',
+        )
+        .get();
+    return (rows.first.data['count'] as int?) ?? 0;
+  }
+
+  ItemImage _itemImageFromRow(QueryRow row) {
+    final data = row.data;
+    return ItemImage(
+      id: data['id'] as String,
+      itemId: data['item_id'] as String,
+      fileName: data['file_name'] as String,
+      filePath: data['file_path'] as String,
+      mimeType: data['mime_type'] as String,
+      createdAt: DateTime.parse(data['created_at'] as String),
+      sortOrder: data['sort_order'] as int? ?? 0,
+      isPrimary: (data['is_primary'] as int? ?? 1) != 0,
+    );
   }
 
   @override

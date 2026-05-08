@@ -44,6 +44,7 @@ class FullBackupService {
     'quick_action_orders',
     'purchase_receipts',
     'schedule_attachments',
+    'item_images',
     'buyer_profiles',
   ];
 
@@ -86,6 +87,7 @@ class FullBackupService {
       final includedFolders = <String>[
         AppPathService.purchaseReceiptsRelativeRoot,
         AppPathService.scheduleAttachmentsRelativeRoot,
+        AppPathService.itemImagesRelativeRoot,
       ];
       final receiptFilesSize = await _directorySize(
         await paths.purchaseReceiptsRoot(),
@@ -93,15 +95,23 @@ class FullBackupService {
       final scheduleAttachmentFilesSize = await _directorySize(
         await paths.scheduleAttachmentsRoot(),
       );
+      final itemImageFilesSize = await _directorySize(
+        await paths.itemImagesRoot(),
+      );
       final receiptFilesCount = await _directoryFileCount(
         await paths.purchaseReceiptsRoot(),
       );
       final scheduleAttachmentFilesCount = await _directoryFileCount(
         await paths.scheduleAttachmentsRoot(),
       );
+      final itemImageFilesCount = await _directoryFileCount(
+        await paths.itemImagesRoot(),
+      );
       final dbSize = await dbBackup.length();
-      final totalSizeBytes =
-          dbSize + receiptFilesSize + scheduleAttachmentFilesSize;
+      final totalSizeBytes = dbSize +
+          receiptFilesSize +
+          scheduleAttachmentFilesSize +
+          itemImageFilesSize;
       final dbHash = await hashService.hashFile(
         file: dbBackup,
         relativePath: 'stockapp.db',
@@ -114,10 +124,15 @@ class FullBackupService {
         root: await paths.scheduleAttachmentsRoot(),
         relativeRoot: AppPathService.scheduleAttachmentsRelativeRoot,
       );
+      final itemImageFileHashes = await hashService.hashDirectoryFiles(
+        root: await paths.itemImagesRoot(),
+        relativeRoot: AppPathService.itemImagesRelativeRoot,
+      );
       final contentHash = _buildContentHash(
         dbHash: dbHash,
         receiptFileHashes: receiptFileHashes,
         scheduleAttachmentFileHashes: scheduleAttachmentFileHashes,
+        itemImageFileHashes: itemImageFileHashes,
       );
 
       final manifest = <String, Object?>{
@@ -138,6 +153,9 @@ class FullBackupService {
         'scheduleAttachmentFiles': scheduleAttachmentFileHashes
             .map((fileHash) => fileHash.toJson())
             .toList(growable: false),
+        'itemImageFiles': itemImageFileHashes
+            .map((fileHash) => fileHash.toJson())
+            .toList(growable: false),
       };
 
       await manifestFile.writeAsString(
@@ -147,8 +165,11 @@ class FullBackupService {
       await _writeHtmlReport(
         reportFile: reportFile,
         manifest: manifest,
-        attachmentFileCount: receiptFilesCount + scheduleAttachmentFilesCount,
-        attachmentSizeBytes: receiptFilesSize + scheduleAttachmentFilesSize,
+        attachmentFileCount: receiptFilesCount +
+            scheduleAttachmentFilesCount +
+            itemImageFilesCount,
+        attachmentSizeBytes:
+            receiptFilesSize + scheduleAttachmentFilesSize + itemImageFilesSize,
       );
 
       await _writeZip(
@@ -170,6 +191,7 @@ class FullBackupService {
     required BackupFileHash dbHash,
     required List<BackupFileHash> receiptFileHashes,
     required List<BackupFileHash> scheduleAttachmentFileHashes,
+    required List<BackupFileHash> itemImageFileHashes,
   }) {
     final content = <String, Object?>{
       'stockappDb': dbHash.toJson(),
@@ -177,6 +199,9 @@ class FullBackupService {
           .map((fileHash) => fileHash.toJson())
           .toList(growable: false),
       'scheduleAttachmentFiles': scheduleAttachmentFileHashes
+          .map((fileHash) => fileHash.toJson())
+          .toList(growable: false),
+      'itemImageFiles': itemImageFileHashes
           .map((fileHash) => fileHash.toJson())
           .toList(growable: false),
     };
@@ -228,6 +253,20 @@ class FullBackupService {
       if (await scheduleAttachmentsRoot.exists()) {
         await encoder.addDirectory(
           scheduleAttachmentsRoot,
+          includeDirName: true,
+          level: ZipFileEncoder.gzip,
+          followLinks: false,
+        );
+      }
+
+      encoder.addArchiveFile(
+        ArchiveFile.directory(AppPathService.itemImagesRelativeRoot),
+      );
+
+      final itemImagesRoot = await paths.itemImagesRoot();
+      if (await itemImagesRoot.exists()) {
+        await encoder.addDirectory(
+          itemImagesRoot,
           includeDirName: true,
           level: ZipFileEncoder.gzip,
           followLinks: false,

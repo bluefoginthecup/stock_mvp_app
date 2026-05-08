@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 class AppPathService {
   static const purchaseReceiptsRelativeRoot = 'purchase_receipts';
   static const scheduleAttachmentsRelativeRoot = 'schedule_attachments';
+  static const itemImagesRelativeRoot = 'item_images';
   static String? _activeUserId;
 
   const AppPathService();
@@ -96,6 +97,11 @@ class AppPathService {
     return Directory(p.join(dir.path, scheduleAttachmentsRelativeRoot));
   }
 
+  Future<Directory> itemImagesRoot() async {
+    final dir = await userSupportDirectory();
+    return Directory(p.join(dir.path, itemImagesRelativeRoot));
+  }
+
   Future<Directory> purchaseReceiptOrderDirectory(
       String purchaseOrderId) async {
     final root = await purchaseReceiptsRoot();
@@ -129,6 +135,22 @@ class AppPathService {
     );
   }
 
+  Future<Directory> itemImageDirectory(String itemId) async {
+    final root = await itemImagesRoot();
+    return Directory(p.join(root.path, itemId));
+  }
+
+  String itemImageRelativePath(
+    String itemId,
+    String fileName,
+  ) {
+    return p.posix.join(
+      itemImagesRelativeRoot,
+      itemId,
+      fileName,
+    );
+  }
+
   Future<File> resolveAppFile(String storedPath) async {
     final dir = await userSupportDirectory();
     if (p.isAbsolute(storedPath)) {
@@ -152,6 +174,14 @@ class AppPathService {
         return File(p.joinAll([
           dir.path,
           ...parts.skip(scheduleAttachmentsIndex),
+        ]));
+      }
+
+      final itemImagesIndex = parts.lastIndexOf(itemImagesRelativeRoot);
+      if (itemImagesIndex >= 0 && itemImagesIndex < parts.length - 1) {
+        return File(p.joinAll([
+          dir.path,
+          ...parts.skip(itemImagesIndex),
         ]));
       }
 
@@ -185,6 +215,11 @@ class AppPathService {
     if (scheduleAttachmentsIndex >= 0 &&
         scheduleAttachmentsIndex < parts.length - 1) {
       return p.posix.joinAll(parts.skip(scheduleAttachmentsIndex));
+    }
+
+    final itemImagesIndex = parts.lastIndexOf(itemImagesRelativeRoot);
+    if (itemImagesIndex >= 0 && itemImagesIndex < parts.length - 1) {
+      return p.posix.joinAll(parts.skip(itemImagesIndex));
     }
 
     return absoluteOrRelativePath;

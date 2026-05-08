@@ -7,10 +7,13 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../db/app_database.dart';
+import '../../models/attachment_domain.dart';
 import '../../models/app_schedule.dart';
 import '../../models/schedule_attachment.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/app_path_service.dart';
+import '../../services/attachment_policy_service.dart';
 
 class ScheduleEditScreen extends StatefulWidget {
   final AppSchedule? schedule;
@@ -158,6 +161,18 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
     final schedule = widget.schedule;
     if (schedule == null || _addingAttachment) return;
     final repo = context.read<ScheduleRepo>();
+    final policy =
+        await AttachmentPolicyService(context.read<AppDatabase>()).canAttach(
+      domain: AttachmentDomain.scheduleAttachments,
+      ownerId: schedule.id,
+    );
+    if (!policy.allowed) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(policy.message ?? '첨부할 수 없습니다.')),
+      );
+      return;
+    }
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,

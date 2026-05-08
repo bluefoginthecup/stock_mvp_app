@@ -10,6 +10,7 @@ import '../models/quote.dart';
 import '../models/quote_line.dart';
 import '../models/app_schedule.dart';
 import '../models/schedule_attachment.dart';
+import '../models/item_image.dart';
 import '../models/purchase_receipt.dart';
 import '../models/shipping_destination.dart';
 import '../models/storage_location.dart';
@@ -108,6 +109,12 @@ abstract class ItemRepo {
 
   /// 휴지통에서 복원
   Future<void> restoreItemFromTrash(String itemId);
+
+  Future<void> addItemImage(ItemImage image);
+  Future<List<ItemImage>> getItemImages(String itemId);
+  Stream<List<ItemImage>> watchItemImages(String itemId);
+  Future<void> deleteItemImage(String id);
+  Future<int> countItemsWithImages();
 
   /// 휴지통에서 영구 삭제
   Future<void> purgeItem(String itemId);

@@ -110,12 +110,14 @@ class FullRestoreService {
         extracted.databaseFile,
         extracted.purchaseReceiptsDir,
         extracted.scheduleAttachmentsDir,
+        extracted.itemImagesDir,
       );
       await _validateChecksums(
         manifest,
         extracted.databaseFile,
         extracted.purchaseReceiptsDir,
         extracted.scheduleAttachmentsDir,
+        extracted.itemImagesDir,
       );
       _validateBackupDatabase(extracted.databaseFile);
 
@@ -123,6 +125,7 @@ class FullRestoreService {
       await _applyRestore(extracted);
       await _normalizeReceiptPaths();
       await _normalizeScheduleAttachmentPaths();
+      await _normalizeItemImagePaths();
       final missingAttachmentPaths = await _findMissingReceiptFiles();
       await rollbackService.cleanupOldRollbacks();
 
@@ -184,6 +187,10 @@ class FullRestoreService {
       p.join(workDir.path, AppPathService.scheduleAttachmentsRelativeRoot),
     );
     await scheduleAttachmentsDir.create(recursive: true);
+    final itemImagesDir = Directory(
+      p.join(workDir.path, AppPathService.itemImagesRelativeRoot),
+    );
+    await itemImagesDir.create(recursive: true);
 
     for (final entry in archive.files) {
       if (entry.name
@@ -200,6 +207,13 @@ class FullRestoreService {
           scheduleAttachmentsDir,
           AppPathService.scheduleAttachmentsRelativeRoot,
         );
+      } else if (entry.name
+          .startsWith('${AppPathService.itemImagesRelativeRoot}/')) {
+        await _extractBackupDirectoryEntry(
+          entry,
+          itemImagesDir,
+          AppPathService.itemImagesRelativeRoot,
+        );
       }
     }
 
@@ -208,6 +222,7 @@ class FullRestoreService {
       databaseFile: dbFile,
       purchaseReceiptsDir: receiptsDir,
       scheduleAttachmentsDir: scheduleAttachmentsDir,
+      itemImagesDir: itemImagesDir,
     );
   }
 
@@ -283,11 +298,13 @@ class FullRestoreService {
     File dbFile,
     Directory receiptsDir,
     Directory scheduleAttachmentsDir,
+    Directory itemImagesDir,
   ) async {
     final expectedSize = _intValue(manifest['totalSizeBytes']);
     final actualSize = await dbFile.length() +
         await _directorySize(receiptsDir) +
-        await _directorySize(scheduleAttachmentsDir);
+        await _directorySize(scheduleAttachmentsDir) +
+        await _directorySize(itemImagesDir);
     if (actualSize != expectedSize) {
       throw FullRestoreException(
         '백업 파일 크기 검증 실패: manifest totalSizeBytes=$expectedSize, '
@@ -302,6 +319,7 @@ class FullRestoreService {
     File dbFile,
     Directory receiptsDir,
     Directory scheduleAttachmentsDir,
+    Directory itemImagesDir,
   ) async {
     final stockappDb = manifest['stockappDb'];
     if (stockappDb != null) {
@@ -372,6 +390,12 @@ class FullRestoreService {
       manifest: manifest,
       extractedRoot: scheduleAttachmentsDir,
       relativeRoot: AppPathService.scheduleAttachmentsRelativeRoot,
+    );
+    await _validateManifestDirectoryHashes(
+      manifestKey: 'itemImageFiles',
+      manifest: manifest,
+      extractedRoot: itemImagesDir,
+      relativeRoot: AppPathService.itemImagesRelativeRoot,
     );
   }
 
@@ -601,6 +625,16 @@ class FullRestoreService {
       );
     }
 
+    final itemImagesRoot = await paths.itemImagesRoot();
+    if (await itemImagesRoot.exists()) {
+      await _copyDirectory(
+        itemImagesRoot,
+        Directory(
+          p.join(rollbackDir.path, AppPathService.itemImagesRelativeRoot),
+        ),
+      );
+    }
+
     return rollbackDir;
   }
 
@@ -625,6 +659,12 @@ class FullRestoreService {
       backup.scheduleAttachmentsDir,
       scheduleAttachmentsRoot,
     );
+
+    final itemImagesRoot = await paths.itemImagesRoot();
+    if (await itemImagesRoot.exists()) {
+      await itemImagesRoot.delete(recursive: true);
+    }
+    await _copyDirectory(backup.itemImagesDir, itemImagesRoot);
   }
 
   Future<void> _rollback(Directory rollbackDir) async {
@@ -664,6 +704,18 @@ class FullRestoreService {
     if (await rollbackScheduleAttachments.exists()) {
       await _copyDirectory(
           rollbackScheduleAttachments, scheduleAttachmentsRoot);
+    }
+
+    final itemImagesRoot = await paths.itemImagesRoot();
+    if (await itemImagesRoot.exists()) {
+      await itemImagesRoot.delete(recursive: true);
+    }
+
+    final rollbackItemImages = Directory(
+      p.join(rollbackDir.path, AppPathService.itemImagesRelativeRoot),
+    );
+    if (await rollbackItemImages.exists()) {
+      await _copyDirectory(rollbackItemImages, itemImagesRoot);
     }
   }
 
@@ -716,6 +768,33 @@ class FullRestoreService {
 
       await db.customStatement(
         'UPDATE schedule_attachments SET file_path = ? WHERE id = ?',
+        [normalized, id],
+      );
+    }
+  }
+
+  Future<void> _normalizeItemImagePaths() async {
+    final db = AppDatabase();
+    final tableRows = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'item_images'",
+        )
+        .get();
+    if (tableRows.isEmpty) return;
+
+    final rows = await db
+        .customSelect(
+          'SELECT id, file_path FROM item_images',
+        )
+        .get();
+    for (final row in rows) {
+      final id = row.data['id'] as String;
+      final filePath = row.data['file_path'] as String;
+      final normalized = await paths.normalizeToRelativePath(filePath);
+      if (normalized == filePath) continue;
+
+      await db.customStatement(
+        'UPDATE item_images SET file_path = ? WHERE id = ?',
         [normalized, id],
       );
     }
@@ -824,11 +903,13 @@ class _ExtractedFullBackup {
   final File databaseFile;
   final Directory purchaseReceiptsDir;
   final Directory scheduleAttachmentsDir;
+  final Directory itemImagesDir;
 
   const _ExtractedFullBackup({
     required this.manifest,
     required this.databaseFile,
     required this.purchaseReceiptsDir,
     required this.scheduleAttachmentsDir,
+    required this.itemImagesDir,
   });
 }

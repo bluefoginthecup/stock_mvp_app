@@ -637,7 +637,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 32; //
+  int get schemaVersion => 33; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -651,6 +651,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureShippingDestinationTables();
           await _ensureStorageLocationTables();
           await _ensureScheduleAttachmentsTable();
+          await _ensureItemImagesTable();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -911,6 +912,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 32) {
             await _ensureScheduleAttachmentsTable();
+          }
+          if (from < 33) {
+            await _ensureItemImagesTable();
           }
         },
       );
@@ -1219,6 +1223,26 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_schedule_attachments_schedule '
       'ON schedule_attachments(schedule_id, created_at)',
+    );
+  }
+
+  Future<void> _ensureItemImagesTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS item_images (
+        id TEXT PRIMARY KEY NOT NULL,
+        item_id TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_primary INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_item_images_item '
+      'ON item_images(item_id, sort_order, created_at)',
     );
   }
 

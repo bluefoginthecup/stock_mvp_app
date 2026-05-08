@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart'; // ChangeNotifier
 import 'package:drift/drift.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 // DB
 import '../db/app_database.dart';
@@ -25,6 +26,7 @@ import '../models/quote.dart';
 import '../models/quote_line.dart';
 import '../models/app_schedule.dart';
 import '../models/schedule_attachment.dart';
+import '../models/item_image.dart';
 import '../models/suppliers.dart';
 import '../models/shipping_destination.dart';
 import '../models/storage_location.dart';

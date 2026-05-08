@@ -56,8 +56,14 @@ class StorageUsageService {
     relativeSegments: [AppPathService.scheduleAttachmentsRelativeRoot],
   );
 
+  static const itemImages = StorageUsageFolderSpec(
+    id: 'item_images',
+    label: '품목 이미지',
+    relativeSegments: [AppPathService.itemImagesRelativeRoot],
+  );
+
   const StorageUsageService({
-    this.folders = const [purchaseReceipts, scheduleAttachments],
+    this.folders = const [purchaseReceipts, scheduleAttachments, itemImages],
     this.paths = const AppPathService(),
   });
 

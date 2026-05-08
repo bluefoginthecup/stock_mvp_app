@@ -1,6 +1,14 @@
 // lib/src/screens/stock/stock_item_detail_screen.dart
-import 'package:provider/provider.dart';
+import 'dart:io';
 
+import 'package:image_picker/image_picker.dart';
+import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../db/app_database.dart' hide TxnRow;
+import '../../models/attachment_domain.dart';
+import '../../models/item_image.dart';
 import '../../models/item.dart';
 import '../../models/storage_location.dart';
 import '../../repos/repo_interfaces.dart';
@@ -25,6 +33,9 @@ import '../../dev/bom_debug.dart'; // 콘솔 덤프 유틸
 import '../../providers/cart_manager.dart';
 import '../../ui/common/cart_add.dart';
 import '../../services/stock_service.dart';
+import '../../services/app_path_service.dart';
+import '../../services/attachment_file_service.dart';
+import '../../services/attachment_policy_service.dart';
 import '../../utils/item_registration.dart';
 import '../../app/main_tab_controller.dart';
 
@@ -403,6 +414,211 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     setState(() {});
   }
 
+  Future<void> _pickItemImage(Item item, {ItemImage? replacing}) async {
+    if (replacing == null) {
+      final policy =
+          await AttachmentPolicyService(context.read<AppDatabase>()).canAttach(
+        domain: AttachmentDomain.itemImages,
+        ownerId: item.id,
+      );
+      if (!policy.allowed) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(policy.message ?? '이미지를 첨부할 수 없습니다.')),
+        );
+        return;
+      }
+    }
+
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('사진 촬영'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('갤러리 선택'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    try {
+      final image = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 75,
+      );
+      if (image == null) return;
+
+      const paths = AppPathService();
+      final stored = await const AttachmentFileService().copyOptimizedImage(
+        sourcePath: image.path,
+        originalFileName: image.name,
+        destinationDirectory: await paths.itemImageDirectory(item.id),
+      );
+      final storedName = p.basename(stored.filePath);
+      final relativePath = paths.itemImageRelativePath(item.id, storedName);
+      final repo = context.read<ItemRepo>();
+      await repo.addItemImage(
+        ItemImage(
+          id: const Uuid().v4(),
+          itemId: item.id,
+          fileName: stored.fileName,
+          filePath: relativePath,
+          mimeType: stored.mimeType,
+          createdAt: DateTime.now(),
+          isPrimary: true,
+        ),
+      );
+      if (replacing != null) {
+        await repo.deleteItemImage(replacing.id);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('이미지 저장에 실패했습니다: $e')),
+      );
+    }
+  }
+
+  Future<void> _openItemImage(ItemImage image) async {
+    final file = await const AppPathService().resolveAppFile(image.filePath);
+    if (!await file.exists()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이미지 파일을 찾을 수 없습니다.')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBar(
+              title: Text(
+                image.fileName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  tooltip: '닫기',
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            Flexible(
+              child: InteractiveViewer(
+                child: Image.file(file, fit: BoxFit.contain),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteItemImage(ItemImage image) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('품목 이미지 삭제'),
+        content: Text('${image.fileName}을 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await context.read<ItemRepo>().deleteItemImage(image.id);
+  }
+
+  Widget _buildItemImageSection(Item item) {
+    return StreamBuilder<List<ItemImage>>(
+      stream: context.read<ItemRepo>().watchItemImages(item.id),
+      builder: (context, snapshot) {
+        final images = snapshot.data ?? const <ItemImage>[];
+        final primaryImage = images.isEmpty ? null : images.first;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.image_outlined, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '품목 이미지',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _pickItemImage(
+                        item,
+                        replacing: primaryImage,
+                      ),
+                      icon: Icon(primaryImage == null
+                          ? Icons.add_photo_alternate_outlined
+                          : Icons.swap_horiz),
+                      label: Text(primaryImage == null ? '추가' : '교체'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (primaryImage == null)
+                  const Text('아직 등록된 이미지가 없습니다.')
+                else
+                  _ItemImagePreview(
+                    image: primaryImage,
+                    onOpen: () => _openItemImage(primaryImage),
+                    onDelete: () => _deleteItemImage(primaryImage),
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  '무료 플랜: 이미지가 있는 품목 최대 10개, 품목당 1장',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildStorageLocationSection(Item item) {
     return FutureBuilder<_ItemLocationViewData>(
       future: _loadItemLocationViewData(item.id),
@@ -663,7 +879,6 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
   Future<void> _openQtyChangeSheet() async {
     final it = _item;
     if (it == null) return;
-    final itemRepo = context.read<ItemRepo>();
     await runQtySetFlow(
       context,
       currentQty: it.qty,
@@ -764,6 +979,8 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    _buildItemImageSection(item),
                     const SizedBox(height: 12),
 
                     // 재고 수량 / 단위
@@ -934,6 +1151,77 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ItemImagePreview extends StatelessWidget {
+  final ItemImage image;
+  final VoidCallback onOpen;
+  final VoidCallback onDelete;
+
+  const _ItemImagePreview({
+    required this.image,
+    required this.onOpen,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<File>(
+      future: const AppPathService().resolveAppFile(image.filePath),
+      builder: (context, snapshot) {
+        final file = snapshot.data;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: onOpen,
+              borderRadius: BorderRadius.circular(8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 260),
+                  color: Colors.grey.shade100,
+                  child: file == null
+                      ? const SizedBox(
+                          height: 160,
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : Image.file(
+                          file,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox(
+                            height: 160,
+                            child: Center(
+                              child: Icon(Icons.broken_image_outlined),
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    image.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline, size: 16),
+                  label: const Text('삭제'),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
