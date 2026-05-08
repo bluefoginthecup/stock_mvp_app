@@ -28,6 +28,9 @@ class AttachmentPolicyService {
   final SubscriptionPlanService planService;
   final AttachmentLimitConfig limitConfig;
 
+  // 모든 첨부 도메인은 이 서비스만 통해 플랜 제한을 확인해야 한다.
+  // 나중에 SubscriptionPlanService가 서버 entitlement 기반으로 바뀌면
+  // 품목/발주/일정 첨부 기능은 별도 수정 없이 같은 권한 판단을 따른다.
   Future<AttachmentLimit> policyFor(AttachmentDomain domain) async {
     final plan = await planService.loadPlan();
     return limitConfig.limitFor(plan: plan, domain: domain);
@@ -43,7 +46,7 @@ class AttachmentPolicyService {
     final maxFilesPerOwner = policy.maxFilesPerOwner;
     if (maxFilesPerOwner != null && filesForOwner >= maxFilesPerOwner) {
       return AttachmentPolicyResult.denied(
-        '${plan.label}에서는 ${domain.label}을(를) 항목당 '
+        '${plan.label}에서는 ${domain.label}을(를) ${domain.ownerLabel}당 '
         '$maxFilesPerOwner개까지 첨부할 수 있습니다.',
       );
     }
@@ -53,7 +56,7 @@ class AttachmentPolicyService {
       final ownersWithAttachments = await _countOwnersWithAttachments(domain);
       if (ownersWithAttachments >= ownerLimit) {
         return AttachmentPolicyResult.denied(
-          '${plan.label}에서는 ${domain.label}이(가) 있는 품목을 '
+          '${plan.label}에서는 ${domain.label}이(가) 있는 ${domain.ownerLabel}을(를) '
           '$ownerLimit개까지 사용할 수 있습니다. 기존 이미지를 삭제하거나 '
           '상위 플랜에서 더 많이 사용할 수 있습니다.',
         );

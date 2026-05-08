@@ -26,4 +26,15 @@ extension AttachmentDomainConfig on AttachmentDomain {
         return '일정 첨부 이미지';
     }
   }
+
+  String get ownerLabel {
+    switch (this) {
+      case AttachmentDomain.itemImages:
+        return '품목';
+      case AttachmentDomain.purchaseReceipts:
+        return '발주';
+      case AttachmentDomain.scheduleAttachments:
+        return '일정';
+    }
+  }
 }

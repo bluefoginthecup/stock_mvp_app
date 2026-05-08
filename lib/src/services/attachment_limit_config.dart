@@ -13,6 +13,23 @@ class AttachmentLimit {
   bool get hasOwnerLimit => maxOwnersWithAttachments != null;
 
   bool get hasFileLimit => maxFilesPerOwner != null;
+
+  String summaryFor(AttachmentDomain domain) {
+    final ownerLabel = domain.ownerLabel;
+    final ownerLimit = maxOwnersWithAttachments;
+    final fileLimit = maxFilesPerOwner;
+
+    if (ownerLimit == null && fileLimit == null) {
+      return '제한 없음';
+    }
+    if (ownerLimit != null && fileLimit != null) {
+      return '$ownerLabel $ownerLimit개 / $ownerLabel당 $fileLimit개';
+    }
+    if (ownerLimit != null) {
+      return '$ownerLabel $ownerLimit개';
+    }
+    return '$ownerLabel당 $fileLimit개';
+  }
 }
 
 class AttachmentLimitConfig {

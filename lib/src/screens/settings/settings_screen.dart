@@ -6,12 +6,14 @@ import 'package:stockapp_mvp/src/services/seed_importer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'dart:io';
+import '/src/models/attachment_domain.dart';
 import '/src/models/buyer_profile.dart';
 import '/src/models/subscription_plan.dart';
 import '/src/services/backup_file_delivery_service.dart';
 import '/src/services/backup_encryption_settings_service.dart';
 import '/src/services/backup_encryption_key_store.dart';
 import '/src/services/auth_service.dart';
+import '/src/services/attachment_limit_config.dart';
 import '/src/services/buyer_profile_service.dart';
 import '/src/services/cloud_auto_backup_service.dart';
 import '/src/services/cloud_backup_service.dart';
@@ -667,6 +669,7 @@ class _AccountSectionState extends State<_AccountSection> {
 
   Widget _buildPlanTester(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    const limits = AttachmentLimitConfig.defaults;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -705,16 +708,8 @@ class _AccountSectionState extends State<_AccountSection> {
           onSelectionChanged:
               _loadingPlan ? null : (selection) => _savePlan(selection.first),
         ),
-        const SizedBox(height: 8),
-        Text(
-          _plan == SubscriptionPlan.free
-              ? '무료: 품목 이미지 10개 품목 / 품목당 1장'
-              : 'Pro: 품목 이미지 100개 품목 / 품목당 5장',
-          style: TextStyle(
-            color: colorScheme.onSurface.withValues(alpha: 0.62),
-            fontSize: 12,
-          ),
-        ),
+        const SizedBox(height: 12),
+        _PlanLimitSummary(plan: _plan, limitConfig: limits),
       ],
     );
   }
@@ -785,6 +780,58 @@ class _AccountSectionState extends State<_AccountSection> {
           ),
         );
       },
+    );
+  }
+}
+
+class _PlanLimitSummary extends StatelessWidget {
+  const _PlanLimitSummary({
+    required this.plan,
+    required this.limitConfig,
+  });
+
+  final SubscriptionPlan plan;
+  final AttachmentLimitConfig limitConfig;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    const domains = [
+      AttachmentDomain.itemImages,
+      AttachmentDomain.purchaseReceipts,
+      AttachmentDomain.scheduleAttachments,
+    ];
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${plan.label} 첨부 한도',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final domain in domains) ...[
+              _StorageUsageRow(
+                label: domain.label,
+                value: limitConfig
+                    .limitFor(plan: plan, domain: domain)
+                    .summaryFor(domain),
+              ),
+              if (domain != domains.last) const SizedBox(height: 6),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
