@@ -87,11 +87,6 @@ Future<void> _tryDeleteFolder(
 // ───────────────────────── 새 폴더 생성 ─────────────────────────
 Future<void> _createFolder(
     BuildContext context, FolderTreeRepo repo, String? parentId) async {
-  if (parentId == null) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('먼저 상위 폴더를 선택하세요.')));
-    return;
-  }
   final name = await showNewFolderSheet(context);
   if (name == null || name.trim().isEmpty) return;
   await repo.createFolderNode(parentId: parentId, name: name.trim());
