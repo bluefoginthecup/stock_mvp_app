@@ -44,12 +44,16 @@ const defaultQuickActionOrder = <QuickActionType>[
 
 String quickActionIdOf(QuickActionType type) => type.name;
 
-QuickActionType quickActionTypeOf(String id) {
+QuickActionType? quickActionTypeOfOrNull(String id) {
   final normalized = id == 'language' ? 'settings' : id;
-  return QuickActionType.values.firstWhere(
-    (type) => type.name == normalized,
-    orElse: () => QuickActionType.orders,
-  );
+  for (final type in QuickActionType.values) {
+    if (type.name == normalized) return type;
+  }
+  return null;
+}
+
+QuickActionType quickActionTypeOf(String id) {
+  return quickActionTypeOfOrNull(id) ?? QuickActionType.orders;
 }
 
 List<QuickActionType> mergeQuickActionOrder(List<String> ids) {
