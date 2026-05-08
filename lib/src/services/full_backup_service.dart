@@ -41,6 +41,7 @@ class FullBackupService {
     'supplier_accounts',
     'lots',
     'memos',
+    'app_schedules',
     'quick_action_orders',
     'purchase_receipts',
     'schedule_attachments',

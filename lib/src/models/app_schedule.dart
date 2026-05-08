@@ -37,8 +37,10 @@ class AppSchedule {
   final String id;
   final String title;
   final String body;
+  final List<String> tags;
   final DateTime date;
   final AppScheduleStatus status;
+  final bool isPinned;
   final int? sourceMemoId;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -47,8 +49,10 @@ class AppSchedule {
     required this.id,
     required this.title,
     required this.body,
+    this.tags = const [],
     required this.date,
     this.status = AppScheduleStatus.pending,
+    this.isPinned = false,
     this.sourceMemoId,
     required this.createdAt,
     required this.updatedAt,
@@ -61,8 +65,10 @@ class AppSchedule {
     String? id,
     String? title,
     String? body,
+    List<String>? tags,
     DateTime? date,
     AppScheduleStatus? status,
+    bool? isPinned,
     int? sourceMemoId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -71,8 +77,10 @@ class AppSchedule {
       id: id ?? this.id,
       title: title ?? this.title,
       body: body ?? this.body,
+      tags: tags ?? this.tags,
       date: date ?? this.date,
       status: status ?? this.status,
+      isPinned: isPinned ?? this.isPinned,
       sourceMemoId: sourceMemoId ?? this.sourceMemoId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -84,11 +92,13 @@ class AppSchedule {
       id: json['id'] as String,
       title: json['title'] as String,
       body: json['body'] as String? ?? '',
+      tags: (json['tags'] as List?)?.whereType<String>().toList() ?? const [],
       date: DateTime.parse(json['date'] as String),
       status: AppScheduleStatus.values.firstWhere(
         (e) => e.name == (json['status'] as String? ?? 'pending'),
         orElse: () => AppScheduleStatus.pending,
       ),
+      isPinned: json['isPinned'] as bool? ?? false,
       sourceMemoId: (json['sourceMemoId'] as num?)?.toInt(),
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
@@ -99,8 +109,10 @@ class AppSchedule {
         'id': id,
         'title': title,
         'body': body,
+        'tags': tags,
         'date': date.toIso8601String(),
         'status': status.name,
+        'isPinned': isPinned,
         'sourceMemoId': sourceMemoId,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),

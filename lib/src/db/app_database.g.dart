@@ -11477,6 +11477,12 @@ class $AppSchedulesTable extends AppSchedules
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant(''));
+  static const VerificationMeta _tagsJsonMeta =
+      const VerificationMeta('tagsJson');
+  @override
+  late final GeneratedColumn<String> tagsJson = GeneratedColumn<String>(
+      'tags_json', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<String> date = GeneratedColumn<String>(
@@ -11489,6 +11495,15 @@ class $AppSchedulesTable extends AppSchedules
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('pending'));
+  static const VerificationMeta _isPinnedMeta =
+      const VerificationMeta('isPinned');
+  @override
+  late final GeneratedColumn<bool> isPinned = GeneratedColumn<bool>(
+      'is_pinned', aliasedName, true,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_pinned" IN (0, 1))'));
   static const VerificationMeta _sourceMemoIdMeta =
       const VerificationMeta('sourceMemoId');
   @override
@@ -11511,8 +11526,18 @@ class $AppSchedulesTable extends AppSchedules
       'updated_at', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, title, body, date, status, sourceMemoId, createdAt, updatedAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        title,
+        body,
+        tagsJson,
+        date,
+        status,
+        isPinned,
+        sourceMemoId,
+        createdAt,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -11538,6 +11563,10 @@ class $AppSchedulesTable extends AppSchedules
       context.handle(
           _bodyMeta, body.isAcceptableOrUnknown(data['body']!, _bodyMeta));
     }
+    if (data.containsKey('tags_json')) {
+      context.handle(_tagsJsonMeta,
+          tagsJson.isAcceptableOrUnknown(data['tags_json']!, _tagsJsonMeta));
+    }
     if (data.containsKey('date')) {
       context.handle(
           _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
@@ -11547,6 +11576,10 @@ class $AppSchedulesTable extends AppSchedules
     if (data.containsKey('status')) {
       context.handle(_statusMeta,
           status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('is_pinned')) {
+      context.handle(_isPinnedMeta,
+          isPinned.isAcceptableOrUnknown(data['is_pinned']!, _isPinnedMeta));
     }
     if (data.containsKey('source_memo_id')) {
       context.handle(
@@ -11581,10 +11614,14 @@ class $AppSchedulesTable extends AppSchedules
           .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
       body: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}body'])!,
+      tagsJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tags_json']),
       date: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}date'])!,
       status: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      isPinned: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_pinned']),
       sourceMemoId: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}source_memo_id']),
       createdAt: attachedDatabase.typeMapping
@@ -11604,8 +11641,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
   final String id;
   final String title;
   final String body;
+  final String? tagsJson;
   final String date;
   final String status;
+  final bool? isPinned;
   final int? sourceMemoId;
   final String createdAt;
   final String updatedAt;
@@ -11613,8 +11652,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
       {required this.id,
       required this.title,
       required this.body,
+      this.tagsJson,
       required this.date,
       required this.status,
+      this.isPinned,
       this.sourceMemoId,
       required this.createdAt,
       required this.updatedAt});
@@ -11624,8 +11665,14 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     map['body'] = Variable<String>(body);
+    if (!nullToAbsent || tagsJson != null) {
+      map['tags_json'] = Variable<String>(tagsJson);
+    }
     map['date'] = Variable<String>(date);
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || isPinned != null) {
+      map['is_pinned'] = Variable<bool>(isPinned);
+    }
     if (!nullToAbsent || sourceMemoId != null) {
       map['source_memo_id'] = Variable<int>(sourceMemoId);
     }
@@ -11639,8 +11686,14 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
       id: Value(id),
       title: Value(title),
       body: Value(body),
+      tagsJson: tagsJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tagsJson),
       date: Value(date),
       status: Value(status),
+      isPinned: isPinned == null && nullToAbsent
+          ? const Value.absent()
+          : Value(isPinned),
       sourceMemoId: sourceMemoId == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceMemoId),
@@ -11656,8 +11709,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       body: serializer.fromJson<String>(json['body']),
+      tagsJson: serializer.fromJson<String?>(json['tagsJson']),
       date: serializer.fromJson<String>(json['date']),
       status: serializer.fromJson<String>(json['status']),
+      isPinned: serializer.fromJson<bool?>(json['isPinned']),
       sourceMemoId: serializer.fromJson<int?>(json['sourceMemoId']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
       updatedAt: serializer.fromJson<String>(json['updatedAt']),
@@ -11670,8 +11725,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'body': serializer.toJson<String>(body),
+      'tagsJson': serializer.toJson<String?>(tagsJson),
       'date': serializer.toJson<String>(date),
       'status': serializer.toJson<String>(status),
+      'isPinned': serializer.toJson<bool?>(isPinned),
       'sourceMemoId': serializer.toJson<int?>(sourceMemoId),
       'createdAt': serializer.toJson<String>(createdAt),
       'updatedAt': serializer.toJson<String>(updatedAt),
@@ -11682,8 +11739,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
           {String? id,
           String? title,
           String? body,
+          Value<String?> tagsJson = const Value.absent(),
           String? date,
           String? status,
+          Value<bool?> isPinned = const Value.absent(),
           Value<int?> sourceMemoId = const Value.absent(),
           String? createdAt,
           String? updatedAt}) =>
@@ -11691,8 +11750,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
         id: id ?? this.id,
         title: title ?? this.title,
         body: body ?? this.body,
+        tagsJson: tagsJson.present ? tagsJson.value : this.tagsJson,
         date: date ?? this.date,
         status: status ?? this.status,
+        isPinned: isPinned.present ? isPinned.value : this.isPinned,
         sourceMemoId:
             sourceMemoId.present ? sourceMemoId.value : this.sourceMemoId,
         createdAt: createdAt ?? this.createdAt,
@@ -11703,8 +11764,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
       id: data.id.present ? data.id.value : this.id,
       title: data.title.present ? data.title.value : this.title,
       body: data.body.present ? data.body.value : this.body,
+      tagsJson: data.tagsJson.present ? data.tagsJson.value : this.tagsJson,
       date: data.date.present ? data.date.value : this.date,
       status: data.status.present ? data.status.value : this.status,
+      isPinned: data.isPinned.present ? data.isPinned.value : this.isPinned,
       sourceMemoId: data.sourceMemoId.present
           ? data.sourceMemoId.value
           : this.sourceMemoId,
@@ -11719,8 +11782,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('body: $body, ')
+          ..write('tagsJson: $tagsJson, ')
           ..write('date: $date, ')
           ..write('status: $status, ')
+          ..write('isPinned: $isPinned, ')
           ..write('sourceMemoId: $sourceMemoId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -11729,8 +11794,8 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, title, body, date, status, sourceMemoId, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, title, body, tagsJson, date, status,
+      isPinned, sourceMemoId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -11738,8 +11803,10 @@ class AppScheduleRow extends DataClass implements Insertable<AppScheduleRow> {
           other.id == this.id &&
           other.title == this.title &&
           other.body == this.body &&
+          other.tagsJson == this.tagsJson &&
           other.date == this.date &&
           other.status == this.status &&
+          other.isPinned == this.isPinned &&
           other.sourceMemoId == this.sourceMemoId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -11749,8 +11816,10 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
   final Value<String> id;
   final Value<String> title;
   final Value<String> body;
+  final Value<String?> tagsJson;
   final Value<String> date;
   final Value<String> status;
+  final Value<bool?> isPinned;
   final Value<int?> sourceMemoId;
   final Value<String> createdAt;
   final Value<String> updatedAt;
@@ -11759,8 +11828,10 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.body = const Value.absent(),
+    this.tagsJson = const Value.absent(),
     this.date = const Value.absent(),
     this.status = const Value.absent(),
+    this.isPinned = const Value.absent(),
     this.sourceMemoId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -11770,8 +11841,10 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
     required String id,
     required String title,
     this.body = const Value.absent(),
+    this.tagsJson = const Value.absent(),
     required String date,
     this.status = const Value.absent(),
+    this.isPinned = const Value.absent(),
     this.sourceMemoId = const Value.absent(),
     required String createdAt,
     required String updatedAt,
@@ -11785,8 +11858,10 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
     Expression<String>? id,
     Expression<String>? title,
     Expression<String>? body,
+    Expression<String>? tagsJson,
     Expression<String>? date,
     Expression<String>? status,
+    Expression<bool>? isPinned,
     Expression<int>? sourceMemoId,
     Expression<String>? createdAt,
     Expression<String>? updatedAt,
@@ -11796,8 +11871,10 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (body != null) 'body': body,
+      if (tagsJson != null) 'tags_json': tagsJson,
       if (date != null) 'date': date,
       if (status != null) 'status': status,
+      if (isPinned != null) 'is_pinned': isPinned,
       if (sourceMemoId != null) 'source_memo_id': sourceMemoId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -11809,8 +11886,10 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
       {Value<String>? id,
       Value<String>? title,
       Value<String>? body,
+      Value<String?>? tagsJson,
       Value<String>? date,
       Value<String>? status,
+      Value<bool?>? isPinned,
       Value<int?>? sourceMemoId,
       Value<String>? createdAt,
       Value<String>? updatedAt,
@@ -11819,8 +11898,10 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
       id: id ?? this.id,
       title: title ?? this.title,
       body: body ?? this.body,
+      tagsJson: tagsJson ?? this.tagsJson,
       date: date ?? this.date,
       status: status ?? this.status,
+      isPinned: isPinned ?? this.isPinned,
       sourceMemoId: sourceMemoId ?? this.sourceMemoId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -11840,11 +11921,17 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
     if (body.present) {
       map['body'] = Variable<String>(body.value);
     }
+    if (tagsJson.present) {
+      map['tags_json'] = Variable<String>(tagsJson.value);
+    }
     if (date.present) {
       map['date'] = Variable<String>(date.value);
     }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
+    }
+    if (isPinned.present) {
+      map['is_pinned'] = Variable<bool>(isPinned.value);
     }
     if (sourceMemoId.present) {
       map['source_memo_id'] = Variable<int>(sourceMemoId.value);
@@ -11867,8 +11954,10 @@ class AppSchedulesCompanion extends UpdateCompanion<AppScheduleRow> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('body: $body, ')
+          ..write('tagsJson: $tagsJson, ')
           ..write('date: $date, ')
           ..write('status: $status, ')
+          ..write('isPinned: $isPinned, ')
           ..write('sourceMemoId: $sourceMemoId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -20818,8 +20907,10 @@ typedef $$AppSchedulesTableCreateCompanionBuilder = AppSchedulesCompanion
   required String id,
   required String title,
   Value<String> body,
+  Value<String?> tagsJson,
   required String date,
   Value<String> status,
+  Value<bool?> isPinned,
   Value<int?> sourceMemoId,
   required String createdAt,
   required String updatedAt,
@@ -20830,8 +20921,10 @@ typedef $$AppSchedulesTableUpdateCompanionBuilder = AppSchedulesCompanion
   Value<String> id,
   Value<String> title,
   Value<String> body,
+  Value<String?> tagsJson,
   Value<String> date,
   Value<String> status,
+  Value<bool?> isPinned,
   Value<int?> sourceMemoId,
   Value<String> createdAt,
   Value<String> updatedAt,
@@ -20876,11 +20969,17 @@ class $$AppSchedulesTableFilterComposer
   ColumnFilters<String> get body => $composableBuilder(
       column: $table.body, builder: (column) => ColumnFilters(column));
 
+  ColumnFilters<String> get tagsJson => $composableBuilder(
+      column: $table.tagsJson, builder: (column) => ColumnFilters(column));
+
   ColumnFilters<String> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isPinned => $composableBuilder(
+      column: $table.isPinned, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -20927,11 +21026,17 @@ class $$AppSchedulesTableOrderingComposer
   ColumnOrderings<String> get body => $composableBuilder(
       column: $table.body, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get tagsJson => $composableBuilder(
+      column: $table.tagsJson, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get date => $composableBuilder(
       column: $table.date, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get isPinned => $composableBuilder(
+      column: $table.isPinned, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
@@ -20978,11 +21083,17 @@ class $$AppSchedulesTableAnnotationComposer
   GeneratedColumn<String> get body =>
       $composableBuilder(column: $table.body, builder: (column) => column);
 
+  GeneratedColumn<String> get tagsJson =>
+      $composableBuilder(column: $table.tagsJson, builder: (column) => column);
+
   GeneratedColumn<String> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<bool> get isPinned =>
+      $composableBuilder(column: $table.isPinned, builder: (column) => column);
 
   GeneratedColumn<String> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -21037,8 +21148,10 @@ class $$AppSchedulesTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> title = const Value.absent(),
             Value<String> body = const Value.absent(),
+            Value<String?> tagsJson = const Value.absent(),
             Value<String> date = const Value.absent(),
             Value<String> status = const Value.absent(),
+            Value<bool?> isPinned = const Value.absent(),
             Value<int?> sourceMemoId = const Value.absent(),
             Value<String> createdAt = const Value.absent(),
             Value<String> updatedAt = const Value.absent(),
@@ -21048,8 +21161,10 @@ class $$AppSchedulesTableTableManager extends RootTableManager<
             id: id,
             title: title,
             body: body,
+            tagsJson: tagsJson,
             date: date,
             status: status,
+            isPinned: isPinned,
             sourceMemoId: sourceMemoId,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -21059,8 +21174,10 @@ class $$AppSchedulesTableTableManager extends RootTableManager<
             required String id,
             required String title,
             Value<String> body = const Value.absent(),
+            Value<String?> tagsJson = const Value.absent(),
             required String date,
             Value<String> status = const Value.absent(),
+            Value<bool?> isPinned = const Value.absent(),
             Value<int?> sourceMemoId = const Value.absent(),
             required String createdAt,
             required String updatedAt,
@@ -21070,8 +21187,10 @@ class $$AppSchedulesTableTableManager extends RootTableManager<
             id: id,
             title: title,
             body: body,
+            tagsJson: tagsJson,
             date: date,
             status: status,
+            isPinned: isPinned,
             sourceMemoId: sourceMemoId,
             createdAt: createdAt,
             updatedAt: updatedAt,

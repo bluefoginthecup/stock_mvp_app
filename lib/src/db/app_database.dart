@@ -554,8 +554,10 @@ class AppSchedules extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
   TextColumn get body => text().withDefault(const Constant(''))();
+  TextColumn get tagsJson => text().nullable()();
   TextColumn get date => text()();
   TextColumn get status => text().withDefault(const Constant('pending'))();
+  BoolColumn get isPinned => boolean().nullable()();
   IntColumn get sourceMemoId => integer()
       .nullable()
       .references(Memos, #id, onDelete: KeyAction.setNull)();
@@ -637,7 +639,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 33; //
+  int get schemaVersion => 34; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -915,6 +917,10 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 33) {
             await _ensureItemImagesTable();
+          }
+          if (from < 34) {
+            await _addColumnIfMissing('app_schedules', 'tags_json', 'TEXT');
+            await _addColumnIfMissing('app_schedules', 'is_pinned', 'INTEGER');
           }
         },
       );
@@ -1813,11 +1819,13 @@ extension AppScheduleRowMapping on AppScheduleRow {
         id: id,
         title: title,
         body: body,
+        tags: _decodeStringList(tagsJson),
         date: DateTime.parse(date),
         status: AppScheduleStatus.values.firstWhere(
           (e) => e.name == status,
           orElse: () => AppScheduleStatus.pending,
         ),
+        isPinned: isPinned ?? false,
         sourceMemoId: sourceMemoId,
         createdAt: DateTime.parse(createdAt),
         updatedAt: DateTime.parse(updatedAt),
@@ -1829,12 +1837,25 @@ extension AppScheduleToCompanion on AppSchedule {
         id: Value(id),
         title: Value(title),
         body: Value(body),
+        tagsJson: Value(jsonEncode(tags)),
         date: Value(date.toIso8601String()),
         status: Value(status.name),
+        isPinned: Value(isPinned),
         sourceMemoId: Value(sourceMemoId),
         createdAt: Value(createdAt.toIso8601String()),
         updatedAt: Value(updatedAt.toIso8601String()),
       );
+}
+
+List<String> _decodeStringList(String? value) {
+  if (value == null || value.trim().isEmpty) return const [];
+  try {
+    final decoded = jsonDecode(value);
+    if (decoded is! List) return const [];
+    return decoded.whereType<String>().toList(growable: false);
+  } catch (_) {
+    return const [];
+  }
 }
 
 /// =======================

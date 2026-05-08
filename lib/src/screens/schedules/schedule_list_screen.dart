@@ -5,6 +5,8 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../../models/app_schedule.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../utils/tag_utils.dart';
+import 'schedule_detail_screen.dart';
 import 'schedule_edit_screen.dart';
 
 class ScheduleListScreen extends StatefulWidget {
@@ -20,6 +22,7 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
   bool _isCalendarView = true;
   AppScheduleStatus _listStatus = AppScheduleStatus.pending;
   String _query = '';
+  String? _selectedTag;
   final _searchController = TextEditingController();
   final Set<AppScheduleStatus> _calendarStatusFilter = {
     AppScheduleStatus.pending,
@@ -46,6 +49,15 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
     );
   }
 
+  Future<void> _openDetail(AppSchedule schedule) async {
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ScheduleDetailScreen(schedule: schedule),
+      ),
+    );
+  }
+
   List<AppSchedule> _schedulesForDay(
     List<AppSchedule> schedules,
     DateTime day,
@@ -60,6 +72,21 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
       return s.title.toLowerCase().contains(query) ||
           s.body.toLowerCase().contains(query);
     }).toList();
+  }
+
+  List<AppSchedule> _filterBySelectedTag(List<AppSchedule> schedules) {
+    final tag = _selectedTag;
+    if (tag == null) return schedules;
+    return schedules.where((schedule) => schedule.tags.contains(tag)).toList();
+  }
+
+  void _sortPinnedFirst(List<AppSchedule> schedules) {
+    schedules.sort((a, b) {
+      if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
+      final date = a.date.compareTo(b.date);
+      if (date != 0) return date;
+      return a.createdAt.compareTo(b.createdAt);
+    });
   }
 
   Widget _buildSearchField() {
@@ -85,6 +112,43 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
         onChanged: (value) {
           setState(() => _query = value.trim().toLowerCase());
         },
+      ),
+    );
+  }
+
+  Widget _buildTagFilterBar(List<AppSchedule> schedules) {
+    final tags = collectTagsFromSchedules(schedules).toList();
+    final selectedTag = _selectedTag;
+    if (selectedTag != null && !tags.contains(selectedTag)) {
+      tags.add(selectedTag);
+    }
+    if (tags.isEmpty) return const SizedBox.shrink();
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FilterChip(
+              label: const Text('전체'),
+              selected: _selectedTag == null,
+              showCheckmark: false,
+              onSelected: (_) => setState(() => _selectedTag = null),
+            ),
+          ),
+          for (final tag in tags)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: FilterChip(
+                label: Text('#$tag'),
+                selected: _selectedTag == tag,
+                showCheckmark: false,
+                onSelected: (_) => setState(() => _selectedTag = tag),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -143,41 +207,74 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
   Widget _buildScheduleTile(AppSchedule schedule) {
     final repo = context.read<ScheduleRepo>();
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       leading: Checkbox(
         value: schedule.status == AppScheduleStatus.done,
         onChanged: (_) => repo.toggleScheduleStatus(schedule.id),
       ),
-      title: Text(
-        schedule.title,
-        style: schedule.status == AppScheduleStatus.done
-            ? const TextStyle(
-                decoration: TextDecoration.lineThrough,
-                color: Colors.grey,
-              )
-            : null,
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              schedule.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: schedule.status == AppScheduleStatus.done
+                  ? const TextStyle(
+                      decoration: TextDecoration.lineThrough,
+                      color: Colors.grey,
+                    )
+                  : null,
+            ),
+          ),
+          if (schedule.isPinned)
+            const Padding(
+              padding: EdgeInsets.only(left: 6),
+              child: Icon(Icons.push_pin, size: 16, color: Colors.deepPurple),
+            ),
+        ],
       ),
-      subtitle: schedule.body.trim().isEmpty
-          ? Text(schedule.statusLabel)
-          : Text('${schedule.statusLabel} · ${schedule.body}'),
-      trailing: IconButton(
-        tooltip: '수정',
-        icon: const Icon(Icons.edit_outlined),
-        onPressed: () => _openEditor(schedule: schedule),
-      ),
-      onTap: () => _openEditor(schedule: schedule),
+      subtitle: _ScheduleTileSubtitle(schedule: schedule),
+      trailing: schedule.isPinned
+          ? IconButton(
+              tooltip: '고정 해제',
+              icon: const Icon(Icons.push_pin, size: 18),
+              color: Colors.deepPurple,
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(
+                minWidth: 32,
+                minHeight: 32,
+              ),
+              onPressed: () {
+                repo.updateSchedule(
+                  schedule.copyWith(
+                    isPinned: false,
+                    updatedAt: DateTime.now(),
+                  ),
+                );
+              },
+            )
+          : null,
+      onTap: () => _openDetail(schedule),
     );
   }
 
-  Widget _buildCalendarBody(List<AppSchedule> schedules) {
+  Widget _buildCalendarBody(
+    List<AppSchedule> schedules, {
+    required List<AppSchedule> tagSourceSchedules,
+  }) {
     final filteredSchedules = schedules
         .where((s) => _calendarStatusFilter.contains(s.status))
         .toList();
     final selectedSchedules = _schedulesForDay(filteredSchedules, _selectedDay);
+    _sortPinnedFirst(selectedSchedules);
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(child: _buildSearchField()),
+        SliverToBoxAdapter(child: _buildTagFilterBar(tagSourceSchedules)),
         SliverToBoxAdapter(child: _buildCalendarStatusFilterBar()),
         SliverToBoxAdapter(
           child: TableCalendar<AppSchedule>(
@@ -277,13 +374,17 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
     );
   }
 
-  Widget _buildListBody(List<AppSchedule> schedules) {
-    final list = schedules.where((s) => s.status == _listStatus).toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
+  Widget _buildListBody(
+    List<AppSchedule> schedules, {
+    required List<AppSchedule> tagSourceSchedules,
+  }) {
+    final list = schedules.where((s) => s.status == _listStatus).toList();
+    _sortPinnedFirst(list);
 
     return Column(
       children: [
         _buildSearchField(),
+        _buildTagFilterBar(tagSourceSchedules),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
           child: SegmentedButton<AppScheduleStatus>(
@@ -365,12 +466,19 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
       body: StreamBuilder<List<AppSchedule>>(
         stream: repo.watchSchedules(),
         builder: (context, snapshot) {
-          final schedules =
+          final queryFiltered =
               _filterByQuery(snapshot.data ?? const <AppSchedule>[]);
+          final schedules = _filterBySelectedTag(queryFiltered);
 
           return _isCalendarView
-              ? _buildCalendarBody(schedules)
-              : _buildListBody(schedules);
+              ? _buildCalendarBody(
+                  schedules,
+                  tagSourceSchedules: queryFiltered,
+                )
+              : _buildListBody(
+                  schedules,
+                  tagSourceSchedules: queryFiltered,
+                );
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -406,6 +514,59 @@ class _StatusLegend extends StatelessWidget {
         const SizedBox(width: 4),
         Text('$label $count'),
       ],
+    );
+  }
+}
+
+class _ScheduleTileSubtitle extends StatelessWidget {
+  final AppSchedule schedule;
+
+  const _ScheduleTileSubtitle({required this.schedule});
+
+  @override
+  Widget build(BuildContext context) {
+    final body = schedule.body.trim();
+    final tags = schedule.tags;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            schedule.statusLabel,
+            style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+          ),
+          if (body.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              body,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: textTheme.bodySmall?.copyWith(color: Colors.grey.shade700),
+            ),
+          ],
+          if (tags.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: [
+                for (final tag in tags)
+                  Chip(
+                    label: Text('#$tag'),
+                    visualDensity: VisualDensity.compact,
+                    labelStyle: textTheme.labelSmall,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: EdgeInsets.zero,
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

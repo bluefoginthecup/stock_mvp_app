@@ -505,7 +505,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     if (!mounted) return;
     await showDialog<void>(
       context: context,
-      builder: (_) => Dialog(
+      builder: (dialogContext) => Dialog(
         insetPadding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -521,7 +521,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                 IconButton(
                   tooltip: '닫기',
                   icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dialogContext),
                 ),
               ],
             ),
