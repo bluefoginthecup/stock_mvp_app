@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'dart:io';
 import '/src/models/buyer_profile.dart';
+import '/src/models/subscription_plan.dart';
 import '/src/services/backup_file_delivery_service.dart';
 import '/src/services/backup_encryption_settings_service.dart';
 import '/src/services/backup_encryption_key_store.dart';
@@ -19,6 +20,7 @@ import '/src/services/full_backup_service.dart';
 import '/src/services/full_restore_service.dart';
 import '/src/services/restore_rollback_service.dart';
 import '/src/services/storage_usage_service.dart';
+import '/src/services/subscription_plan_service.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
 class SettingsScreen extends StatelessWidget {
@@ -590,8 +592,41 @@ Future<void> _showSimpleErrorDialog(
   );
 }
 
-class _AccountSection extends StatelessWidget {
+class _AccountSection extends StatefulWidget {
   const _AccountSection();
+
+  @override
+  State<_AccountSection> createState() => _AccountSectionState();
+}
+
+class _AccountSectionState extends State<_AccountSection> {
+  final SubscriptionPlanService _planService = const SubscriptionPlanService();
+  SubscriptionPlan _plan = SubscriptionPlan.free;
+  bool _loadingPlan = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPlan();
+  }
+
+  Future<void> _loadPlan() async {
+    final plan = await _planService.loadPlan();
+    if (!mounted) return;
+    setState(() {
+      _plan = plan == SubscriptionPlan.business ? SubscriptionPlan.pro : plan;
+      _loadingPlan = false;
+    });
+  }
+
+  Future<void> _savePlan(SubscriptionPlan plan) async {
+    setState(() => _plan = plan);
+    await _planService.savePlanForDebug(plan);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('개발용 플랜을 ${plan.label}(으)로 변경했습니다.')),
+    );
+  }
 
   Future<void> _signOut(BuildContext context) async {
     final ok = await showDialog<bool>(
@@ -628,6 +663,60 @@ class _AccountSection extends StatelessWidget {
         ),
       );
     }
+  }
+
+  Widget _buildPlanTester(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        const Divider(height: 1),
+        const SizedBox(height: 14),
+        _StorageUsageRow(
+          label: '현재 플랜',
+          value: _loadingPlan ? '확인 중...' : _plan.label,
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '개발용 플랜 테스트',
+          style: TextStyle(
+            color: colorScheme.onSurface.withValues(alpha: 0.7),
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<SubscriptionPlan>(
+          segments: const [
+            ButtonSegment(
+              value: SubscriptionPlan.free,
+              label: Text('무료'),
+              icon: Icon(Icons.person_outline),
+            ),
+            ButtonSegment(
+              value: SubscriptionPlan.pro,
+              label: Text('Pro'),
+              icon: Icon(Icons.workspace_premium_outlined),
+            ),
+          ],
+          selected: {_plan},
+          onSelectionChanged:
+              _loadingPlan ? null : (selection) => _savePlan(selection.first),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _plan == SubscriptionPlan.free
+              ? '무료: 품목 이미지 10개 품목 / 품목당 1장'
+              : 'Pro: 품목 이미지 100개 품목 / 품목당 5장',
+          style: TextStyle(
+            color: colorScheme.onSurface.withValues(alpha: 0.62),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -683,6 +772,7 @@ class _AccountSection extends StatelessWidget {
                       ),
                     ),
                   ],
+                  _buildPlanTester(context),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: user == null ? null : () => _signOut(context),
