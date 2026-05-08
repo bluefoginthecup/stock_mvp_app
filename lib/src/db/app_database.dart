@@ -70,6 +70,7 @@ class Items extends Table {
   // 거래처
   TextColumn get supplierName => text().nullable()();
   IntColumn get defaultSupplierId => integer().nullable()();
+  TextColumn get defaultSupplierUid => text().nullable()();
   RealColumn get defaultPrice => real().nullable()();
   RealColumn get defaultPurchasePrice => real().nullable()();
   RealColumn get defaultSalePrice => real().nullable()();
@@ -647,7 +648,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 35; //
+  int get schemaVersion => 36; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -939,6 +940,9 @@ class AppDatabase extends _$AppDatabase {
                 'items', 'reorder_reminder_enabled', 'INTEGER');
             await _addColumnIfMissing(
                 'items', 'reorder_reminder_days_before', 'INTEGER');
+          }
+          if (from < 36) {
+            await _addColumnIfMissing('items', 'default_supplier_uid', 'TEXT');
           }
         },
       );
@@ -1351,6 +1355,7 @@ extension ItemRowMapping on ItemRow {
       conversionMode: conversionMode,
       stockHints: hints,
       supplierName: supplierName,
+      defaultSupplierId: defaultSupplierUid ?? defaultSupplierId?.toString(),
       isFavorite: isFavorite,
       defaultPurchasePrice: defaultPurchasePrice,
       defaultSalePrice: defaultSalePrice,
@@ -1396,6 +1401,7 @@ extension ItemToCompanion on Item {
       conversionMode: Value(conversionMode),
       stockHintsJson: Value(stockHintsJson),
       supplierName: Value(supplierName),
+      defaultSupplierUid: Value(defaultSupplierId),
       isFavorite: Value(isFavorite),
       reorderIntervalDays: Value(reorderIntervalDays),
       lastOrderedAt: Value(lastOrderedAt?.toIso8601String()),

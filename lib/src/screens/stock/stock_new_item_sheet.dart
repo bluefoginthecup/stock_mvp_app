@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/item.dart';
+import '../../models/suppliers.dart';
+import '../../ui/common/supplier_picker_sheet.dart';
 import '../../ui/common/ui.dart';
 import 'widgets/new_item_result.dart';
 
@@ -24,6 +26,7 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
   final _purchasePriceC = TextEditingController();
   final _salePriceC = TextEditingController();
   final _supplierC = TextEditingController();
+  Supplier? _selectedSupplier;
 
   @override
   void dispose() {
@@ -71,6 +74,7 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
       stockHints: null,
       supplierName:
           _supplierC.text.trim().isEmpty ? null : _supplierC.text.trim(),
+      defaultSupplierId: _selectedSupplier?.id,
       isFavorite: false,
       defaultPurchasePrice: purchasePrice,
       defaultSalePrice: salePrice,
@@ -79,6 +83,26 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
     // 아이템 + 최종 pathIds(ID 체인)를 함께 반환
     Navigator.pop<NewItemResult>(
         context, NewItemResult(item, List<String>.from(widget.pathIds)));
+  }
+
+  Future<void> _pickSupplier() async {
+    final supplier = await showSupplierPickerSheet(
+      context,
+      initialQuery: _supplierC.text.trim(),
+      title: '아이템 공급처 선택',
+    );
+    if (!mounted || supplier == null) return;
+    setState(() {
+      _selectedSupplier = supplier;
+      _supplierC.text = supplier.name;
+    });
+  }
+
+  void _clearSupplier() {
+    setState(() {
+      _selectedSupplier = null;
+      _supplierC.clear();
+    });
   }
 
   @override
@@ -108,7 +132,27 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
             const SizedBox(height: 8),
             TextField(
               controller: _supplierC,
-              decoration: const InputDecoration(labelText: '공급처 (선택)'),
+              readOnly: true,
+              decoration: InputDecoration(
+                labelText: '공급처 / 거래처 (선택)',
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: '거래처 선택',
+                      icon: const Icon(Icons.business),
+                      onPressed: _pickSupplier,
+                    ),
+                    if (_supplierC.text.trim().isNotEmpty)
+                      IconButton(
+                        tooltip: '공급처 해제',
+                        icon: const Icon(Icons.clear),
+                        onPressed: _clearSupplier,
+                      ),
+                  ],
+                ),
+              ),
+              onTap: _pickSupplier,
             ),
             const SizedBox(height: 8),
             TextField(

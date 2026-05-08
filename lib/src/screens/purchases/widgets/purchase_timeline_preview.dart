@@ -35,7 +35,16 @@ class PurchaseTimelinePreview extends StatelessWidget {
 
         final isReceived = p.status == PurchaseOrderStatus.received;
         final isPaid = p.paymentStatusEnum == PaymentStatus.paid;
-        final isVat = p.vatInvoiceStatusEnum == VatInvoiceStatus.issued;
+        final isVat = p.vatInvoiceStatusEnum == VatInvoiceStatus.issued ||
+            p.vatInvoiceStatusEnum == VatInvoiceStatus.cardPaid;
+        final vatLabel = switch (p.vatInvoiceStatusEnum) {
+          VatInvoiceStatus.issued => '부가세 발행완료',
+          VatInvoiceStatus.cardPaid => '카드로 결제',
+          VatInvoiceStatus.pending => '부가세 발행예정',
+        };
+        final vatDate = p.vatInvoiceStatusEnum == VatInvoiceStatus.cardPaid
+            ? p.paidAt
+            : (isVat ? p.vatInvoiceIssuedAt : p.vatInvoiceDueAt);
 
         return InkWell(
           onTap: onTap,
@@ -70,8 +79,8 @@ class PurchaseTimelinePreview extends StatelessWidget {
                       done: isPaid,
                     ),
                     _step(
-                      label: isVat ? '부가세 발행완료' : '부가세 발행예정',
-                      date: isVat ? p.vatInvoiceIssuedAt : p.vatInvoiceDueAt,
+                      label: vatLabel,
+                      date: vatDate,
                       done: isVat,
                     ),
                   ],
@@ -147,16 +156,34 @@ class PurchaseTimelinePreview extends StatelessWidget {
 
                 /// 🔥 세금 버튼 (여기 추가)
                 if (isPaid && !isVat)
-                  FilledButton.tonal(
-                    onPressed: () async {
-                      await repo.updatePurchaseOrder(
-                        p.copyWith(
-                          vatInvoiceIssuedAt: DateTime.now(),
-                          vatInvoiceStatus: 'issued',
-                        ),
-                      );
-                    },
-                    child: const Text('세금발행'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          await repo.updatePurchaseOrder(
+                            p.copyWith(
+                              vatInvoiceIssuedAt: DateTime.now(),
+                              vatInvoiceStatus: 'issued',
+                            ),
+                          );
+                        },
+                        child: const Text('세금발행'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          await repo.updatePurchaseOrder(
+                            p.copyWith(
+                              vatInvoiceIssuedAt: null,
+                              vatInvoiceDueAt: null,
+                              vatInvoiceStatus: 'cardPaid',
+                            ),
+                          );
+                        },
+                        child: const Text('카드결제'),
+                      ),
+                    ],
                   ),
               ],
             ),

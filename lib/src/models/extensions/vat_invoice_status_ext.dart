@@ -6,7 +6,7 @@ extension VatInvoiceStatusX on VatInvoiceStatus {
 
   static VatInvoiceStatus from(String? s) {
     return VatInvoiceStatus.values.firstWhere(
-          (e) => e.name == s,
+      (e) => e.name == s,
       orElse: () => VatInvoiceStatus.pending,
     );
   }
@@ -19,6 +19,8 @@ extension VatInvoiceStatusX on VatInvoiceStatus {
         return t.vat_pending;
       case VatInvoiceStatus.issued:
         return t.vat_issued;
+      case VatInvoiceStatus.cardPaid:
+        return '카드로 결제';
     }
   }
 }

@@ -1261,7 +1261,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         break;
 
       case 3:
-        final result = await showModalBottomSheet<bool>(
+        final result = await showModalBottomSheet<VatInvoiceStatus>(
           context: context,
           builder: (_) {
             return SafeArea(
@@ -1270,11 +1270,18 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 children: [
                   ListTile(
                     title: const Text('세금계산서 발행완료'),
-                    onTap: () => Navigator.pop(context, true),
+                    onTap: () =>
+                        Navigator.pop(context, VatInvoiceStatus.issued),
+                  ),
+                  ListTile(
+                    title: const Text('카드로 결제'),
+                    onTap: () =>
+                        Navigator.pop(context, VatInvoiceStatus.cardPaid),
                   ),
                   ListTile(
                     title: const Text('세금계산서 발행예정'),
-                    onTap: () => Navigator.pop(context, false),
+                    onTap: () =>
+                        Navigator.pop(context, VatInvoiceStatus.pending),
                   ),
                 ],
               ),
@@ -1284,7 +1291,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
         if (result == null) return;
 
-        if (result == false) {
+        if (result == VatInvoiceStatus.pending) {
           final picked = await showDatePicker(
             context: context,
             initialDate: po.vatInvoiceDueAt ?? _endOfMonth(),
@@ -1299,6 +1306,19 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               vatInvoiceStatus: VatInvoiceStatus.pending.value,
               vatInvoiceIssuedAt: null,
               vatInvoiceDueAt: picked,
+              updatedAt: DateTime.now(),
+            ),
+          );
+          await _reload();
+          return;
+        }
+
+        if (result == VatInvoiceStatus.cardPaid) {
+          await widget.repo.updatePurchaseOrder(
+            po.copyWith(
+              vatInvoiceStatus: VatInvoiceStatus.cardPaid.value,
+              vatInvoiceIssuedAt: null,
+              vatInvoiceDueAt: null,
               updatedAt: DateTime.now(),
             ),
           );
@@ -1625,7 +1645,9 @@ class PurchaseTimeline extends StatelessWidget {
 
   bool get isPaid => po.paymentStatusEnum == PaymentStatus.paid;
 
-  bool get isVatIssued => po.vatInvoiceStatusEnum == VatInvoiceStatus.issued;
+  bool get isVatIssued =>
+      po.vatInvoiceStatusEnum == VatInvoiceStatus.issued ||
+      po.vatInvoiceStatusEnum == VatInvoiceStatus.cardPaid;
 
   Widget _segmentBox({required bool active}) {
     return Expanded(
@@ -1658,7 +1680,16 @@ class PurchaseTimeline extends StatelessWidget {
 
   String _paymentLabel() => isPaid ? '결제완료' : '결제예정';
 
-  String _vatLabel() => isVatIssued ? '세금계산서 발행완료' : '세금계산서 발행예정';
+  String _vatLabel() {
+    switch (po.vatInvoiceStatusEnum) {
+      case VatInvoiceStatus.issued:
+        return '세금계산서 발행완료';
+      case VatInvoiceStatus.cardPaid:
+        return '카드로 결제';
+      case VatInvoiceStatus.pending:
+        return '세금계산서 발행예정';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1677,7 +1708,9 @@ class PurchaseTimeline extends StatelessWidget {
       _Step(
         _vatLabel(),
         isVatIssued,
-        isVatIssued ? po.vatInvoiceIssuedAt : po.vatInvoiceDueAt,
+        po.vatInvoiceStatusEnum == VatInvoiceStatus.cardPaid
+            ? po.paidAt
+            : (isVatIssued ? po.vatInvoiceIssuedAt : po.vatInvoiceDueAt),
       ),
     ];
 

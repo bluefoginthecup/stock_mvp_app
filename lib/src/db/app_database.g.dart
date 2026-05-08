@@ -149,6 +149,12 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
   late final GeneratedColumn<int> defaultSupplierId = GeneratedColumn<int>(
       'default_supplier_id', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _defaultSupplierUidMeta =
+      const VerificationMeta('defaultSupplierUid');
+  @override
+  late final GeneratedColumn<String> defaultSupplierUid =
+      GeneratedColumn<String>('default_supplier_uid', aliasedName, true,
+          type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _defaultPriceMeta =
       const VerificationMeta('defaultPrice');
   @override
@@ -255,6 +261,7 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
         stockHintsJson,
         supplierName,
         defaultSupplierId,
+        defaultSupplierUid,
         defaultPrice,
         defaultPurchasePrice,
         defaultSalePrice,
@@ -395,6 +402,12 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           defaultSupplierId.isAcceptableOrUnknown(
               data['default_supplier_id']!, _defaultSupplierIdMeta));
     }
+    if (data.containsKey('default_supplier_uid')) {
+      context.handle(
+          _defaultSupplierUidMeta,
+          defaultSupplierUid.isAcceptableOrUnknown(
+              data['default_supplier_uid']!, _defaultSupplierUidMeta));
+    }
     if (data.containsKey('default_price')) {
       context.handle(
           _defaultPriceMeta,
@@ -516,6 +529,8 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, ItemRow> {
           .read(DriftSqlType.string, data['${effectivePrefix}supplier_name']),
       defaultSupplierId: attachedDatabase.typeMapping.read(
           DriftSqlType.int, data['${effectivePrefix}default_supplier_id']),
+      defaultSupplierUid: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}default_supplier_uid']),
       defaultPrice: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}default_price']),
       defaultPurchasePrice: attachedDatabase.typeMapping.read(
@@ -575,6 +590,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
   final String? stockHintsJson;
   final String? supplierName;
   final int? defaultSupplierId;
+  final String? defaultSupplierUid;
   final double? defaultPrice;
   final double? defaultPurchasePrice;
   final double? defaultSalePrice;
@@ -610,6 +626,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       this.stockHintsJson,
       this.supplierName,
       this.defaultSupplierId,
+      this.defaultSupplierUid,
       this.defaultPrice,
       this.defaultPurchasePrice,
       this.defaultSalePrice,
@@ -662,6 +679,9 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
     }
     if (!nullToAbsent || defaultSupplierId != null) {
       map['default_supplier_id'] = Variable<int>(defaultSupplierId);
+    }
+    if (!nullToAbsent || defaultSupplierUid != null) {
+      map['default_supplier_uid'] = Variable<String>(defaultSupplierUid);
     }
     if (!nullToAbsent || defaultPrice != null) {
       map['default_price'] = Variable<double>(defaultPrice);
@@ -737,6 +757,9 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       defaultSupplierId: defaultSupplierId == null && nullToAbsent
           ? const Value.absent()
           : Value(defaultSupplierId),
+      defaultSupplierUid: defaultSupplierUid == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultSupplierUid),
       defaultPrice: defaultPrice == null && nullToAbsent
           ? const Value.absent()
           : Value(defaultPrice),
@@ -799,6 +822,8 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       stockHintsJson: serializer.fromJson<String?>(json['stockHintsJson']),
       supplierName: serializer.fromJson<String?>(json['supplierName']),
       defaultSupplierId: serializer.fromJson<int?>(json['defaultSupplierId']),
+      defaultSupplierUid:
+          serializer.fromJson<String?>(json['defaultSupplierUid']),
       defaultPrice: serializer.fromJson<double?>(json['defaultPrice']),
       defaultPurchasePrice:
           serializer.fromJson<double?>(json['defaultPurchasePrice']),
@@ -843,6 +868,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       'stockHintsJson': serializer.toJson<String?>(stockHintsJson),
       'supplierName': serializer.toJson<String?>(supplierName),
       'defaultSupplierId': serializer.toJson<int?>(defaultSupplierId),
+      'defaultSupplierUid': serializer.toJson<String?>(defaultSupplierUid),
       'defaultPrice': serializer.toJson<double?>(defaultPrice),
       'defaultPurchasePrice': serializer.toJson<double?>(defaultPurchasePrice),
       'defaultSalePrice': serializer.toJson<double?>(defaultSalePrice),
@@ -883,6 +909,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           Value<String?> stockHintsJson = const Value.absent(),
           Value<String?> supplierName = const Value.absent(),
           Value<int?> defaultSupplierId = const Value.absent(),
+          Value<String?> defaultSupplierUid = const Value.absent(),
           Value<double?> defaultPrice = const Value.absent(),
           Value<double?> defaultPurchasePrice = const Value.absent(),
           Value<double?> defaultSalePrice = const Value.absent(),
@@ -923,6 +950,9 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         defaultSupplierId: defaultSupplierId.present
             ? defaultSupplierId.value
             : this.defaultSupplierId,
+        defaultSupplierUid: defaultSupplierUid.present
+            ? defaultSupplierUid.value
+            : this.defaultSupplierUid,
         defaultPrice:
             defaultPrice.present ? defaultPrice.value : this.defaultPrice,
         defaultPurchasePrice: defaultPurchasePrice.present
@@ -993,6 +1023,9 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
       defaultSupplierId: data.defaultSupplierId.present
           ? data.defaultSupplierId.value
           : this.defaultSupplierId,
+      defaultSupplierUid: data.defaultSupplierUid.present
+          ? data.defaultSupplierUid.value
+          : this.defaultSupplierUid,
       defaultPrice: data.defaultPrice.present
           ? data.defaultPrice.value
           : this.defaultPrice,
@@ -1050,6 +1083,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           ..write('stockHintsJson: $stockHintsJson, ')
           ..write('supplierName: $supplierName, ')
           ..write('defaultSupplierId: $defaultSupplierId, ')
+          ..write('defaultSupplierUid: $defaultSupplierUid, ')
           ..write('defaultPrice: $defaultPrice, ')
           ..write('defaultPurchasePrice: $defaultPurchasePrice, ')
           ..write('defaultSalePrice: $defaultSalePrice, ')
@@ -1090,6 +1124,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
         stockHintsJson,
         supplierName,
         defaultSupplierId,
+        defaultSupplierUid,
         defaultPrice,
         defaultPurchasePrice,
         defaultSalePrice,
@@ -1129,6 +1164,7 @@ class ItemRow extends DataClass implements Insertable<ItemRow> {
           other.stockHintsJson == this.stockHintsJson &&
           other.supplierName == this.supplierName &&
           other.defaultSupplierId == this.defaultSupplierId &&
+          other.defaultSupplierUid == this.defaultSupplierUid &&
           other.defaultPrice == this.defaultPrice &&
           other.defaultPurchasePrice == this.defaultPurchasePrice &&
           other.defaultSalePrice == this.defaultSalePrice &&
@@ -1166,6 +1202,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
   final Value<String?> stockHintsJson;
   final Value<String?> supplierName;
   final Value<int?> defaultSupplierId;
+  final Value<String?> defaultSupplierUid;
   final Value<double?> defaultPrice;
   final Value<double?> defaultPurchasePrice;
   final Value<double?> defaultSalePrice;
@@ -1202,6 +1239,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.stockHintsJson = const Value.absent(),
     this.supplierName = const Value.absent(),
     this.defaultSupplierId = const Value.absent(),
+    this.defaultSupplierUid = const Value.absent(),
     this.defaultPrice = const Value.absent(),
     this.defaultPurchasePrice = const Value.absent(),
     this.defaultSalePrice = const Value.absent(),
@@ -1239,6 +1277,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     this.stockHintsJson = const Value.absent(),
     this.supplierName = const Value.absent(),
     this.defaultSupplierId = const Value.absent(),
+    this.defaultSupplierUid = const Value.absent(),
     this.defaultPrice = const Value.absent(),
     this.defaultPurchasePrice = const Value.absent(),
     this.defaultSalePrice = const Value.absent(),
@@ -1280,6 +1319,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     Expression<String>? stockHintsJson,
     Expression<String>? supplierName,
     Expression<int>? defaultSupplierId,
+    Expression<String>? defaultSupplierUid,
     Expression<double>? defaultPrice,
     Expression<double>? defaultPurchasePrice,
     Expression<double>? defaultSalePrice,
@@ -1318,6 +1358,8 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       if (stockHintsJson != null) 'stock_hints_json': stockHintsJson,
       if (supplierName != null) 'supplier_name': supplierName,
       if (defaultSupplierId != null) 'default_supplier_id': defaultSupplierId,
+      if (defaultSupplierUid != null)
+        'default_supplier_uid': defaultSupplierUid,
       if (defaultPrice != null) 'default_price': defaultPrice,
       if (defaultPurchasePrice != null)
         'default_purchase_price': defaultPurchasePrice,
@@ -1361,6 +1403,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       Value<String?>? stockHintsJson,
       Value<String?>? supplierName,
       Value<int?>? defaultSupplierId,
+      Value<String?>? defaultSupplierUid,
       Value<double?>? defaultPrice,
       Value<double?>? defaultPurchasePrice,
       Value<double?>? defaultSalePrice,
@@ -1397,6 +1440,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
       stockHintsJson: stockHintsJson ?? this.stockHintsJson,
       supplierName: supplierName ?? this.supplierName,
       defaultSupplierId: defaultSupplierId ?? this.defaultSupplierId,
+      defaultSupplierUid: defaultSupplierUid ?? this.defaultSupplierUid,
       defaultPrice: defaultPrice ?? this.defaultPrice,
       defaultPurchasePrice: defaultPurchasePrice ?? this.defaultPurchasePrice,
       defaultSalePrice: defaultSalePrice ?? this.defaultSalePrice,
@@ -1485,6 +1529,9 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
     if (defaultSupplierId.present) {
       map['default_supplier_id'] = Variable<int>(defaultSupplierId.value);
     }
+    if (defaultSupplierUid.present) {
+      map['default_supplier_uid'] = Variable<String>(defaultSupplierUid.value);
+    }
     if (defaultPrice.present) {
       map['default_price'] = Variable<double>(defaultPrice.value);
     }
@@ -1555,6 +1602,7 @@ class ItemsCompanion extends UpdateCompanion<ItemRow> {
           ..write('stockHintsJson: $stockHintsJson, ')
           ..write('supplierName: $supplierName, ')
           ..write('defaultSupplierId: $defaultSupplierId, ')
+          ..write('defaultSupplierUid: $defaultSupplierUid, ')
           ..write('defaultPrice: $defaultPrice, ')
           ..write('defaultPurchasePrice: $defaultPurchasePrice, ')
           ..write('defaultSalePrice: $defaultSalePrice, ')
@@ -12632,6 +12680,7 @@ typedef $$ItemsTableCreateCompanionBuilder = ItemsCompanion Function({
   Value<String?> stockHintsJson,
   Value<String?> supplierName,
   Value<int?> defaultSupplierId,
+  Value<String?> defaultSupplierUid,
   Value<double?> defaultPrice,
   Value<double?> defaultPurchasePrice,
   Value<double?> defaultSalePrice,
@@ -12669,6 +12718,7 @@ typedef $$ItemsTableUpdateCompanionBuilder = ItemsCompanion Function({
   Value<String?> stockHintsJson,
   Value<String?> supplierName,
   Value<int?> defaultSupplierId,
+  Value<String?> defaultSupplierUid,
   Value<double?> defaultPrice,
   Value<double?> defaultPurchasePrice,
   Value<double?> defaultSalePrice,
@@ -12882,6 +12932,10 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<int> get defaultSupplierId => $composableBuilder(
       column: $table.defaultSupplierId,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get defaultSupplierUid => $composableBuilder(
+      column: $table.defaultSupplierUid,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<double> get defaultPrice => $composableBuilder(
@@ -13179,6 +13233,10 @@ class $$ItemsTableOrderingComposer
       column: $table.defaultSupplierId,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get defaultSupplierUid => $composableBuilder(
+      column: $table.defaultSupplierUid,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<double> get defaultPrice => $composableBuilder(
       column: $table.defaultPrice,
       builder: (column) => ColumnOrderings(column));
@@ -13298,6 +13356,9 @@ class $$ItemsTableAnnotationComposer
 
   GeneratedColumn<int> get defaultSupplierId => $composableBuilder(
       column: $table.defaultSupplierId, builder: (column) => column);
+
+  GeneratedColumn<String> get defaultSupplierUid => $composableBuilder(
+      column: $table.defaultSupplierUid, builder: (column) => column);
 
   GeneratedColumn<double> get defaultPrice => $composableBuilder(
       column: $table.defaultPrice, builder: (column) => column);
@@ -13557,6 +13618,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> stockHintsJson = const Value.absent(),
             Value<String?> supplierName = const Value.absent(),
             Value<int?> defaultSupplierId = const Value.absent(),
+            Value<String?> defaultSupplierUid = const Value.absent(),
             Value<double?> defaultPrice = const Value.absent(),
             Value<double?> defaultPurchasePrice = const Value.absent(),
             Value<double?> defaultSalePrice = const Value.absent(),
@@ -13594,6 +13656,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             stockHintsJson: stockHintsJson,
             supplierName: supplierName,
             defaultSupplierId: defaultSupplierId,
+            defaultSupplierUid: defaultSupplierUid,
             defaultPrice: defaultPrice,
             defaultPurchasePrice: defaultPurchasePrice,
             defaultSalePrice: defaultSalePrice,
@@ -13631,6 +13694,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             Value<String?> stockHintsJson = const Value.absent(),
             Value<String?> supplierName = const Value.absent(),
             Value<int?> defaultSupplierId = const Value.absent(),
+            Value<String?> defaultSupplierUid = const Value.absent(),
             Value<double?> defaultPrice = const Value.absent(),
             Value<double?> defaultPurchasePrice = const Value.absent(),
             Value<double?> defaultSalePrice = const Value.absent(),
@@ -13668,6 +13732,7 @@ class $$ItemsTableTableManager extends RootTableManager<
             stockHintsJson: stockHintsJson,
             supplierName: supplierName,
             defaultSupplierId: defaultSupplierId,
+            defaultSupplierUid: defaultSupplierUid,
             defaultPrice: defaultPrice,
             defaultPurchasePrice: defaultPurchasePrice,
             defaultSalePrice: defaultSalePrice,

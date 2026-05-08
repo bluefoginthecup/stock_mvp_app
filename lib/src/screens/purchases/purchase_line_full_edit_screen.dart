@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/item.dart';
 import '../../models/purchase_line.dart';
+import '../../models/purchase_order.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/item_picker_sheet.dart';
 import '../../ui/common/suggestion_panel.dart';
@@ -102,6 +103,9 @@ class _PurchaseLineFullEditScreenState
   bool _itemSearching = false;
   bool _suppressItemSearch = false;
   List<Item> _itemResults = <Item>[];
+  PurchaseOrder? _purchaseOrder;
+  VatType _vatType = VatType.exclusive;
+  bool _vatTypeTouched = false;
 
   @override
   void initState() {
@@ -127,6 +131,7 @@ class _PurchaseLineFullEditScreenState
         _loadPrintAttrCandidates(initialItemId);
       });
     }
+    _loadPurchaseOrderVatType();
   }
 
   @override
@@ -279,6 +284,19 @@ class _PurchaseLineFullEditScreenState
     });
   }
 
+  Future<void> _loadPurchaseOrderVatType() async {
+    final po = await widget.repo.getPurchaseOrderById(widget.orderId);
+    if (!mounted || po == null) return;
+    if (_vatTypeTouched) {
+      _purchaseOrder = po;
+      return;
+    }
+    setState(() {
+      _purchaseOrder = po;
+      _vatType = po.vatType;
+    });
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -317,6 +335,13 @@ class _PurchaseLineFullEditScreenState
       lines.add(newLine);
     }
     await widget.repo.upsertLines(widget.orderId, lines);
+    final po = _purchaseOrder ??
+        await widget.repo.getPurchaseOrderById(widget.orderId);
+    if (po != null && po.vatType != _vatType) {
+      await widget.repo.updatePurchaseOrder(
+        po.copyWith(vatType: _vatType, updatedAt: DateTime.now()),
+      );
+    }
     if (!mounted) return;
     Navigator.pop(context, newLine);
   }
@@ -580,6 +605,44 @@ class _PurchaseLineFullEditScreenState
     );
   }
 
+  Widget _buildVatTypeSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('단가 부가세 기준', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        SegmentedButton<VatType>(
+          segments: const [
+            ButtonSegment(
+              value: VatType.exclusive,
+              label: Text('별도'),
+            ),
+            ButtonSegment(
+              value: VatType.inclusive,
+              label: Text('포함'),
+            ),
+            ButtonSegment(
+              value: VatType.exempt,
+              label: Text('면세'),
+            ),
+          ],
+          selected: {_vatType},
+          onSelectionChanged: (values) {
+            setState(() {
+              _vatType = values.first;
+              _vatTypeTouched = true;
+            });
+          },
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '발주서 전체 합계 계산에 적용됩니다.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
   Widget _buildPrintAttrRow(_PrintAttrEditorRow row) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -713,6 +776,8 @@ class _PurchaseLineFullEditScreenState
                   ),
                 ],
               ),
+              const SizedBox(height: 12),
+              _buildVatTypeSelector(),
               const SizedBox(height: 16),
               Text('옵션', style: text.titleSmall),
               const SizedBox(height: 8),

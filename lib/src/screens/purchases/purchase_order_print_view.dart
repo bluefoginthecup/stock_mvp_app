@@ -130,9 +130,14 @@ class PurchaseOrderPrintView extends StatelessWidget {
         : order.supplierName.trim();
 
     final sumAmount = lines.fold<double>(0, (p, e) => p + e.amount);
-    final supply = sumAmount;
-    final vat = (supply * 0.1).roundToDouble();
-    final total = (supply + vat);
+    final vat = switch (order.vatType) {
+      VatType.exempt => 0.0,
+      VatType.inclusive => (sumAmount / 11).roundToDouble(),
+      VatType.exclusive => (sumAmount * 0.1).roundToDouble(),
+    };
+    final supply =
+        order.vatType == VatType.inclusive ? sumAmount - vat : sumAmount;
+    final total = order.vatType == VatType.inclusive ? sumAmount : supply + vat;
 
     return DefaultTextStyle.merge(
       style: body,
@@ -414,9 +419,14 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
         : order.supplierName.trim();
 
     final sumAmount = lines.fold<double>(0, (p, e) => p + e.amount);
-    final supply = sumAmount;
-    final vat = (supply * 0.1).roundToDouble();
-    final total = supply + vat;
+    final vat = switch (order.vatType) {
+      VatType.exempt => 0.0,
+      VatType.inclusive => (sumAmount / 11).roundToDouble(),
+      VatType.exclusive => (sumAmount * 0.1).roundToDouble(),
+    };
+    final supply =
+        order.vatType == VatType.inclusive ? sumAmount - vat : sumAmount;
+    final total = order.vatType == VatType.inclusive ? sumAmount : supply + vat;
 
     return Scaffold(
       backgroundColor: Colors.white,

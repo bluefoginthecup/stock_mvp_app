@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/item.dart';
+import '../../models/suppliers.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/path_picker.dart';
+import '../../ui/common/supplier_picker_sheet.dart';
 import '../../utils/item_registration.dart';
 import '../../utils/reorder_schedule_utils.dart';
 
@@ -107,6 +109,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
   late TextEditingController supplierC;
   late TextEditingController purchasePriceC;
   late TextEditingController salePriceC;
+  String? _selectedSupplierId;
   late TextEditingController reorderCustomDaysC;
   int? _reorderIntervalDays;
   bool _reorderCustomSelected = false;
@@ -316,10 +319,9 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       conversionRate: convRate ?? i.conversionRate,
       conversionMode: conversionMode,
       stockHints: i.stockHints,
-      supplierName: supplierC.text.trim().isEmpty
-          ? i.supplierName
-          : supplierC.text.trim(),
-      defaultSupplierId: i.defaultSupplierId,
+      supplierName:
+          supplierC.text.trim().isEmpty ? null : supplierC.text.trim(),
+      defaultSupplierId: _selectedSupplierId,
       defaultPrice: i.defaultPrice,
       isFavorite: i.isFavorite,
       defaultPurchasePrice: purchasePrice ?? i.defaultPurchasePrice,
@@ -342,6 +344,30 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       );
     }
     Navigator.pop(context, true);
+  }
+
+  Future<void> _pickSupplier() async {
+    final supplier = await showSupplierPickerSheet(
+      context,
+      initialQuery: supplierC.text.trim(),
+      title: '아이템 공급처 선택',
+    );
+    if (!mounted || supplier == null) return;
+    _applySupplier(supplier);
+  }
+
+  void _applySupplier(Supplier supplier) {
+    setState(() {
+      _selectedSupplierId = supplier.id;
+      supplierC.text = supplier.name;
+    });
+  }
+
+  void _clearSupplier() {
+    setState(() {
+      _selectedSupplierId = null;
+      supplierC.clear();
+    });
   }
 
   Widget _buildReorderSection(Item item) {
@@ -659,6 +685,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
           conversionRateC.text = item.conversionRate.toString();
           conversionMode = item.conversionMode;
           supplierC.text = item.supplierName ?? '';
+          _selectedSupplierId = item.defaultSupplierId;
           purchasePriceC.text = (item.defaultPurchasePrice ?? 0).toString();
           salePriceC.text = (item.defaultSalePrice ?? 0).toString();
           _reorderIntervalDays = item.reorderIntervalDays;
@@ -854,7 +881,27 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
                   // build 안
                   TextFormField(
                     controller: supplierC,
-                    decoration: const InputDecoration(labelText: '공급처(상호)'),
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      labelText: '공급처 / 거래처',
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: '거래처 선택',
+                            icon: const Icon(Icons.business),
+                            onPressed: _pickSupplier,
+                          ),
+                          if (supplierC.text.trim().isNotEmpty)
+                            IconButton(
+                              tooltip: '공급처 해제',
+                              icon: const Icon(Icons.clear),
+                              onPressed: _clearSupplier,
+                            ),
+                        ],
+                      ),
+                    ),
+                    onTap: _pickSupplier,
                   ),
                   const SizedBox(height: 12),
                   _buildAttrsEditor(context),
