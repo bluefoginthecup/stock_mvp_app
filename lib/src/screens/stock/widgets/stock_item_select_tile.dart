@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../models/item.dart';
 import '../../../models/storage_location.dart';
 import '../../../utils/item_registration.dart';
+import '../../../utils/reorder_schedule_utils.dart';
 import 'reorder_badge.dart';
 
 class StockItemSelectTile extends StatelessWidget {
@@ -80,6 +81,23 @@ class StockItemSelectTile extends StatelessWidget {
               ],
             ),
           ),
+          if (item.nextReorderDate != null) ...[
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                const Icon(Icons.event_repeat, size: 14, color: Colors.black45),
+                const SizedBox(width: 2),
+                Flexible(
+                  child: Text(
+                    '다음 발주: ${_formatDate(item.nextReorderDate!)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ),
+              ],
+            ),
+          ],
           ReorderBadge(item: item, dense: true),
         ],
       ),
@@ -98,5 +116,10 @@ class StockItemSelectTile extends StatelessWidget {
         '위치 미지정';
     if (summary.extraLocationCount <= 0) return path;
     return '$path 외 ${summary.extraLocationCount}곳';
+  }
+
+  String _formatDate(DateTime value) {
+    final d = ReorderScheduleUtils.dateOnly(value);
+    return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
   }
 }
