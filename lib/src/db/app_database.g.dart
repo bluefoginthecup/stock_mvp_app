@@ -8702,6 +8702,48 @@ class $QuoteLinesTable extends QuoteLines
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _vatTypeMeta =
+      const VerificationMeta('vatType');
+  @override
+  late final GeneratedColumn<int> vatType = GeneratedColumn<int>(
+      'vat_type', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _supplyAmountMeta =
+      const VerificationMeta('supplyAmount');
+  @override
+  late final GeneratedColumn<double> supplyAmount = GeneratedColumn<double>(
+      'supply_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _vatAmountMeta =
+      const VerificationMeta('vatAmount');
+  @override
+  late final GeneratedColumn<double> vatAmount = GeneratedColumn<double>(
+      'vat_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _totalAmountMeta =
+      const VerificationMeta('totalAmount');
+  @override
+  late final GeneratedColumn<double> totalAmount = GeneratedColumn<double>(
+      'total_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _amountEditedMeta =
+      const VerificationMeta('amountEdited');
+  @override
+  late final GeneratedColumn<bool> amountEdited = GeneratedColumn<bool>(
+      'amount_edited', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("amount_edited" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _memoMeta = const VerificationMeta('memo');
   @override
   late final GeneratedColumn<String> memo = GeneratedColumn<String>(
@@ -8732,6 +8774,11 @@ class $QuoteLinesTable extends QuoteLines
         unit,
         qty,
         unitPrice,
+        vatType,
+        supplyAmount,
+        vatAmount,
+        totalAmount,
+        amountEdited,
         memo,
         isDeleted,
         deletedAt
@@ -8785,6 +8832,32 @@ class $QuoteLinesTable extends QuoteLines
       context.handle(_unitPriceMeta,
           unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta));
     }
+    if (data.containsKey('vat_type')) {
+      context.handle(_vatTypeMeta,
+          vatType.isAcceptableOrUnknown(data['vat_type']!, _vatTypeMeta));
+    }
+    if (data.containsKey('supply_amount')) {
+      context.handle(
+          _supplyAmountMeta,
+          supplyAmount.isAcceptableOrUnknown(
+              data['supply_amount']!, _supplyAmountMeta));
+    }
+    if (data.containsKey('vat_amount')) {
+      context.handle(_vatAmountMeta,
+          vatAmount.isAcceptableOrUnknown(data['vat_amount']!, _vatAmountMeta));
+    }
+    if (data.containsKey('total_amount')) {
+      context.handle(
+          _totalAmountMeta,
+          totalAmount.isAcceptableOrUnknown(
+              data['total_amount']!, _totalAmountMeta));
+    }
+    if (data.containsKey('amount_edited')) {
+      context.handle(
+          _amountEditedMeta,
+          amountEdited.isAcceptableOrUnknown(
+              data['amount_edited']!, _amountEditedMeta));
+    }
     if (data.containsKey('memo')) {
       context.handle(
           _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
@@ -8820,6 +8893,16 @@ class $QuoteLinesTable extends QuoteLines
           .read(DriftSqlType.double, data['${effectivePrefix}qty'])!,
       unitPrice: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}unit_price'])!,
+      vatType: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}vat_type'])!,
+      supplyAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}supply_amount'])!,
+      vatAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}vat_amount'])!,
+      totalAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_amount'])!,
+      amountEdited: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}amount_edited'])!,
       memo: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
       isDeleted: attachedDatabase.typeMapping
@@ -8843,6 +8926,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
   final String unit;
   final double qty;
   final double unitPrice;
+  final int vatType;
+  final double supplyAmount;
+  final double vatAmount;
+  final double totalAmount;
+  final bool amountEdited;
   final String? memo;
   final bool isDeleted;
   final String? deletedAt;
@@ -8854,6 +8942,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
       required this.unit,
       required this.qty,
       required this.unitPrice,
+      required this.vatType,
+      required this.supplyAmount,
+      required this.vatAmount,
+      required this.totalAmount,
+      required this.amountEdited,
       this.memo,
       required this.isDeleted,
       this.deletedAt});
@@ -8867,6 +8960,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
     map['unit'] = Variable<String>(unit);
     map['qty'] = Variable<double>(qty);
     map['unit_price'] = Variable<double>(unitPrice);
+    map['vat_type'] = Variable<int>(vatType);
+    map['supply_amount'] = Variable<double>(supplyAmount);
+    map['vat_amount'] = Variable<double>(vatAmount);
+    map['total_amount'] = Variable<double>(totalAmount);
+    map['amount_edited'] = Variable<bool>(amountEdited);
     if (!nullToAbsent || memo != null) {
       map['memo'] = Variable<String>(memo);
     }
@@ -8886,6 +8984,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
       unit: Value(unit),
       qty: Value(qty),
       unitPrice: Value(unitPrice),
+      vatType: Value(vatType),
+      supplyAmount: Value(supplyAmount),
+      vatAmount: Value(vatAmount),
+      totalAmount: Value(totalAmount),
+      amountEdited: Value(amountEdited),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
       isDeleted: Value(isDeleted),
       deletedAt: deletedAt == null && nullToAbsent
@@ -8905,6 +9008,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
       unit: serializer.fromJson<String>(json['unit']),
       qty: serializer.fromJson<double>(json['qty']),
       unitPrice: serializer.fromJson<double>(json['unitPrice']),
+      vatType: serializer.fromJson<int>(json['vatType']),
+      supplyAmount: serializer.fromJson<double>(json['supplyAmount']),
+      vatAmount: serializer.fromJson<double>(json['vatAmount']),
+      totalAmount: serializer.fromJson<double>(json['totalAmount']),
+      amountEdited: serializer.fromJson<bool>(json['amountEdited']),
       memo: serializer.fromJson<String?>(json['memo']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
@@ -8921,6 +9029,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
       'unit': serializer.toJson<String>(unit),
       'qty': serializer.toJson<double>(qty),
       'unitPrice': serializer.toJson<double>(unitPrice),
+      'vatType': serializer.toJson<int>(vatType),
+      'supplyAmount': serializer.toJson<double>(supplyAmount),
+      'vatAmount': serializer.toJson<double>(vatAmount),
+      'totalAmount': serializer.toJson<double>(totalAmount),
+      'amountEdited': serializer.toJson<bool>(amountEdited),
       'memo': serializer.toJson<String?>(memo),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
@@ -8935,6 +9048,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
           String? unit,
           double? qty,
           double? unitPrice,
+          int? vatType,
+          double? supplyAmount,
+          double? vatAmount,
+          double? totalAmount,
+          bool? amountEdited,
           Value<String?> memo = const Value.absent(),
           bool? isDeleted,
           Value<String?> deletedAt = const Value.absent()}) =>
@@ -8946,6 +9064,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
         unit: unit ?? this.unit,
         qty: qty ?? this.qty,
         unitPrice: unitPrice ?? this.unitPrice,
+        vatType: vatType ?? this.vatType,
+        supplyAmount: supplyAmount ?? this.supplyAmount,
+        vatAmount: vatAmount ?? this.vatAmount,
+        totalAmount: totalAmount ?? this.totalAmount,
+        amountEdited: amountEdited ?? this.amountEdited,
         memo: memo.present ? memo.value : this.memo,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
@@ -8959,6 +9082,16 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
       unit: data.unit.present ? data.unit.value : this.unit,
       qty: data.qty.present ? data.qty.value : this.qty,
       unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      vatType: data.vatType.present ? data.vatType.value : this.vatType,
+      supplyAmount: data.supplyAmount.present
+          ? data.supplyAmount.value
+          : this.supplyAmount,
+      vatAmount: data.vatAmount.present ? data.vatAmount.value : this.vatAmount,
+      totalAmount:
+          data.totalAmount.present ? data.totalAmount.value : this.totalAmount,
+      amountEdited: data.amountEdited.present
+          ? data.amountEdited.value
+          : this.amountEdited,
       memo: data.memo.present ? data.memo.value : this.memo,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
@@ -8975,6 +9108,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
           ..write('unit: $unit, ')
           ..write('qty: $qty, ')
           ..write('unitPrice: $unitPrice, ')
+          ..write('vatType: $vatType, ')
+          ..write('supplyAmount: $supplyAmount, ')
+          ..write('vatAmount: $vatAmount, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('amountEdited: $amountEdited, ')
           ..write('memo: $memo, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt')
@@ -8983,8 +9121,22 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
   }
 
   @override
-  int get hashCode => Object.hash(id, quoteId, itemId, name, unit, qty,
-      unitPrice, memo, isDeleted, deletedAt);
+  int get hashCode => Object.hash(
+      id,
+      quoteId,
+      itemId,
+      name,
+      unit,
+      qty,
+      unitPrice,
+      vatType,
+      supplyAmount,
+      vatAmount,
+      totalAmount,
+      amountEdited,
+      memo,
+      isDeleted,
+      deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -8996,6 +9148,11 @@ class QuoteLineRow extends DataClass implements Insertable<QuoteLineRow> {
           other.unit == this.unit &&
           other.qty == this.qty &&
           other.unitPrice == this.unitPrice &&
+          other.vatType == this.vatType &&
+          other.supplyAmount == this.supplyAmount &&
+          other.vatAmount == this.vatAmount &&
+          other.totalAmount == this.totalAmount &&
+          other.amountEdited == this.amountEdited &&
           other.memo == this.memo &&
           other.isDeleted == this.isDeleted &&
           other.deletedAt == this.deletedAt);
@@ -9009,6 +9166,11 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
   final Value<String> unit;
   final Value<double> qty;
   final Value<double> unitPrice;
+  final Value<int> vatType;
+  final Value<double> supplyAmount;
+  final Value<double> vatAmount;
+  final Value<double> totalAmount;
+  final Value<bool> amountEdited;
   final Value<String?> memo;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
@@ -9021,6 +9183,11 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
     this.unit = const Value.absent(),
     this.qty = const Value.absent(),
     this.unitPrice = const Value.absent(),
+    this.vatType = const Value.absent(),
+    this.supplyAmount = const Value.absent(),
+    this.vatAmount = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.amountEdited = const Value.absent(),
     this.memo = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -9034,6 +9201,11 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
     required String unit,
     required double qty,
     this.unitPrice = const Value.absent(),
+    this.vatType = const Value.absent(),
+    this.supplyAmount = const Value.absent(),
+    this.vatAmount = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.amountEdited = const Value.absent(),
     this.memo = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
@@ -9052,6 +9224,11 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
     Expression<String>? unit,
     Expression<double>? qty,
     Expression<double>? unitPrice,
+    Expression<int>? vatType,
+    Expression<double>? supplyAmount,
+    Expression<double>? vatAmount,
+    Expression<double>? totalAmount,
+    Expression<bool>? amountEdited,
     Expression<String>? memo,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
@@ -9065,6 +9242,11 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
       if (unit != null) 'unit': unit,
       if (qty != null) 'qty': qty,
       if (unitPrice != null) 'unit_price': unitPrice,
+      if (vatType != null) 'vat_type': vatType,
+      if (supplyAmount != null) 'supply_amount': supplyAmount,
+      if (vatAmount != null) 'vat_amount': vatAmount,
+      if (totalAmount != null) 'total_amount': totalAmount,
+      if (amountEdited != null) 'amount_edited': amountEdited,
       if (memo != null) 'memo': memo,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
@@ -9080,6 +9262,11 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
       Value<String>? unit,
       Value<double>? qty,
       Value<double>? unitPrice,
+      Value<int>? vatType,
+      Value<double>? supplyAmount,
+      Value<double>? vatAmount,
+      Value<double>? totalAmount,
+      Value<bool>? amountEdited,
       Value<String?>? memo,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
@@ -9092,6 +9279,11 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
       unit: unit ?? this.unit,
       qty: qty ?? this.qty,
       unitPrice: unitPrice ?? this.unitPrice,
+      vatType: vatType ?? this.vatType,
+      supplyAmount: supplyAmount ?? this.supplyAmount,
+      vatAmount: vatAmount ?? this.vatAmount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      amountEdited: amountEdited ?? this.amountEdited,
       memo: memo ?? this.memo,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -9123,6 +9315,21 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
     if (unitPrice.present) {
       map['unit_price'] = Variable<double>(unitPrice.value);
     }
+    if (vatType.present) {
+      map['vat_type'] = Variable<int>(vatType.value);
+    }
+    if (supplyAmount.present) {
+      map['supply_amount'] = Variable<double>(supplyAmount.value);
+    }
+    if (vatAmount.present) {
+      map['vat_amount'] = Variable<double>(vatAmount.value);
+    }
+    if (totalAmount.present) {
+      map['total_amount'] = Variable<double>(totalAmount.value);
+    }
+    if (amountEdited.present) {
+      map['amount_edited'] = Variable<bool>(amountEdited.value);
+    }
     if (memo.present) {
       map['memo'] = Variable<String>(memo.value);
     }
@@ -9148,6 +9355,11 @@ class QuoteLinesCompanion extends UpdateCompanion<QuoteLineRow> {
           ..write('unit: $unit, ')
           ..write('qty: $qty, ')
           ..write('unitPrice: $unitPrice, ')
+          ..write('vatType: $vatType, ')
+          ..write('supplyAmount: $supplyAmount, ')
+          ..write('vatAmount: $vatAmount, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('amountEdited: $amountEdited, ')
           ..write('memo: $memo, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
@@ -18815,6 +19027,11 @@ typedef $$QuoteLinesTableCreateCompanionBuilder = QuoteLinesCompanion Function({
   required String unit,
   required double qty,
   Value<double> unitPrice,
+  Value<int> vatType,
+  Value<double> supplyAmount,
+  Value<double> vatAmount,
+  Value<double> totalAmount,
+  Value<bool> amountEdited,
   Value<String?> memo,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
@@ -18828,6 +19045,11 @@ typedef $$QuoteLinesTableUpdateCompanionBuilder = QuoteLinesCompanion Function({
   Value<String> unit,
   Value<double> qty,
   Value<double> unitPrice,
+  Value<int> vatType,
+  Value<double> supplyAmount,
+  Value<double> vatAmount,
+  Value<double> totalAmount,
+  Value<bool> amountEdited,
   Value<String?> memo,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
@@ -18890,6 +19112,21 @@ class $$QuoteLinesTableFilterComposer
 
   ColumnFilters<double> get unitPrice => $composableBuilder(
       column: $table.unitPrice, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get vatType => $composableBuilder(
+      column: $table.vatType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get supplyAmount => $composableBuilder(
+      column: $table.supplyAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get vatAmount => $composableBuilder(
+      column: $table.vatAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get amountEdited => $composableBuilder(
+      column: $table.amountEdited, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnFilters(column));
@@ -18965,6 +19202,23 @@ class $$QuoteLinesTableOrderingComposer
   ColumnOrderings<double> get unitPrice => $composableBuilder(
       column: $table.unitPrice, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get vatType => $composableBuilder(
+      column: $table.vatType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get supplyAmount => $composableBuilder(
+      column: $table.supplyAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get vatAmount => $composableBuilder(
+      column: $table.vatAmount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get amountEdited => $composableBuilder(
+      column: $table.amountEdited,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnOrderings(column));
 
@@ -19038,6 +19292,21 @@ class $$QuoteLinesTableAnnotationComposer
 
   GeneratedColumn<double> get unitPrice =>
       $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<int> get vatType =>
+      $composableBuilder(column: $table.vatType, builder: (column) => column);
+
+  GeneratedColumn<double> get supplyAmount => $composableBuilder(
+      column: $table.supplyAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get vatAmount =>
+      $composableBuilder(column: $table.vatAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => column);
+
+  GeneratedColumn<bool> get amountEdited => $composableBuilder(
+      column: $table.amountEdited, builder: (column) => column);
 
   GeneratedColumn<String> get memo =>
       $composableBuilder(column: $table.memo, builder: (column) => column);
@@ -19119,6 +19388,11 @@ class $$QuoteLinesTableTableManager extends RootTableManager<
             Value<String> unit = const Value.absent(),
             Value<double> qty = const Value.absent(),
             Value<double> unitPrice = const Value.absent(),
+            Value<int> vatType = const Value.absent(),
+            Value<double> supplyAmount = const Value.absent(),
+            Value<double> vatAmount = const Value.absent(),
+            Value<double> totalAmount = const Value.absent(),
+            Value<bool> amountEdited = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
@@ -19132,6 +19406,11 @@ class $$QuoteLinesTableTableManager extends RootTableManager<
             unit: unit,
             qty: qty,
             unitPrice: unitPrice,
+            vatType: vatType,
+            supplyAmount: supplyAmount,
+            vatAmount: vatAmount,
+            totalAmount: totalAmount,
+            amountEdited: amountEdited,
             memo: memo,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
@@ -19145,6 +19424,11 @@ class $$QuoteLinesTableTableManager extends RootTableManager<
             required String unit,
             required double qty,
             Value<double> unitPrice = const Value.absent(),
+            Value<int> vatType = const Value.absent(),
+            Value<double> supplyAmount = const Value.absent(),
+            Value<double> vatAmount = const Value.absent(),
+            Value<double> totalAmount = const Value.absent(),
+            Value<bool> amountEdited = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
@@ -19158,6 +19442,11 @@ class $$QuoteLinesTableTableManager extends RootTableManager<
             unit: unit,
             qty: qty,
             unitPrice: unitPrice,
+            vatType: vatType,
+            supplyAmount: supplyAmount,
+            vatAmount: vatAmount,
+            totalAmount: totalAmount,
+            amountEdited: amountEdited,
             memo: memo,
             isDeleted: isDeleted,
             deletedAt: deletedAt,

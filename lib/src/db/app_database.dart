@@ -424,6 +424,11 @@ class QuoteLines extends Table {
   TextColumn get unit => text()();
   RealColumn get qty => real()();
   RealColumn get unitPrice => real().withDefault(const Constant(0))();
+  IntColumn get vatType => integer().withDefault(const Constant(0))();
+  RealColumn get supplyAmount => real().withDefault(const Constant(0))();
+  RealColumn get vatAmount => real().withDefault(const Constant(0))();
+  RealColumn get totalAmount => real().withDefault(const Constant(0))();
+  BoolColumn get amountEdited => boolean().withDefault(const Constant(false))();
   TextColumn get memo => text().nullable()();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()();
@@ -653,7 +658,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 37; //
+  int get schemaVersion => 38; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -671,6 +676,7 @@ class AppDatabase extends _$AppDatabase {
         },
         beforeOpen: (details) async {
           await _ensurePurchaseLineAmountColumns();
+          await _ensureQuoteLineAmountColumns();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -956,6 +962,10 @@ class AppDatabase extends _$AppDatabase {
             await _ensurePurchaseLineAmountColumns();
             await _backfillPurchaseLineAmounts();
           }
+          if (from < 38) {
+            await _ensureQuoteLineAmountColumns();
+            await _backfillQuoteLineAmounts();
+          }
         },
       );
   Future<void> _backfillItemSearchKeys() async {
@@ -1089,6 +1099,53 @@ class AppDatabase extends _$AppDatabase {
         END,
         total_amount = CASE COALESCE(
           (SELECT po.vat_type FROM purchase_orders po WHERE po.id = purchase_lines.order_id),
+          0
+        )
+          WHEN 0 THEN ROUND(unit_price * qty) + ROUND((unit_price * qty) * 0.1)
+          ELSE ROUND(unit_price * qty)
+        END
+      WHERE amount_edited = 0
+    ''');
+  }
+
+  Future<void> _ensureQuoteLineAmountColumns() async {
+    await _addColumnIfMissing(
+        'quote_lines', 'vat_type', 'INTEGER NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        'quote_lines', 'supply_amount', 'REAL NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        'quote_lines', 'vat_amount', 'REAL NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        'quote_lines', 'total_amount', 'REAL NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        'quote_lines', 'amount_edited', 'INTEGER NOT NULL DEFAULT 0');
+  }
+
+  Future<void> _backfillQuoteLineAmounts() async {
+    await customStatement('''
+      UPDATE quote_lines
+      SET
+        vat_type = COALESCE(
+          (SELECT q.vat_type FROM quotes q WHERE q.id = quote_lines.quote_id),
+          0
+        ),
+        supply_amount = CASE COALESCE(
+          (SELECT q.vat_type FROM quotes q WHERE q.id = quote_lines.quote_id),
+          0
+        )
+          WHEN 1 THEN ROUND((unit_price * qty) - ROUND((unit_price * qty) / 11.0))
+          ELSE ROUND(unit_price * qty)
+        END,
+        vat_amount = CASE COALESCE(
+          (SELECT q.vat_type FROM quotes q WHERE q.id = quote_lines.quote_id),
+          0
+        )
+          WHEN 0 THEN ROUND((unit_price * qty) * 0.1)
+          WHEN 1 THEN ROUND((unit_price * qty) / 11.0)
+          ELSE 0
+        END,
+        total_amount = CASE COALESCE(
+          (SELECT q.vat_type FROM quotes q WHERE q.id = quote_lines.quote_id),
           0
         )
           WHEN 0 THEN ROUND(unit_price * qty) + ROUND((unit_price * qty) * 0.1)
@@ -1899,6 +1956,12 @@ extension QuoteLineRowMapping on QuoteLineRow {
         unit: unit,
         qty: qty,
         unitPrice: unitPrice,
+        vatType:
+            VatType.values[vatType.clamp(0, VatType.values.length - 1).toInt()],
+        supplyAmount: supplyAmount,
+        vatAmount: vatAmount,
+        totalAmount: totalAmount,
+        amountEdited: amountEdited,
         memo: memo,
       );
 }
@@ -1912,6 +1975,11 @@ extension QuoteLineToCompanion on QuoteLine {
         unit: Value(unit),
         qty: Value(qty),
         unitPrice: Value(unitPrice),
+        vatType: Value(vatType.index),
+        supplyAmount: Value(supplyAmount),
+        vatAmount: Value(vatAmount),
+        totalAmount: Value(totalAmount),
+        amountEdited: Value(amountEdited),
         memo: Value(memo),
       );
 }

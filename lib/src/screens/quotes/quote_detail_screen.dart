@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 
 import '../../db/app_database.dart';
 import '../../models/buyer_profile.dart';
+import '../../models/purchase_order.dart';
 import '../../models/quote.dart';
 import '../../models/quote_line.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/buyer_profile_service.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
+import '../stock/stock_item_detail_screen.dart';
 import 'quote_line_edit_screen.dart';
 import 'quote_print_view.dart';
 
@@ -226,6 +228,29 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
     setState(() => _lines = lines);
   }
 
+  Future<void> _openLineItemDetail(QuoteLine line) async {
+    final itemId = line.itemId.trim();
+    if (itemId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('연결된 아이템이 없습니다.')),
+      );
+      return;
+    }
+    final item = await context.read<ItemRepo>().getItem(itemId);
+    if (!mounted) return;
+    if (item == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('아이템을 찾을 수 없습니다.')),
+      );
+      return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => StockItemDetailScreen(itemId: itemId)),
+    );
+    if (mounted) await _reload();
+  }
+
   Future<void> _openPrint({required bool mobile}) async {
     await _saveHeader();
     if (!mounted || _quote == null) return;
@@ -274,8 +299,7 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
     }
 
     final dateFmt = DateFormat('yyyy.MM.dd');
-    final subtotal = _lines.fold<double>(0, (sum, line) => sum + line.amount);
-    final totals = QuoteTotals.from(quote: quote, linesSubtotal: subtotal);
+    final totals = QuoteTotals.fromLines(quote: quote, lines: _lines);
 
     return Scaffold(
       appBar: AppBar(
@@ -408,22 +432,62 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
           else
             ..._lines.map(
               (line) => Card(
-                child: ListTile(
-                  title: Text(line.name),
-                  subtitle: Text(
-                      '${_num(line.qty)} ${line.unit} x ${_money(line.unitPrice)}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_money(line.amount)),
-                      IconButton(
-                        tooltip: '삭제',
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _deleteLine(line),
-                      ),
-                    ],
-                  ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
                   onTap: () => _editLine(line),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              InkWell(
+                                onTap: () => _openLineItemDetail(line),
+                                borderRadius: BorderRadius.circular(4),
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 2),
+                                  child: Text(
+                                    line.name,
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${_num(line.qty)} ${line.unit} x ${_money(line.unitPrice)} · '
+                                '${_lineVatText(line.vatType)} / '
+                                '공급 ${_money(line.supplyAmount)} · '
+                                '부가세 ${_money(line.vatAmount)} · '
+                                '합계 ${_money(line.totalAmount)}',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _money(line.totalAmount),
+                          textAlign: TextAlign.right,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        IconButton(
+                          tooltip: '견적라인 편집',
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () => _editLine(line),
+                        ),
+                        IconButton(
+                          tooltip: '삭제',
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => _deleteLine(line),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -468,3 +532,9 @@ Widget _totalLine(String label, double value, {bool bold = false}) {
 String _num(double value) =>
     value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
 String _money(double value) => NumberFormat('#,##0').format(value);
+
+String _lineVatText(VatType type) => switch (type) {
+      VatType.exclusive => '별도',
+      VatType.inclusive => '포함',
+      VatType.exempt => '면세',
+    };

@@ -1,4 +1,5 @@
 import 'buyer_profile.dart';
+import 'quote_line.dart';
 
 enum QuoteStatus { draft, sent, accepted, canceled }
 
@@ -166,6 +167,28 @@ class QuoteTotals {
       shipping: shipping,
       vat: vat,
       total: taxableBase + vat,
+    );
+  }
+
+  factory QuoteTotals.fromLines({
+    required Quote quote,
+    required List<QuoteLine> lines,
+  }) {
+    final discount = quote.discountAmount < 0 ? 0.0 : quote.discountAmount;
+    final shipping = quote.shippingCost < 0 ? 0.0 : quote.shippingCost;
+    final subtotal = lines.fold<double>(
+      0,
+      (sum, line) => sum + line.supplyAmount,
+    );
+    final vat = lines.fold<double>(0, (sum, line) => sum + line.vatAmount);
+    final lineTotal =
+        lines.fold<double>(0, (sum, line) => sum + line.totalAmount);
+    return QuoteTotals(
+      subtotal: subtotal,
+      discount: discount,
+      shipping: shipping,
+      vat: vat,
+      total: (lineTotal - discount + shipping).clamp(0.0, double.infinity),
     );
   }
 }

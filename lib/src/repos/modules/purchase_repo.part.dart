@@ -139,12 +139,17 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
 
   @override
   Future<int> deletePurchaseLine(String orderId, String lineId) async {
+    debugPrint('🧾 deletePurchaseLine start orderId=$orderId lineId=$lineId');
     final deleted = await (db.delete(db.purchaseLines)
           ..where((l) => l.id.equals(lineId)))
         .go();
+    debugPrint('🧾 deletePurchaseLine direct deleted=$deleted');
     if (deleted > 0) return deleted;
 
     final lines = await getLines(orderId);
+    debugPrint(
+      '🧾 deletePurchaseLine fallback lines=${lines.length} ids=${lines.map((line) => line.id).join(',')}',
+    );
     final next = lines.where((line) => line.id != lineId).toList();
     if (next.length == lines.length) return 0;
     await upsertLines(orderId, next);

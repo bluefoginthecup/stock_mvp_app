@@ -547,35 +547,45 @@ class _PurchaseLineFullEditScreenState
 
   Future<void> _delete() async {
     if (!isEdit) return;
+    final deleteLabel = context.t.common_delete;
+    final cancelLabel = context.t.common_cancel;
+    final targetName =
+        nameC.text.trim().isNotEmpty ? nameC.text.trim() : itemIdC.text.trim();
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(context.t.common_delete),
-        content: Text(
-            '${nameC.text.trim().isNotEmpty ? nameC.text.trim() : itemIdC.text.trim()} 삭제할까요?'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(deleteLabel),
+        content: Text('$targetName 삭제할까요?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(context.t.common_cancel)),
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(cancelLabel)),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(context.t.common_delete)),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(deleteLabel)),
         ],
       ),
     );
     if (ok != true) return;
 
+    debugPrint(
+      '🧾 purchase line delete tapped orderId=${widget.orderId} lineId=$lineId isEdit=$isEdit',
+    );
     final deleted =
         await widget.repo.deletePurchaseLine(widget.orderId, lineId);
+    debugPrint('🧾 purchase line delete result deleted=$deleted');
     if (deleted == 0) {
       final lines = await widget.repo.getLines(widget.orderId);
+      debugPrint(
+        '🧾 purchase line delete screen fallback lines=${lines.length} ids=${lines.map((line) => line.id).join(',')}',
+      );
       final next = lines.where((line) => line.id != lineId).toList();
       if (next.length != lines.length) {
         await widget.repo.upsertLines(widget.orderId, next);
       }
     }
     if (!mounted) return;
-    Navigator.pop(context, true);
+    Navigator.pop(context, deleted > 0);
   }
 
   InputDecoration _dec(String label, {String? hint}) =>

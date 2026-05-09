@@ -28,6 +28,7 @@ import '../../services/inventory_service.dart';
 import '../../ui/common/delete_more_menu.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
 import '../../ui/common/ui.dart';
+import '../stock/stock_item_detail_screen.dart';
 import 'purchase_line_full_edit_screen.dart';
 import 'widgets/purchase_print_action.dart';
 
@@ -1092,6 +1093,40 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         const SnackBar(content: Text('삭제되었습니다')),
       );
       await _reload();
+    } else if (result == false && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('삭제할 발주 품목을 DB에서 찾지 못했습니다. 로그를 확인해주세요.')),
+      );
+      await _reload();
+    }
+  }
+
+  Future<void> _openLineItemDetail(PurchaseLine line) async {
+    final itemId = line.itemId.trim();
+    if (itemId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('연결된 아이템이 없습니다.')),
+      );
+      return;
+    }
+
+    final item = await context.read<ItemRepo>().getItem(itemId);
+    if (!mounted) return;
+    if (item == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('아이템을 찾을 수 없습니다.')),
+      );
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StockItemDetailScreen(itemId: itemId),
+      ),
+    );
+    if (mounted) {
+      await _reload();
     }
   }
 
@@ -1585,8 +1620,12 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                               '부가세 ${_fmt(ln.vatAmount)} · '
                               '합계 ${_fmt(ln.totalAmount)}',
                             ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => _openLineFull(ln),
+                            trailing: IconButton(
+                              tooltip: '발주라인 편집',
+                              icon: const Icon(Icons.chevron_right),
+                              onPressed: () => _openLineFull(ln),
+                            ),
+                            onTap: () => _openLineItemDetail(ln),
                           );
                         }).toList(),
                       ),

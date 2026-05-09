@@ -7,10 +7,10 @@ import 'search_field.dart';
 import 'suggestion_panel.dart';
 
 Future<String?> showItemPickerSheet(
-    BuildContext context, {
-      String? initialItemId,
-      String title = '아이템 선택',
-    }) {
+  BuildContext context, {
+  String? initialItemId,
+  String title = '아이템 선택',
+}) {
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
@@ -49,6 +49,8 @@ class _ItemPickerSheetState extends State<_ItemPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final itemsRepo = context.read<ItemRepo>();
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final maxSheetHeight = MediaQuery.sizeOf(context).height * 0.85;
 
     return SafeArea(
       child: Padding(
@@ -56,66 +58,75 @@ class _ItemPickerSheetState extends State<_ItemPickerSheet> {
           left: 16,
           right: 16,
           top: 8,
-          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+          bottom: 16 + viewInsets.bottom,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            AppSearchField(
-              controller: _searchC,
-              hint: '이름/SKU/초성(예: ㅈㅅㅁ ㄹㅇ ㄱㄹㅇ)',
-              onChanged: (q) async {
-                final qq = q.trim();
-                if (qq.isEmpty) {
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxSheetHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              AppSearchField(
+                controller: _searchC,
+                hint: '이름/SKU/초성(예: ㅈㅅㅁ ㄹㅇ ㄱㄹㅇ)',
+                onChanged: (q) async {
+                  final qq = q.trim();
+                  if (qq.isEmpty) {
+                    setState(() {
+                      _results = [];
+                      _searching = false;
+                    });
+                    return;
+                  }
+                  setState(() => _searching = true);
+                  final res = await itemsRepo.searchItemsGlobal(qq);
+                  if (!mounted) return;
                   setState(() {
-                    _results = [];
+                    _results = res;
                     _searching = false;
                   });
-                  return;
-                }
-                setState(() => _searching = true);
-                final res = await itemsRepo.searchItemsGlobal(qq);
-                if (!mounted) return;
-                setState(() {
-                  _results = res;
-                  _searching = false;
-                });
-              },
-            ),
-            if (_searching) const LinearProgressIndicator(),
-            const SizedBox(height: 8),
-
-            if (_results.isNotEmpty)
-              SuggestionPanel<Item>(
-                items: _results,
-                rowHeight: 56,
-                maxRows: 8,
-                itemBuilder: (_, it) {
-                  final selected = (widget.initialItemId != null && it.id == widget.initialItemId);
-                  return ListTile(
-                    leading: selected ? const Icon(Icons.check) : null,
-                    title: Text(it.displayName ?? it.name),
-                    subtitle: it.sku.isNotEmpty ? Text(it.sku) : null,
-                    onTap: () => Navigator.pop(context, it.id), // ✅ itemId 반환
-                  );
                 },
-              )
-            else
-              const SizedBox(height: 240, child: Center(child: Text('검색어를 입력하세요'))),
-          ],
+              ),
+              if (_searching) const LinearProgressIndicator(),
+              const SizedBox(height: 8),
+              if (_results.isNotEmpty)
+                Flexible(
+                  child: SuggestionPanel<Item>(
+                    items: _results,
+                    rowHeight: 56,
+                    maxRows: 8,
+                    itemBuilder: (_, it) {
+                      final selected = widget.initialItemId != null &&
+                          it.id == widget.initialItemId;
+                      return ListTile(
+                        leading: selected ? const Icon(Icons.check) : null,
+                        title: Text(it.displayName ?? it.name),
+                        subtitle: it.sku.isNotEmpty ? Text(it.sku) : null,
+                        onTap: () => Navigator.pop(context, it.id),
+                      );
+                    },
+                  ),
+                )
+              else
+                const Flexible(
+                  child: Center(child: Text('검색어를 입력하세요')),
+                ),
+            ],
+          ),
         ),
       ),
     );

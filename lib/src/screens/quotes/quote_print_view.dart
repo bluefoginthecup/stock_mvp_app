@@ -68,8 +68,7 @@ class _QuotePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('yyyy.MM.dd');
-    final subtotal = lines.fold<double>(0, (sum, line) => sum + line.amount);
-    final totals = QuoteTotals.from(quote: quote, linesSubtotal: subtotal);
+    final totals = QuoteTotals.fromLines(quote: quote, lines: lines);
     final supplier = quote.supplierSnapshotProfile;
 
     return Container(
@@ -121,15 +120,16 @@ class _QuotePage extends StatelessWidget {
             Table(
               columnWidths: const {
                 0: FlexColumnWidth(3),
-                1: FixedColumnWidth(70),
-                2: FixedColumnWidth(70),
-                3: FixedColumnWidth(95),
-                4: FixedColumnWidth(110),
+                1: FixedColumnWidth(58),
+                2: FixedColumnWidth(58),
+                3: FixedColumnWidth(82),
+                4: FixedColumnWidth(96),
+                5: FixedColumnWidth(78),
               },
               border: TableBorder.all(color: Colors.black87),
               children: [
                 _row(
-                  const ['품목', '수량', '단위', '단가', '금액'],
+                  const ['품목', '수량', '단위', '단가', '공급금액', '세액'],
                   header: true,
                 ),
                 for (final line in lines)
@@ -139,8 +139,9 @@ class _QuotePage extends StatelessWidget {
                         : '${line.name}\n${line.memo}',
                     _num(line.qty),
                     line.unit,
-                    _money(line.unitPrice),
-                    _money(line.amount),
+                    _money(_quoteLineUnitSupplyPrice(line)),
+                    _money(line.supplyAmount),
+                    _money(line.vatAmount),
                   ]),
               ],
             ),
@@ -156,12 +157,12 @@ class _QuotePage extends StatelessWidget {
                     1: FlexColumnWidth(1),
                   },
                   children: [
-                    _totalRow('공급가', totals.subtotal),
+                    _totalRow('공급금액', totals.subtotal),
                     if (totals.discount > 0) _totalRow('할인', -totals.discount),
                     if (totals.shipping > 0)
                       _totalRow('배송/기타', totals.shipping),
                     _totalRow('부가세', totals.vat),
-                    _totalRow('합계', totals.total, bold: true),
+                    _totalRow('총 금액', totals.total, bold: true),
                   ],
                 ),
               ),
@@ -241,8 +242,7 @@ class _QuoteMobilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFmt = DateFormat('yyyy.MM.dd');
-    final subtotal = lines.fold<double>(0, (sum, line) => sum + line.amount);
-    final totals = QuoteTotals.from(quote: quote, linesSubtotal: subtotal);
+    final totals = QuoteTotals.fromLines(quote: quote, lines: lines);
     final customer =
         quote.customerName.trim().isEmpty ? '거래처 미지정' : quote.customerName;
     final supplier = quote.supplierSnapshotProfile;
@@ -299,13 +299,13 @@ class _QuoteMobilePage extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _mobileTotalLine('공급가', totals.subtotal),
+                  _mobileTotalLine('공급금액', totals.subtotal),
                   if (totals.discount > 0)
                     _mobileTotalLine('할인', -totals.discount),
                   if (totals.shipping > 0)
                     _mobileTotalLine('배송/기타', totals.shipping),
                   _mobileTotalLine('부가세', totals.vat),
-                  _mobileTotalLine('합계', totals.total, bold: true),
+                  _mobileTotalLine('총 금액', totals.total, bold: true),
                 ],
               ),
             ),
@@ -418,26 +418,49 @@ Widget _mobileInfoLine(String label, String value) {
 Widget _mobileLineCard(QuoteLine line) {
   return Container(
     margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.all(10),
+    padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
       border: Border.all(color: Colors.black38),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(line.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        Text(
+          line.name,
+          textAlign: TextAlign.left,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         if ((line.memo ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(line.memo!.trim(), style: const TextStyle(fontSize: 12)),
+          Text(
+            line.memo!.trim(),
+            textAlign: TextAlign.left,
+            style: const TextStyle(fontSize: 12),
+          ),
         ],
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Text('${_num(line.qty)} ${line.unit}'),
-            const Spacer(),
-            Text('${_money(line.unitPrice)} / ${_money(line.amount)}'),
-          ],
+        const SizedBox(height: 10),
+        _mobileAmountRow(
+          '${_num(line.qty)} ${line.unit}',
+          '단가 ${_money(_quoteLineUnitSupplyPrice(line))}',
         ),
+        _mobileAmountRow('공급금액', _money(line.supplyAmount)),
+        _mobileAmountRow('세액', _money(line.vatAmount)),
+        _mobileAmountRow('금액', _money(line.totalAmount), bold: true),
+      ],
+    ),
+  );
+}
+
+Widget _mobileAmountRow(String label, String value, {bool bold = false}) {
+  final style =
+      TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal);
+  return Padding(
+    padding: const EdgeInsets.only(top: 4),
+    child: Row(
+      children: [
+        Expanded(child: Text(label, textAlign: TextAlign.left, style: style)),
+        const SizedBox(width: 12),
+        Expanded(child: Text(value, textAlign: TextAlign.right, style: style)),
       ],
     ),
   );
@@ -501,6 +524,8 @@ TableRow _totalRow(String label, double value, {bool bold = false}) {
 String _num(double value) =>
     value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
 String _money(double value) => NumberFormat('#,##0').format(value);
+double _quoteLineUnitSupplyPrice(QuoteLine line) =>
+    line.qty == 0 ? 0 : (line.supplyAmount / line.qty).roundToDouble();
 
 Future<void> _shareQuoteJpg(
   BuildContext context, {
