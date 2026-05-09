@@ -20,6 +20,9 @@ class PrintLine {
   final String unit;
   final double qty;
   final double unitPrice; // ✅ 추가
+  final double supplyAmount;
+  final double vatAmount;
+  final double totalAmount;
   final String memo;
   final List<PurchaseLinePrintAttr> printAttrs;
   const PrintLine({
@@ -29,10 +32,13 @@ class PrintLine {
     required this.unit,
     required this.qty,
     required this.unitPrice, // ✅ 추가
+    required this.supplyAmount,
+    required this.vatAmount,
+    required this.totalAmount,
     required this.memo,
     this.printAttrs = const [],
   });
-  double get amount => unitPrice * qty;
+  double get amount => totalAmount;
   String get printAttrsText => printAttrs
       .where((attr) =>
           attr.label.trim().isNotEmpty && attr.value.trim().isNotEmpty)
@@ -129,15 +135,9 @@ class PurchaseOrderPrintView extends StatelessWidget {
         ? '(공급처 미지정)'
         : order.supplierName.trim();
 
-    final sumAmount = lines.fold<double>(0, (p, e) => p + e.amount);
-    final vat = switch (order.vatType) {
-      VatType.exempt => 0.0,
-      VatType.inclusive => (sumAmount / 11).roundToDouble(),
-      VatType.exclusive => (sumAmount * 0.1).roundToDouble(),
-    };
-    final supply =
-        order.vatType == VatType.inclusive ? sumAmount - vat : sumAmount;
-    final total = order.vatType == VatType.inclusive ? sumAmount : supply + vat;
+    final supply = lines.fold<double>(0, (p, e) => p + e.supplyAmount);
+    final vat = lines.fold<double>(0, (p, e) => p + e.vatAmount);
+    final total = lines.fold<double>(0, (p, e) => p + e.totalAmount);
 
     return DefaultTextStyle.merge(
       style: body,
@@ -418,15 +418,9 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
         ? '(공급처 미지정)'
         : order.supplierName.trim();
 
-    final sumAmount = lines.fold<double>(0, (p, e) => p + e.amount);
-    final vat = switch (order.vatType) {
-      VatType.exempt => 0.0,
-      VatType.inclusive => (sumAmount / 11).roundToDouble(),
-      VatType.exclusive => (sumAmount * 0.1).roundToDouble(),
-    };
-    final supply =
-        order.vatType == VatType.inclusive ? sumAmount - vat : sumAmount;
-    final total = order.vatType == VatType.inclusive ? sumAmount : supply + vat;
+    final supply = lines.fold<double>(0, (p, e) => p + e.supplyAmount);
+    final vat = lines.fold<double>(0, (p, e) => p + e.vatAmount);
+    final total = lines.fold<double>(0, (p, e) => p + e.totalAmount);
 
     return Scaffold(
       backgroundColor: Colors.white,

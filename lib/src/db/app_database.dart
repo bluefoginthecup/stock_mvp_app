@@ -357,6 +357,11 @@ class PurchaseLines extends Table {
   TextColumn get unit => text()();
   RealColumn get qty => real()(); // 소수 허용
   RealColumn get unitPrice => real().withDefault(const Constant(0))();
+  IntColumn get vatType => integer().withDefault(const Constant(0))();
+  RealColumn get supplyAmount => real().withDefault(const Constant(0))();
+  RealColumn get vatAmount => real().withDefault(const Constant(0))();
+  RealColumn get totalAmount => real().withDefault(const Constant(0))();
+  BoolColumn get amountEdited => boolean().withDefault(const Constant(false))();
   TextColumn get note => text().nullable()();
   TextColumn get memo => text().nullable()();
   TextColumn get colorNo => text().nullable()();
@@ -648,7 +653,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 36; //
+  int get schemaVersion => 37; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -663,6 +668,9 @@ class AppDatabase extends _$AppDatabase {
           await _ensureStorageLocationTables();
           await _ensureScheduleAttachmentsTable();
           await _ensureItemImagesTable();
+        },
+        beforeOpen: (details) async {
+          await _ensurePurchaseLineAmountColumns();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -944,6 +952,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 36) {
             await _addColumnIfMissing('items', 'default_supplier_uid', 'TEXT');
           }
+          if (from < 37) {
+            await _ensurePurchaseLineAmountColumns();
+            await _backfillPurchaseLineAmounts();
+          }
         },
       );
   Future<void> _backfillItemSearchKeys() async {
@@ -1037,6 +1049,53 @@ class AppDatabase extends _$AppDatabase {
   ) async {
     if (await _columnExists(table, column)) return;
     await customStatement('ALTER TABLE $table ADD COLUMN $column $definition');
+  }
+
+  Future<void> _ensurePurchaseLineAmountColumns() async {
+    await _addColumnIfMissing(
+        'purchase_lines', 'vat_type', 'INTEGER NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        'purchase_lines', 'supply_amount', 'REAL NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        'purchase_lines', 'vat_amount', 'REAL NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        'purchase_lines', 'total_amount', 'REAL NOT NULL DEFAULT 0');
+    await _addColumnIfMissing(
+        'purchase_lines', 'amount_edited', 'INTEGER NOT NULL DEFAULT 0');
+  }
+
+  Future<void> _backfillPurchaseLineAmounts() async {
+    await customStatement('''
+      UPDATE purchase_lines
+      SET
+        vat_type = COALESCE(
+          (SELECT po.vat_type FROM purchase_orders po WHERE po.id = purchase_lines.order_id),
+          0
+        ),
+        supply_amount = CASE COALESCE(
+          (SELECT po.vat_type FROM purchase_orders po WHERE po.id = purchase_lines.order_id),
+          0
+        )
+          WHEN 1 THEN ROUND((unit_price * qty) - ROUND((unit_price * qty) / 11.0))
+          ELSE ROUND(unit_price * qty)
+        END,
+        vat_amount = CASE COALESCE(
+          (SELECT po.vat_type FROM purchase_orders po WHERE po.id = purchase_lines.order_id),
+          0
+        )
+          WHEN 0 THEN ROUND((unit_price * qty) * 0.1)
+          WHEN 1 THEN ROUND((unit_price * qty) / 11.0)
+          ELSE 0
+        END,
+        total_amount = CASE COALESCE(
+          (SELECT po.vat_type FROM purchase_orders po WHERE po.id = purchase_lines.order_id),
+          0
+        )
+          WHEN 0 THEN ROUND(unit_price * qty) + ROUND((unit_price * qty) * 0.1)
+          ELSE ROUND(unit_price * qty)
+        END
+      WHERE amount_edited = 0
+    ''');
   }
 
   Future<void> _ensureSupplierBusinessColumns() async {
@@ -1728,6 +1787,12 @@ extension PurchaseLineRowMapping on PurchaseLineRow {
       memo: memo,
       colorNo: colorNo,
       unitPrice: unitPrice,
+      vatType:
+          VatType.values[vatType.clamp(0, VatType.values.length - 1).toInt()],
+      supplyAmount: supplyAmount,
+      vatAmount: vatAmount,
+      totalAmount: totalAmount,
+      amountEdited: amountEdited,
       printAttrs: printAttrs,
     );
   }
@@ -1754,6 +1819,11 @@ extension PurchaseLineToCompanionExt on PurchaseLine {
         cleanedPrintAttrs.isEmpty ? null : jsonEncode(cleanedPrintAttrs),
       ),
       unitPrice: Value(unitPrice),
+      vatType: Value(vatType.index),
+      supplyAmount: Value(supplyAmount),
+      vatAmount: Value(vatAmount),
+      totalAmount: Value(totalAmount),
+      amountEdited: Value(amountEdited),
     );
   }
 }

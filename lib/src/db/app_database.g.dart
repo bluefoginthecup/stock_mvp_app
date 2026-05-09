@@ -6735,6 +6735,48 @@ class $PurchaseLinesTable extends PurchaseLines
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _vatTypeMeta =
+      const VerificationMeta('vatType');
+  @override
+  late final GeneratedColumn<int> vatType = GeneratedColumn<int>(
+      'vat_type', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _supplyAmountMeta =
+      const VerificationMeta('supplyAmount');
+  @override
+  late final GeneratedColumn<double> supplyAmount = GeneratedColumn<double>(
+      'supply_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _vatAmountMeta =
+      const VerificationMeta('vatAmount');
+  @override
+  late final GeneratedColumn<double> vatAmount = GeneratedColumn<double>(
+      'vat_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _totalAmountMeta =
+      const VerificationMeta('totalAmount');
+  @override
+  late final GeneratedColumn<double> totalAmount = GeneratedColumn<double>(
+      'total_amount', aliasedName, false,
+      type: DriftSqlType.double,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _amountEditedMeta =
+      const VerificationMeta('amountEdited');
+  @override
+  late final GeneratedColumn<bool> amountEdited = GeneratedColumn<bool>(
+      'amount_edited', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("amount_edited" IN (0, 1))'),
+      defaultValue: const Constant(false));
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
@@ -6782,6 +6824,11 @@ class $PurchaseLinesTable extends PurchaseLines
         unit,
         qty,
         unitPrice,
+        vatType,
+        supplyAmount,
+        vatAmount,
+        totalAmount,
+        amountEdited,
         note,
         memo,
         colorNo,
@@ -6838,6 +6885,32 @@ class $PurchaseLinesTable extends PurchaseLines
       context.handle(_unitPriceMeta,
           unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta));
     }
+    if (data.containsKey('vat_type')) {
+      context.handle(_vatTypeMeta,
+          vatType.isAcceptableOrUnknown(data['vat_type']!, _vatTypeMeta));
+    }
+    if (data.containsKey('supply_amount')) {
+      context.handle(
+          _supplyAmountMeta,
+          supplyAmount.isAcceptableOrUnknown(
+              data['supply_amount']!, _supplyAmountMeta));
+    }
+    if (data.containsKey('vat_amount')) {
+      context.handle(_vatAmountMeta,
+          vatAmount.isAcceptableOrUnknown(data['vat_amount']!, _vatAmountMeta));
+    }
+    if (data.containsKey('total_amount')) {
+      context.handle(
+          _totalAmountMeta,
+          totalAmount.isAcceptableOrUnknown(
+              data['total_amount']!, _totalAmountMeta));
+    }
+    if (data.containsKey('amount_edited')) {
+      context.handle(
+          _amountEditedMeta,
+          amountEdited.isAcceptableOrUnknown(
+              data['amount_edited']!, _amountEditedMeta));
+    }
     if (data.containsKey('note')) {
       context.handle(
           _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
@@ -6887,6 +6960,16 @@ class $PurchaseLinesTable extends PurchaseLines
           .read(DriftSqlType.double, data['${effectivePrefix}qty'])!,
       unitPrice: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}unit_price'])!,
+      vatType: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}vat_type'])!,
+      supplyAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}supply_amount'])!,
+      vatAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}vat_amount'])!,
+      totalAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}total_amount'])!,
+      amountEdited: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}amount_edited'])!,
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note']),
       memo: attachedDatabase.typeMapping
@@ -6916,6 +6999,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
   final String unit;
   final double qty;
   final double unitPrice;
+  final int vatType;
+  final double supplyAmount;
+  final double vatAmount;
+  final double totalAmount;
+  final bool amountEdited;
   final String? note;
   final String? memo;
   final String? colorNo;
@@ -6930,6 +7018,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       required this.unit,
       required this.qty,
       required this.unitPrice,
+      required this.vatType,
+      required this.supplyAmount,
+      required this.vatAmount,
+      required this.totalAmount,
+      required this.amountEdited,
       this.note,
       this.memo,
       this.colorNo,
@@ -6946,6 +7039,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
     map['unit'] = Variable<String>(unit);
     map['qty'] = Variable<double>(qty);
     map['unit_price'] = Variable<double>(unitPrice);
+    map['vat_type'] = Variable<int>(vatType);
+    map['supply_amount'] = Variable<double>(supplyAmount);
+    map['vat_amount'] = Variable<double>(vatAmount);
+    map['total_amount'] = Variable<double>(totalAmount);
+    map['amount_edited'] = Variable<bool>(amountEdited);
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -6974,6 +7072,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       unit: Value(unit),
       qty: Value(qty),
       unitPrice: Value(unitPrice),
+      vatType: Value(vatType),
+      supplyAmount: Value(supplyAmount),
+      vatAmount: Value(vatAmount),
+      totalAmount: Value(totalAmount),
+      amountEdited: Value(amountEdited),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
       colorNo: colorNo == null && nullToAbsent
@@ -7000,6 +7103,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       unit: serializer.fromJson<String>(json['unit']),
       qty: serializer.fromJson<double>(json['qty']),
       unitPrice: serializer.fromJson<double>(json['unitPrice']),
+      vatType: serializer.fromJson<int>(json['vatType']),
+      supplyAmount: serializer.fromJson<double>(json['supplyAmount']),
+      vatAmount: serializer.fromJson<double>(json['vatAmount']),
+      totalAmount: serializer.fromJson<double>(json['totalAmount']),
+      amountEdited: serializer.fromJson<bool>(json['amountEdited']),
       note: serializer.fromJson<String?>(json['note']),
       memo: serializer.fromJson<String?>(json['memo']),
       colorNo: serializer.fromJson<String?>(json['colorNo']),
@@ -7019,6 +7127,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       'unit': serializer.toJson<String>(unit),
       'qty': serializer.toJson<double>(qty),
       'unitPrice': serializer.toJson<double>(unitPrice),
+      'vatType': serializer.toJson<int>(vatType),
+      'supplyAmount': serializer.toJson<double>(supplyAmount),
+      'vatAmount': serializer.toJson<double>(vatAmount),
+      'totalAmount': serializer.toJson<double>(totalAmount),
+      'amountEdited': serializer.toJson<bool>(amountEdited),
       'note': serializer.toJson<String?>(note),
       'memo': serializer.toJson<String?>(memo),
       'colorNo': serializer.toJson<String?>(colorNo),
@@ -7036,6 +7149,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           String? unit,
           double? qty,
           double? unitPrice,
+          int? vatType,
+          double? supplyAmount,
+          double? vatAmount,
+          double? totalAmount,
+          bool? amountEdited,
           Value<String?> note = const Value.absent(),
           Value<String?> memo = const Value.absent(),
           Value<String?> colorNo = const Value.absent(),
@@ -7050,6 +7168,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
         unit: unit ?? this.unit,
         qty: qty ?? this.qty,
         unitPrice: unitPrice ?? this.unitPrice,
+        vatType: vatType ?? this.vatType,
+        supplyAmount: supplyAmount ?? this.supplyAmount,
+        vatAmount: vatAmount ?? this.vatAmount,
+        totalAmount: totalAmount ?? this.totalAmount,
+        amountEdited: amountEdited ?? this.amountEdited,
         note: note.present ? note.value : this.note,
         memo: memo.present ? memo.value : this.memo,
         colorNo: colorNo.present ? colorNo.value : this.colorNo,
@@ -7067,6 +7190,16 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
       unit: data.unit.present ? data.unit.value : this.unit,
       qty: data.qty.present ? data.qty.value : this.qty,
       unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      vatType: data.vatType.present ? data.vatType.value : this.vatType,
+      supplyAmount: data.supplyAmount.present
+          ? data.supplyAmount.value
+          : this.supplyAmount,
+      vatAmount: data.vatAmount.present ? data.vatAmount.value : this.vatAmount,
+      totalAmount:
+          data.totalAmount.present ? data.totalAmount.value : this.totalAmount,
+      amountEdited: data.amountEdited.present
+          ? data.amountEdited.value
+          : this.amountEdited,
       note: data.note.present ? data.note.value : this.note,
       memo: data.memo.present ? data.memo.value : this.memo,
       colorNo: data.colorNo.present ? data.colorNo.value : this.colorNo,
@@ -7088,6 +7221,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           ..write('unit: $unit, ')
           ..write('qty: $qty, ')
           ..write('unitPrice: $unitPrice, ')
+          ..write('vatType: $vatType, ')
+          ..write('supplyAmount: $supplyAmount, ')
+          ..write('vatAmount: $vatAmount, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('amountEdited: $amountEdited, ')
           ..write('note: $note, ')
           ..write('memo: $memo, ')
           ..write('colorNo: $colorNo, ')
@@ -7099,8 +7237,25 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
   }
 
   @override
-  int get hashCode => Object.hash(id, orderId, itemId, name, unit, qty,
-      unitPrice, note, memo, colorNo, printAttrsJson, isDeleted, deletedAt);
+  int get hashCode => Object.hash(
+      id,
+      orderId,
+      itemId,
+      name,
+      unit,
+      qty,
+      unitPrice,
+      vatType,
+      supplyAmount,
+      vatAmount,
+      totalAmount,
+      amountEdited,
+      note,
+      memo,
+      colorNo,
+      printAttrsJson,
+      isDeleted,
+      deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -7112,6 +7267,11 @@ class PurchaseLineRow extends DataClass implements Insertable<PurchaseLineRow> {
           other.unit == this.unit &&
           other.qty == this.qty &&
           other.unitPrice == this.unitPrice &&
+          other.vatType == this.vatType &&
+          other.supplyAmount == this.supplyAmount &&
+          other.vatAmount == this.vatAmount &&
+          other.totalAmount == this.totalAmount &&
+          other.amountEdited == this.amountEdited &&
           other.note == this.note &&
           other.memo == this.memo &&
           other.colorNo == this.colorNo &&
@@ -7128,6 +7288,11 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
   final Value<String> unit;
   final Value<double> qty;
   final Value<double> unitPrice;
+  final Value<int> vatType;
+  final Value<double> supplyAmount;
+  final Value<double> vatAmount;
+  final Value<double> totalAmount;
+  final Value<bool> amountEdited;
   final Value<String?> note;
   final Value<String?> memo;
   final Value<String?> colorNo;
@@ -7143,6 +7308,11 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     this.unit = const Value.absent(),
     this.qty = const Value.absent(),
     this.unitPrice = const Value.absent(),
+    this.vatType = const Value.absent(),
+    this.supplyAmount = const Value.absent(),
+    this.vatAmount = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.amountEdited = const Value.absent(),
     this.note = const Value.absent(),
     this.memo = const Value.absent(),
     this.colorNo = const Value.absent(),
@@ -7159,6 +7329,11 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     required String unit,
     required double qty,
     this.unitPrice = const Value.absent(),
+    this.vatType = const Value.absent(),
+    this.supplyAmount = const Value.absent(),
+    this.vatAmount = const Value.absent(),
+    this.totalAmount = const Value.absent(),
+    this.amountEdited = const Value.absent(),
     this.note = const Value.absent(),
     this.memo = const Value.absent(),
     this.colorNo = const Value.absent(),
@@ -7180,6 +7355,11 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     Expression<String>? unit,
     Expression<double>? qty,
     Expression<double>? unitPrice,
+    Expression<int>? vatType,
+    Expression<double>? supplyAmount,
+    Expression<double>? vatAmount,
+    Expression<double>? totalAmount,
+    Expression<bool>? amountEdited,
     Expression<String>? note,
     Expression<String>? memo,
     Expression<String>? colorNo,
@@ -7196,6 +7376,11 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       if (unit != null) 'unit': unit,
       if (qty != null) 'qty': qty,
       if (unitPrice != null) 'unit_price': unitPrice,
+      if (vatType != null) 'vat_type': vatType,
+      if (supplyAmount != null) 'supply_amount': supplyAmount,
+      if (vatAmount != null) 'vat_amount': vatAmount,
+      if (totalAmount != null) 'total_amount': totalAmount,
+      if (amountEdited != null) 'amount_edited': amountEdited,
       if (note != null) 'note': note,
       if (memo != null) 'memo': memo,
       if (colorNo != null) 'color_no': colorNo,
@@ -7214,6 +7399,11 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       Value<String>? unit,
       Value<double>? qty,
       Value<double>? unitPrice,
+      Value<int>? vatType,
+      Value<double>? supplyAmount,
+      Value<double>? vatAmount,
+      Value<double>? totalAmount,
+      Value<bool>? amountEdited,
       Value<String?>? note,
       Value<String?>? memo,
       Value<String?>? colorNo,
@@ -7229,6 +7419,11 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
       unit: unit ?? this.unit,
       qty: qty ?? this.qty,
       unitPrice: unitPrice ?? this.unitPrice,
+      vatType: vatType ?? this.vatType,
+      supplyAmount: supplyAmount ?? this.supplyAmount,
+      vatAmount: vatAmount ?? this.vatAmount,
+      totalAmount: totalAmount ?? this.totalAmount,
+      amountEdited: amountEdited ?? this.amountEdited,
       note: note ?? this.note,
       memo: memo ?? this.memo,
       colorNo: colorNo ?? this.colorNo,
@@ -7262,6 +7457,21 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
     }
     if (unitPrice.present) {
       map['unit_price'] = Variable<double>(unitPrice.value);
+    }
+    if (vatType.present) {
+      map['vat_type'] = Variable<int>(vatType.value);
+    }
+    if (supplyAmount.present) {
+      map['supply_amount'] = Variable<double>(supplyAmount.value);
+    }
+    if (vatAmount.present) {
+      map['vat_amount'] = Variable<double>(vatAmount.value);
+    }
+    if (totalAmount.present) {
+      map['total_amount'] = Variable<double>(totalAmount.value);
+    }
+    if (amountEdited.present) {
+      map['amount_edited'] = Variable<bool>(amountEdited.value);
     }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
@@ -7297,6 +7507,11 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
           ..write('unit: $unit, ')
           ..write('qty: $qty, ')
           ..write('unitPrice: $unitPrice, ')
+          ..write('vatType: $vatType, ')
+          ..write('supplyAmount: $supplyAmount, ')
+          ..write('vatAmount: $vatAmount, ')
+          ..write('totalAmount: $totalAmount, ')
+          ..write('amountEdited: $amountEdited, ')
           ..write('note: $note, ')
           ..write('memo: $memo, ')
           ..write('colorNo: $colorNo, ')
@@ -17509,6 +17724,11 @@ typedef $$PurchaseLinesTableCreateCompanionBuilder = PurchaseLinesCompanion
   required String unit,
   required double qty,
   Value<double> unitPrice,
+  Value<int> vatType,
+  Value<double> supplyAmount,
+  Value<double> vatAmount,
+  Value<double> totalAmount,
+  Value<bool> amountEdited,
   Value<String?> note,
   Value<String?> memo,
   Value<String?> colorNo,
@@ -17526,6 +17746,11 @@ typedef $$PurchaseLinesTableUpdateCompanionBuilder = PurchaseLinesCompanion
   Value<String> unit,
   Value<double> qty,
   Value<double> unitPrice,
+  Value<int> vatType,
+  Value<double> supplyAmount,
+  Value<double> vatAmount,
+  Value<double> totalAmount,
+  Value<bool> amountEdited,
   Value<String?> note,
   Value<String?> memo,
   Value<String?> colorNo,
@@ -17593,6 +17818,21 @@ class $$PurchaseLinesTableFilterComposer
 
   ColumnFilters<double> get unitPrice => $composableBuilder(
       column: $table.unitPrice, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get vatType => $composableBuilder(
+      column: $table.vatType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get supplyAmount => $composableBuilder(
+      column: $table.supplyAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get vatAmount => $composableBuilder(
+      column: $table.vatAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get amountEdited => $composableBuilder(
+      column: $table.amountEdited, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
@@ -17678,6 +17918,23 @@ class $$PurchaseLinesTableOrderingComposer
   ColumnOrderings<double> get unitPrice => $composableBuilder(
       column: $table.unitPrice, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get vatType => $composableBuilder(
+      column: $table.vatType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get supplyAmount => $composableBuilder(
+      column: $table.supplyAmount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get vatAmount => $composableBuilder(
+      column: $table.vatAmount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get amountEdited => $composableBuilder(
+      column: $table.amountEdited,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
 
@@ -17761,6 +18018,21 @@ class $$PurchaseLinesTableAnnotationComposer
 
   GeneratedColumn<double> get unitPrice =>
       $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<int> get vatType =>
+      $composableBuilder(column: $table.vatType, builder: (column) => column);
+
+  GeneratedColumn<double> get supplyAmount => $composableBuilder(
+      column: $table.supplyAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get vatAmount =>
+      $composableBuilder(column: $table.vatAmount, builder: (column) => column);
+
+  GeneratedColumn<double> get totalAmount => $composableBuilder(
+      column: $table.totalAmount, builder: (column) => column);
+
+  GeneratedColumn<bool> get amountEdited => $composableBuilder(
+      column: $table.amountEdited, builder: (column) => column);
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -17851,6 +18123,11 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             Value<String> unit = const Value.absent(),
             Value<double> qty = const Value.absent(),
             Value<double> unitPrice = const Value.absent(),
+            Value<int> vatType = const Value.absent(),
+            Value<double> supplyAmount = const Value.absent(),
+            Value<double> vatAmount = const Value.absent(),
+            Value<double> totalAmount = const Value.absent(),
+            Value<bool> amountEdited = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> colorNo = const Value.absent(),
@@ -17867,6 +18144,11 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             unit: unit,
             qty: qty,
             unitPrice: unitPrice,
+            vatType: vatType,
+            supplyAmount: supplyAmount,
+            vatAmount: vatAmount,
+            totalAmount: totalAmount,
+            amountEdited: amountEdited,
             note: note,
             memo: memo,
             colorNo: colorNo,
@@ -17883,6 +18165,11 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             required String unit,
             required double qty,
             Value<double> unitPrice = const Value.absent(),
+            Value<int> vatType = const Value.absent(),
+            Value<double> supplyAmount = const Value.absent(),
+            Value<double> vatAmount = const Value.absent(),
+            Value<double> totalAmount = const Value.absent(),
+            Value<bool> amountEdited = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> colorNo = const Value.absent(),
@@ -17899,6 +18186,11 @@ class $$PurchaseLinesTableTableManager extends RootTableManager<
             unit: unit,
             qty: qty,
             unitPrice: unitPrice,
+            vatType: vatType,
+            supplyAmount: supplyAmount,
+            vatAmount: vatAmount,
+            totalAmount: totalAmount,
+            amountEdited: amountEdited,
             note: note,
             memo: memo,
             colorNo: colorNo,

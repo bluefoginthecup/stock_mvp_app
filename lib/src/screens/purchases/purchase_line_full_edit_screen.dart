@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/item.dart';
 import '../../models/purchase_line.dart';
@@ -10,6 +11,7 @@ import '../../repos/repo_interfaces.dart';
 import '../../ui/common/item_picker_sheet.dart';
 import '../../ui/common/suggestion_panel.dart';
 import '../../ui/common/ui.dart';
+import '../../utils/line_amount_calculator.dart';
 
 const _knownPrintAttrLabels = {
   'design': '디자인',
@@ -95,6 +97,9 @@ class _PurchaseLineFullEditScreenState
   late final TextEditingController noteC;
   late final TextEditingController memoC;
   late final TextEditingController priceC;
+  late final TextEditingController supplyAmountC;
+  late final TextEditingController vatAmountC;
+  late final TextEditingController totalAmountC;
   final List<_PrintAttrEditorRow> _printAttrRows = [];
 
   late final bool isEdit;
@@ -103,9 +108,9 @@ class _PurchaseLineFullEditScreenState
   bool _itemSearching = false;
   bool _suppressItemSearch = false;
   List<Item> _itemResults = <Item>[];
-  PurchaseOrder? _purchaseOrder;
   VatType _vatType = VatType.exclusive;
   bool _vatTypeTouched = false;
+  bool _amountEdited = false;
 
   @override
   void initState() {
@@ -124,6 +129,25 @@ class _PurchaseLineFullEditScreenState
     priceC = TextEditingController(
       text: (i?.unitPrice ?? 0).toString(),
     );
+    _vatType = i?.vatType ?? VatType.exclusive;
+    _amountEdited = i?.amountEdited ?? false;
+    final initialAmount = i == null
+        ? const LineAmountBreakdown(
+            supplyAmount: 0,
+            vatAmount: 0,
+            totalAmount: 0,
+          )
+        : LineAmountBreakdown(
+            supplyAmount: i.supplyAmount,
+            vatAmount: i.vatAmount,
+            totalAmount: i.totalAmount,
+          );
+    supplyAmountC = TextEditingController(
+        text: initialAmount.supplyAmount.toStringAsFixed(0));
+    vatAmountC =
+        TextEditingController(text: initialAmount.vatAmount.toStringAsFixed(0));
+    totalAmountC = TextEditingController(
+        text: initialAmount.totalAmount.toStringAsFixed(0));
     _resetPrintAttrRows(i?.printAttrs ?? const []);
     final initialItemId = i?.itemId.trim();
     if (initialItemId != null && initialItemId.isNotEmpty) {
@@ -132,6 +156,9 @@ class _PurchaseLineFullEditScreenState
       });
     }
     _loadPurchaseOrderVatType();
+    if (i == null) {
+      _recalculateAmounts(force: true);
+    }
   }
 
   @override
@@ -145,6 +172,9 @@ class _PurchaseLineFullEditScreenState
     noteC.dispose();
     memoC.dispose();
     priceC.dispose();
+    supplyAmountC.dispose();
+    vatAmountC.dispose();
+    totalAmountC.dispose();
     for (final row in _printAttrRows) {
       row.dispose();
     }
@@ -287,14 +317,40 @@ class _PurchaseLineFullEditScreenState
   Future<void> _loadPurchaseOrderVatType() async {
     final po = await widget.repo.getPurchaseOrderById(widget.orderId);
     if (!mounted || po == null) return;
-    if (_vatTypeTouched) {
-      _purchaseOrder = po;
+    if (isEdit || _vatTypeTouched) {
       return;
     }
     setState(() {
-      _purchaseOrder = po;
       _vatType = po.vatType;
+      _recalculateAmounts(force: true);
     });
+  }
+
+  double _parseMoney(TextEditingController controller) =>
+      double.tryParse(controller.text.trim().replaceAll(',', '')) ?? 0;
+
+  void _recalculateAmountsIfNeeded() {
+    if (!_amountEdited) {
+      _recalculateAmounts();
+    }
+  }
+
+  List<TextInputFormatter> get _numberInputFormatters => [
+        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+      ];
+
+  void _recalculateAmounts({bool force = false}) {
+    if (_amountEdited && !force) return;
+    final qty = double.tryParse(qtyC.text.trim()) ?? 0;
+    final price = double.tryParse(priceC.text.trim()) ?? 0;
+    final amount = LineAmountCalculator.calculate(
+      unitPrice: price,
+      qty: qty,
+      vatType: _vatType,
+    );
+    supplyAmountC.text = amount.supplyAmount.toStringAsFixed(0);
+    vatAmountC.text = amount.vatAmount.toStringAsFixed(0);
+    totalAmountC.text = amount.totalAmount.toStringAsFixed(0);
   }
 
   Future<void> _save() async {
@@ -313,6 +369,17 @@ class _PurchaseLineFullEditScreenState
       final item = await itemRepo.getItem(itemIdC.text.trim());
       price = item?.defaultPrice ?? 0;
     }
+    final amount = _amountEdited
+        ? LineAmountBreakdown(
+            supplyAmount: _parseMoney(supplyAmountC),
+            vatAmount: _parseMoney(vatAmountC),
+            totalAmount: _parseMoney(totalAmountC),
+          )
+        : LineAmountCalculator.calculate(
+            unitPrice: price,
+            qty: qty,
+            vatType: _vatType,
+          );
     final newLine = PurchaseLine(
       id: lineId,
       orderId: widget.orderId,
@@ -324,6 +391,11 @@ class _PurchaseLineFullEditScreenState
       note: noteC.text.trim().isEmpty ? null : noteC.text.trim(),
       memo: memoC.text.trim().isEmpty ? null : memoC.text.trim(),
       unitPrice: price,
+      vatType: _vatType,
+      supplyAmount: amount.supplyAmount,
+      vatAmount: amount.vatAmount,
+      totalAmount: amount.totalAmount,
+      amountEdited: _amountEdited,
       printAttrs: _buildPrintAttrs(),
     );
 
@@ -335,13 +407,6 @@ class _PurchaseLineFullEditScreenState
       lines.add(newLine);
     }
     await widget.repo.upsertLines(widget.orderId, lines);
-    final po = _purchaseOrder ??
-        await widget.repo.getPurchaseOrderById(widget.orderId);
-    if (po != null && po.vatType != _vatType) {
-      await widget.repo.updatePurchaseOrder(
-        po.copyWith(vatType: _vatType, updatedAt: DateTime.now()),
-      );
-    }
     if (!mounted) return;
     Navigator.pop(context, newLine);
   }
@@ -500,9 +565,15 @@ class _PurchaseLineFullEditScreenState
     );
     if (ok != true) return;
 
-    final lines = await widget.repo.getLines(widget.orderId);
-    final next = lines.where((e) => e.id != lineId).toList();
-    await widget.repo.upsertLines(widget.orderId, next);
+    final deleted =
+        await widget.repo.deletePurchaseLine(widget.orderId, lineId);
+    if (deleted == 0) {
+      final lines = await widget.repo.getLines(widget.orderId);
+      final next = lines.where((line) => line.id != lineId).toList();
+      if (next.length != lines.length) {
+        await widget.repo.upsertLines(widget.orderId, next);
+      }
+    }
     if (!mounted) return;
     Navigator.pop(context, true);
   }
@@ -631,13 +702,69 @@ class _PurchaseLineFullEditScreenState
             setState(() {
               _vatType = values.first;
               _vatTypeTouched = true;
+              _recalculateAmountsIfNeeded();
             });
           },
         ),
         const SizedBox(height: 4),
         Text(
-          '발주서 전체 합계 계산에 적용됩니다.',
+          '이 라인의 공급가액/부가세/합계 계산에 적용됩니다.',
           style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAmountEditor() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('금액 직접 수정'),
+          subtitle: const Text('1원 단위 조정이 필요할 때 켜세요.'),
+          value: _amountEdited,
+          onChanged: (value) {
+            setState(() {
+              _amountEdited = value;
+              if (!value) {
+                _recalculateAmounts(force: true);
+              }
+            });
+          },
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: supplyAmountC,
+                enabled: _amountEdited,
+                decoration: _dec('공급가액'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                controller: vatAmountC,
+                enabled: _amountEdited,
+                decoration: _dec('부가세'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                controller: totalAmountC,
+                enabled: _amountEdited,
+                decoration: _dec('합계'),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -756,8 +883,9 @@ class _PurchaseLineFullEditScreenState
                     child: TextFormField(
                       controller: qtyC,
                       decoration: _dec('qty'),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: TextInputType.text,
+                      inputFormatters: _numberInputFormatters,
+                      onChanged: (_) => _recalculateAmountsIfNeeded(),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return '수량';
                         final d = double.tryParse(v);
@@ -766,18 +894,22 @@ class _PurchaseLineFullEditScreenState
                       },
                     ),
                   ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
                       controller: priceC,
                       decoration: _dec('단가'),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: TextInputType.text,
+                      inputFormatters: _numberInputFormatters,
+                      onChanged: (_) => _recalculateAmountsIfNeeded(),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
               _buildVatTypeSelector(),
+              const SizedBox(height: 12),
+              _buildAmountEditor(),
               const SizedBox(height: 16),
               Text('옵션', style: text.titleSmall),
               const SizedBox(height: 8),

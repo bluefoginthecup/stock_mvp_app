@@ -1,3 +1,6 @@
+import 'purchase_order.dart';
+import '../utils/line_amount_calculator.dart';
+
 class PurchaseLinePrintAttr {
   final String key;
   final String label;
@@ -34,6 +37,11 @@ class PurchaseLine {
   final String? memo;
   final String? colorNo;
   final double unitPrice;
+  final VatType vatType;
+  final double supplyAmount;
+  final double vatAmount;
+  final double totalAmount;
+  final bool amountEdited;
   final List<PurchaseLinePrintAttr> printAttrs;
 
   PurchaseLine({
@@ -47,8 +55,30 @@ class PurchaseLine {
     this.note,
     this.memo,
     required this.unitPrice,
+    this.vatType = VatType.exclusive,
+    double? supplyAmount,
+    double? vatAmount,
+    double? totalAmount,
+    this.amountEdited = false,
     this.printAttrs = const [],
-  });
+  })  : supplyAmount = supplyAmount ??
+            LineAmountCalculator.calculate(
+              unitPrice: unitPrice,
+              qty: qty,
+              vatType: vatType,
+            ).supplyAmount,
+        vatAmount = vatAmount ??
+            LineAmountCalculator.calculate(
+              unitPrice: unitPrice,
+              qty: qty,
+              vatType: vatType,
+            ).vatAmount,
+        totalAmount = totalAmount ??
+            LineAmountCalculator.calculate(
+              unitPrice: unitPrice,
+              qty: qty,
+              vatType: vatType,
+            ).totalAmount;
 
   // ✅ 확장된 copyWith
   PurchaseLine copyWith({
@@ -60,21 +90,45 @@ class PurchaseLine {
     String? note,
     String? memo,
     double? unitPrice,
+    VatType? vatType,
+    double? supplyAmount,
+    double? vatAmount,
+    double? totalAmount,
+    bool? amountEdited,
     List<PurchaseLinePrintAttr>? printAttrs,
-  }) =>
-      PurchaseLine(
-        id: id,
-        orderId: orderId,
-        itemId: itemId ?? this.itemId,
-        name: name ?? this.name,
-        unit: unit ?? this.unit,
-        qty: qty ?? this.qty,
-        note: note ?? this.note,
-        memo: memo ?? this.memo,
-        colorNo: colorNo ?? this.colorNo,
-        unitPrice: unitPrice ?? this.unitPrice,
-        printAttrs: printAttrs ?? this.printAttrs,
-      );
+  }) {
+    final nextQty = qty ?? this.qty;
+    final nextUnitPrice = unitPrice ?? this.unitPrice;
+    final nextVatType = vatType ?? this.vatType;
+    final nextAmountEdited = amountEdited ?? this.amountEdited;
+    final autoAmount = nextAmountEdited
+        ? null
+        : LineAmountCalculator.calculate(
+            unitPrice: nextUnitPrice,
+            qty: nextQty,
+            vatType: nextVatType,
+          );
+
+    return PurchaseLine(
+      id: id,
+      orderId: orderId,
+      itemId: itemId ?? this.itemId,
+      name: name ?? this.name,
+      unit: unit ?? this.unit,
+      qty: nextQty,
+      note: note ?? this.note,
+      memo: memo ?? this.memo,
+      colorNo: colorNo ?? this.colorNo,
+      unitPrice: nextUnitPrice,
+      vatType: nextVatType,
+      supplyAmount:
+          supplyAmount ?? autoAmount?.supplyAmount ?? this.supplyAmount,
+      vatAmount: vatAmount ?? autoAmount?.vatAmount ?? this.vatAmount,
+      totalAmount: totalAmount ?? autoAmount?.totalAmount ?? this.totalAmount,
+      amountEdited: nextAmountEdited,
+      printAttrs: printAttrs ?? this.printAttrs,
+    );
+  }
 
   factory PurchaseLine.fromJson(Map<String, dynamic> j) => PurchaseLine(
         id: j['id'],
@@ -87,6 +141,13 @@ class PurchaseLine {
         memo: j['memo'] as String?,
         colorNo: j['colorNo'] as String?,
         unitPrice: (j['unitPrice'] as num?)?.toDouble() ?? 0,
+        vatType: VatType.values[((j['vatType'] as num?)?.toInt() ?? 0)
+            .clamp(0, VatType.values.length - 1)
+            .toInt()],
+        supplyAmount: (j['supplyAmount'] as num?)?.toDouble(),
+        vatAmount: (j['vatAmount'] as num?)?.toDouble(),
+        totalAmount: (j['totalAmount'] as num?)?.toDouble(),
+        amountEdited: j['amountEdited'] == true,
         printAttrs: _printAttrsFromJson(j['printAttrs'] ?? j['print_attrs']),
       );
 
@@ -101,6 +162,11 @@ class PurchaseLine {
         'memo': memo,
         'colorNo': colorNo,
         'unitPrice': unitPrice,
+        'vatType': vatType.index,
+        'supplyAmount': supplyAmount,
+        'vatAmount': vatAmount,
+        'totalAmount': totalAmount,
+        'amountEdited': amountEdited,
         'printAttrs': printAttrs.map((attr) => attr.toJson()).toList(),
       };
 

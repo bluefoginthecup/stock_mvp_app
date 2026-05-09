@@ -222,6 +222,27 @@ class _PurchaseListScreenState extends State<PurchaseListScreen> {
             child: FutureBuilder<Map<String, List<PurchaseLine>>>(
               future: poRepo.getLinesMap(), // 🔥 한 번만 가져옴
               builder: (context, linesSnap) {
+                if (linesSnap.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, size: 40),
+                          const SizedBox(height: 12),
+                          const Text('발주 품목을 불러오지 못했습니다.'),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${linesSnap.error}',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
                 if (!linesSnap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }

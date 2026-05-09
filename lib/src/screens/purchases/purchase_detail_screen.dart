@@ -1372,21 +1372,17 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     final itemsTotal = _lines.fold<double>(
       0,
-      (sum, l) => sum + (l.qty * l.unitPrice),
+      (sum, l) => sum + l.supplyAmount,
     );
 
-    final vat = switch (po.vatType) {
-      VatType.exempt => 0.0,
-      VatType.inclusive => itemsTotal / 11,
-      VatType.exclusive => itemsTotal * 0.1,
-    };
+    final vat = _lines.fold<double>(0, (sum, l) => sum + l.vatAmount);
 
     final shipping = po.shippingCost ?? 0.0;
     final extra = po.extraCost ?? 0.0;
 
-    final total = po.vatType == VatType.inclusive
-        ? itemsTotal + shipping + extra
-        : itemsTotal + vat + shipping + extra;
+    final total = _lines.fold<double>(0, (sum, l) => sum + l.totalAmount) +
+        shipping +
+        extra;
     final navIds = _navigationIds;
     final navIndex = _navigationIndex;
     final title = navIndex >= 0 && navIds.length > 1
@@ -1573,14 +1569,21 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                   : Card(
                       child: Column(
                         children: _lines.map((ln) {
-                          final lineTotal = ln.qty * ln.unitPrice;
                           final name =
                               ln.name.trim().isEmpty ? ln.itemId : ln.name;
+                          final vatLabel = switch (ln.vatType) {
+                            VatType.exclusive => '별도',
+                            VatType.inclusive => '포함',
+                            VatType.exempt => '면세',
+                          };
 
                           return ListTile(
                             title: Text('$name × ${ln.qty}'),
                             subtitle: Text(
-                              '단가 ${_fmt(ln.unitPrice)} / 합계 ${_fmt(lineTotal)}',
+                              '단가 ${_fmt(ln.unitPrice)} · $vatLabel / '
+                              '공급 ${_fmt(ln.supplyAmount)} · '
+                              '부가세 ${_fmt(ln.vatAmount)} · '
+                              '합계 ${_fmt(ln.totalAmount)}',
                             ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => _openLineFull(ln),
