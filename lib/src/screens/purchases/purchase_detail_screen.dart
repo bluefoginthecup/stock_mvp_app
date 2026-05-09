@@ -1048,7 +1048,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     final po = _po;
     if (po == null) return;
 
-    final saved = await Navigator.push<PurchaseLine?>(
+    final result = await Navigator.push<Object?>(
       context,
       MaterialPageRoute(
         builder: (_) => PurchaseLineFullEditScreen(
@@ -1059,7 +1059,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       ),
     );
 
-    if (saved != null && mounted) {
+    if (result is PurchaseLine && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('추가되었습니다')),
       );
@@ -1071,7 +1071,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     final po = _po;
     if (po == null) return;
 
-    final saved = await Navigator.push<PurchaseLine?>(
+    final result = await Navigator.push<Object?>(
       context,
       MaterialPageRoute(
         builder: (_) => PurchaseLineFullEditScreen(
@@ -1082,9 +1082,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
       ),
     );
 
-    if (saved != null && mounted) {
+    if (result is PurchaseLine && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('저장되었습니다')),
+      );
+      await _reload();
+    } else if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('삭제되었습니다')),
       );
       await _reload();
     }
