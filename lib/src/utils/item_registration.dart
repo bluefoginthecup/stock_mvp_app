@@ -5,6 +5,7 @@ const registrationAttrCleanupKeys = {
   'status',
   'source',
   'createdFromPurchaseOrderId',
+  'createdFromQuoteId',
   'createdAt',
 };
 
