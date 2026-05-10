@@ -218,6 +218,104 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
   }
 
   @override
+  Future<List<StorageLocation>> listDescendantLocations(
+      String locationId) async {
+    final rows = await db.customSelect(
+      '''
+      WITH RECURSIVE descendants AS (
+        SELECT id, name, parent_id, type, memo, sort_order, is_archived,
+               created_at, updated_at
+        FROM storage_locations
+        WHERE parent_id = ? AND is_archived = 0
+        UNION ALL
+        SELECT child.id, child.name, child.parent_id, child.type, child.memo,
+               child.sort_order, child.is_archived, child.created_at,
+               child.updated_at
+        FROM storage_locations child
+        INNER JOIN descendants parent ON child.parent_id = parent.id
+        WHERE child.is_archived = 0
+      )
+      SELECT id, name, parent_id, type, memo, sort_order, is_archived,
+             created_at, updated_at
+      FROM descendants
+      ORDER BY sort_order ASC, name COLLATE NOCASE ASC
+      ''',
+      variables: [Variable.withString(locationId)],
+    ).get();
+    return rows.map(_storageLocationFromRow).toList();
+  }
+
+  @override
+  Future<List<LocationItemEntry>> listItemEntriesForLocationTree(
+      String locationId) async {
+    final allLocations = await searchLocations('');
+    final selectedLocationIds = <String>{
+      locationId,
+      for (final location in _descendantsFromAll(locationId, allLocations))
+        location.id,
+    };
+    if (selectedLocationIds.isEmpty) return const [];
+
+    final rows = await (db.select(db.items).join([
+      innerJoin(
+        db.itemLocations,
+        db.itemLocations.itemId.equalsExp(db.items.id),
+      ),
+    ])
+          ..where(db.items.isDeleted.equals(false))
+          ..where(db.itemLocations.locationId.isIn(selectedLocationIds))
+          ..orderBy([
+            OrderingTerm(expression: db.items.name, mode: OrderingMode.asc),
+          ]))
+        .get();
+
+    final locationById = {
+      for (final location in allLocations) location.id: location
+    };
+    final entries = <LocationItemEntry>[];
+    for (final row in rows) {
+      final item = row.readTable(db.items).toDomain();
+      final link = row.readTable(db.itemLocations);
+      final location = locationById[link.locationId];
+      if (location == null) continue;
+      entries.add(
+        LocationItemEntry(
+          item: item,
+          location: location,
+          locationPath: _locationPathLabel(location, allLocations),
+          isPrimary: link.isPrimary,
+        ),
+      );
+    }
+    _cacheItems(entries.map((entry) => entry.item));
+    return entries;
+  }
+
+  @override
+  Future<int> countItemsForLocationTree(String locationId) async {
+    final descendants = await listDescendantLocations(locationId);
+    final selectedLocationIds = <String>{
+      locationId,
+      for (final location in descendants) location.id,
+    };
+    if (selectedLocationIds.isEmpty) return 0;
+
+    final placeholders =
+        List.filled(selectedLocationIds.length, '?').join(', ');
+    final row = await db.customSelect(
+      '''
+      SELECT COUNT(*) AS c
+      FROM item_locations il
+      INNER JOIN items i ON i.id = il.item_id
+      WHERE il.location_id IN ($placeholders)
+        AND i.is_deleted = 0
+      ''',
+      variables: selectedLocationIds.map(Variable.withString).toList(),
+    ).getSingle();
+    return row.data['c'] as int? ?? 0;
+  }
+
+  @override
   Future<List<StorageLocation>> buildLocationBreadcrumb(
       String locationId) async {
     final all = await searchLocations('');
@@ -508,6 +606,206 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
     db.notifyUpdates({const TableUpdate('item_locations')});
   }
 
+  @override
+  Future<void> moveItemLocation({
+    required String itemId,
+    String? fromLocationId,
+    required String toLocationId,
+    String? memo,
+  }) async {
+    final cleanItemId = itemId.trim();
+    final cleanToLocationId = toLocationId.trim();
+    final cleanFromLocationId = fromLocationId?.trim();
+    if (cleanItemId.isEmpty || cleanToLocationId.isEmpty) return;
+    if (cleanFromLocationId == cleanToLocationId) return;
+
+    final links = await listItemLocationLinks(cleanItemId);
+    ItemLocation? fromLink;
+    if (cleanFromLocationId?.isNotEmpty == true) {
+      for (final link in links) {
+        if (link.locationId == cleanFromLocationId) {
+          fromLink = link;
+          break;
+        }
+      }
+    } else {
+      for (final link in links) {
+        if (link.isPrimary) {
+          fromLink = link;
+          break;
+        }
+      }
+      if (fromLink == null && links.isNotEmpty) {
+        fromLink = links.first;
+      }
+    }
+    final effectiveFromId = fromLink?.locationId;
+    if (effectiveFromId == cleanToLocationId) return;
+
+    final allLocations = await searchLocations('');
+    final locationById = {
+      for (final location in allLocations) location.id: location
+    };
+    final toLocation = locationById[cleanToLocationId];
+    if (toLocation == null) {
+      throw StateError('이동할 보관 위치를 찾을 수 없습니다.');
+    }
+    final fromLocation =
+        effectiveFromId == null ? null : locationById[effectiveFromId];
+    final itemName = await _itemNameForMovement(cleanItemId);
+    final fromPath = fromLocation == null
+        ? null
+        : _locationPathLabel(fromLocation, allLocations);
+    final toPath = _locationPathLabel(toLocation, allLocations);
+    final now = DateTime.now();
+    final nowIso = now.toIso8601String();
+    final shouldMakePrimary = fromLink?.isPrimary == true ||
+        !links.any(
+          (link) => link.isPrimary && link.locationId != effectiveFromId,
+        );
+
+    await db.transaction(() async {
+      if (shouldMakePrimary) {
+        await db.customStatement(
+          '''
+          UPDATE item_locations
+          SET is_primary = 0, updated_at = ?
+          WHERE item_id = ?
+          ''',
+          [nowIso, cleanItemId],
+        );
+      }
+
+      if (effectiveFromId != null) {
+        await db.customStatement(
+          '''
+          DELETE FROM item_locations
+          WHERE item_id = ? AND location_id = ?
+          ''',
+          [cleanItemId, effectiveFromId],
+        );
+      }
+
+      await db.customStatement(
+        '''
+        INSERT INTO item_locations
+          (item_id, location_id, is_primary, memo, updated_at)
+        VALUES (?, ?, ?, NULL, ?)
+        ON CONFLICT(item_id, location_id) DO UPDATE SET
+          is_primary = CASE
+            WHEN excluded.is_primary = 1 THEN 1
+            ELSE item_locations.is_primary
+          END,
+          updated_at = excluded.updated_at
+        ''',
+        [
+          cleanItemId,
+          cleanToLocationId,
+          shouldMakePrimary ? 1 : 0,
+          nowIso,
+        ],
+      );
+
+      await db.customStatement(
+        '''
+        INSERT INTO storage_location_movements
+          (id, item_id, item_name, from_location_id, from_location_path,
+           to_location_id, to_location_path, memo, moved_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''',
+        [
+          const Uuid().v4(),
+          cleanItemId,
+          itemName,
+          effectiveFromId,
+          fromPath,
+          cleanToLocationId,
+          toPath,
+          memo?.trim().isEmpty == true ? null : memo?.trim(),
+          nowIso,
+        ],
+      );
+    });
+
+    db.notifyUpdates({
+      const TableUpdate('item_locations'),
+      const TableUpdate('storage_location_movements'),
+    });
+  }
+
+  @override
+  Future<List<StorageLocationMovement>> listLocationMovements({
+    String? locationId,
+    String? itemId,
+    int limit = 50,
+  }) async {
+    final clauses = <String>[];
+    final variables = <Variable>[];
+    final cleanLocationId = locationId?.trim();
+    final cleanItemId = itemId?.trim();
+    if (cleanLocationId?.isNotEmpty == true) {
+      clauses.add('(from_location_id = ? OR to_location_id = ?)');
+      variables
+        ..add(Variable.withString(cleanLocationId!))
+        ..add(Variable.withString(cleanLocationId));
+    }
+    if (cleanItemId?.isNotEmpty == true) {
+      clauses.add('item_id = ?');
+      variables.add(Variable.withString(cleanItemId!));
+    }
+
+    final whereSql = clauses.isEmpty ? '' : 'WHERE ${clauses.join(' AND ')}';
+    final safeLimit = limit.clamp(1, 200);
+    final rows = await db.customSelect(
+      '''
+      SELECT id, item_id, item_name, from_location_id, from_location_path,
+             to_location_id, to_location_path, memo, moved_at
+      FROM storage_location_movements
+      $whereSql
+      ORDER BY moved_at DESC
+      LIMIT $safeLimit
+      ''',
+      variables: variables,
+    ).get();
+    return rows.map(_storageLocationMovementFromRow).toList();
+  }
+
+  @override
+  Future<List<StorageLocationMovement>> listLocationTreeMovements(
+    String locationId, {
+    int limit = 50,
+  }) async {
+    final cleanLocationId = locationId.trim();
+    if (cleanLocationId.isEmpty) return const [];
+
+    final allLocations = await searchLocations('');
+    final locationIds = <String>[
+      cleanLocationId,
+      for (final location in _descendantsFromAll(cleanLocationId, allLocations))
+        location.id,
+    ];
+    if (locationIds.isEmpty) return const [];
+
+    final placeholders = List.filled(locationIds.length, '?').join(', ');
+    final safeLimit = limit.clamp(1, 200);
+    final rows = await db.customSelect(
+      '''
+      SELECT id, item_id, item_name, from_location_id, from_location_path,
+             to_location_id, to_location_path, memo, moved_at
+      FROM storage_location_movements
+      WHERE from_location_id IN ($placeholders)
+         OR to_location_id IN ($placeholders)
+      ORDER BY moved_at DESC
+      LIMIT $safeLimit
+      ''',
+      variables: [
+        for (final id in locationIds) Variable.withString(id),
+        for (final id in locationIds) Variable.withString(id),
+      ],
+    ).get();
+    return rows.map(_storageLocationMovementFromRow).toList();
+  }
+
   StorageLocation _storageLocationFromRow(QueryRow row) {
     final data = row.data;
     return StorageLocation(
@@ -532,6 +830,43 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
       memo: data['memo'] as String?,
       updatedAt: DateTime.parse(data['updated_at'] as String),
     );
+  }
+
+  StorageLocationMovement _storageLocationMovementFromRow(QueryRow row) {
+    final data = row.data;
+    return StorageLocationMovement(
+      id: data['id'] as String,
+      itemId: data['item_id'] as String,
+      itemName: data['item_name'] as String? ?? '',
+      fromLocationId: data['from_location_id'] as String?,
+      fromLocationPath: data['from_location_path'] as String?,
+      toLocationId: data['to_location_id'] as String,
+      toLocationPath: data['to_location_path'] as String? ?? '',
+      memo: data['memo'] as String?,
+      movedAt: DateTime.parse(data['moved_at'] as String),
+    );
+  }
+
+  Future<String> _itemNameForMovement(String itemId) async {
+    final cached = _cachedItemOrNull(itemId);
+    if (cached != null) {
+      return cached.displayName?.trim().isNotEmpty == true
+          ? cached.displayName!.trim()
+          : cached.name;
+    }
+    final row = await db.customSelect(
+      '''
+      SELECT name, display_name
+      FROM items
+      WHERE id = ?
+      LIMIT 1
+      ''',
+      variables: [Variable.withString(itemId)],
+    ).getSingleOrNull();
+    if (row == null) return itemId;
+    final displayName = row.data['display_name'] as String?;
+    if (displayName?.trim().isNotEmpty == true) return displayName!.trim();
+    return row.data['name'] as String? ?? itemId;
   }
 
   String _storageLocationEscapeLike(String s) {
@@ -570,6 +905,27 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
               item.attrsJson.lower().like(attrLike, escapeChar: '\\'));
     }
     return expr;
+  }
+
+  List<StorageLocation> _descendantsFromAll(
+    String locationId,
+    List<StorageLocation> allLocations,
+  ) {
+    final childrenByParent = <String, List<StorageLocation>>{};
+    for (final location in allLocations) {
+      final parentId = location.parentId;
+      if (parentId == null) continue;
+      (childrenByParent[parentId] ??= <StorageLocation>[]).add(location);
+    }
+
+    final result = <StorageLocation>[];
+    final stack = <StorageLocation>[...?childrenByParent[locationId]];
+    while (stack.isNotEmpty) {
+      final current = stack.removeLast();
+      result.add(current);
+      stack.addAll(childrenByParent[current.id] ?? const []);
+    }
+    return result;
   }
 
   String _locationPathLabel(

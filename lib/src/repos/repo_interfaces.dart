@@ -396,6 +396,11 @@ abstract class StorageLocationRepo {
   Future<List<ItemLocation>> listItemLocationLinks(String itemId);
   Future<List<Item>> listItemsForLocation(String locationId);
   Future<List<ItemLocation>> listItemLocationsForLocation(String locationId);
+  Future<List<StorageLocation>> listDescendantLocations(String locationId);
+  Future<List<LocationItemEntry>> listItemEntriesForLocationTree(
+    String locationId,
+  );
+  Future<int> countItemsForLocationTree(String locationId);
   Future<List<StorageLocation>> buildLocationBreadcrumb(String locationId);
   Future<int> countChildLocations(String locationId);
   Future<int> countItemsForLocation(String locationId);
@@ -417,6 +422,24 @@ abstract class StorageLocationRepo {
   Future<void> setPrimaryLocationForItem({
     required String itemId,
     required String locationId,
+  });
+
+  Future<void> moveItemLocation({
+    required String itemId,
+    String? fromLocationId,
+    required String toLocationId,
+    String? memo,
+  });
+
+  Future<List<StorageLocationMovement>> listLocationMovements({
+    String? locationId,
+    String? itemId,
+    int limit = 50,
+  });
+
+  Future<List<StorageLocationMovement>> listLocationTreeMovements(
+    String locationId, {
+    int limit = 50,
   });
 }
 

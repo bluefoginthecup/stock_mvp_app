@@ -65,6 +65,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
   Item? _item; // 사람 읽는 이름 (repo.nameOf)
   bool? _isFinished; // finished/semi 추정
   List<String> _registrationMissing = const [];
+  int _locationMovementRevision = 0;
 
   @override
   void initState() {
@@ -242,7 +243,8 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       return;
     }
 
-    final selectedIds = links.map((link) => link.locationId).toSet();
+    final originalSelectedIds = links.map((link) => link.locationId).toSet();
+    final selectedIds = {...originalSelectedIds};
     String? primaryId = links
         .where((link) => link.isPrimary)
         .map((link) => link.locationId)
@@ -369,13 +371,43 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     searchC.dispose();
 
     if (saved != true) return;
-    await repo.setLocationsForItem(
+    await _saveItemLocationsWithMovementHistory(
+      repo: repo,
       itemId: item.id,
-      locationIds: selectedIds.toList(),
+      beforeLocationIds: originalSelectedIds,
+      afterLocationIds: selectedIds,
       primaryLocationId: primaryId,
     );
     if (!mounted) return;
-    setState(() {});
+    setState(() => _locationMovementRevision++);
+  }
+
+  Future<void> _saveItemLocationsWithMovementHistory({
+    required StorageLocationRepo repo,
+    required String itemId,
+    required Set<String> beforeLocationIds,
+    required Set<String> afterLocationIds,
+    required String? primaryLocationId,
+  }) async {
+    final removed = beforeLocationIds.difference(afterLocationIds).toList();
+    final added = afterLocationIds.difference(beforeLocationIds).toList();
+    final moveCount =
+        removed.length < added.length ? removed.length : added.length;
+
+    for (var i = 0; i < moveCount; i++) {
+      await repo.moveItemLocation(
+        itemId: itemId,
+        fromLocationId: removed[i],
+        toLocationId: added[i],
+        memo: '아이템 상세에서 위치 변경',
+      );
+    }
+
+    await repo.setLocationsForItem(
+      itemId: itemId,
+      locationIds: afterLocationIds.toList(),
+      primaryLocationId: primaryLocationId,
+    );
   }
 
   Future<void> _removeStorageLocation({
@@ -401,7 +433,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
           currentPrimary ?? (remaining.isEmpty ? null : remaining.first),
     );
     if (!mounted) return;
-    setState(() {});
+    setState(() => _locationMovementRevision++);
   }
 
   Future<void> _setPrimaryStorageLocation({
@@ -1023,6 +1055,13 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                     const SizedBox(height: 12),
                     _buildStorageLocationSection(item),
                     const SizedBox(height: 12),
+                    _ItemLocationMovementSection(
+                      key: ValueKey(
+                        '${item.id}-location-moves-$_locationMovementRevision',
+                      ),
+                      itemId: item.id,
+                    ),
+                    const SizedBox(height: 12),
 
                     Wrap(
                       spacing: 8,
@@ -1158,6 +1197,102 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
         ),
       ),
     );
+  }
+}
+
+class _ItemLocationMovementSection extends StatefulWidget {
+  final String itemId;
+
+  const _ItemLocationMovementSection({
+    super.key,
+    required this.itemId,
+  });
+
+  @override
+  State<_ItemLocationMovementSection> createState() =>
+      _ItemLocationMovementSectionState();
+}
+
+class _ItemLocationMovementSectionState
+    extends State<_ItemLocationMovementSection> {
+  bool _expanded = false;
+  Future<List<StorageLocationMovement>>? _future;
+
+  void _onExpansionChanged(bool expanded) {
+    setState(() {
+      _expanded = expanded;
+      if (expanded) {
+        _future ??= context.read<StorageLocationRepo>().listLocationMovements(
+              itemId: widget.itemId,
+              limit: 10,
+            );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        maintainState: true,
+        leading: const Icon(Icons.swap_horiz_outlined),
+        title: const Text('최근 위치 이동 기록'),
+        subtitle: const Text('펼치면 최근 10개만 보여요'),
+        onExpansionChanged: _onExpansionChanged,
+        children: [
+          if (!_expanded)
+            const SizedBox.shrink()
+          else
+            FutureBuilder<List<StorageLocationMovement>>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: LinearProgressIndicator(),
+                  );
+                }
+
+                final movements =
+                    snapshot.data ?? const <StorageLocationMovement>[];
+                if (movements.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('아직 위치 이동 기록이 없습니다'),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    for (final movement in movements)
+                      ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.drive_file_move_outlined),
+                        title: Text(
+                          '${movement.fromLocationPath ?? '위치 미지정'} → ${movement.toLocationPath}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(_dateTimeLabel(movement.movedAt)),
+                      ),
+                    const SizedBox(height: 8),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _dateTimeLabel(DateTime value) {
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${value.year}-${two(value.month)}-${two(value.day)} '
+        '${two(value.hour)}:${two(value.minute)}';
   }
 }
 

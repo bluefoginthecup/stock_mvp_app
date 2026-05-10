@@ -658,7 +658,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 38; //
+  int get schemaVersion => 39; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -671,12 +671,14 @@ class AppDatabase extends _$AppDatabase {
           await _ensureBuyerProfilesTable();
           await _ensureShippingDestinationTables();
           await _ensureStorageLocationTables();
+          await _ensureStorageLocationMovementTable();
           await _ensureScheduleAttachmentsTable();
           await _ensureItemImagesTable();
         },
         beforeOpen: (details) async {
           await _ensurePurchaseLineAmountColumns();
           await _ensureQuoteLineAmountColumns();
+          await _ensureStorageLocationMovementTable();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -965,6 +967,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 38) {
             await _ensureQuoteLineAmountColumns();
             await _backfillQuoteLineAmounts();
+          }
+          if (from < 39) {
+            await _ensureStorageLocationMovementTable();
           }
         },
       );
@@ -1330,6 +1335,37 @@ class AppDatabase extends _$AppDatabase {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_item_one_primary_location
       ON item_locations(item_id)
       WHERE is_primary = 1
+    ''');
+  }
+
+  Future<void> _ensureStorageLocationMovementTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS storage_location_movements (
+        id TEXT PRIMARY KEY NOT NULL,
+        item_id TEXT NOT NULL,
+        item_name TEXT NOT NULL DEFAULT '',
+        from_location_id TEXT NULL,
+        from_location_path TEXT NULL,
+        to_location_id TEXT NOT NULL,
+        to_location_path TEXT NOT NULL,
+        memo TEXT NULL,
+        moved_at TEXT NOT NULL,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE,
+        FOREIGN KEY (from_location_id) REFERENCES storage_locations(id) ON DELETE SET NULL,
+        FOREIGN KEY (to_location_id) REFERENCES storage_locations(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_storage_movements_item
+      ON storage_location_movements(item_id, moved_at)
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_storage_movements_from
+      ON storage_location_movements(from_location_id, moved_at)
+    ''');
+    await customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_storage_movements_to
+      ON storage_location_movements(to_location_id, moved_at)
     ''');
   }
 

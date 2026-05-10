@@ -6,6 +6,7 @@ import '../../models/item.dart';
 import '../../models/storage_location.dart';
 import '../../repos/repo_interfaces.dart';
 import '../stock/stock_item_detail_screen.dart';
+import 'widgets/storage_location_picker_sheet.dart';
 
 class StorageLocationScreen extends StatefulWidget {
   const StorageLocationScreen({super.key});
@@ -47,7 +48,9 @@ class _StorageLocationScreenState extends State<StorageLocationScreen> {
     final itemCounts = <String, int>{};
     for (final location in all) {
       childCounts[location.id] = await repo.countChildLocations(location.id);
-      itemCounts[location.id] = await repo.countItemsForLocation(location.id);
+      itemCounts[location.id] = await repo.countItemsForLocationTree(
+        location.id,
+      );
     }
     if (!mounted) return;
     setState(() {
@@ -220,6 +223,7 @@ class _StorageLocationScreenState extends State<StorageLocationScreen> {
           else
             ..._roots.map(
               (location) => _StorageLocationNodeTile(
+                key: ValueKey(location.id),
                 location: location,
                 depth: 0,
                 childCounts: _childCounts,
@@ -243,7 +247,7 @@ class _StorageLocationScreenState extends State<StorageLocationScreen> {
   }
 }
 
-class _StorageLocationNodeTile extends StatelessWidget {
+class _StorageLocationNodeTile extends StatefulWidget {
   final StorageLocation location;
   final int depth;
   final Map<String, int> childCounts;
@@ -254,6 +258,7 @@ class _StorageLocationNodeTile extends StatelessWidget {
   final ValueChanged<StorageLocation> onArchive;
 
   const _StorageLocationNodeTile({
+    super.key,
     required this.location,
     required this.depth,
     required this.childCounts,
@@ -265,9 +270,23 @@ class _StorageLocationNodeTile extends StatelessWidget {
   });
 
   @override
+  State<_StorageLocationNodeTile> createState() =>
+      _StorageLocationNodeTileState();
+}
+
+class _StorageLocationNodeTileState extends State<_StorageLocationNodeTile> {
+  bool _expanded = false;
+
+  void _toggleExpanded() {
+    setState(() => _expanded = !_expanded);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final repo = context.read<StorageLocationRepo>();
-    final left = 12.0 + (depth * 18.0);
+    final left = 12.0 + (widget.depth * 18.0);
+    final childCount = widget.childCounts[widget.location.id] ?? 0;
+    final hasChildren = childCount > 0;
 
     return Padding(
       padding: EdgeInsets.only(left: left, bottom: 8),
@@ -275,72 +294,89 @@ class _StorageLocationNodeTile extends StatelessWidget {
         child: Column(
           children: [
             ListTile(
-              leading: Icon(_iconForType(location.type)),
-              title: Text(location.name),
-              subtitle: Text(_countSubtitle(location)),
-              onTap: () => onOpen(location),
-              trailing: PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'child') onAddChild(location);
-                  if (value == 'edit') onEdit(location);
-                  if (value == 'archive') onArchive(location);
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
-                    value: 'child',
-                    child: ListTile(
-                      leading: Icon(Icons.subdirectory_arrow_right),
-                      title: Text('하위 위치 추가'),
+              leading: Icon(_iconForType(widget.location.type)),
+              title: Text(widget.location.name),
+              subtitle: Text(_countSubtitle(widget.location)),
+              onTap: () => widget.onOpen(widget.location),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasChildren)
+                    IconButton(
+                      tooltip: _expanded ? '하위 위치 접기' : '하위 위치 펼치기',
+                      onPressed: _toggleExpanded,
+                      icon: Icon(
+                        _expanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                      ),
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: ListTile(
-                      leading: Icon(Icons.edit_outlined),
-                      title: Text('수정'),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'archive',
-                    child: ListTile(
-                      leading: Icon(Icons.archive_outlined),
-                      title: Text('보관'),
-                    ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'child') widget.onAddChild(widget.location);
+                      if (value == 'edit') widget.onEdit(widget.location);
+                      if (value == 'archive') widget.onArchive(widget.location);
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'child',
+                        child: ListTile(
+                          leading: Icon(Icons.subdirectory_arrow_right),
+                          title: Text('하위 위치 추가'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('수정'),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'archive',
+                        child: ListTile(
+                          leading: Icon(Icons.archive_outlined),
+                          title: Text('보관'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            FutureBuilder<List<StorageLocation>>(
-              future: repo.listChildLocations(location.id),
-              builder: (context, snapshot) {
-                final children = snapshot.data ?? const <StorageLocation>[];
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: LinearProgressIndicator(),
+            if (_expanded)
+              FutureBuilder<List<StorageLocation>>(
+                future: repo.listChildLocations(widget.location.id),
+                builder: (context, snapshot) {
+                  final children = snapshot.data ?? const <StorageLocation>[];
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: LinearProgressIndicator(),
+                    );
+                  }
+                  if (children.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: children
+                        .map(
+                          (child) => _StorageLocationNodeTile(
+                            key: ValueKey(child.id),
+                            location: child,
+                            depth: widget.depth + 1,
+                            childCounts: widget.childCounts,
+                            itemCounts: widget.itemCounts,
+                            onOpen: widget.onOpen,
+                            onAddChild: widget.onAddChild,
+                            onEdit: widget.onEdit,
+                            onArchive: widget.onArchive,
+                          ),
+                        )
+                        .toList(),
                   );
-                }
-                if (children.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return Column(
-                  children: children
-                      .map(
-                        (child) => _StorageLocationNodeTile(
-                          location: child,
-                          depth: depth + 1,
-                          childCounts: childCounts,
-                          itemCounts: itemCounts,
-                          onOpen: onOpen,
-                          onAddChild: onAddChild,
-                          onEdit: onEdit,
-                          onArchive: onArchive,
-                        ),
-                      )
-                      .toList(),
-                );
-              },
-            ),
+                },
+              ),
           ],
         ),
       ),
@@ -349,8 +385,8 @@ class _StorageLocationNodeTile extends StatelessWidget {
 
   String _countSubtitle(StorageLocation location) {
     final typeLabel = StorageLocationType.label(location.type);
-    final childCount = childCounts[location.id] ?? 0;
-    final itemCount = itemCounts[location.id] ?? 0;
+    final childCount = widget.childCounts[location.id] ?? 0;
+    final itemCount = widget.itemCounts[location.id] ?? 0;
     return '$typeLabel · 하위 위치 $childCount개 · 아이템 $itemCount개';
   }
 
@@ -544,6 +580,8 @@ class _StorageLocationDetailScreenState
       repo.listChildLocations(widget.locationId),
       repo.listItemsForLocation(widget.locationId),
       repo.listItemLocationsForLocation(widget.locationId),
+      repo.listDescendantLocations(widget.locationId),
+      repo.listItemEntriesForLocationTree(widget.locationId),
     ]);
 
     return _StorageLocationDetailData(
@@ -552,6 +590,8 @@ class _StorageLocationDetailScreenState
       children: results[2] as List<StorageLocation>,
       items: results[3] as List<Item>,
       links: results[4] as List<ItemLocation>,
+      descendants: results[5] as List<StorageLocation>,
+      treeItemEntries: results[6] as List<LocationItemEntry>,
     );
   }
 
@@ -580,6 +620,31 @@ class _StorageLocationDetailScreenState
         builder: (_) => StorageLocationDetailScreen(locationId: location.id),
       ),
     );
+  }
+
+  Future<void> _moveItemFromLocation({
+    required Item item,
+    required String fromLocationId,
+  }) async {
+    final toLocation = await showStorageLocationPickerSheet(context);
+    if (!mounted || toLocation == null) return;
+    if (toLocation.id == fromLocationId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이미 같은 위치에 있어요.')),
+      );
+      return;
+    }
+
+    await context.read<StorageLocationRepo>().moveItemLocation(
+          itemId: item.id,
+          fromLocationId: fromLocationId,
+          toLocationId: toLocation.id,
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${_itemLabel(item)} 위치를 이동했어요.')),
+    );
+    setState(() {});
   }
 
   @override
@@ -647,11 +712,15 @@ class _StorageLocationDetailScreenState
                     Chip(
                       avatar:
                           const Icon(Icons.subdirectory_arrow_right, size: 16),
-                      label: Text('하위 위치 ${data.children.length}개'),
+                      label: Text('하위 위치 ${data.descendants.length}개'),
                     ),
                     Chip(
                       avatar: const Icon(Icons.inventory_2_outlined, size: 16),
-                      label: Text('아이템 ${data.items.length}개'),
+                      label: Text('직접 아이템 ${data.items.length}개'),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.account_tree_outlined, size: 16),
+                      label: Text('하위 포함 ${data.treeItemEntries.length}개'),
                     ),
                   ],
                 ),
@@ -683,35 +752,87 @@ class _StorageLocationDetailScreenState
             ),
           ),
         const SizedBox(height: 16),
-        Text('이 위치의 아이템', style: Theme.of(context).textTheme.titleSmall),
+        Text(
+          data.descendants.isEmpty ? '이 위치의 아이템' : '하위 위치 포함 아이템',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
         const SizedBox(height: 8),
-        if (data.items.isEmpty)
+        if (data.treeItemEntries.isEmpty)
           const Card(
-            child: ListTile(title: Text('이 위치에 직접 연결된 아이템이 없습니다')),
+            child: ListTile(title: Text('이 위치와 하위 위치에 연결된 아이템이 없습니다')),
           )
         else
-          ...data.items.map(
-            (item) {
-              final isPrimary = primaryItemIds.contains(item.id);
+          ...data.treeItemEntries.map(
+            (entry) {
+              final item = entry.item;
               return Card(
                 child: ListTile(
                   leading: Icon(
-                    isPrimary ? Icons.star : Icons.inventory_2_outlined,
+                    entry.isPrimary ? Icons.star : Icons.inventory_2_outlined,
                   ),
                   title: Text(item.displayName?.trim().isNotEmpty == true
                       ? item.displayName!
                       : item.name),
-                  subtitle: Text('SKU ${item.sku} · 재고 ${item.qty}'),
-                  trailing: isPrimary
-                      ? const Chip(label: Text('기본'))
-                      : const Icon(Icons.chevron_right),
+                  subtitle: Text(
+                    'SKU ${item.sku} · 재고 ${item.qty} · ${entry.locationPath}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: _ItemLocationActions(
+                    isPrimary: entry.isPrimary,
+                    onMove: () => _moveItemFromLocation(
+                      item: item,
+                      fromLocationId: entry.location.id,
+                    ),
+                  ),
                   onTap: () => _openItem(item.id),
                 ),
               );
             },
           ),
+        if (data.descendants.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text('이 위치에 직접 연결된 아이템',
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          if (data.items.isEmpty)
+            const Card(
+              child: ListTile(title: Text('직접 연결된 아이템은 없습니다')),
+            )
+          else
+            ...data.items.map(
+              (item) {
+                final isPrimary = primaryItemIds.contains(item.id);
+                return Card(
+                  child: ListTile(
+                    leading: Icon(
+                      isPrimary ? Icons.star : Icons.inventory_2_outlined,
+                    ),
+                    title: Text(item.displayName?.trim().isNotEmpty == true
+                        ? item.displayName!
+                        : item.name),
+                    subtitle: Text('SKU ${item.sku} · 재고 ${item.qty}'),
+                    trailing: _ItemLocationActions(
+                      isPrimary: isPrimary,
+                      onMove: () => _moveItemFromLocation(
+                        item: item,
+                        fromLocationId: data.location!.id,
+                      ),
+                    ),
+                    onTap: () => _openItem(item.id),
+                  ),
+                );
+              },
+            ),
+        ],
       ],
     );
+  }
+
+  String _itemLabel(Item item) {
+    return item.displayName?.trim().isNotEmpty == true
+        ? item.displayName!.trim()
+        : item.name;
   }
 }
 
@@ -721,6 +842,8 @@ class _StorageLocationDetailData {
   final List<StorageLocation> children;
   final List<Item> items;
   final List<ItemLocation> links;
+  final List<StorageLocation> descendants;
+  final List<LocationItemEntry> treeItemEntries;
 
   const _StorageLocationDetailData({
     required this.location,
@@ -728,7 +851,34 @@ class _StorageLocationDetailData {
     required this.children,
     required this.items,
     required this.links,
+    required this.descendants,
+    required this.treeItemEntries,
   });
+}
+
+class _ItemLocationActions extends StatelessWidget {
+  final bool isPrimary;
+  final VoidCallback onMove;
+
+  const _ItemLocationActions({
+    required this.isPrimary,
+    required this.onMove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (isPrimary) const Chip(label: Text('기본')),
+        IconButton(
+          tooltip: '위치 이동',
+          onPressed: onMove,
+          icon: const Icon(Icons.drive_file_move_outlined),
+        ),
+      ],
+    );
+  }
 }
 
 class StorageLocationEditorScreen extends StatefulWidget {

@@ -103,6 +103,44 @@ class ItemLocationSummary {
   }
 }
 
+class LocationItemEntry {
+  final Item item;
+  final StorageLocation location;
+  final String locationPath;
+  final bool isPrimary;
+
+  const LocationItemEntry({
+    required this.item,
+    required this.location,
+    required this.locationPath,
+    required this.isPrimary,
+  });
+}
+
+class StorageLocationMovement {
+  final String id;
+  final String itemId;
+  final String itemName;
+  final String? fromLocationId;
+  final String? fromLocationPath;
+  final String toLocationId;
+  final String toLocationPath;
+  final String? memo;
+  final DateTime movedAt;
+
+  const StorageLocationMovement({
+    required this.id,
+    required this.itemId,
+    required this.itemName,
+    this.fromLocationId,
+    this.fromLocationPath,
+    required this.toLocationId,
+    required this.toLocationPath,
+    this.memo,
+    required this.movedAt,
+  });
+}
+
 class StorageLocationType {
   static const room = 'room';
   static const shelf = 'shelf';
