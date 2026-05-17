@@ -8,9 +8,11 @@ import 'package:reorderable_grid_view/reorderable_grid_view.dart';
 import '../app/main_tab_controller.dart';
 import '../db/app_database.dart';
 import '../db/quick_actions_order_dao.dart';
+import '../models/dashboard_purchase_stats.dart';
 import '../models/today_activity_summary.dart';
 import '../repos/repo_interfaces.dart';
 import '../services/dashboard_activity_service.dart';
+import '../services/dashboard_purchase_stats_service.dart';
 import '../ui/common/ui.dart';
 import 'dashboard/dashboard_quick_actions.dart';
 import 'stock/stock_browser_screen.dart';
@@ -66,6 +68,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final itemRepo = context.read<ItemRepo>();
     final activityService = context.read<DashboardActivityService>();
+    final purchaseStatsService = context.read<DashboardPurchaseStatsService>();
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFFAFF),
@@ -126,32 +129,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           );
 
-          return StreamBuilder<TodayActivitySummary>(
-            stream: activityService.watchTodaySummary(),
-            initialData: TodayActivitySummary.empty,
-            builder: (context, activitySnap) {
-              return _DashboardContent(
-                itemCount: items.length,
-                totalQty: totalQty,
-                lowCount: low.length,
-                todaySummary: activitySnap.data ?? TodayActivitySummary.empty,
-                actions: actions.toList(),
-                onStockTap: () => context.read<MainTabController>().setIndex(2),
-                onLowStockTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          const StockBrowserScreen(showLowStockOnly: true),
-                    ),
+          return StreamBuilder<DashboardPurchaseStats>(
+            stream: purchaseStatsService.watchStats(),
+            initialData: DashboardPurchaseStats.empty,
+            builder: (context, purchaseStatsSnap) {
+              return StreamBuilder<TodayActivitySummary>(
+                stream: activityService.watchTodaySummary(),
+                initialData: TodayActivitySummary.empty,
+                builder: (context, activitySnap) {
+                  return _DashboardContent(
+                    itemCount: items.length,
+                    totalQty: totalQty,
+                    lowCount: low.length,
+                    todaySummary:
+                        activitySnap.data ?? TodayActivitySummary.empty,
+                    purchaseStats:
+                        purchaseStatsSnap.data ?? DashboardPurchaseStats.empty,
+                    actions: actions.toList(),
+                    onStockTap: () =>
+                        context.read<MainTabController>().setIndex(2),
+                    onLowStockTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const StockBrowserScreen(showLowStockOnly: true),
+                        ),
+                      );
+                    },
+                    onReorder: (oldIndex, newIndex) async {
+                      setState(() {
+                        final item = _order.removeAt(oldIndex);
+                        _order.insert(newIndex, item);
+                      });
+                      await _persistOrderToDb();
+                    },
                   );
-                },
-                onReorder: (oldIndex, newIndex) async {
-                  setState(() {
-                    final item = _order.removeAt(oldIndex);
-                    _order.insert(newIndex, item);
-                  });
-                  await _persistOrderToDb();
                 },
               );
             },
@@ -167,6 +180,7 @@ class _DashboardContent extends StatelessWidget {
   final int totalQty;
   final int lowCount;
   final TodayActivitySummary todaySummary;
+  final DashboardPurchaseStats purchaseStats;
   final List<DashboardQuickAction> actions;
   final VoidCallback onStockTap;
   final VoidCallback onLowStockTap;
@@ -177,6 +191,7 @@ class _DashboardContent extends StatelessWidget {
     required this.totalQty,
     required this.lowCount,
     required this.todaySummary,
+    required this.purchaseStats,
     required this.actions,
     required this.onStockTap,
     required this.onLowStockTap,
@@ -266,6 +281,8 @@ class _DashboardContent extends StatelessWidget {
                       .openShellRoute('/schedules'),
                 ),
               ],
+              const SizedBox(height: 18),
+              _PurchaseStatsSection(stats: purchaseStats),
               const SizedBox(height: 28),
               Text(
                 '빠른 실행 (${actions.length})',
@@ -860,6 +877,341 @@ class _TipPanel extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PurchaseStatsSection extends StatelessWidget {
+  final DashboardPurchaseStats stats;
+
+  const _PurchaseStatsSection({required this.stats});
+
+  String _money(double value) {
+    final rounded = value.round().toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < rounded.length; i++) {
+      final remaining = rounded.length - i;
+      buffer.write(rounded[i]);
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+    return '₩$buffer';
+  }
+
+  String _date(DateTime? value) {
+    if (value == null) return '-';
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.9),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE9E2F5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.read<MainTabController>().setIndex(5),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.local_shipping_rounded,
+                    color: Color(0xFF7756E7),
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '발주 통계',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: const Color(0xFF2B2930),
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF8B6BEF),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final twoColumns = constraints.maxWidth >= 520;
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      SizedBox(
+                        width: twoColumns
+                            ? (constraints.maxWidth - 12) / 2
+                            : constraints.maxWidth,
+                        child: _PurchaseMetricBlock(
+                          title: '이번 달 발주',
+                          count: '${stats.monthlyCount}건',
+                          amount: _money(stats.monthlyAmount),
+                          color: const Color(0xFF7756E7),
+                        ),
+                      ),
+                      SizedBox(
+                        width: twoColumns
+                            ? (constraints.maxWidth - 12) / 2
+                            : constraints.maxWidth,
+                        child: _PurchaseMetricBlock(
+                          title: '미완료 발주',
+                          count: '${stats.incompleteCount}건',
+                          amount: _money(stats.incompleteAmount),
+                          color: const Color(0xFFED8A3D),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+              _RecentPurchaseLine(
+                date: _date(stats.recentCreatedAt),
+                supplierName: stats.recentSupplierName ?? '-',
+              ),
+              const SizedBox(height: 14),
+              _PurchaseTopList(
+                title: '자주 발주한 거래처',
+                emptyText: '아직 발주 거래처가 없어요',
+                children: [
+                  for (final supplier in stats.topSuppliers)
+                    _PurchaseTopRow(
+                      title: supplier.name,
+                      meta: '${supplier.count}건 · ${_money(supplier.amount)}',
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _PurchaseTopList(
+                title: '자주 발주한 아이템',
+                emptyText: '아직 발주 아이템이 없어요',
+                children: [
+                  for (final item in stats.topItems)
+                    _PurchaseTopRow(
+                      title: item.name,
+                      meta: '${item.count}건',
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseMetricBlock extends StatelessWidget {
+  final String title;
+  final String count;
+  final String amount;
+  final Color color;
+
+  const _PurchaseMetricBlock({
+    required this.title,
+    required this.count,
+    required this.amount,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  count,
+                  style: const TextStyle(
+                    color: Color(0xFF202027),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    amount,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Color(0xFF5F5A68),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentPurchaseLine extends StatelessWidget {
+  final String date;
+  final String supplierName;
+
+  const _RecentPurchaseLine({
+    required this.date,
+    required this.supplierName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F4FF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            const Text(
+              '최근 발주',
+              style: TextStyle(
+                color: Color(0xFF7756E7),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              date,
+              style: const TextStyle(
+                color: Color(0xFF202027),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                supplierName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF5F5A68),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseTopList extends StatelessWidget {
+  final String title;
+  final String emptyText;
+  final List<Widget> children;
+
+  const _PurchaseTopList({
+    required this.title,
+    required this.emptyText,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF2B2930),
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (children.isEmpty)
+          Text(
+            emptyText,
+            style: const TextStyle(
+              color: Color(0xFF8A8491),
+              fontWeight: FontWeight.w700,
+            ),
+          )
+        else
+          Column(children: children),
+      ],
+    );
+  }
+}
+
+class _PurchaseTopRow extends StatelessWidget {
+  final String title;
+  final String meta;
+
+  const _PurchaseTopRow({
+    required this.title,
+    required this.meta,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF202027),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            meta,
+            style: const TextStyle(
+              color: Color(0xFF7A7480),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
