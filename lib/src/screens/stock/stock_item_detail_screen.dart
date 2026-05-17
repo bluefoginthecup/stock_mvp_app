@@ -22,7 +22,6 @@ import '../bom/semi_bom_edit_screen.dart';
 import '../txns/adjust_form.dart';
 import '../../models/txn.dart' show Txn;
 import '../txns/widgets/txn_row.dart';
-import 'stock_item_edit_sheet.dart';
 import 'stock_item_full_edit_screen.dart';
 import 'widgets/item_meta_overview.dart';
 import 'widgets/reorder_badge.dart';
@@ -1015,21 +1014,6 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       appBar: AppBar(
         title: Text(context.t.stock_item_detail_title), // "아이템상세" 유지
         actions: [
-          if (_item != null)
-            IconButton(
-              tooltip: '간단 편집',
-              icon: const Icon(Icons.edit),
-              onPressed: () async {
-                final changed = await showModalBottomSheet<bool>(
-                  context: context,
-                  isScrollControlled: true,
-                  builder: (_) => StockItemEditSheet(itemId: _item!.id),
-                );
-                if (changed == true) {
-                  await _load(); // 저장 성공 시에만 리프레시
-                }
-              },
-            ),
           IconButton(
             tooltip: '모든 필드 편집',
             icon: const Icon(Icons.tune),
@@ -1317,8 +1301,7 @@ class _ItemLocationMovementSectionState
         initiallyExpanded: false,
         maintainState: true,
         leading: const Icon(Icons.swap_horiz_outlined),
-        title: const Text('최근 위치 이동 기록'),
-        subtitle: const Text('펼치면 최근 10개만 보여요'),
+        title: const Text('최근 위치 이동 기록- 최대 10개'),
         onExpansionChanged: _onExpansionChanged,
         children: [
           if (!_expanded)

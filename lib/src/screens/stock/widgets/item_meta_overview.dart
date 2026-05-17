@@ -57,7 +57,6 @@ class ItemMetaOverview extends StatelessWidget {
         maintainState: true,
         leading: const Icon(Icons.info_outline),
         title: Text('아이템 메타', style: text.titleSmall),
-        subtitle: const Text('펼쳐서 모든 필드 보기'),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
           Column(
