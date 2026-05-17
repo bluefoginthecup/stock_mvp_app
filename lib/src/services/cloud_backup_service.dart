@@ -55,13 +55,18 @@ class CloudBackupMetadata {
   final DateTime? uploadedAt;
   final DateTime? updatedAt;
   final DateTime? failedAt;
+  final String? errorMessage;
   final int? stockappDbSizeBytes;
   final int? receiptFileCount;
   final int? receiptTotalSizeBytes;
   final int? summaryItemCount;
   final int? summaryTotalStockQty;
   final int? summarySupplierCount;
+  final List<String> summarySupplierNames;
   final DateTime? summaryLatestTxnAt;
+  final String? summaryLatestTxnItemName;
+  final String? summaryLatestTxnType;
+  final int? summaryLatestTxnQty;
   final DateTime? summaryLatestPurchaseOrderAt;
   final String? summaryLatestPurchaseSupplierName;
   final String? deviceName;
@@ -85,13 +90,18 @@ class CloudBackupMetadata {
     this.uploadedAt,
     this.updatedAt,
     this.failedAt,
+    this.errorMessage,
     this.stockappDbSizeBytes,
     this.receiptFileCount,
     this.receiptTotalSizeBytes,
     this.summaryItemCount,
     this.summaryTotalStockQty,
     this.summarySupplierCount,
+    this.summarySupplierNames = const [],
     this.summaryLatestTxnAt,
+    this.summaryLatestTxnItemName,
+    this.summaryLatestTxnType,
+    this.summaryLatestTxnQty,
     this.summaryLatestPurchaseOrderAt,
     this.summaryLatestPurchaseSupplierName,
     this.deviceName,
@@ -120,13 +130,18 @@ class CloudBackupMetadata {
       uploadedAt: _dateTimeValue(data['uploadedAt']),
       updatedAt: _dateTimeValue(data['updatedAt']),
       failedAt: _dateTimeValue(data['failedAt']),
+      errorMessage: data['errorMessage']?.toString(),
       stockappDbSizeBytes: _nullableIntValue(data['stockappDbSizeBytes']),
       receiptFileCount: _nullableIntValue(data['receiptFileCount']),
       receiptTotalSizeBytes: _nullableIntValue(data['receiptTotalSizeBytes']),
       summaryItemCount: _nullableIntValue(data['summaryItemCount']),
       summaryTotalStockQty: _nullableIntValue(data['summaryTotalStockQty']),
       summarySupplierCount: _nullableIntValue(data['summarySupplierCount']),
+      summarySupplierNames: _stringListValue(data['summarySupplierNames']),
       summaryLatestTxnAt: _dateTimeValue(data['summaryLatestTxnAt']),
+      summaryLatestTxnItemName: data['summaryLatestTxnItemName']?.toString(),
+      summaryLatestTxnType: data['summaryLatestTxnType']?.toString(),
+      summaryLatestTxnQty: _nullableIntValue(data['summaryLatestTxnQty']),
       summaryLatestPurchaseOrderAt:
           _dateTimeValue(data['summaryLatestPurchaseOrderAt']),
       summaryLatestPurchaseSupplierName:
@@ -157,7 +172,34 @@ class CloudBackupMetadata {
     if (value is String) return int.tryParse(value);
     return null;
   }
+
+  static List<String> _stringListValue(Object? value) {
+    if (value is! List) return const [];
+    return value
+        .map((item) => item?.toString().trim() ?? '')
+        .where((item) => item.isNotEmpty)
+        .toList(growable: false);
+  }
 }
+
+class CloudBackupUploadProgress {
+  final int bytesTransferred;
+  final int totalBytes;
+
+  const CloudBackupUploadProgress({
+    required this.bytesTransferred,
+    required this.totalBytes,
+  });
+
+  double? get fraction {
+    if (totalBytes <= 0) return null;
+    return (bytesTransferred / totalBytes).clamp(0.0, 1.0);
+  }
+}
+
+typedef CloudBackupUploadProgressCallback = void Function(
+  CloudBackupUploadProgress progress,
+);
 
 class CloudBackupCleanupResult {
   final int deletedCount;
@@ -250,6 +292,7 @@ class CloudBackupService {
     int keepRecent = defaultKeepRecent,
     bool skipIfContentUnchanged = false,
     CloudBackupEncryptionRequest? encryption,
+    CloudBackupUploadProgressCallback? onUploadProgress,
   }) async {
     final uid = authService.uid;
     if (uid == null) {
@@ -310,7 +353,7 @@ class CloudBackupService {
       debugPrint('☁️ CloudBackup: writing uploading metadata $backupId');
       await docRef.set(metadata);
       debugPrint('☁️ CloudBackup: uploading backup file to $storagePath');
-      await storage.ref(storagePath).putFile(
+      final uploadTask = storage.ref(storagePath).putFile(
             uploadFile,
             SettableMetadata(
               contentType:
@@ -325,6 +368,21 @@ class CloudBackupService {
               },
             ),
           );
+      final progressSubscription = onUploadProgress == null
+          ? null
+          : uploadTask.snapshotEvents.listen((snapshot) {
+              onUploadProgress(
+                CloudBackupUploadProgress(
+                  bytesTransferred: snapshot.bytesTransferred,
+                  totalBytes: snapshot.totalBytes,
+                ),
+              );
+            });
+      try {
+        await uploadTask;
+      } finally {
+        await progressSubscription?.cancel();
+      }
 
       debugPrint('☁️ CloudBackup: marking backup ready $backupId');
       await docRef.set({
@@ -851,12 +909,26 @@ class CloudBackupService {
         'SELECT COUNT(*) AS value FROM suppliers '
         'WHERE COALESCE(is_active, 1) = 1',
       );
-      final latestTxnAt = await _singleString(
-        db,
-        'SELECT ts AS value FROM txns '
-        'WHERE COALESCE(is_deleted, 0) = 0 '
-        'ORDER BY ts DESC LIMIT 1',
-      );
+      final supplierNames = await db
+          .customSelect(
+            'SELECT name FROM suppliers '
+            'WHERE COALESCE(is_active, 1) = 1 '
+            'ORDER BY updated_at DESC, created_at DESC, name COLLATE NOCASE ASC '
+            'LIMIT 5',
+          )
+          .get();
+      final latestTxn = await db
+          .customSelect(
+            'SELECT txns.ts, txns.type, txns.qty, '
+            'COALESCE(NULLIF(items.display_name, \'\'), items.name, txns.item_id) '
+            'AS item_name '
+            'FROM txns '
+            'LEFT JOIN items ON items.id = txns.item_id '
+            'WHERE COALESCE(txns.is_deleted, 0) = 0 '
+            'ORDER BY txns.ts DESC LIMIT 1',
+          )
+          .getSingleOrNull();
+      final latestTxnAt = latestTxn?.data['ts']?.toString();
       final latestPurchase = await db
           .customSelect(
             'SELECT created_at, supplier_name FROM purchase_orders '
@@ -872,7 +944,14 @@ class CloudBackupService {
         'summaryItemCount': itemCount,
         'summaryTotalStockQty': totalStockQty,
         'summarySupplierCount': supplierCount,
+        'summarySupplierNames': supplierNames
+            .map((row) => row.data['name']?.toString().trim() ?? '')
+            .where((name) => name.isNotEmpty)
+            .toList(growable: false),
         'summaryLatestTxnAt': _timestampFromIso(latestTxnAt),
+        'summaryLatestTxnItemName': latestTxn?.data['item_name']?.toString(),
+        'summaryLatestTxnType': latestTxn?.data['type']?.toString(),
+        'summaryLatestTxnQty': _intValue(latestTxn?.data['qty']),
         'summaryLatestPurchaseOrderAt': _timestampFromIso(latestPurchaseAt),
         'summaryLatestPurchaseSupplierName': latestPurchaseSupplierName,
       };
@@ -890,11 +969,6 @@ class CloudBackupService {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value) ?? 0;
     return 0;
-  }
-
-  Future<String?> _singleString(AppDatabase db, String sql) async {
-    final row = await db.customSelect(sql).getSingleOrNull();
-    return row?.data['value']?.toString();
   }
 
   Timestamp? _timestampFromIso(String? value) {

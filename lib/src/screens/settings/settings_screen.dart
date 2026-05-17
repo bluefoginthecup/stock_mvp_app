@@ -1744,6 +1744,8 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
   Object? _error;
   bool _loading = true;
   bool _uploading = false;
+  double? _uploadProgress;
+  String _uploadStatusMessage = '';
   bool _savingAutoSettings = false;
 
   @override
@@ -1888,17 +1890,33 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
 
     setState(() {
       _uploading = true;
+      _uploadProgress = null;
+      _uploadStatusMessage = '백업 파일을 준비하고 암호화하는 중입니다. 앱을 종료하지 마세요.';
       _error = null;
     });
 
     try {
       final result = await service.uploadFullBackup(
         encryption: encryptionRequest,
+        onUploadProgress: (progress) {
+          if (!mounted) return;
+          setState(() {
+            _uploadProgress = progress.fraction;
+            final percent = progress.fraction == null
+                ? null
+                : (progress.fraction! * 100).clamp(0, 100).round();
+            _uploadStatusMessage = percent == null
+                ? '클라우드에 백업을 업로드하는 중입니다. 앱을 종료하지 마세요.'
+                : '클라우드 백업 진행중입니다. $percent% 완료 - 앱을 종료하지 마세요.';
+          });
+        },
       );
       if (!mounted) return;
       setState(() {
         _latestBackup = result.metadata;
         _uploading = false;
+        _uploadProgress = null;
+        _uploadStatusMessage = '';
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1912,6 +1930,8 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
       setState(() {
         _error = e;
         _uploading = false;
+        _uploadProgress = null;
+        _uploadStatusMessage = '';
       });
       if (e is CloudBackupException) {
         await _showCloudBackupErrorDialog(context, e);
@@ -2127,6 +2147,13 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ],
+              if (_uploading) ...[
+                const SizedBox(height: 12),
+                _CloudBackupProgressNotice(
+                  progress: _uploadProgress,
+                  message: _uploadStatusMessage,
+                ),
+              ],
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -2168,6 +2195,71 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
       case CloudAutoBackupFrequency.monthly:
         return '매달';
     }
+  }
+}
+
+class _CloudBackupProgressNotice extends StatelessWidget {
+  final double? progress;
+  final String message;
+
+  const _CloudBackupProgressNotice({
+    required this.progress,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final percent =
+        progress == null ? null : '${(progress! * 100).clamp(0, 100).round()}%';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message.isEmpty ? '백업 진행중입니다. 앱을 종료하지 마세요.' : message,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              if (percent != null) ...[
+                const SizedBox(width: 8),
+                Text(
+                  percent,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          LinearProgressIndicator(value: progress),
+        ],
+      ),
+    );
   }
 }
 

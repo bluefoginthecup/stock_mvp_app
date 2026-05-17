@@ -601,14 +601,12 @@ class _CloudBackupCard extends StatelessWidget {
             const SizedBox(height: 8),
             _InfoRow(
               label: '거래처',
-              value: _formatCount(backup.summarySupplierCount, numberFormat),
+              value: _formatSupplierSummary(backup, numberFormat),
             ),
             const SizedBox(height: 8),
             _InfoRow(
               label: '최근 입출고',
-              value: backup.summaryLatestTxnAt == null
-                  ? '-'
-                  : _formatDateTime(backup.summaryLatestTxnAt!),
+              value: _formatLatestTxn(backup),
             ),
             const SizedBox(height: 8),
             _InfoRow(
@@ -639,6 +637,21 @@ class _CloudBackupCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _InfoRow(label: '업로드 완료', value: uploadedAt),
+            if (backup.status == 'failed') ...[
+              const SizedBox(height: 8),
+              _InfoRow(
+                label: '실패 시각',
+                value: backup.failedAt == null
+                    ? '-'
+                    : _formatDateTime(backup.failedAt!),
+              ),
+              const SizedBox(height: 8),
+              _InfoRow(
+                label: '실패 사유',
+                value: _formatFailureReason(backup),
+                valueColor: Theme.of(context).colorScheme.error,
+              ),
+            ],
             const SizedBox(height: 10),
             Text(
               'Storage 경로',
@@ -712,6 +725,56 @@ class _CloudBackupCard extends StatelessWidget {
       return _formatDateTime(date);
     }
     return '${_formatDateTime(date)} / $supplierName';
+  }
+
+  static String _formatSupplierSummary(
+    CloudBackupMetadata backup,
+    NumberFormat numberFormat,
+  ) {
+    final count = _formatCount(backup.summarySupplierCount, numberFormat);
+    if (backup.summarySupplierNames.isEmpty) return count;
+    final names = backup.summarySupplierNames.take(3).join(', ');
+    final remaining = backup.summarySupplierNames.length - 3;
+    final suffix = remaining > 0 ? ' 외 $remaining개' : '';
+    return '$count / $names$suffix';
+  }
+
+  static String _formatLatestTxn(CloudBackupMetadata backup) {
+    final date = backup.summaryLatestTxnAt;
+    if (date == null) return '-';
+    final itemName = backup.summaryLatestTxnItemName?.trim();
+    final type = _formatTxnType(backup.summaryLatestTxnType);
+    final qty = backup.summaryLatestTxnQty;
+    final details = [
+      if (type != null) type,
+      if (qty != null && qty > 0)
+        '${NumberFormat.decimalPattern('ko_KR').format(qty)}개',
+      if (itemName != null && itemName.isNotEmpty) itemName,
+    ].join(' / ');
+    if (details.isEmpty) return _formatDateTime(date);
+    return '${_formatDateTime(date)} / $details';
+  }
+
+  static String? _formatTxnType(String? type) {
+    switch (type) {
+      case 'in_':
+      case 'in':
+        return '입고';
+      case 'out_':
+      case 'out':
+        return '출고';
+      default:
+        final trimmed = type?.trim();
+        return trimmed == null || trimmed.isEmpty ? null : trimmed;
+    }
+  }
+
+  static String _formatFailureReason(CloudBackupMetadata backup) {
+    final message = backup.errorMessage?.trim();
+    if (message == null || message.isEmpty) {
+      return '실패 사유가 기록되지 않았습니다.';
+    }
+    return message;
   }
 
   static String _formatReceiptSummary(
@@ -836,17 +899,15 @@ class _CloudBackupRestorePreview extends StatelessWidget {
             const SizedBox(height: 8),
             _InfoRow(
               label: '거래처',
-              value: _CloudBackupCard._formatCount(
-                backup.summarySupplierCount,
+              value: _CloudBackupCard._formatSupplierSummary(
+                backup,
                 numberFormat,
               ),
             ),
             const SizedBox(height: 8),
             _InfoRow(
               label: '최근 입출고',
-              value: backup.summaryLatestTxnAt == null
-                  ? '-'
-                  : _formatDateTime(backup.summaryLatestTxnAt!),
+              value: _CloudBackupCard._formatLatestTxn(backup),
             ),
             const SizedBox(height: 8),
             _InfoRow(
@@ -1112,10 +1173,12 @@ class _CloudBackupEmptyCard extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
+  final Color? valueColor;
 
   const _InfoRow({
     required this.label,
     required this.value,
+    this.valueColor,
   });
 
   @override
@@ -1141,6 +1204,7 @@ class _InfoRow extends StatelessWidget {
             value,
             textAlign: TextAlign.right,
             overflow: TextOverflow.visible,
+            style: valueColor == null ? null : TextStyle(color: valueColor),
           ),
         ),
       ],
