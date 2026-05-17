@@ -112,18 +112,25 @@ struct TodayScheduleWidgetView: View {
         let visibleCount = isLarge ? 8 : 3
 
         VStack(alignment: .leading, spacing: isLarge ? 12 : 10) {
-            HStack(alignment: .center) {
+            HStack(alignment: .firstTextBaseline) {
                 Link(destination: URL(string: "chalstock://schedules/today")!) {
                     Text(entry.payload.dateLabel)
                         .font(.headline.weight(.bold))
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
                 .buttonStyle(.plain)
 
                 Spacer()
+                Text("업데이트 \(entry.payload.updatedAtLabel)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
 
+            HStack(spacing: 8) {
                 WidgetActionButton(
-                    label: "할일",
+                    label: isLarge ? "일정 추가" : "일정",
                     systemImage: "checklist",
                     url: URL(string: "chalstock://schedules/new")!
                 )
@@ -137,6 +144,7 @@ struct TodayScheduleWidgetView: View {
                     systemImage: "shippingbox",
                     url: URL(string: "chalstock://stock")!
                 )
+                Spacer(minLength: 0)
             }
 
             HStack(spacing: 8) {
@@ -146,9 +154,6 @@ struct TodayScheduleWidgetView: View {
                 }
                 .buttonStyle(.plain)
                 Spacer()
-                Text("업데이트 \(entry.payload.updatedAtLabel)")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
             }
 
             if entry.payload.schedules.isEmpty {

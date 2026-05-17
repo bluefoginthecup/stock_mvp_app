@@ -6,7 +6,9 @@ import '../schedules/schedule_edit_screen.dart';
 import '../schedules/schedule_list_screen.dart';
 
 class MemoScreen extends StatefulWidget {
-  const MemoScreen({super.key});
+  final bool focusAtEnd;
+
+  const MemoScreen({super.key, this.focusAtEnd = false});
 
   @override
   State<MemoScreen> createState() => _MemoScreenState();
@@ -14,6 +16,7 @@ class MemoScreen extends StatefulWidget {
 
 class _MemoScreenState extends State<MemoScreen> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   final _repo = MemoRepo();
   UndoHistoryController _undoController = UndoHistoryController();
   Timer? _debounce;
@@ -39,6 +42,19 @@ class _MemoScreenState extends State<MemoScreen> {
     );
     _hydrating = false;
     _resetUndoHistory();
+    if (widget.focusAtEnd) {
+      _focusMemoEnd();
+    }
+  }
+
+  void _focusMemoEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controller.selection = TextSelection.collapsed(
+        offset: _controller.text.length,
+      );
+      _focusNode.requestFocus();
+    });
   }
 
   void _onChanged(String text) {
@@ -116,6 +132,7 @@ class _MemoScreenState extends State<MemoScreen> {
     _repo.save(_controller.text);
 
     _undoController.dispose();
+    _focusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -142,6 +159,7 @@ class _MemoScreenState extends State<MemoScreen> {
         padding: const EdgeInsets.all(16),
         child: TextField(
           controller: _controller,
+          focusNode: _focusNode,
           undoController: _undoController,
           maxLines: null,
           expands: true,

@@ -159,7 +159,7 @@ class ScheduleWidgetBridge {
       case 'memo':
         await navigator.push(
           MaterialPageRoute(
-            builder: (_) => const MemoScreen(),
+            builder: (_) => const MemoScreen(focusAtEnd: true),
             settings: const RouteSettings(name: '/memo'),
           ),
         );
@@ -170,6 +170,13 @@ class ScheduleWidgetBridge {
           final repo = navigator.context.read<ScheduleRepo>();
           final schedule = await repo.getScheduleById(id);
           if (schedule == null) return;
+          navigator.push(
+            MaterialPageRoute(
+              builder: (_) => const ScheduleListScreen(),
+              settings: const RouteSettings(name: '/schedules'),
+            ),
+          );
+          await Future<void>.delayed(Duration.zero);
           await navigator.push(
             MaterialPageRoute(
               builder: (_) => ScheduleDetailScreen(schedule: schedule),
