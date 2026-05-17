@@ -424,6 +424,12 @@ abstract class StorageLocationRepo {
     required String locationId,
   });
 
+  Future<void> setItemLocationQty({
+    required String itemId,
+    required String locationId,
+    required int qty,
+  });
+
   Future<void> moveItemLocation({
     required String itemId,
     String? fromLocationId,

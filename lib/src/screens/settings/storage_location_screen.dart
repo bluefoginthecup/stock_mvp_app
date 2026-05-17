@@ -685,6 +685,9 @@ class _StorageLocationDetailScreenState
         .where((link) => link.isPrimary)
         .map((link) => link.itemId)
         .toSet();
+    final directLinksByItemId = {
+      for (final link in data.links) link.itemId: link,
+    };
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
@@ -774,7 +777,8 @@ class _StorageLocationDetailScreenState
                       ? item.displayName!
                       : item.name),
                   subtitle: Text(
-                    'SKU ${item.sku} · 재고 ${item.qty} · ${entry.locationPath}',
+                    'SKU ${item.sku} · 총재고 ${item.qty}${item.unit} · '
+                    '위치수량 ${entry.qty}${item.unit} · ${entry.locationPath}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -803,6 +807,7 @@ class _StorageLocationDetailScreenState
             ...data.items.map(
               (item) {
                 final isPrimary = primaryItemIds.contains(item.id);
+                final link = directLinksByItemId[item.id];
                 return Card(
                   child: ListTile(
                     leading: Icon(
@@ -811,7 +816,10 @@ class _StorageLocationDetailScreenState
                     title: Text(item.displayName?.trim().isNotEmpty == true
                         ? item.displayName!
                         : item.name),
-                    subtitle: Text('SKU ${item.sku} · 재고 ${item.qty}'),
+                    subtitle: Text(
+                      'SKU ${item.sku} · 총재고 ${item.qty}${item.unit} · '
+                      '위치수량 ${link?.qty ?? 0}${item.unit}',
+                    ),
                     trailing: _ItemLocationActions(
                       isPrimary: isPrimary,
                       onMove: () => _moveItemFromLocation(

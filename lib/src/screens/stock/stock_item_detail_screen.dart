@@ -448,6 +448,51 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     setState(() {});
   }
 
+  Future<void> _editStorageLocationQty({
+    required Item item,
+    required StorageLocation location,
+    required int currentQty,
+  }) async {
+    final controller = TextEditingController(text: currentQty.toString());
+    final nextQty = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('위치 수량 수정'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: '${_locationPathLabel(location, const [])} 수량',
+            suffixText: item.unit,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = int.tryParse(controller.text.trim());
+              Navigator.of(dialogContext).pop(parsed == null ? null : parsed);
+            },
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (nextQty == null) return;
+    await context.read<StorageLocationRepo>().setItemLocationQty(
+          itemId: item.id,
+          locationId: location.id,
+          qty: nextQty,
+        );
+    if (!mounted) return;
+    setState(() {});
+  }
+
   Future<void> _pickItemImage(Item item, {ItemImage? replacing}) async {
     if (replacing == null) {
       final policy =
@@ -665,6 +710,11 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
             .where((link) => link.isPrimary)
             .map((link) => link.locationId)
             .toSet();
+        final linkByLocationId = {
+          for (final link in links) link.locationId: link,
+        };
+        final assignedQty = links.fold<int>(0, (sum, link) => sum + link.qty);
+        final unassignedQty = item.qty - assignedQty;
 
         return Card(
           child: Padding(
@@ -689,6 +739,17 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  unassignedQty >= 0
+                      ? '위치 배정 $assignedQty${item.unit} / 총 ${item.qty}${item.unit} · 미배정 $unassignedQty${item.unit}'
+                      : '위치 배정 $assignedQty${item.unit} / 총 ${item.qty}${item.unit} · 초과 ${-unassignedQty}${item.unit}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: unassignedQty < 0
+                            ? Theme.of(context).colorScheme.error
+                            : Colors.grey.shade700,
+                      ),
+                ),
                 if (snapshot.connectionState != ConnectionState.done)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
@@ -702,6 +763,8 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                 else
                   ...locations.map((location) {
                     final isPrimary = primaryIds.contains(location.id);
+                    final link = linkByLocationId[location.id];
+                    final locationQty = link?.qty ?? 0;
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(
@@ -711,12 +774,22 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                             : null,
                       ),
                       title: Text(_locationPathLabel(location, allLocations)),
-                      subtitle: Text(isPrimary
-                          ? '기본 위치 · ${StorageLocationType.label(location.type)}'
-                          : StorageLocationType.label(location.type)),
+                      subtitle: Text(
+                        [
+                          if (isPrimary) '기본 위치',
+                          StorageLocationType.label(location.type),
+                          '수량 $locationQty${item.unit}',
+                        ].join(' · '),
+                      ),
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
-                          if (value == 'primary') {
+                          if (value == 'qty') {
+                            _editStorageLocationQty(
+                              item: item,
+                              location: location,
+                              currentQty: locationQty,
+                            );
+                          } else if (value == 'primary') {
                             _setPrimaryStorageLocation(
                               itemId: item.id,
                               locationId: location.id,
@@ -729,6 +802,13 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                           }
                         },
                         itemBuilder: (_) => [
+                          const PopupMenuItem(
+                            value: 'qty',
+                            child: ListTile(
+                              leading: Icon(Icons.numbers_outlined),
+                              title: Text('위치 수량 수정'),
+                            ),
+                          ),
                           if (!isPrimary)
                             const PopupMenuItem(
                               value: 'primary',

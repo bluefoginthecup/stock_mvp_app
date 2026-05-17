@@ -21,7 +21,8 @@ class ItemMetaOverview extends StatelessWidget {
       final rows = <String>[];
       if (h.unitIn != null) rows.add('• unit_in: ${h.unitIn}');
       if (h.unitOut != null) rows.add('• unit_out: ${h.unitOut}');
-      if (h.conversionRate != null) rows.add('• conversion_rate: ${h.conversionRate}');
+      if (h.conversionRate != null)
+        rows.add('• conversion_rate: ${h.conversionRate}');
       if (h.qty != null) rows.add('• qty: ${h.qty}');
       if (h.usableQtyM != null) rows.add('• usable_qty_m: ${h.usableQtyM}');
       return rows.isEmpty ? '-' : rows.join('\n');
@@ -38,7 +39,10 @@ class ItemMetaOverview extends StatelessWidget {
             Expanded(
               child: SelectableText(
                 v.isEmpty ? '-' : v,
-                style: mono ? text.bodyMedium?.copyWith(fontFeatures: const [FontFeature.tabularFigures()]) : text.bodyMedium,
+                style: mono
+                    ? text.bodyMedium?.copyWith(
+                        fontFeatures: const [FontFeature.tabularFigures()])
+                    : text.bodyMedium,
               ),
             ),
           ],
@@ -48,54 +52,57 @@ class ItemMetaOverview extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('아이템 메타(모든 필드)', style: text.titleSmall),
-            const SizedBox(height: 8),
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        maintainState: true,
+        leading: const Icon(Icons.info_outline),
+        title: Text('아이템 메타', style: text.titleSmall),
+        subtitle: const Text('펼쳐서 모든 필드 보기'),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1) 식별/표시
+              kv('id', item.id, mono: true),
+              kv('name', item.name),
+              kv('displayName', item.displayName ?? '-'),
+              kv('sku', item.sku, mono: true),
 
-            // 1) 식별/표시
-            kv('id', item.id, mono: true),
-            kv('name', item.name),
-            kv('displayName', item.displayName ?? '-'),
-            kv('sku', item.sku, mono: true),
+              const SizedBox(height: 8),
+              // 2) 단위/카테고리
+              kv('unit', item.unit),
+              kv('folder', item.folder),
+              kv('subfolder', item.subfolder ?? '-'),
+              kv('subsubfolder', item.subsubfolder ?? '-'),
 
-            const SizedBox(height: 8),
-            // 2) 단위/카테고리
-            kv('unit', item.unit),
-            kv('folder', item.folder),
-            kv('subfolder', item.subfolder ?? '-'),
-            kv('subsubfolder', item.subsubfolder ?? '-'),
+              const SizedBox(height: 8),
+              // 2-1) 공급처
+              kv('공급처', item.supplierName ?? '-'),
 
-             const SizedBox(height: 8),
-             // 2-1) 공급처
-             kv('공급처', item.supplierName ?? '-'),
+              const SizedBox(height: 8),
+              // 3) 재고/임계치
+              kv('minQty', item.minQty.toString(), mono: true),
+              kv('qty', item.qty.toString(), mono: true),
 
+              const SizedBox(height: 8),
+              // 4) 분류/속성
+              kv('kind', item.kind ?? '-'),
+              kv('attrs', _mapToPretty(item.attrs)),
 
-            const SizedBox(height: 8),
-            // 3) 재고/임계치
-            kv('minQty', item.minQty.toString(), mono: true),
-            kv('qty', item.qty.toString(), mono: true),
+              const SizedBox(height: 8),
+              // 5) 하이브리드 환산
+              kv('unit_in', item.unitIn),
+              kv('unit_out', item.unitOut),
+              kv('conversion_rate', item.conversionRate.toString(), mono: true),
+              kv('conversion_mode', item.conversionMode),
 
-            const SizedBox(height: 8),
-            // 4) 분류/속성
-            kv('kind', item.kind ?? '-'),
-            kv('attrs', _mapToPretty(item.attrs)),
-
-            const SizedBox(height: 8),
-            // 5) 하이브리드 환산
-            kv('unit_in', item.unitIn),
-            kv('unit_out', item.unitOut),
-            kv('conversion_rate', item.conversionRate.toString(), mono: true),
-            kv('conversion_mode', item.conversionMode),
-
-            const SizedBox(height: 8),
-            // 6) 레거시 폴백 메타
-            kv('stockHints', _stockHintsPretty(item.stockHints)),
-          ],
-        ),
+              const SizedBox(height: 8),
+              // 6) 레거시 폴백 메타
+              kv('stockHints', _stockHintsPretty(item.stockHints)),
+            ],
+          ),
+        ],
       ),
     );
   }

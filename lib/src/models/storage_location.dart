@@ -50,6 +50,7 @@ class ItemLocation {
   final String itemId;
   final String locationId;
   final bool isPrimary;
+  final int qty;
   final String? memo;
   final DateTime updatedAt;
 
@@ -57,6 +58,7 @@ class ItemLocation {
     required this.itemId,
     required this.locationId,
     required this.isPrimary,
+    this.qty = 0,
     this.memo,
     required this.updatedAt,
   });
@@ -88,11 +90,15 @@ class ItemLocationSummary {
   final StorageLocation? primaryLocation;
   final String? primaryLocationPath;
   final int locationCount;
+  final int primaryQty;
+  final int totalAssignedQty;
 
   const ItemLocationSummary({
     required this.primaryLocation,
     required this.primaryLocationPath,
     required this.locationCount,
+    this.primaryQty = 0,
+    this.totalAssignedQty = 0,
   });
 
   bool get hasLocation => locationCount > 0;
@@ -108,12 +114,14 @@ class LocationItemEntry {
   final StorageLocation location;
   final String locationPath;
   final bool isPrimary;
+  final int qty;
 
   const LocationItemEntry({
     required this.item,
     required this.location,
     required this.locationPath,
     required this.isPrimary,
+    this.qty = 0,
   });
 }
 

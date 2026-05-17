@@ -172,7 +172,7 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
   Future<List<ItemLocation>> listItemLocationLinks(String itemId) async {
     final rows = await db.customSelect(
       '''
-      SELECT item_id, location_id, is_primary, memo, updated_at
+      SELECT item_id, location_id, is_primary, qty, memo, updated_at
       FROM item_locations
       WHERE item_id = ?
       ''',
@@ -207,7 +207,7 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
       String locationId) async {
     final rows = await db.customSelect(
       '''
-      SELECT item_id, location_id, is_primary, memo, updated_at
+      SELECT item_id, location_id, is_primary, qty, memo, updated_at
       FROM item_locations
       WHERE location_id = ?
       ORDER BY is_primary DESC, item_id ASC
@@ -268,6 +268,21 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
             OrderingTerm(expression: db.items.name, mode: OrderingMode.asc),
           ]))
         .get();
+    final locationIdList = selectedLocationIds.toList();
+    final qtyPlaceholders = List.filled(locationIdList.length, '?').join(', ');
+    final qtyRows = await db.customSelect(
+      '''
+      SELECT item_id, location_id, qty
+      FROM item_locations
+      WHERE location_id IN ($qtyPlaceholders)
+      ''',
+      variables: locationIdList.map(Variable.withString).toList(),
+    ).get();
+    final qtyByItemLocation = <String, int>{
+      for (final row in qtyRows)
+        '${row.data['item_id']}\u0000${row.data['location_id']}':
+            row.data['qty'] as int? ?? 0,
+    };
 
     final locationById = {
       for (final location in allLocations) location.id: location
@@ -284,6 +299,7 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
           location: location,
           locationPath: _locationPathLabel(location, allLocations),
           isPrimary: link.isPrimary,
+          qty: qtyByItemLocation['${item.id}\u0000${link.locationId}'] ?? 0,
         ),
       );
     }
@@ -434,7 +450,7 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
     final placeholders = List.filled(uniqueItemIds.length, '?').join(', ');
     final rows = await db.customSelect(
       '''
-      SELECT il.item_id, il.location_id, il.is_primary,
+      SELECT il.item_id, il.location_id, il.is_primary, il.qty,
              l.id, l.name, l.parent_id, l.type, l.memo, l.sort_order,
              l.is_archived, l.created_at, l.updated_at
       FROM item_locations il
@@ -454,10 +470,15 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
 
     final locationsByItem = <String, List<StorageLocation>>{};
     final primaryByItem = <String, StorageLocation>{};
+    final qtyByItemLocation = <String, int>{};
+    final totalQtyByItem = <String, int>{};
     for (final row in rows) {
       final itemId = row.data['item_id'] as String;
       final location = _storageLocationFromRow(row);
+      final qty = row.data['qty'] as int? ?? 0;
       (locationsByItem[itemId] ??= <StorageLocation>[]).add(location);
+      qtyByItemLocation['$itemId\u0000${location.id}'] = qty;
+      totalQtyByItem[itemId] = (totalQtyByItem[itemId] ?? 0) + qty;
       if ((row.data['is_primary'] as int? ?? 0) == 1) {
         primaryByItem[itemId] = location;
       }
@@ -472,6 +493,8 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
         primaryLocation: primary,
         primaryLocationPath: pathByLocationId[primary.id] ?? primary.name,
         locationCount: locations.length,
+        primaryQty: qtyByItemLocation['$itemId\u0000${primary.id}'] ?? 0,
+        totalAssignedQty: totalQtyByItem[itemId] ?? 0,
       );
     }
     return result;
@@ -502,8 +525,8 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
         await db.customStatement(
           '''
           INSERT INTO item_locations
-            (item_id, location_id, is_primary, memo, updated_at)
-          VALUES (?, ?, 1, NULL, ?)
+            (item_id, location_id, is_primary, qty, memo, updated_at)
+          VALUES (?, ?, 1, 0, NULL, ?)
           ON CONFLICT(item_id, location_id) DO UPDATE SET
             is_primary = 1,
             updated_at = excluded.updated_at
@@ -562,8 +585,8 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
         await db.customStatement(
           '''
           INSERT INTO item_locations
-            (item_id, location_id, is_primary, memo, updated_at)
-          VALUES (?, ?, ?, NULL, ?)
+            (item_id, location_id, is_primary, qty, memo, updated_at)
+          VALUES (?, ?, ?, 0, NULL, ?)
           ON CONFLICT(item_id, location_id) DO UPDATE SET
             is_primary = excluded.is_primary,
             updated_at = excluded.updated_at
@@ -593,9 +616,9 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
       );
       await db.customStatement(
         '''
-        INSERT INTO item_locations
-          (item_id, location_id, is_primary, memo, updated_at)
-        VALUES (?, ?, 1, NULL, ?)
+          INSERT INTO item_locations
+          (item_id, location_id, is_primary, qty, memo, updated_at)
+        VALUES (?, ?, 1, 0, NULL, ?)
         ON CONFLICT(item_id, location_id) DO UPDATE SET
           is_primary = 1,
           updated_at = excluded.updated_at
@@ -603,6 +626,28 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
         [itemId, locationId, now],
       );
     });
+    db.notifyUpdates({const TableUpdate('item_locations')});
+  }
+
+  @override
+  Future<void> setItemLocationQty({
+    required String itemId,
+    required String locationId,
+    required int qty,
+  }) async {
+    final cleanItemId = itemId.trim();
+    final cleanLocationId = locationId.trim();
+    if (cleanItemId.isEmpty || cleanLocationId.isEmpty) return;
+    final safeQty = qty < 0 ? 0 : qty;
+    final now = DateTime.now().toIso8601String();
+    await db.customStatement(
+      '''
+      UPDATE item_locations
+      SET qty = ?, updated_at = ?
+      WHERE item_id = ? AND location_id = ?
+      ''',
+      [safeQty, now, cleanItemId, cleanLocationId],
+    );
     db.notifyUpdates({const TableUpdate('item_locations')});
   }
 
@@ -653,6 +698,7 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
     final fromLocation =
         effectiveFromId == null ? null : locationById[effectiveFromId];
     final itemName = await _itemNameForMovement(cleanItemId);
+    final movedQty = fromLink?.qty ?? 0;
     final fromPath = fromLocation == null
         ? null
         : _locationPathLabel(fromLocation, allLocations);
@@ -689,19 +735,21 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
       await db.customStatement(
         '''
         INSERT INTO item_locations
-          (item_id, location_id, is_primary, memo, updated_at)
-        VALUES (?, ?, ?, NULL, ?)
+          (item_id, location_id, is_primary, qty, memo, updated_at)
+        VALUES (?, ?, ?, ?, NULL, ?)
         ON CONFLICT(item_id, location_id) DO UPDATE SET
           is_primary = CASE
             WHEN excluded.is_primary = 1 THEN 1
             ELSE item_locations.is_primary
           END,
+          qty = item_locations.qty + excluded.qty,
           updated_at = excluded.updated_at
         ''',
         [
           cleanItemId,
           cleanToLocationId,
           shouldMakePrimary ? 1 : 0,
+          movedQty,
           nowIso,
         ],
       );
@@ -827,6 +875,7 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
       itemId: data['item_id'] as String,
       locationId: data['location_id'] as String,
       isPrimary: (data['is_primary'] as int? ?? 0) == 1,
+      qty: data['qty'] as int? ?? 0,
       memo: data['memo'] as String?,
       updatedAt: DateTime.parse(data['updated_at'] as String),
     );

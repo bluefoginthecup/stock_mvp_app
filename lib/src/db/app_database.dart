@@ -658,7 +658,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 39; //
+  int get schemaVersion => 40; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -679,6 +679,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensurePurchaseLineAmountColumns();
           await _ensureQuoteLineAmountColumns();
           await _ensureStorageLocationMovementTable();
+          await _ensureItemLocationQuantityColumn();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -970,6 +971,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 39) {
             await _ensureStorageLocationMovementTable();
+          }
+          if (from < 40) {
+            await _ensureItemLocationQuantityColumn(backfill: true);
           }
         },
       );
@@ -1308,6 +1312,7 @@ class AppDatabase extends _$AppDatabase {
         item_id TEXT NOT NULL,
         location_id TEXT NOT NULL,
         is_primary INTEGER NOT NULL DEFAULT 0,
+        qty INTEGER NOT NULL DEFAULT 0,
         memo TEXT NULL,
         updated_at TEXT NOT NULL,
         PRIMARY KEY (item_id, location_id),
@@ -1335,6 +1340,41 @@ class AppDatabase extends _$AppDatabase {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_item_one_primary_location
       ON item_locations(item_id)
       WHERE is_primary = 1
+    ''');
+    await _ensureItemLocationQuantityColumn();
+  }
+
+  Future<void> _ensureItemLocationQuantityColumn({
+    bool backfill = false,
+  }) async {
+    await _addColumnIfMissing(
+      'item_locations',
+      'qty',
+      'INTEGER NOT NULL DEFAULT 0',
+    );
+    if (!backfill) return;
+
+    await customStatement('''
+      UPDATE item_locations
+      SET qty = COALESCE(
+        (SELECT items.qty FROM items WHERE items.id = item_locations.item_id),
+        0
+      )
+      WHERE qty = 0
+        AND is_primary = 1
+    ''');
+    await customStatement('''
+      UPDATE item_locations
+      SET qty = COALESCE(
+        (SELECT items.qty FROM items WHERE items.id = item_locations.item_id),
+        0
+      )
+      WHERE qty = 0
+        AND (
+          SELECT COUNT(*)
+          FROM item_locations il2
+          WHERE il2.item_id = item_locations.item_id
+        ) = 1
     ''');
   }
 

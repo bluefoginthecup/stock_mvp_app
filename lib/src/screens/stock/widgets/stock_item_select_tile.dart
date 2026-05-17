@@ -114,8 +114,9 @@ class StockItemSelectTile extends StatelessWidget {
     final path = summary.primaryLocationPath ??
         summary.primaryLocation?.name ??
         '위치 미지정';
-    if (summary.extraLocationCount <= 0) return path;
-    return '$path 외 ${summary.extraLocationCount}곳';
+    final qtyText = summary.primaryQty > 0 ? ' · ${summary.primaryQty}개' : '';
+    if (summary.extraLocationCount <= 0) return '$path$qtyText';
+    return '$path$qtyText 외 ${summary.extraLocationCount}곳';
   }
 
   String _formatDate(DateTime value) {
