@@ -33,6 +33,7 @@ import 'screens/suppliers/supplier_list_screen.dart';
 import 'screens/receipts/receipt_create_screen.dart';
 import 'screens/receipts/receipts_home_screen.dart';
 import 'screens/schedules/schedule_list_screen.dart';
+import 'screens/schedules/schedule_edit_screen.dart';
 import 'features/fabric_cutting/screens/fabric_cutting_home_screen.dart';
 
 import 'app/main_tab_controller.dart';
@@ -47,6 +48,7 @@ import 'services/export_service.dart';
 import 'services/folder_service.dart';
 import 'services/inventory_service.dart';
 import 'services/shortage_service.dart';
+import 'services/schedule_widget_bridge.dart';
 import 'services/system_seed_service.dart';
 import 'db/app_database.dart';
 import 'repos/timeline_repo.dart';
@@ -99,7 +101,7 @@ class StockApp extends StatelessWidget {
   }
 }
 
-class _StockMaterialApp extends StatelessWidget {
+class _StockMaterialApp extends StatefulWidget {
   final GlobalKey<NavigatorState> rootNavKey;
   final GlobalKey<ScaffoldMessengerState> messengerKey;
   final Locale? locale;
@@ -111,11 +113,24 @@ class _StockMaterialApp extends StatelessWidget {
   });
 
   @override
+  State<_StockMaterialApp> createState() => _StockMaterialAppState();
+}
+
+class _StockMaterialAppState extends State<_StockMaterialApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ScheduleWidgetBridge.initialize(navigatorKey: widget.rootNavKey);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: rootNavKey,
-      scaffoldMessengerKey: messengerKey,
-      locale: locale,
+      navigatorKey: widget.rootNavKey,
+      scaffoldMessengerKey: widget.messengerKey,
+      locale: widget.locale,
       onGenerateTitle: (ctx) => L10n.of(ctx).app_title,
       localizationsDelegates: L10n.localizationsDelegates,
       supportedLocales: const [
@@ -169,6 +184,7 @@ class _StockMaterialApp extends StatelessWidget {
         '/receipts': (_) => const ReceiptsHomeScreen(),
         '/receipts/new': (_) => const ReceiptCreateScreen(),
         '/schedules': (_) => const ScheduleListScreen(),
+        '/schedules/new': (_) => const ScheduleEditScreen(),
         '/fabric-cutting': (_) => const FabricCuttingHomeScreen(),
       },
     );
@@ -322,7 +338,10 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
               ),
             ),
           ],
-          child: widget.child,
+          child: ScheduleWidgetSync(
+            repo: repo,
+            child: widget.child,
+          ),
         );
       },
     );

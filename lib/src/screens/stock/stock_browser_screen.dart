@@ -44,11 +44,13 @@ part 'stock_browser_helpers.part.dart';
 class StockBrowserScreen extends StatefulWidget {
   final bool showLowStockOnly;
   final List<String>? initialPath;
+  final bool autofocusSearch;
 
   const StockBrowserScreen({
     super.key,
     this.showLowStockOnly = false,
     this.initialPath,
+    this.autofocusSearch = false,
   });
 
   @override
@@ -212,6 +214,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           child: AppSearchField(
             controller: _searchC,
             hint: '폴더명 / 아이템명 / SKU 검색',
+            autofocus: widget.autofocusSearch,
             onChanged: (_) => _debouncedRebuild(),
           ),
         ),

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/app_schedule.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../services/schedule_widget_bridge.dart';
 import '../../utils/tag_utils.dart';
 
 class ScheduleEditScreen extends StatefulWidget {
@@ -134,6 +135,7 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
           ),
         );
       }
+      await ScheduleWidgetBridge.syncTodaySchedules(repo);
 
       if (!mounted) return;
       Navigator.pop(context, true);

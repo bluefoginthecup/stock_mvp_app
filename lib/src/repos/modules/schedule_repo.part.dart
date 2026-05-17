@@ -6,13 +6,11 @@ mixin ScheduleRepoMixin on _RepoCore implements ScheduleRepo {
   DateTime _dayStart(DateTime date) =>
       DateTime(date.year, date.month, date.day);
 
-  DateTime _dayEnd(DateTime date) =>
-      _dayStart(date).add(const Duration(days: 1));
-
-  Expression<bool> _dateWhere(dynamic t, DateTime date) {
-    final start = _dayStart(date).toIso8601String();
-    final end = _dayEnd(date).toIso8601String();
-    return t.date.isBiggerOrEqualValue(start) & t.date.isSmallerThanValue(end);
+  Expression<bool> _dateWhere($AppSchedulesTable t, DateTime date) {
+    final day = _dayStart(date);
+    final month = day.month.toString().padLeft(2, '0');
+    final datePart = day.day.toString().padLeft(2, '0');
+    return t.date.like('${day.year}-$month-$datePart%');
   }
 
   @override

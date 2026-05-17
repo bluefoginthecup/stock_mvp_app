@@ -6,12 +6,14 @@ class AppSearchField extends StatefulWidget {
   final TextEditingController controller;
   final String hint;
   final ValueChanged<String>? onChanged;
+  final bool autofocus;
 
   const AppSearchField({
     super.key,
     required this.controller,
     this.hint = '검색',
     this.onChanged,
+    this.autofocus = false,
   });
 
   @override
@@ -31,6 +33,7 @@ class _AppSearchFieldState extends State<AppSearchField> {
   Widget build(BuildContext context) {
     return TextField(
       controller: widget.controller,
+      autofocus: widget.autofocus,
       onChanged: (v) => _deb.run(() => widget.onChanged?.call(v)),
       decoration: InputDecoration(
         hintText: widget.hint,

@@ -30,6 +30,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.101861330698-9rjumcn1dc88o6j7uirv3op8ce30a1u0</string>
+				<string>chalstock</string>
 			</array>
 		</dict>
 	</array>
