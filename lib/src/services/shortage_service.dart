@@ -1,7 +1,6 @@
 import '../repos/repo_interfaces.dart';
 import 'bom_service.dart';
 
-
 class Shortage2L {
   final double finishedStock;
   final double finishedShortage;
@@ -26,13 +25,21 @@ class ShortageService {
   final BomService bom;
   ShortageService({required this.repo, required this.bom});
 
-  int _stockI(String id) => repo.stockOf(id);
-
   // ── unit 판정: 아이템별 길이기반인지? ──────────────────────────────
   bool _isLengthUnit(String? u) {
     if (u == null) return false;
     final s = u.trim().toUpperCase();
-    const lengthUnits = {'M','CM','MM','METER','METERS','YD','YARD','IN','FT'};
+    const lengthUnits = {
+      'M',
+      'CM',
+      'MM',
+      'METER',
+      'METERS',
+      'YD',
+      'YARD',
+      'IN',
+      'FT'
+    };
     return lengthUnits.contains(s);
   }
 
@@ -189,11 +196,11 @@ class ShortageService {
       subShortage: _lackByItemUnit(subNeed),
     );
 
-
     return result;
   }
-  Shortage2L computeForMake({required String finishedId, required int makeQty}) {
 
+  Shortage2L computeForMake(
+      {required String finishedId, required int makeQty}) {
     final double make = makeQty.toDouble();
     if (make <= 0) {
       return Shortage2L(
@@ -208,7 +215,6 @@ class ShortageService {
         subShortage: const {},
       );
     }
-
 
     // ✅ finishedShortage 자리에 "만들 수량"을 그대로 넣고 폭발
     final ex = bom.explode2Levels(
@@ -230,7 +236,7 @@ class ShortageService {
       need.forEach((id, n) {
         final st = _availableByItemUnit(id);
         final lack = n - st;
-       if (lack > 0) m[id] = lack;
+        if (lack > 0) m[id] = lack;
       });
       return m;
     }
@@ -239,7 +245,7 @@ class ShortageService {
     ex.semiNeed.forEach((id, n) {
       final st = _availableByItemUnit(id);
       final lack = n - st;
-     if (lack > 0) semiShort[id] = lack;
+      if (lack > 0) semiShort[id] = lack;
     });
     final finStock = _availableByItemUnit(finishedId);
 
@@ -256,5 +262,4 @@ class ShortageService {
 
     return result;
   }
-
 }

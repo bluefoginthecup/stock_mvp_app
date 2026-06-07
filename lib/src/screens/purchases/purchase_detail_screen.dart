@@ -966,7 +966,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         initialDate = po.createdAt;
         break;
       case 1:
-        initialDate = po.receivedAt ?? po.eta ?? DateTime.now();
+        initialDate = po.receivedAt ?? po.eta;
         break;
       case 2:
         initialDate = po.paidAt ?? po.paymentDueAt ?? DateTime.now();
@@ -1196,7 +1196,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         if (result == false) {
           final picked = await showDatePicker(
             context: context,
-            initialDate: po.eta ?? DateTime.now(),
+            initialDate: po.eta,
             firstDate: DateTime(2020),
             lastDate: DateTime(2100),
           );
@@ -1412,8 +1412,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     final vat = _lines.fold<double>(0, (sum, l) => sum + l.vatAmount);
 
-    final shipping = po.shippingCost ?? 0.0;
-    final extra = po.extraCost ?? 0.0;
+    final shipping = po.shippingCost;
+    final extra = po.extraCost;
 
     final total = _lines.fold<double>(0, (sum, l) => sum + l.totalAmount) +
         shipping +

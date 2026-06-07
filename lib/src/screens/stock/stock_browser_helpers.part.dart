@@ -1,4 +1,6 @@
 // lib/src/screens/stock/stock_browser_helpers.part.dart
+// ignore_for_file: unused_element
+
 part of 'stock_browser_screen.dart';
 
 // ───────────────────────── 공통 필터 로직 ─────────────────────────

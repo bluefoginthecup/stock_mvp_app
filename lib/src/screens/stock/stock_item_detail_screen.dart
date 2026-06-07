@@ -1,4 +1,6 @@
 // lib/src/screens/stock/stock_item_detail_screen.dart
+// ignore_for_file: unused_element
+
 import 'dart:io';
 
 import 'package:image_picker/image_picker.dart';

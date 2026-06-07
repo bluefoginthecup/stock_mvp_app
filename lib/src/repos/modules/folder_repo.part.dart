@@ -203,54 +203,6 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
     );
   }
 
-  Future<void> _ensureFolderPath({
-    required String l1,
-    String? l2,
-    String? l3,
-  }) async {
-    final l1Id = l1;
-    final String? l2Id = (l2 != null && l2.isNotEmpty) ? '$l1Id-$l2' : null;
-    final String? l3Id =
-        (l3 != null && l3.isNotEmpty && l2Id != null) ? '$l2Id-$l3' : null;
-
-    await db.into(db.folders).insertOnConflictUpdate(
-          FoldersCompanion(
-            id: Value(l1Id),
-            name: Value(l1),
-            parentId: const Value(null),
-            depth: const Value(0),
-            isDeleted: const Value(false),
-            deletedAt: const Value(null),
-          ),
-        );
-
-    if (l2Id != null) {
-      await db.into(db.folders).insertOnConflictUpdate(
-            FoldersCompanion(
-              id: Value(l2Id),
-              name: Value(l2!),
-              parentId: Value(l1Id),
-              depth: const Value(1),
-              isDeleted: const Value(false),
-              deletedAt: const Value(null),
-            ),
-          );
-    }
-
-    if (l3Id != null) {
-      await db.into(db.folders).insertOnConflictUpdate(
-            FoldersCompanion(
-              id: Value(l3Id),
-              name: Value(l3!),
-              parentId: Value(l2Id),
-              depth: const Value(2),
-              isDeleted: const Value(false),
-              deletedAt: const Value(null),
-            ),
-          );
-    }
-  }
-
   @override
   Future<(List<FolderNode>, List<Item>)> searchAll({
     String? l1,
@@ -507,27 +459,7 @@ mixin FolderRepoMixin on _RepoCore implements FolderTreeRepo {
     return result;
   }
 
-  Future<void> debugPrintAllFolders() async {
-    final rows = await (db.select(db.folders)
-          ..orderBy([
-            (t) => OrderingTerm.asc(t.depth),
-            (t) => OrderingTerm.asc(t.name)
-          ]))
-        .get();
-    //debugPrint('===== FOLDERS TABLE DUMP =====');
-    for (final r in rows) {
-      //debugPrint('[Folder] id=${r.id}, name=${r.name}, parentId=${r.parentId}, depth=${r.depth}, order=${r.order}');
-    }
-
-    final roots = await (db.select(db.folders)
-          ..where((t) => t.parentId.isNull())
-          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
-        .get();
-    //debugPrint('===== ROOT FOLDERS (parentId IS NULL) =====');
-    for (final r in roots) {
-      //debugPrint('[Root] id=${r.id}, name=${r.name}, depth=${r.depth}');
-    }
-  }
+  Future<void> debugPrintAllFolders() async {}
 }
 
 class _ResolvedFolderPath {

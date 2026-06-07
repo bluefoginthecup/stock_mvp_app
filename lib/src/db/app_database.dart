@@ -93,7 +93,6 @@ class Items extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-  @override
   List<Index> get indexes => [
         Index('idx_items_search', 'searchNormalized'),
         Index('idx_items_search_full', 'searchFullNormalized'),
@@ -147,7 +146,6 @@ class ItemPaths extends Table {
   @override
   Set<Column> get primaryKey => {itemId};
 
-  @override
   List<Index> get indexes => [
         Index('idx_itempaths_l1', 'l1Id'),
         Index('idx_itempaths_l2', 'l2Id'),
@@ -181,7 +179,6 @@ class Txns extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-  @override
   List<Index> get indexes => [
         Index('idx_txn_item', 'itemId'),
         Index('idx_txn_ts', 'ts'),
@@ -244,7 +241,6 @@ class OrderLines extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-  @override
   List<Index> get indexes => [
         Index('idx_orderline_order', 'orderId'),
         Index('idx_orderline_item', 'itemId'),
@@ -283,7 +279,6 @@ class Works extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-  @override
   List<Index> get indexes => [
         Index('idx_work_item', 'itemId'),
         Index('idx_work_order', 'orderId'),
@@ -372,7 +367,6 @@ class PurchaseLines extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-  @override
   List<Index> get indexes => [
         Index('idx_purchase_order', 'orderId'),
         Index('idx_purchase_item', 'itemId'),
@@ -436,7 +430,6 @@ class QuoteLines extends Table {
   @override
   Set<Column> get primaryKey => {id};
 
-  @override
   List<Index> get indexes => [
         Index('idx_quote_lines_quote', 'quoteId'),
         Index('idx_quote_lines_item', 'itemId'),
@@ -586,7 +579,6 @@ class AppSchedules extends Table {
   @override
   Set<Column> get primaryKey => {id};
 
-  @override
   List<Index> get indexes => [
         Index('idx_app_schedules_date', 'date'),
         Index('idx_app_schedules_status', 'status'),
@@ -1848,20 +1840,14 @@ extension PurchaseOrderToCompanion on PurchaseOrder {
         vatType: Value(vatType.index),
         paymentStatus: Value(paymentStatus),
         paidAt: Value(paidAt?.toIso8601String()),
-        paymentDueAt: paymentDueAt == null
-            ? const Value.absent()
-            : Value(paymentDueAt!.toIso8601String()),
+        paymentDueAt: Value(paymentDueAt?.toIso8601String()),
         vatInvoiceStatus: Value(vatInvoiceStatus),
         vatInvoiceIssuedAt: Value(vatInvoiceIssuedAt?.toIso8601String()),
-        vatInvoiceDueAt: vatInvoiceDueAt == null
-            ? const Value.absent()
-            : Value(vatInvoiceDueAt!.toIso8601String()),
-        eta: eta == null ? const Value.absent() : Value(eta!.toIso8601String()),
+        vatInvoiceDueAt: Value(vatInvoiceDueAt?.toIso8601String()),
+        eta: Value(eta.toIso8601String()),
         status: Value(status.name),
         createdAt: Value(createdAt.toIso8601String()),
-        updatedAt: updatedAt == null
-            ? const Value.absent()
-            : Value(updatedAt!.toIso8601String()),
+        updatedAt: Value(updatedAt.toIso8601String()),
         isDeleted: Value(isDeleted),
         memo: Value(memo),
         deliveryName: Value(deliveryName),

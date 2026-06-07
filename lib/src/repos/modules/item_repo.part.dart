@@ -14,23 +14,6 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
         .replaceAll('_', r'\_');
   }
 
-  String _buildFullNormalized({
-    required String name,
-    required String sku,
-    String? folder,
-    String? subfolder,
-    String? subsubfolder,
-  }) {
-    final src = [
-      name,
-      sku,
-      if (folder != null) folder,
-      if (subfolder != null) subfolder,
-      if (subsubfolder != null) subsubfolder,
-    ].join(' ');
-    return normalizeForSearch(src);
-  }
-
   Expression<bool> _keywordExpr(
     Items i,
     String raw, {
@@ -89,23 +72,6 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
       expr = expr & col.like('%${_escapeLike(key)}%', escapeChar: '\\');
     }
     return expr;
-  }
-
-//--3)폴더검색 --//
-  Expression<bool> _folderKeywordExpr(Folders f, String raw) {
-    final q = raw.trim();
-    if (q.isEmpty) return const Constant(true);
-
-    final isCho = looksLikeChosungQuery(q);
-    if (isCho) {
-      final key = q.replaceAll(RegExp(r'\s+'), '');
-      final like = '%${_escapeLike(key)}%';
-      return f.searchInitials.like(like, escapeChar: r'\');
-    }
-
-    final norm = normalizeForSearch(q);
-    final like = '%${_escapeLike(norm)}%';
-    return f.searchNormalized.like(like, escapeChar: r'\');
   }
 
   @override

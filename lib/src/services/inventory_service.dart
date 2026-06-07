@@ -1,17 +1,17 @@
 // lib/src/services/inventory_service.dart
+// ignore_for_file: unused_element
+
 import '../repos/repo_interfaces.dart';
 import '../models/types.dart';
 import '../models/state_guard.dart';
-import '../models/purchase_order.dart';   // ✅ 추가: 상태(enum) 사용
-import 'dart:math' as math;
+import '../models/purchase_order.dart'; // ✅ 추가: 상태(enum) 사용
 import '../models/bom.dart';
-
 
 class InventoryService {
   final WorkRepo works;
-  final PurchaseOrderRepo purchases;   // ✅ PurchaseOrderRepo
+  final PurchaseOrderRepo purchases; // ✅ PurchaseOrderRepo
   final TxnRepo txns;
-  final BomRepo boms;                  // 선택: BOM 소비 planned/actual 쓰려면 사용
+  final BomRepo boms; // 선택: BOM 소비 planned/actual 쓰려면 사용
   final OrderRepo orders;
   final ItemRepo items;
 
@@ -46,12 +46,11 @@ class InventoryService {
   }
 
   // ✅ qty 정규화 헬퍼: int/num/String/기타 → int (실패 시 0)
-    int _asIntQty(dynamic v) {
-        if (v is int) return v;
-        if (v is num) return v.round();
-        return int.tryParse('$v') ?? 0;
-      }
-
+  int _asIntQty(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.round();
+    return int.tryParse('$v') ?? 0;
+  }
 
   Future<void> completeWork(String workId) async {
     final w = await works.getWorkById(workId);
@@ -66,7 +65,6 @@ class InventoryService {
 
     await completeWorkPartial(workId: workId, madeQty: remaining);
   }
-
 
   Future<void> completeWorkPartial({
     required String workId,
@@ -84,7 +82,8 @@ class InventoryService {
     // if (!canTransitionWork(w.status, WorkStatus.inProgress)) return;
 
     print('[WORK] completeWorkPartial start workId=$workId madeQty=$madeQty');
-    print('[WORK] itemId=${w.itemId} planned=${w.qty} done=${w.doneQty} status=${w.status}');
+    print(
+        '[WORK] itemId=${w.itemId} planned=${w.qty} done=${w.doneQty} status=${w.status}');
 
     // ✅ 1) semi/sub만 차감 (raw 금지, 폭발 금지)
     await _consumeFinishedSemiSubOnly(
@@ -117,14 +116,12 @@ class InventoryService {
         startedAt: w.startedAt ?? now,
         finishedAt: now,
       );
-
     } else {
       await works.updateWorkProgress(
         id: workId,
         status: WorkStatus.inProgress, // enum에 없으면 WorkStatus.planned
         startedAt: w.startedAt ?? now,
       );
-
     }
   }
 
@@ -137,7 +134,7 @@ class InventoryService {
     if (w.isDeleted) return;
     if (w.status == WorkStatus.canceled) return;
 
-    final clamped = targetDoneQty.clamp(0, 1<<30);
+    final clamped = targetDoneQty.clamp(0, 1 << 30);
 
     final delta = clamped - w.doneQty;
     if (delta == 0) return;
@@ -186,6 +183,7 @@ class InventoryService {
       );
     }
   }
+
   Future<void> _rollbackWorkProduction({
     required String workId,
     required String finishedItemId,
@@ -209,7 +207,7 @@ class InventoryService {
     // ✅ 2) 소모했던 semi/sub 되돌림 = semi/sub 입고(in)
     final rows = await boms.listBom(finishedItemId);
     final comps = rows.where((r) =>
-    r.root == BomRoot.finished &&
+        r.root == BomRoot.finished &&
         (r.kind == BomKind.semi || r.kind == BomKind.sub));
 
     for (final r in comps) {
@@ -226,7 +224,6 @@ class InventoryService {
     }
   }
 
-
   Future<void> _consumeFinishedSemiSubOnly({
     required String workId,
     required String finishedItemId,
@@ -235,7 +232,7 @@ class InventoryService {
     final rows = await boms.listBom(finishedItemId);
 
     final comps = rows.where((r) =>
-    r.root == BomRoot.finished &&
+        r.root == BomRoot.finished &&
         (r.kind == BomKind.semi || r.kind == BomKind.sub));
 
     for (final r in comps) {
@@ -251,7 +248,6 @@ class InventoryService {
       );
     }
   }
-
 
   /// ✅ 작업 편집 엔트리포인트 (UI는 이것만 호출)
   /// - qty 변경
@@ -287,7 +283,6 @@ class InventoryService {
     }
   }
 
-
   /// 취소
   Future<void> cancelWork(String workId) async {
     final w = await works.getWorkById(workId);
@@ -298,8 +293,7 @@ class InventoryService {
     await works.updateWorkStatus(workId, WorkStatus.canceled);
   }
 
-
-    // ================================================
+  // ================================================
   // ⚙️ 작업 삭제 (소프트/하드)
   Future<void> deleteWorkSafe(String workId, {bool hard = false}) async {
     if (hard) {
@@ -322,12 +316,12 @@ class InventoryService {
     final lines = await purchases.getLines(po.id);
 
     for (final line in lines) {
-          // Txn.qty는 int이므로 정규화 + >0 가드
-          final intQty = _asIntQty(line.qty);
-          if (intQty <= 0) {
-            // 0 수량 라인은 건너뜀 (모델 assert 보호)
-            continue;
-          }
+      // Txn.qty는 int이므로 정규화 + >0 가드
+      final intQty = _asIntQty(line.qty);
+      if (intQty <= 0) {
+        // 0 수량 라인은 건너뜀 (모델 assert 보호)
+        continue;
+      }
 
       await txns.addInPlanned(
         itemId: line.itemId,
@@ -338,7 +332,8 @@ class InventoryService {
       );
     }
 
-    await purchases.updatePurchaseOrderStatus(po.id, PurchaseOrderStatus.ordered);
+    await purchases.updatePurchaseOrderStatus(
+        po.id, PurchaseOrderStatus.ordered);
   }
 
   /// ordered -> received : 발주 라인 기준 actual in + 상태 전환
@@ -353,11 +348,11 @@ class InventoryService {
     final lines = await purchases.getLines(po.id);
 
     for (final line in lines) {
-          final intQty = _asIntQty(line.qty);
-          if (intQty <= 0) {
-            // 0 수량 라인은 건너뜀
-            continue;
-          }
+      final intQty = _asIntQty(line.qty);
+      if (intQty <= 0) {
+        // 0 수량 라인은 건너뜀
+        continue;
+      }
 
       await txns.addInActual(
         itemId: line.itemId,
@@ -377,11 +372,11 @@ class InventoryService {
     );
   }
 
- /// 입고예정으로 변경시 재고 롤백
+  /// 입고예정으로 변경시 재고 롤백
   Future<void> rollbackReceivePurchase(
-      String purchaseId, {
-        DateTime? eta,
-      }) async {
+    String purchaseId, {
+    DateTime? eta,
+  }) async {
     final po = await purchases.getPurchaseOrderById(purchaseId);
     if (po == null) return;
 
@@ -426,85 +421,84 @@ class InventoryService {
     // planned 롤백 지원 시 사용
     await txns.deletePlannedByRef(refType: 'purchase', refId: po.id);
 
-
-    await purchases.updatePurchaseOrderStatus(po.id, PurchaseOrderStatus.canceled);
+    await purchases.updatePurchaseOrderStatus(
+        po.id, PurchaseOrderStatus.canceled);
   }
 
   /// 발주 삭제 (소프트/하드)
   Future<void> deletePurchase(String purchaseId, {bool hard = false}) async {
     if (hard) {
-      await purchases.hardDeletePurchaseOrder(purchaseId);   // ✅ 새로운 이름
+      await purchases.hardDeletePurchaseOrder(purchaseId); // ✅ 새로운 이름
     } else {
-      await purchases.softDeletePurchaseOrder(purchaseId);   // ✅ 새로운 이름
+      await purchases.softDeletePurchaseOrder(purchaseId); // ✅ 새로운 이름
     }
   }
 
   /// 입출고 기록 단일 삭제
   Future<void> deleteTxn(String txnId) => txns.deleteTxn(txnId);
 
+  // =========================================================
+  // ✅ 상태 직접 설정 (세 버튼 UI용): 실거래 롤백 + 상태만 변경
+  // ---------------------------------------------------------
+  // - planned(시작): (inProgress|done)에서 내려올 때 inActual 롤백 후 상태만 planned
+  // - inProgress(진행중): done에서 내려올 때 inActual 롤백 후 상태만 inProgress
+  // - done(완료): 기존 completeWork() 호출(완제품 inActual 생성 포함)
+  // - canceled: 별도 플로우(cancelWork) 사용 권장
+  // =========================================================
+  Future<void> setWorkStatus(String workId, WorkStatus target) async {
+    final w = await works.getWorkById(workId);
+    if (w == null) return;
+    if (w.status == target) return;
+    if (w.status == WorkStatus.canceled) return;
 
-
-    // =========================================================
-    // ✅ 상태 직접 설정 (세 버튼 UI용): 실거래 롤백 + 상태만 변경
-    // ---------------------------------------------------------
-    // - planned(시작): (inProgress|done)에서 내려올 때 inActual 롤백 후 상태만 planned
-    // - inProgress(진행중): done에서 내려올 때 inActual 롤백 후 상태만 inProgress
-    // - done(완료): 기존 completeWork() 호출(완제품 inActual 생성 포함)
-    // - canceled: 별도 플로우(cancelWork) 사용 권장
-    // =========================================================
-    Future<void> setWorkStatus(String workId, WorkStatus target) async {
-        final w = await works.getWorkById(workId);
-        if (w == null) return;
-        if (w.status == target) return;
-        if (w.status == WorkStatus.canceled) return;
-
-        switch (target) {
-          case WorkStatus.planned:
-            // 역전환 허용: 진행중/완료 → 시작(계획)
-            if (w.status == WorkStatus.inProgress || w.status == WorkStatus.done) {
-              await _rollbackWorkActuals(w.id); // 완료 때 생성된 inActual 삭제
-            }
-            await works.updateWorkStatus(workId, WorkStatus.planned);
-            return;
-
-          case WorkStatus.inProgress:
-            if (w.status == WorkStatus.done) {
-              // 완료 → 진행중 : 실거래 롤백 후 상태만 변경
-              await _rollbackWorkActuals(w.id);
-              await works.updateWorkStatus(workId, WorkStatus.inProgress);
-              return;
-            }
-            // 시작 → 진행중 : 순방향 기존 진입점 사용
-            await startWork(workId);
-            return;
-
-          case WorkStatus.done:
-            // 진행중 → 완료 : 기존 완료 처리(실거래 생성 포함)
-            await completeWork(workId);
-            return;
-
-          case WorkStatus.canceled:
-            // 화면에서 별도 처리 권장
-            return;
+    switch (target) {
+      case WorkStatus.planned:
+        // 역전환 허용: 진행중/완료 → 시작(계획)
+        if (w.status == WorkStatus.inProgress || w.status == WorkStatus.done) {
+          await _rollbackWorkActuals(w.id); // 완료 때 생성된 inActual 삭제
         }
-      }
+        await works.updateWorkStatus(workId, WorkStatus.planned);
+        return;
 
-    /// ✅ 작업 완료(inActual) 롤백: refType='work', refId=workId 기준
-    Future<void> _rollbackWorkActuals(String workId) async {
-        try {
-          await txns.deleteInActualByRef(refType: 'work', refId: workId);
-          await txns.deleteOutActualByRef(refType: 'work', refId: workId);  // 자재 소모 취소(+)
-
-        } catch (_) {
-          // 구현 전이거나 실패해도 앱이 죽지 않도록 방어
+      case WorkStatus.inProgress:
+        if (w.status == WorkStatus.done) {
+          // 완료 → 진행중 : 실거래 롤백 후 상태만 변경
+          await _rollbackWorkActuals(w.id);
+          await works.updateWorkStatus(workId, WorkStatus.inProgress);
+          return;
         }
-        // BOM 자재 소모까지 롤백하려면 여기서 deleteOutActualByRef도 호출하세요.
-      }
+        // 시작 → 진행중 : 순방향 기존 진입점 사용
+        await startWork(workId);
+        return;
+
+      case WorkStatus.done:
+        // 진행중 → 완료 : 기존 완료 처리(실거래 생성 포함)
+        await completeWork(workId);
+        return;
+
+      case WorkStatus.canceled:
+        // 화면에서 별도 처리 권장
+        return;
+    }
+  }
+
+  /// ✅ 작업 완료(inActual) 롤백: refType='work', refId=workId 기준
+  Future<void> _rollbackWorkActuals(String workId) async {
+    try {
+      await txns.deleteInActualByRef(refType: 'work', refId: workId);
+      await txns.deleteOutActualByRef(
+          refType: 'work', refId: workId); // 자재 소모 취소(+)
+    } catch (_) {
+      // 구현 전이거나 실패해도 앱이 죽지 않도록 방어
+    }
+    // BOM 자재 소모까지 롤백하려면 여기서 deleteOutActualByRef도 호출하세요.
+  }
+
   /// ✅ 출고 전에 현재고가 충분한지 검증 (검증 소스 = Item.qty)
-    Future<void> _ensureStockAvailable({
-      required String itemId,
-      required int requestQty,
-    }) async {
+  Future<void> _ensureStockAvailable({
+    required String itemId,
+    required int requestQty,
+  }) async {
     if (requestQty <= 0) {
       throw StateError('출고 수량은 1개 이상이어야 합니다.');
     }
@@ -517,47 +511,45 @@ class InventoryService {
       throw StateError('재고부족: 현재고 $current개, 요청 $requestQty개');
     }
   }
+
   // ---------- SHIPMENT (ORDER OUT) ----------
-    /// ✅ 주문 상세 > 라인 카드의 "주문 출고" 버튼용
-    /// 해당 완제품(itemId)을 '주문 수량(qty)'만큼 즉시 출고(실거래) 처리한다.
-    Future<void> shipOrderLine({
-      required String orderId,
-      required String itemId,
-      required int qty,
-    }) async {
+  /// ✅ 주문 상세 > 라인 카드의 "주문 출고" 버튼용
+  /// 해당 완제품(itemId)을 '주문 수량(qty)'만큼 즉시 출고(실거래) 처리한다.
+  Future<void> shipOrderLine({
+    required String orderId,
+    required String itemId,
+    required int qty,
+  }) async {
+    // 1) ✅ 라인 중복 출고 가드
+    final already = await txns.existsOutActual(
+        refType: 'order', refId: orderId, itemId: itemId);
+    if (already) {
+      throw StateError(
+          '이 품목은 이미 해당 주문으로 출고되었습니다. (orderId=$orderId, itemId=$itemId)');
+    }
 
-      // 1) ✅ 라인 중복 출고 가드
-      final already = await txns.existsOutActual(refType: 'order', refId: orderId, itemId: itemId);
-      if (already) {
-        throw StateError(
-            '이 품목은 이미 해당 주문으로 출고되었습니다. (orderId=$orderId, itemId=$itemId)');
-      }
+    // 2) 재고 가드: 현 재고 초과 출고 방지
+    await _ensureStockAvailable(itemId: itemId, requestQty: qty);
 
-          // 2) 재고 가드: 현 재고 초과 출고 방지
-          await _ensureStockAvailable(itemId: itemId, requestQty: qty);
-
-      // 재고 부족 허용/차단 정책은 여기서 결정한다.
+    // 재고 부족 허용/차단 정책은 여기서 결정한다.
     // 필요하면 현재고 조회 후 가드/모달을 띄워도 된다.
     // ex) final stock = await txns.stockOf(itemId); if (stock < qty) { ... }
 
     await txns.addOutActual(
       itemId: itemId,
       qty: qty,
-      refType: 'order',   // RefType.order 문자열 정책 유지 (프로젝트 컨벤션에 맞춤)
+      refType: 'order', // RefType.order 문자열 정책 유지 (프로젝트 컨벤션에 맞춤)
       refId: orderId,
       note: 'order ship',
     );
 
     /// (선택) 모든 라인 출고 완료 시 주문 상태/ship 처리하고 싶으면 아래 보조함수 구현
-     await _maybeMarkOrderShipped(orderId);
+    await _maybeMarkOrderShipped(orderId);
   }
 
-
-
-
-   Future<void> _maybeMarkOrderShipped(String orderId) async {
-     /// 모든 라인 출고 확인 → orders.updateOrderStatus(orderId, OrderStatus.done) 등
-   }
+  Future<void> _maybeMarkOrderShipped(String orderId) async {
+    /// 모든 라인 출고 확인 → orders.updateOrderStatus(orderId, OrderStatus.done) 등
+  }
 
   int _ceilToInt(num v) => v <= 0 ? 0 : v.ceil();
 
@@ -586,9 +578,8 @@ class InventoryService {
       }
 
       // raw는 무시
-      print('[BOM] skip raw consume (policy): item=${r.componentItemId} need=$need');
+      print(
+          '[BOM] skip raw consume (policy): item=${r.componentItemId} need=$need');
     }
   }
-
-
 }

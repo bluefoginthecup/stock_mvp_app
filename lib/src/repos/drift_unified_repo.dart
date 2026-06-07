@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart'; // ChangeNotifier
 import 'package:drift/drift.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 // DB
 import '../db/app_database.dart';
@@ -34,11 +33,11 @@ import '../models/shipping_destination.dart';
 import '../models/storage_location.dart';
 import '../models/lot.dart';
 import '../models/types.dart';
-import 'package:uuid/uuid.dart';
 
 // 표준 repo 인터페이스
 import 'repo_interfaces.dart';
 import '../models/trash_entry.dart'; // ← 이 줄 추가 (alias 없이)
+import 'package:uuid/uuid.dart';
 
 // ── 여기서부터 모듈 분리
 part 'modules/item_repo.part.dart';
@@ -129,7 +128,6 @@ abstract class _RepoCore extends ChangeNotifier {
   }
 
   // ─── 다른 모듈에서 참조하는 공용 메서드: 인터페이스(추상)만 노출 ───
-  Future<void> _ensureFolderPath({required String l1, String? l2, String? l3});
   Future<Item?> getItem(String id);
 }
 
@@ -163,10 +161,8 @@ class DriftUnifiedRepo extends _RepoCore
         StorageLocationRepo,
         FolderTreeRepo,
         TrashRepo {
-  final _uuid = const Uuid();
   DriftUnifiedRepo(AppDatabase db) : super(db);
 
-  @override
   Future<List<PurchaseOrder>> listPurchaseOrdersByOrderId(
       String orderId) async {
     final rows = await (db.select(db.purchaseOrders)
@@ -179,7 +175,6 @@ class DriftUnifiedRepo extends _RepoCore
     return rows.map((r) => r.toDomain()).toList();
   }
 
-  @override
   Future<List<Work>> listWorksByOrderId(String orderId) async {
     final rows = await (db.select(db.works)
           ..where((t) => t.orderId.equals(orderId) & t.isDeleted.equals(false))

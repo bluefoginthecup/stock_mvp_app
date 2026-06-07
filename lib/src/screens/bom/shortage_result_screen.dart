@@ -7,7 +7,6 @@ import '../../services/shortage_service.dart';
 import '../../services/bom_service.dart';
 import '../../utils/item_presentation.dart'; // ✅ 추가
 
-
 /// 주문 상세에서 호출하는 "부족분 결과" 모달
 class ShortageResultScreen extends StatefulWidget {
   final String orderId;
@@ -22,11 +21,11 @@ class ShortageResultScreen extends StatefulWidget {
   });
 
   static Future<String?> show(
-      BuildContext context, {
-        required String orderId,
-        required String finishedItemId,
-        required int orderQty,
-      }) {
+    BuildContext context, {
+    required String orderId,
+    required String finishedItemId,
+    required int orderQty,
+  }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -45,7 +44,6 @@ class ShortageResultScreen extends StatefulWidget {
     );
   }
 
-
   @override
   State<ShortageResultScreen> createState() => _ShortageResultScreenState();
 }
@@ -55,13 +53,12 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
   bool _creating = false;
   String? _rootWorkId; // ✅ 작업1 id
 
-
   Future<String?> _findExistingWorkId() async {
     final repo = context.read<WorkRepo>();
-    final existing = await repo.findWorkForOrderLine(widget.orderId, widget.finishedItemId);
+    final existing =
+        await repo.findWorkForOrderLine(widget.orderId, widget.finishedItemId);
     return existing?.id;
   }
-
 
   @override
   void initState() {
@@ -77,41 +74,47 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
   }
 
   Future<_Vm> _load() async {
-
-        final items = context.read<ItemRepo>(); // ItemRepo 하나면 충분
-        // BomService는 ItemRepo를 요구 (stockOf  BOM 조회를 한 repo에서 처리)
-        final bom = BomService(items);
+    final items = context.read<ItemRepo>(); // ItemRepo 하나면 충분
+    // BomService는 ItemRepo를 요구 (stockOf  BOM 조회를 한 repo에서 처리)
+    final bom = BomService(items);
     final shortage = ShortageService(repo: items, bom: bom)
         .compute(finishedId: widget.finishedItemId, orderQty: widget.orderQty);
 
     // 필요/부족 수량 표시는 올림(ceil)
     int _ceil(double v) => v == v.floorToDouble() ? v.toInt() : v.ceil();
 
-        // ✅ 어떤 타입/널이 와도 안전하게 int로 변환
-        int _toInt(Object? v, {int fallback = 0}) {
-          if (v is int) return v;
-          if (v is num) return v.toInt();
-          return fallback; // v == null 이면 0
-        }
-    List<RowVm> toRows(Map<String, double> need, {Map<String, double>? short}) {
-      return need.keys.map((id) {
-        final n = need[id] ?? 0.0;
-        final s = short != null ? (short[id] ?? 0.0) : 0.0;
-        final stock = _toInt(items.stockOf(id)); // ✅ 널/타입 방어
+    // ✅ 어떤 타입/널이 와도 안전하게 int로 변환
+    int _toInt(Object? v, {int fallback = 0}) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return fallback; // v == null 이면 0
+    }
 
-        return RowVm(itemId: id, need: _ceil(n), shortage: _ceil(s), stock: stock, );
-      }).where((r) => r.need > 0).toList()
+    List<RowVm> toRows(Map<String, double> need, {Map<String, double>? short}) {
+      return need.keys
+          .map((id) {
+            final n = need[id] ?? 0.0;
+            final s = short != null ? (short[id] ?? 0.0) : 0.0;
+            final stock = _toInt(items.stockOf(id)); // ✅ 널/타입 방어
+
+            return RowVm(
+              itemId: id,
+              need: _ceil(n),
+              shortage: _ceil(s),
+              stock: stock,
+            );
+          })
+          .where((r) => r.need > 0)
+          .toList()
         ..sort((a, b) => a.itemId.compareTo(b.itemId));
     }
 
     final semiRows = toRows(shortage.semiNeed, short: shortage.semiShortage);
-    final rawRows  = toRows(shortage.rawNeed,  short: shortage.rawShortage);
-    final subRows  = toRows(shortage.subNeed,  short: shortage.subShortage);
+    final rawRows = toRows(shortage.rawNeed, short: shortage.rawShortage);
+    final subRows = toRows(shortage.subNeed, short: shortage.subShortage);
 
     // finished 현재고 (num → int 안전 변환)
-    final finStockNum = items.stockOf(widget.finishedItemId);
-       // ✅ 완제품 현 재고도 방어
-        final finStock = _toInt(items.stockOf(widget.finishedItemId));
+    final finStock = _toInt(items.stockOf(widget.finishedItemId));
 
     return _Vm(
       orderId: widget.orderId,
@@ -125,23 +128,22 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
     );
   }
 
-
   Future<void> _confirmAndCreateWork({
-      required int shortageQty,
-    }) async {
+    required int shortageQty,
+  }) async {
     if (shortageQty <= 0 || _creating) return;
 
-      // 🔎 이미 생성된 작업 있는지 먼저 확인
-      final existingId = await _findExistingWorkId();
-      if (existingId != null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('이미 이 주문에 대한 작업이 생성되었습니다.')),
-        );
-        // 원하면 기존 작업으로 바로 연결할 수 있게 반환
-        Navigator.of(context).pop(existingId); // ← 주문상세가 받으면 타임라인 갱신 가능
-        return;
-      }
+    // 🔎 이미 생성된 작업 있는지 먼저 확인
+    final existingId = await _findExistingWorkId();
+    if (existingId != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('이미 이 주문에 대한 작업이 생성되었습니다.')),
+      );
+      // 원하면 기존 작업으로 바로 연결할 수 있게 반환
+      Navigator.of(context).pop(existingId); // ← 주문상세가 받으면 타임라인 갱신 가능
+      return;
+    }
     final ok = await showModalBottomSheet<bool>(
       context: context,
       builder: (_) => _ConfirmSheet(
@@ -177,7 +179,8 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
     final parentId = _rootWorkId;
     if (parentId == null || parentId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('부모 작업을 찾지 못했습니다. 주문 생성 시 자동 생성된 작업이 있는지 확인해주세요.')),
+        const SnackBar(
+            content: Text('부모 작업을 찾지 못했습니다. 주문 생성 시 자동 생성된 작업이 있는지 확인해주세요.')),
       );
       return;
     }
@@ -229,7 +232,8 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
         if (snap.hasError) {
           return Padding(
             padding: const EdgeInsets.all(24.0),
-            child: Text('오류: ${snap.error}', style: TextStyle(color: Colors.red)),
+            child:
+                Text('오류: ${snap.error}', style: TextStyle(color: Colors.red)),
           );
         }
         if (!snap.hasData) {
@@ -266,17 +270,17 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
                 Row(
                   children: [
                     const Text('대상: '),
-             Expanded(
-                   child: ItemLabel(
-                     itemId: vm.finishedItemId,
-                     full: false,                 // 전체 경로 포함 (원하면 false)
-                     maxLines: 2,                // 두 줄 허용
-                     softWrap: true,
-                     overflow: TextOverflow.ellipsis,
-                     style: theme.textTheme.titleMedium,
-                     autoNavigate: true,
-                   ),
-             ),
+                    Expanded(
+                      child: ItemLabel(
+                        itemId: vm.finishedItemId,
+                        full: false, // 전체 경로 포함 (원하면 false)
+                        maxLines: 2, // 두 줄 허용
+                        softWrap: true,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium,
+                        autoNavigate: true,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8.0),
@@ -288,26 +292,44 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
                   children: [
                     _Badge(label: '주문수량', value: '${vm.orderQty}'),
                     _Badge(label: '현재고', value: '${vm.finishedStock}'),
-            GestureDetector(
-                   onTap: vm.finishedShortage > 0
-                       ? () => _confirmAndCreateWork(shortageQty: (vm.finishedShortage.ceil()))
-               : null,
-           child: _Badge(
-             label: '부족(완제품)',
-             value: '${vm.finishedShortage}',
-             tone: vm.finishedShortage > 0 ? BadgeTone.danger : BadgeTone.ok,
-           ),
-         ),
+                    GestureDetector(
+                      onTap: vm.finishedShortage > 0
+                          ? () => _confirmAndCreateWork(
+                              shortageQty: (vm.finishedShortage.ceil()))
+                          : null,
+                      child: _Badge(
+                        label: '부족(완제품)',
+                        value: '${vm.finishedShortage}',
+                        tone: vm.finishedShortage > 0
+                            ? BadgeTone.danger
+                            : BadgeTone.ok,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12.0),
                 const Divider(),
 
-                _Section(title: '세미 구성 필요/부족', rows: vm.semi, emptyLabel: '세미 필요 없음',onCreateChild: _confirmAndCreateChildWork,),
+                _Section(
+                  title: '세미 구성 필요/부족',
+                  rows: vm.semi,
+                  emptyLabel: '세미 필요 없음',
+                  onCreateChild: _confirmAndCreateChildWork,
+                ),
                 const SizedBox(height: 8.0),
-                _Section(title: '원자재 필요/부족', rows: vm.raw,  emptyLabel: '원자재 필요 없음',onCreateChild: _confirmAndCreateChildWork,),
+                _Section(
+                  title: '원자재 필요/부족',
+                  rows: vm.raw,
+                  emptyLabel: '원자재 필요 없음',
+                  onCreateChild: _confirmAndCreateChildWork,
+                ),
                 const SizedBox(height: 8.0),
-                _Section(title: '부자재 필요/부족', rows: vm.sub,  emptyLabel: '부자재 필요 없음',onCreateChild: _confirmAndCreateChildWork,),
+                _Section(
+                  title: '부자재 필요/부족',
+                  rows: vm.sub,
+                  emptyLabel: '부자재 필요 없음',
+                  onCreateChild: _confirmAndCreateChildWork,
+                ),
                 const SizedBox(height: 16.0),
               ],
             ),
@@ -323,7 +345,6 @@ class _Section extends StatelessWidget {
   final List<RowVm> rows;
   final String emptyLabel;
   final Future<void> Function(RowVm r)? onCreateChild; // ✅ 추가
-
 
   const _Section({
     required this.title,
@@ -341,10 +362,11 @@ class _Section extends StatelessWidget {
         Text(title, style: theme.textTheme.titleMedium),
         const SizedBox(height: 6.0),
         if (rows.isEmpty)
-          Text(emptyLabel, style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey))
+          Text(emptyLabel,
+              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey))
         else
-          ...rows.map((r) => _NeedShortRow(vm: r, onTapShortage: onCreateChild)),
-
+          ...rows
+              .map((r) => _NeedShortRow(vm: r, onTapShortage: onCreateChild)),
       ],
     );
   }
@@ -358,10 +380,8 @@ class _NeedShortRow extends StatelessWidget {
     this.onTapShortage, // ✅ 추가
   });
 
-
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final danger = vm.shortage > 0;
 
     return Padding(
@@ -395,10 +415,12 @@ class _NeedShortRow extends StatelessWidget {
             runSpacing: 6.0,
             children: [
               _Badge(label: '현재고', value: '${vm.stock}'),
-              _Badge(label: '필요',   value: '${vm.need}'),
+              _Badge(label: '필요', value: '${vm.need}'),
               // ✅ 부족 배지만 탭 가능
               GestureDetector(
-                onTap: (danger && onTapShortage != null) ? () => onTapShortage!(vm) : null,
+                onTap: (danger && onTapShortage != null)
+                    ? () => onTapShortage!(vm)
+                    : null,
                 child: _Badge(
                   label: '부족',
                   value: '${vm.shortage}',
@@ -413,19 +435,22 @@ class _NeedShortRow extends StatelessWidget {
   }
 }
 
-
 enum BadgeTone { ok, danger }
 
 class _Badge extends StatelessWidget {
   final String label;
   final String value;
   final BadgeTone tone;
-  const _Badge({required this.label, required this.value, this.tone = BadgeTone.ok});
+  const _Badge(
+      {required this.label, required this.value, this.tone = BadgeTone.ok});
 
   @override
   Widget build(BuildContext context) {
-    final bg = tone == BadgeTone.ok ? Colors.teal.withOpacity(0.15) : Colors.red.withOpacity(0.15);
-    final fg = tone == BadgeTone.ok ? Colors.teal.shade800 : Colors.red.shade800;
+    final bg = tone == BadgeTone.ok
+        ? Colors.teal.withOpacity(0.15)
+        : Colors.red.withOpacity(0.15);
+    final fg =
+        tone == BadgeTone.ok ? Colors.teal.shade800 : Colors.red.shade800;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
       decoration: BoxDecoration(
@@ -452,7 +477,12 @@ class RowVm {
   final int need;
   final int shortage;
   final int stock; // ✅ 추가
-  const RowVm({required this.itemId, required this.need, required this.shortage, required this.stock, });
+  const RowVm({
+    required this.itemId,
+    required this.need,
+    required this.shortage,
+    required this.stock,
+  });
 }
 
 class _Vm {
@@ -474,33 +504,37 @@ class _Vm {
     required this.semi,
     required this.raw,
     required this.sub,
-
   });
 }
 
 class _ConfirmSheet extends StatelessWidget {
-  const _ConfirmSheet({required this.title, required this.body, required this.okText});
+  const _ConfirmSheet(
+      {required this.title, required this.body, required this.okText});
   final String title, body, okText;
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Text(body),
-          const SizedBox(height: 16),
-          Row(children: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-            const Spacer(),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(okText)),
-          ]),
-        ]),
+        child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(body),
+              const SizedBox(height: 16),
+              Row(children: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('취소')),
+                const Spacer(),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text(okText)),
+              ]),
+            ]),
       ),
     );
-
   }
-
 }
-

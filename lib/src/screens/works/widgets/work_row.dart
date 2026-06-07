@@ -1,4 +1,3 @@
-
 import 'package:provider/provider.dart';
 
 import '../../../models/work.dart';
@@ -15,7 +14,7 @@ class WorkRow extends StatelessWidget {
   final Work w;
   final VoidCallback? onStart;
   final VoidCallback? onDone;
-  final VoidCallback? onTap;     // 상세 이동 (옵션)
+  final VoidCallback? onTap; // 상세 이동 (옵션)
 
   const WorkRow({
     super.key,
@@ -25,8 +24,13 @@ class WorkRow extends StatelessWidget {
     this.onTap,
   });
 
-  Future<(String /*itemName*/, String? /*customer*/)> _loadNames(BuildContext ctx) async {
-    final itemRepo  = ctx.read<ItemRepo?>();
+  Future<
+      (
+        String /*itemName*/,
+        String?
+        /*customer*/
+      )> _loadNames(BuildContext ctx) async {
+    final itemRepo = ctx.read<ItemRepo?>();
     final orderRepo = ctx.read<OrderRepo?>();
 
     String itemName = '';
@@ -34,7 +38,7 @@ class WorkRow extends StatelessWidget {
 
     try {
       if (itemRepo != null) {
-        final n  = await itemRepo.nameOf(w.itemId);
+        final n = await itemRepo.nameOf(w.itemId);
         final nt = n?.trim();
         if (nt != null && nt.isNotEmpty) itemName = nt;
       }
@@ -42,7 +46,7 @@ class WorkRow extends StatelessWidget {
 
     if (w.orderId != null && orderRepo != null) {
       try {
-        final r  = await orderRepo.customerNameOf(w.orderId!);
+        final r = await orderRepo.customerNameOf(w.orderId!);
         final rt = r?.trim();
         if (rt != null && rt.isNotEmpty) customer = rt;
       } catch (_) {}
@@ -75,15 +79,16 @@ class WorkRow extends StatelessWidget {
     return FutureBuilder<(String, String?)>(
       future: _loadNames(context),
       builder: (_, snap) {
-        final itemName = snap.data?.$1 ?? context.t.work_row_item_fallback(shortId(w.itemId));
         final customer = snap.data?.$2;
 
         // 오른쪽 버튼 영역
         Widget? trailing;
         if (w.status == WorkStatus.planned && onStart != null) {
-          trailing = OutlinedButton(onPressed: onStart, child: Text(context.t.work_action_start));
+          trailing = OutlinedButton(
+              onPressed: onStart, child: Text(context.t.work_action_start));
         } else if (w.status == WorkStatus.inProgress && onDone != null) {
-          trailing = OutlinedButton(onPressed: onDone, child: Text(context.t.work_action_done));
+          trailing = OutlinedButton(
+              onPressed: onDone, child: Text(context.t.work_action_done));
         } else if (w.status == WorkStatus.done) {
           trailing = const Icon(Icons.check, color: Colors.green);
         }
@@ -91,12 +96,12 @@ class WorkRow extends StatelessWidget {
         return ListTile(
           // "$itemName   x${w.qty}" → 플레이스홀더 키
 
-            title: Row(
-                    children: [
-                  // 🧭 [루앙] 50기본형 방석커버 형태로 표시
-                  Expanded(
-                    child: ItemLabel(itemId: w.itemId, full: false),
-                  ),
+          title: Row(
+            children: [
+              // 🧭 [루앙] 50기본형 방석커버 형태로 표시
+              Expanded(
+                child: ItemLabel(itemId: w.itemId, full: false),
+              ),
               Text(
                 '×${w.qty}',
                 style: const TextStyle(fontWeight: FontWeight.w600),
@@ -111,15 +116,15 @@ class WorkRow extends StatelessWidget {
               _statusBadge(context, w.status),
               if (w.orderId != null)
                 Text(context.t.work_row_order_short(shortId(w.orderId!))),
-              if (customer != null)
-                Text(context.t.work_row_customer(customer)),
+              if (customer != null) Text(context.t.work_row_customer(customer)),
               Text(context.t.work_row_item_short(shortId(w.itemId))),
             ],
           ),
           trailing: trailing,
           dense: true,
           visualDensity: VisualDensity.compact,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           onTap: onTap,
         );
       },

@@ -226,9 +226,6 @@ class _TrashScreenState extends State<TrashScreen> {
                         return const Center(child: Text('휴지통이 텅 비었습니다'));
                       }
 
-                      final keys =
-                          items.map((e) => '${e.entityType}_${e.id}').toList();
-
                       return Stack(
                         children: [
                           ListView.separated(

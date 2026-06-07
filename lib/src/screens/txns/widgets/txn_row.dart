@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -37,7 +36,7 @@ class TxnRow extends StatelessWidget {
 
   Future<(String, String?)> _loadNames(BuildContext ctx) async {
     _d('----- _loadNames start: itemId=${t.itemId}, refType=${t.refType}, refId=${t.refId}, ts=${t.ts}');
-    final itemRepo  = _tryRead<ItemRepo>(ctx);
+    final itemRepo = _tryRead<ItemRepo>(ctx);
     final orderRepo = _tryRead<OrderRepo>(ctx);
 
     String itemName = '';
@@ -62,9 +61,9 @@ class TxnRow extends StatelessWidget {
     }
 
     try {
-      if (t.refType == RefType.order && t.refId != null && orderRepo != null) {
+      if (t.refType == RefType.order && orderRepo != null) {
         _d('orderRepo.customerNameOf(${t.refId})...');
-        final r  = await orderRepo.customerNameOf(t.refId);
+        final r = await orderRepo.customerNameOf(t.refId);
         final rt = r?.trim();
         if (rt != null && rt.isNotEmpty) {
           customer = rt;
@@ -91,9 +90,9 @@ class TxnRow extends StatelessWidget {
   void _goItemDetail(BuildContext context) {
     _d('tap -> item detail: ${t.itemId}');
     Navigator.of(context, rootNavigator: true).pushNamed(
-           '/items/detail',
-           arguments: t.itemId,
-         );
+      '/items/detail',
+      arguments: t.itemId,
+    );
   }
 
   void _goPurchaseDetail(BuildContext context, String poId) {
@@ -115,10 +114,12 @@ class TxnRow extends StatelessWidget {
           ? badge('작업등록', Colors.blueGrey)
           : badge('작업물 입고', Colors.green, icon: Icons.factory);
     } else if (t.refType == RefType.purchase) {
-      reasonBadge = t.isPlanned ? badge('발주등록', Colors.blueGrey)
+      reasonBadge = t.isPlanned
+          ? badge('발주등록', Colors.blueGrey)
           : badge('발주품 입고', Colors.green);
     } else if (t.refType == RefType.order) {
-      reasonBadge = t.isIn ? badge('주문입고', Colors.blueGrey)
+      reasonBadge = t.isIn
+          ? badge('주문입고', Colors.blueGrey)
           : badge('주문출고', Colors.red, icon: Icons.shopping_cart);
     }
 
@@ -150,7 +151,6 @@ class TxnRow extends StatelessWidget {
           );
         }
 
-        final itemName = snap.data?.$1 ?? '아이템 ${shortId(t.itemId)}';
         final customer = snap.data?.$2;
 
         return ListTile(
@@ -181,7 +181,7 @@ class TxnRow extends StatelessWidget {
                   Text(fmtYmdHm(t.ts)),
                   reasonBadge,
                   if (customer != null) Text('주문자 $customer'),
-                  if (t.refType == RefType.purchase && t.refId != null)
+                  if (t.refType == RefType.purchase)
                     InkWell(
                       onTap: () => _goPurchaseDetail(context, t.refId),
                       child: Text(
@@ -192,10 +192,10 @@ class TxnRow extends StatelessWidget {
                         ),
                       ),
                     )
-                  else if (t.refType == RefType.order && t.refId != null)
+                  else if (t.refType == RefType.order)
                     Text('주문번호 ${shortId(t.refId)}')
-                  else if (t.refType == RefType.work && t.refId != null)
-                      Text('작업번호 ${shortId(t.refId)}'),
+                  else if (t.refType == RefType.work)
+                    Text('작업번호 ${shortId(t.refId)}'),
                 ],
               ),
               if (t.memo != null && t.memo!.isNotEmpty)
@@ -213,7 +213,8 @@ class TxnRow extends StatelessWidget {
           trailing: trailing ?? DeleteMoreMenu<Txn>(entity: t),
           dense: true,
           visualDensity: VisualDensity.compact,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         );
       },
     );

@@ -1,4 +1,6 @@
 // lib/src/screens/stock/stock_browser_header.part.dart
+// ignore_for_file: unused_element, unused_element_parameter
+
 part of 'stock_browser_screen.dart';
 
 ///  장바구니 담기 고정 바 시작 ///

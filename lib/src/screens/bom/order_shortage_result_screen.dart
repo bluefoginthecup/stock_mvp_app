@@ -11,13 +11,14 @@ class OrderShortageResultScreen extends StatefulWidget {
   const OrderShortageResultScreen({super.key, required this.order});
 
   @override
-  State<OrderShortageResultScreen> createState() => _OrderShortageResultScreenState();
+  State<OrderShortageResultScreen> createState() =>
+      _OrderShortageResultScreenState();
 }
 
 class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
   late Future<_Vm> _future;
   final Set<int> _expanded = {}; // 펼쳐진 인덱스들
-  bool _allExpanded = true;      // 모두 펼치기 / 접기 토글
+  bool _allExpanded = true; // 모두 펼치기 / 접기 토글
 
   @override
   void initState() {
@@ -45,14 +46,14 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
         for (final id in need.keys) {
           final n = need[id] ?? 0.0;
           final sh = short[id] ?? 0.0;
-          if (n > 0) out.add(_RowVm(itemId: id, need: _ceil(n), shortage: _ceil(sh)));
+          if (n > 0)
+            out.add(_RowVm(itemId: id, need: _ceil(n), shortage: _ceil(sh)));
         }
         out.sort((a, b) => a.itemId.compareTo(b.itemId));
         return out;
       }
 
-      final finStockNum = items.stockOf(finishedId);
-      final finStock = (finStockNum is int) ? finStockNum : (finStockNum as num).toInt();
+      final finStock = items.stockOf(finishedId);
 
       lines.add(_LineVm(
         index: i,
@@ -61,8 +62,8 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
         finishedStock: finStock,
         finishedShortage: s.finishedShortage,
         semi: toRows(s.semiNeed, s.semiShortage),
-        raw:  toRows(s.rawNeed,  s.rawShortage),
-        sub:  toRows(s.subNeed,  s.subShortage),
+        raw: toRows(s.rawNeed, s.rawShortage),
+        sub: toRows(s.subNeed, s.subShortage),
       ));
     }
 
@@ -83,7 +84,6 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('부족분 계산 결과'),
@@ -113,7 +113,6 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
             itemCount: vm.lines.length,
             itemBuilder: (context, i) {
               final ln = vm.lines[i];
-              final expanded = _expanded.contains(i);
               final danger = ln.finishedShortage > 0;
 
               return Card(
@@ -122,7 +121,11 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
                   initiallyExpanded: _allExpanded,
                   onExpansionChanged: (v) {
                     setState(() {
-                      if (v) { _expanded.add(i); } else { _expanded.remove(i); }
+                      if (v) {
+                        _expanded.add(i);
+                      } else {
+                        _expanded.remove(i);
+                      }
                     });
                   },
                   title: Row(
@@ -131,7 +134,8 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
                       const SizedBox(width: 8.0),
                       Expanded(
                         // ItemLabel이 있다면 여기서 교체 가능
-                        child: Text(ln.finishedItemId, overflow: TextOverflow.ellipsis),
+                        child: Text(ln.finishedItemId,
+                            overflow: TextOverflow.ellipsis),
                       ),
                       const SizedBox(width: 8.0),
                       _Badge(label: '주문', value: '${ln.orderQty}'),
@@ -152,11 +156,20 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _Section(title: '세미 구성 필요/부족', rows: ln.semi, emptyLabel: '세미 필요 없음'),
+                          _Section(
+                              title: '세미 구성 필요/부족',
+                              rows: ln.semi,
+                              emptyLabel: '세미 필요 없음'),
                           const SizedBox(height: 10.0),
-                          _Section(title: '원자재 필요/부족', rows: ln.raw,  emptyLabel: '원자재 필요 없음'),
+                          _Section(
+                              title: '원자재 필요/부족',
+                              rows: ln.raw,
+                              emptyLabel: '원자재 필요 없음'),
                           const SizedBox(height: 10.0),
-                          _Section(title: '부자재 필요/부족', rows: ln.sub,  emptyLabel: '부자재 필요 없음'),
+                          _Section(
+                              title: '부자재 필요/부족',
+                              rows: ln.sub,
+                              emptyLabel: '부자재 필요 없음'),
                         ],
                       ),
                     ),
@@ -175,7 +188,8 @@ class _Section extends StatelessWidget {
   final String title;
   final List<_RowVm> rows;
   final String emptyLabel;
-  const _Section({required this.title, required this.rows, required this.emptyLabel});
+  const _Section(
+      {required this.title, required this.rows, required this.emptyLabel});
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +200,8 @@ class _Section extends StatelessWidget {
         Text(title, style: theme.textTheme.titleMedium),
         const SizedBox(height: 6.0),
         if (rows.isEmpty)
-          Text(emptyLabel, style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey))
+          Text(emptyLabel,
+              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey))
         else
           ...rows.map((r) => _NeedShortRow(vm: r)),
       ],
@@ -228,15 +243,20 @@ class _Badge extends StatelessWidget {
   final String label;
   final String value;
   final BadgeTone tone;
-  const _Badge({required this.label, required this.value, this.tone = BadgeTone.ok});
+  const _Badge(
+      {required this.label, required this.value, this.tone = BadgeTone.ok});
 
   @override
   Widget build(BuildContext context) {
-    final bg = tone == BadgeTone.ok ? Colors.teal.withOpacity(0.15) : Colors.red.withOpacity(0.15);
-    final fg = tone == BadgeTone.ok ? Colors.teal.shade800 : Colors.red.shade800;
+    final bg = tone == BadgeTone.ok
+        ? Colors.teal.withOpacity(0.15)
+        : Colors.red.withOpacity(0.15);
+    final fg =
+        tone == BadgeTone.ok ? Colors.teal.shade800 : Colors.red.shade800;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8.0)),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8.0)),
       child: DefaultTextStyle(
         style: TextStyle(color: fg),
         child: Row(
@@ -256,7 +276,8 @@ class _RowVm {
   final String itemId;
   final int need;
   final int shortage;
-  const _RowVm({required this.itemId, required this.need, required this.shortage});
+  const _RowVm(
+      {required this.itemId, required this.need, required this.shortage});
 }
 
 class _LineVm {

@@ -1,4 +1,6 @@
 // lib/src/services/seed_importer.dart
+// ignore_for_file: unused_element
+
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 
@@ -181,7 +183,7 @@ class UnifiedSeedImporter {
           final hasCreateItemUnderPath = dyn.createItemUnderPath is Function;
 
           if (hasPathIdsByNames && hasCreateItemUnderPath) {
-            final l1 = (it.folder ?? '').toString();
+            final l1 = it.folder.toString();
             final l2 = (it.subfolder ?? '').toString();
             final l3 = (it.subsubfolder ?? '').toString();
 
@@ -891,7 +893,7 @@ class UnifiedSeedImporter {
           final hasCreateItemUnderPath = dyn.createItemUnderPath is Function;
 
           if (hasPathIdsByNames && hasCreateItemUnderPath) {
-            final l1 = (it.folder ?? '').toString();
+            final l1 = it.folder.toString();
             final l2 = (it.subfolder ?? '').toString();
             final l3 = (it.subsubfolder ?? '').toString();
 

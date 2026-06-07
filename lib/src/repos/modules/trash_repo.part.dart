@@ -38,7 +38,7 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     all.addAll(dor.where((r) => r.deletedAt != null).map((r) => TrashEntry(
           id: r.id,
           entityType: 'order',
-          title: r.customer ?? r.id,
+          title: r.customer,
           deletedAt: DateTime.parse(r.deletedAt!),
         )));
 
