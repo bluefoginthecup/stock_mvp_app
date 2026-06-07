@@ -4,6 +4,7 @@ import '../db/app_database.dart';
 import '../models/attachment_domain.dart';
 import '../models/subscription_plan.dart';
 import 'attachment_limit_config.dart';
+import 'entitlement_service.dart';
 import 'subscription_plan_service.dart';
 
 class AttachmentPolicyResult {
@@ -20,11 +21,13 @@ class AttachmentPolicyResult {
 class AttachmentPolicyService {
   const AttachmentPolicyService(
     this.db, {
+    this.entitlementService,
     this.planService = const SubscriptionPlanService(),
     this.limitConfig = AttachmentLimitConfig.defaults,
   });
 
   final AppDatabase db;
+  final EntitlementService? entitlementService;
   final SubscriptionPlanService planService;
   final AttachmentLimitConfig limitConfig;
 
@@ -32,7 +35,7 @@ class AttachmentPolicyService {
   // 나중에 SubscriptionPlanService가 서버 entitlement 기반으로 바뀌면
   // 품목/발주/일정 첨부 기능은 별도 수정 없이 같은 권한 판단을 따른다.
   Future<AttachmentLimit> policyFor(AttachmentDomain domain) async {
-    final plan = await planService.loadPlan();
+    final plan = await _effectivePlan();
     return limitConfig.limitFor(plan: plan, domain: domain);
   }
 
@@ -40,7 +43,7 @@ class AttachmentPolicyService {
     required AttachmentDomain domain,
     required String ownerId,
   }) async {
-    final plan = await planService.loadPlan();
+    final plan = await _effectivePlan();
     final policy = limitConfig.limitFor(plan: plan, domain: domain);
     final filesForOwner = await _countFilesForOwner(domain, ownerId);
     final maxFilesPerOwner = policy.maxFilesPerOwner;
@@ -64,6 +67,17 @@ class AttachmentPolicyService {
     }
 
     return const AttachmentPolicyResult.allowed();
+  }
+
+  Future<SubscriptionPlan> _effectivePlan() async {
+    final entitlementService = this.entitlementService;
+    if (entitlementService != null) {
+      final entitlement = await entitlementService.loadEntitlement();
+      return entitlement.canUseProFeatures
+          ? SubscriptionPlan.pro
+          : SubscriptionPlan.free;
+    }
+    return planService.loadPlan();
   }
 
   Future<int> _countFilesForOwner(

@@ -24,6 +24,7 @@ import '../../repos/repo_interfaces.dart';
 import '../../services/app_path_service.dart';
 import '../../services/attachment_policy_service.dart';
 import '../../services/buyer_profile_service.dart';
+import '../../services/entitlement_service.dart';
 import '../../services/inventory_service.dart';
 import '../../ui/common/delete_more_menu.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
@@ -340,8 +341,10 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     final po = _po;
     if (po == null) return;
 
-    final policy =
-        await AttachmentPolicyService(context.read<AppDatabase>()).canAttach(
+    final policy = await AttachmentPolicyService(
+      context.read<AppDatabase>(),
+      entitlementService: context.read<EntitlementService>(),
+    ).canAttach(
       domain: AttachmentDomain.purchaseReceipts,
       ownerId: po.id,
     );

@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 import 'backup_encryption_key_store.dart';
 import 'cloud_backup_service.dart';
+import 'entitlement_service.dart';
 
 enum CloudAutoBackupFrequency {
   daily,
@@ -72,11 +73,14 @@ class CloudAutoBackupService {
   const CloudAutoBackupService({
     required this.authService,
     CloudBackupService? cloudBackupService,
+    EntitlementService? entitlementService,
     this.keyStore = const BackupEncryptionKeyStore(),
-  }) : _cloudBackupService = cloudBackupService;
+  })  : _cloudBackupService = cloudBackupService,
+        _entitlementService = entitlementService;
 
   final AuthService authService;
   final CloudBackupService? _cloudBackupService;
+  final EntitlementService? _entitlementService;
   final BackupEncryptionKeyStore keyStore;
 
   CloudBackupService get cloudBackupService =>
@@ -134,6 +138,17 @@ class CloudAutoBackupService {
         attempted: false,
         uploaded: false,
         message: '자동 백업이 꺼져 있습니다.',
+      );
+    }
+
+    final entitlementService =
+        _entitlementService ?? EntitlementService(authService: authService);
+    final entitlement = await entitlementService.loadEntitlement();
+    if (!entitlement.canCreateCloudBackup) {
+      return const CloudAutoBackupRunResult(
+        attempted: false,
+        uploaded: false,
+        message: 'Cloud Backup 권한이 없어 자동 백업을 건너뜁니다.',
       );
     }
 

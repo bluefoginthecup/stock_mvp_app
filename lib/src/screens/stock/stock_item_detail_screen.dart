@@ -38,6 +38,7 @@ import '../../services/stock_service.dart';
 import '../../services/app_path_service.dart';
 import '../../services/attachment_file_service.dart';
 import '../../services/attachment_policy_service.dart';
+import '../../services/entitlement_service.dart';
 import '../../utils/item_registration.dart';
 import '../../utils/reorder_schedule_utils.dart';
 import '../../app/main_tab_controller.dart';
@@ -496,8 +497,10 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
 
   Future<void> _pickItemImage(Item item, {ItemImage? replacing}) async {
     if (replacing == null) {
-      final policy =
-          await AttachmentPolicyService(context.read<AppDatabase>()).canAttach(
+      final policy = await AttachmentPolicyService(
+        context.read<AppDatabase>(),
+        entitlementService: context.read<EntitlementService>(),
+      ).canAttach(
         domain: AttachmentDomain.itemImages,
         ownerId: item.id,
       );

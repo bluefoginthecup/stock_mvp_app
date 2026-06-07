@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/cloud_auto_backup_service.dart';
+import '../../services/entitlement_service.dart';
 import '../../ui/intro_loading_screen.dart';
 import 'start_screen.dart';
 
@@ -414,7 +415,10 @@ class _CloudAutoBackupRunnerState extends State<_CloudAutoBackupRunner>
 
     _running = true;
     try {
-      final service = CloudAutoBackupService(authService: auth);
+      final service = CloudAutoBackupService(
+        authService: auth,
+        entitlementService: context.read<EntitlementService>(),
+      );
       final result = await service.runIfDue();
       debugPrint('☁️ CloudAutoBackup startup: ${result.message}');
     } finally {

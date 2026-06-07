@@ -14,6 +14,7 @@ import '../../models/schedule_attachment.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/app_path_service.dart';
 import '../../services/attachment_policy_service.dart';
+import '../../services/entitlement_service.dart';
 import 'schedule_edit_screen.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
@@ -96,8 +97,10 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   Future<void> _pickImageAttachment() async {
     if (_addingAttachment) return;
     final repo = context.read<ScheduleRepo>();
-    final policy =
-        await AttachmentPolicyService(context.read<AppDatabase>()).canAttach(
+    final policy = await AttachmentPolicyService(
+      context.read<AppDatabase>(),
+      entitlementService: context.read<EntitlementService>(),
+    ).canAttach(
       domain: AttachmentDomain.scheduleAttachments,
       ownerId: _schedule.id,
     );

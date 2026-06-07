@@ -45,6 +45,7 @@ import 'services/bom_service.dart';
 import 'services/dashboard_activity_service.dart';
 import 'services/dashboard_purchase_stats_service.dart';
 import 'services/db_auto_backup_service.dart';
+import 'services/entitlement_service.dart';
 import 'services/export_service.dart';
 import 'services/folder_service.dart';
 import 'services/inventory_service.dart';
@@ -282,6 +283,11 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
               create: (ctx) => ExportService(
                 itemRepo: ctx.read<ItemRepo>(),
                 folderRepo: ctx.read<FolderTreeRepo>(),
+              ),
+            ),
+            Provider<EntitlementService>(
+              create: (ctx) => EntitlementService(
+                authService: ctx.read<AuthService>(),
               ),
             ),
             Provider<FolderService>(

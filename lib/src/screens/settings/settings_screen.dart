@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
 import 'dart:io';
 import '/src/models/attachment_domain.dart';
+import '/src/models/app_entitlement.dart';
 import '/src/models/buyer_profile.dart';
 import '/src/models/subscription_plan.dart';
 import '/src/services/backup_file_delivery_service.dart';
@@ -17,12 +18,12 @@ import '/src/services/attachment_limit_config.dart';
 import '/src/services/buyer_profile_service.dart';
 import '/src/services/cloud_auto_backup_service.dart';
 import '/src/services/cloud_backup_service.dart';
+import '/src/services/entitlement_service.dart';
 import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
 import '/src/services/full_restore_service.dart';
 import '/src/services/restore_rollback_service.dart';
 import '/src/services/storage_usage_service.dart';
-import '/src/services/subscription_plan_service.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
 class SettingsScreen extends StatelessWidget {
@@ -602,32 +603,71 @@ class _AccountSection extends StatefulWidget {
 }
 
 class _AccountSectionState extends State<_AccountSection> {
-  final SubscriptionPlanService _planService = const SubscriptionPlanService();
-  SubscriptionPlan _plan = SubscriptionPlan.free;
-  bool _loadingPlan = true;
+  EntitlementService? _entitlementService;
+  AppEntitlement _entitlement = AppEntitlement.signedOut;
+  bool _loadingEntitlement = true;
+  bool _workingEntitlement = false;
+  Object? _entitlementError;
 
   @override
-  void initState() {
-    super.initState();
-    _loadPlan();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _entitlementService ??= context.read<EntitlementService>();
+    _loadEntitlement();
   }
 
-  Future<void> _loadPlan() async {
-    final plan = await _planService.loadPlan();
-    if (!mounted) return;
+  Future<void> _loadEntitlement() async {
+    final service = _entitlementService;
+    if (service == null) return;
     setState(() {
-      _plan = plan == SubscriptionPlan.business ? SubscriptionPlan.pro : plan;
-      _loadingPlan = false;
+      _loadingEntitlement = true;
+      _entitlementError = null;
     });
+    try {
+      final entitlement = await service.loadEntitlement();
+      if (!mounted) return;
+      setState(() {
+        _entitlement = entitlement;
+        _loadingEntitlement = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _entitlementError = e;
+        _loadingEntitlement = false;
+      });
+    }
   }
 
-  Future<void> _savePlan(SubscriptionPlan plan) async {
-    setState(() => _plan = plan);
-    await _planService.savePlanForDebug(plan);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('개발용 플랜을 ${plan.label}(으)로 변경했습니다.')),
-    );
+  Future<void> _runEntitlementAction(
+    Future<AppEntitlement> Function(EntitlementService service) action,
+    String successMessage,
+  ) async {
+    final service = _entitlementService;
+    if (service == null || _workingEntitlement) return;
+    setState(() {
+      _workingEntitlement = true;
+      _entitlementError = null;
+    });
+    try {
+      final entitlement = await action(service);
+      if (!mounted) return;
+      setState(() => _entitlement = entitlement);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _entitlementError = e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _workingEntitlement = false);
+    }
   }
 
   Future<void> _signOut(BuildContext context) async {
@@ -667,9 +707,13 @@ class _AccountSectionState extends State<_AccountSection> {
     }
   }
 
-  Widget _buildPlanTester(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _buildEntitlementPanel(BuildContext context) {
     const limits = AttachmentLimitConfig.defaults;
+    final service = _entitlementService;
+    final purchasesReady = service?.purchaseConfigured ?? false;
+    final cloudTrialAvailable = _entitlement.cloudTrialEndsAt == null &&
+        !_entitlement.hasCloudBackup &&
+        _entitlement.canUseProFeatures;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -679,39 +723,127 @@ class _AccountSectionState extends State<_AccountSection> {
         const SizedBox(height: 14),
         _StorageUsageRow(
           label: '현재 플랜',
-          value: _loadingPlan ? '확인 중...' : _plan.label,
+          value: _loadingEntitlement ? '확인 중...' : _entitlement.planLabel,
         ),
-        const SizedBox(height: 10),
-        Text(
-          '개발용 플랜 테스트',
-          style: TextStyle(
-            color: colorScheme.onSurface.withValues(alpha: 0.7),
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
+        const SizedBox(height: 8),
+        _StorageUsageRow(
+          label: 'App Trial',
+          value: _trialStatus(
+            active: _entitlement.isAppTrialActive,
+            endsAt: _entitlement.appTrialEndsAt,
           ),
         ),
         const SizedBox(height: 8),
-        SegmentedButton<SubscriptionPlan>(
-          segments: const [
-            ButtonSegment(
-              value: SubscriptionPlan.free,
-              label: Text('무료'),
-              icon: Icon(Icons.person_outline),
-            ),
-            ButtonSegment(
-              value: SubscriptionPlan.pro,
-              label: Text('Pro'),
-              icon: Icon(Icons.workspace_premium_outlined),
-            ),
-          ],
-          selected: {_plan},
-          onSelectionChanged:
-              _loadingPlan ? null : (selection) => _savePlan(selection.first),
+        _StorageUsageRow(
+          label: 'Cloud Backup',
+          value: _entitlement.cloudBackupLabel,
+        ),
+        const SizedBox(height: 8),
+        _StorageUsageRow(
+          label: 'Cloud Trial',
+          value: _trialStatus(
+            active: _entitlement.isCloudTrialActive,
+            endsAt: _entitlement.cloudTrialEndsAt,
+            notStartedLabel: '시작 전',
+          ),
         ),
         const SizedBox(height: 12),
-        _PlanLimitSummary(plan: _plan, limitConfig: limits),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.icon(
+              onPressed: _workingEntitlement ||
+                      _loadingEntitlement ||
+                      _entitlement.isPaidPlan ||
+                      !purchasesReady
+                  ? null
+                  : () => _runEntitlementAction(
+                        (service) => service.purchasePro(),
+                        'Pro 구독 상태를 확인했습니다.',
+                      ),
+              icon: const Icon(Icons.workspace_premium_outlined),
+              label: const Text('Pro 구독'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _workingEntitlement ||
+                      _loadingEntitlement ||
+                      !cloudTrialAvailable
+                  ? null
+                  : () => _runEntitlementAction(
+                        (service) => service.startCloudTrial(),
+                        'Cloud Backup 체험을 시작했습니다.',
+                      ),
+              icon: const Icon(Icons.cloud_outlined),
+              label: const Text('Cloud Backup 체험 시작'),
+            ),
+            OutlinedButton.icon(
+              onPressed: _workingEntitlement ||
+                      _loadingEntitlement ||
+                      !_entitlement.isPaidPlan ||
+                      _entitlement.hasCloudBackup ||
+                      !purchasesReady
+                  ? null
+                  : () => _runEntitlementAction(
+                        (service) => service.purchaseCloudBackup(),
+                        'Cloud Backup 구독 상태를 확인했습니다.',
+                      ),
+              icon: const Icon(Icons.cloud_upload_outlined),
+              label: const Text('Cloud Backup 구독'),
+            ),
+            OutlinedButton.icon(
+              onPressed:
+                  _workingEntitlement || _loadingEntitlement || !purchasesReady
+                      ? null
+                      : () => _runEntitlementAction(
+                            (service) => service.restorePurchases(),
+                            '구매 복원을 완료했습니다.',
+                          ),
+              icon: const Icon(Icons.restore_outlined),
+              label: const Text('구매 복원'),
+            ),
+          ],
+        ),
+        if (!purchasesReady) ...[
+          const SizedBox(height: 8),
+          Text(
+            'RevenueCat API key가 없어 구독 버튼은 비활성화되어 있습니다.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.62),
+                ),
+          ),
+        ],
+        if (_entitlementError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            '권한 정보를 확인하지 못했습니다: $_entitlementError',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+        const SizedBox(height: 12),
+        _PlanLimitSummary(
+          plan: _entitlement.canUseProFeatures
+              ? SubscriptionPlan.pro
+              : SubscriptionPlan.free,
+          limitConfig: limits,
+        ),
       ],
     );
+  }
+
+  String _trialStatus({
+    required bool active,
+    required DateTime? endsAt,
+    String notStartedLabel = '없음',
+  }) {
+    if (endsAt == null) return notStartedLabel;
+    if (!active) return '종료됨';
+    final remaining = endsAt.difference(DateTime.now());
+    final days = remaining.inDays + 1;
+    return '$days일 남음';
   }
 
   @override
@@ -767,7 +899,7 @@ class _AccountSectionState extends State<_AccountSection> {
                       ),
                     ),
                   ],
-                  _buildPlanTester(context),
+                  _buildEntitlementPanel(context),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     onPressed: user == null ? null : () => _signOut(context),
@@ -1737,6 +1869,8 @@ class _CloudBackupSection extends StatefulWidget {
 class _CloudBackupSectionState extends State<_CloudBackupSection> {
   CloudBackupService? _service;
   CloudAutoBackupService? _autoBackupService;
+  EntitlementService? _entitlementService;
+  AppEntitlement _entitlement = AppEntitlement.signedOut;
   CloudBackupMetadata? _latestBackup;
   CloudAutoBackupSettings _autoSettings = CloudAutoBackupSettings.defaults;
   DateTime? _lastAutoAttemptAt;
@@ -1754,9 +1888,11 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
     _service ??= CloudBackupService(
       authService: context.read<AuthService>(),
     );
+    _entitlementService ??= context.read<EntitlementService>();
     _autoBackupService ??= CloudAutoBackupService(
       authService: context.read<AuthService>(),
       cloudBackupService: _service,
+      entitlementService: _entitlementService,
     );
     _refresh();
   }
@@ -1777,9 +1913,12 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
           await autoService?.loadSettings() ?? CloudAutoBackupSettings.defaults;
       final lastAutoAttemptAt = await autoService?.lastAttemptAt();
       final lastAutoSuccessAt = await autoService?.lastSuccessAt();
+      final entitlement = await _entitlementService?.loadEntitlement() ??
+          AppEntitlement.signedOut;
       if (!mounted) return;
       setState(() {
         _latestBackup = latest;
+        _entitlement = entitlement;
         _autoSettings = autoSettings;
         _lastAutoAttemptAt = lastAutoAttemptAt;
         _lastAutoSuccessAt = lastAutoSuccessAt;
@@ -1797,6 +1936,15 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
   Future<void> _saveAutoSettings(CloudAutoBackupSettings settings) async {
     final service = _autoBackupService;
     if (service == null || _savingAutoSettings) return;
+
+    if (settings.enabled && !_entitlement.canCreateCloudBackup) {
+      await _showSimpleErrorDialog(
+        context,
+        title: 'Cloud Backup 권한 필요',
+        message: 'Cloud Backup 체험 또는 구독이 활성화되어야 자동 백업을 켤 수 있습니다.',
+      );
+      return;
+    }
 
     if (settings.enabled && !await _ensureAutoBackupEncryptionReady()) {
       return;
@@ -1884,6 +2032,15 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
   Future<void> _uploadNow() async {
     final service = _service;
     if (service == null || _uploading) return;
+
+    if (!_entitlement.canCreateCloudBackup) {
+      await _showSimpleErrorDialog(
+        context,
+        title: 'Cloud Backup 권한 필요',
+        message: 'Cloud Backup 체험 또는 구독이 활성화되어야 새 클라우드 백업을 만들 수 있습니다.',
+      );
+      return;
+    }
 
     final encryptionRequest = await _readManualBackupEncryptionRequest();
     if (encryptionRequest == null || !mounted) return;
@@ -2013,6 +2170,7 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
     final auth = context.watch<AuthService>();
     final uid = auth.uid;
     final latestBackup = _latestBackup;
+    final canCreateCloudBackup = _entitlement.canCreateCloudBackup;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
@@ -2042,6 +2200,11 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
               _StorageUsageRow(
                 label: '로그인',
                 value: uid == null ? '필요' : '완료',
+              ),
+              const SizedBox(height: 8),
+              _StorageUsageRow(
+                label: 'Cloud Backup 권한',
+                value: canCreateCloudBackup ? '사용 가능' : '구독/체험 필요',
               ),
               const SizedBox(height: 8),
               _StorageUsageRow(
@@ -2088,14 +2251,15 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                 title: const Text('자동 백업 사용'),
                 subtitle: const Text('앱 실행 시와 앱이 다시 활성화될 때 자동 백업 여부를 확인합니다.'),
                 value: _autoSettings.enabled,
-                onChanged: uid == null || _savingAutoSettings
-                    ? null
-                    : (value) => _saveAutoSettings(
-                          CloudAutoBackupSettings(
-                            enabled: value ?? false,
-                            frequency: _autoSettings.frequency,
-                          ),
-                        ),
+                onChanged:
+                    uid == null || _savingAutoSettings || !canCreateCloudBackup
+                        ? null
+                        : (value) => _saveAutoSettings(
+                              CloudAutoBackupSettings(
+                                enabled: value ?? false,
+                                frequency: _autoSettings.frequency,
+                              ),
+                            ),
               ),
               const SizedBox(height: 4),
               DropdownButtonFormField<CloudAutoBackupFrequency>(
@@ -2113,17 +2277,18 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                       ),
                     )
                     .toList(),
-                onChanged: uid == null || _savingAutoSettings
-                    ? null
-                    : (frequency) {
-                        if (frequency == null) return;
-                        _saveAutoSettings(
-                          CloudAutoBackupSettings(
-                            enabled: _autoSettings.enabled,
-                            frequency: frequency,
-                          ),
-                        );
-                      },
+                onChanged:
+                    uid == null || _savingAutoSettings || !canCreateCloudBackup
+                        ? null
+                        : (frequency) {
+                            if (frequency == null) return;
+                            _saveAutoSettings(
+                              CloudAutoBackupSettings(
+                                enabled: _autoSettings.enabled,
+                                frequency: frequency,
+                              ),
+                            );
+                          },
               ),
               const SizedBox(height: 8),
               Text(
@@ -2160,7 +2325,10 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                 runSpacing: 8,
                 children: [
                   FilledButton.icon(
-                    onPressed: uid == null || _uploading ? null : _uploadNow,
+                    onPressed:
+                        uid == null || _uploading || !canCreateCloudBackup
+                            ? null
+                            : _uploadNow,
                     icon: const Icon(Icons.cloud_upload_outlined),
                     label: const Text('지금 클라우드 백업하기'),
                   ),
