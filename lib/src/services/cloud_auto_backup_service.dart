@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/app_entitlement.dart';
 import 'auth_service.dart';
 import 'backup_encryption_key_store.dart';
 import 'cloud_backup_service.dart';
@@ -143,7 +144,14 @@ class CloudAutoBackupService {
 
     final entitlementService =
         _entitlementService ?? EntitlementService(authService: authService);
-    final entitlement = await entitlementService.loadEntitlement();
+    final entitlement = await _loadEntitlementForAutoBackup(entitlementService);
+    if (entitlement == null) {
+      return const CloudAutoBackupRunResult(
+        attempted: false,
+        uploaded: false,
+        message: 'Cloud Backup 권한 확인에 실패해 자동 백업을 건너뜁니다.',
+      );
+    }
     if (!entitlement.canCreateCloudBackup) {
       return const CloudAutoBackupRunResult(
         attempted: false,
@@ -217,6 +225,18 @@ class CloudAutoBackupService {
         uploaded: false,
         message: '자동 백업 실패: $e',
       );
+    }
+  }
+
+  Future<AppEntitlement?> _loadEntitlementForAutoBackup(
+    EntitlementService entitlementService,
+  ) async {
+    try {
+      return await entitlementService.loadEntitlement();
+    } catch (e, stackTrace) {
+      debugPrint('☁️ CloudAutoBackup entitlement check failed: $e');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
     }
   }
 

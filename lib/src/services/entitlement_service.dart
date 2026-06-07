@@ -30,7 +30,7 @@ class EntitlementService {
 
     final data = await _ensureEntitlementDoc(uid);
     final now = DateTime.now();
-    final appTrialEndsAt = _dateValue(data['appTrialEndsAt']);
+    final appTrialEndsAt = _dateValue(data['manualAppTrialEndsAt']);
     final cloudTrialEndsAt = _dateValue(data['cloudTrialEndsAt']);
 
     RevenueCatEntitlementSnapshot purchaseSnapshot =
@@ -66,9 +66,35 @@ class EntitlementService {
     );
   }
 
+  Future<AppEntitlement> startAppTrial() async {
+    final uid = authService.uid;
+    if (uid == null) return AppEntitlement.signedOut;
+
+    final data = await _ensureEntitlementDoc(uid);
+    if (_dateValue(data['manualAppTrialStartedAt']) == null) {
+      final now = DateTime.now();
+      await _doc(uid).set(
+        {
+          'manualAppTrialStartedAt': Timestamp.fromDate(now),
+          'manualAppTrialEndsAt': Timestamp.fromDate(
+            now.add(appTrialDuration),
+          ),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    }
+    return loadEntitlement();
+  }
+
   Future<AppEntitlement> startCloudTrial() async {
     final uid = authService.uid;
     if (uid == null) return AppEntitlement.signedOut;
+
+    final entitlement = await loadEntitlement();
+    if (!entitlement.canUseProFeatures) {
+      throw const CloudTrialRequiresProOrTrialException();
+    }
 
     final data = await _ensureEntitlementDoc(uid);
     if (_dateValue(data['cloudTrialStartedAt']) == null) {
@@ -92,6 +118,13 @@ class EntitlementService {
     return loadEntitlement();
   }
 
+  Future<AppEntitlement> purchaseProProduct(String productId) async {
+    final uid = authService.uid;
+    if (uid == null) return AppEntitlement.signedOut;
+    await _purchaseService.purchaseProProduct(uid, productId);
+    return loadEntitlement();
+  }
+
   Future<AppEntitlement> purchaseCloudBackup() async {
     final uid = authService.uid;
     if (uid == null) return AppEntitlement.signedOut;
@@ -101,6 +134,29 @@ class EntitlementService {
     }
     await _purchaseService.purchaseCloudBackup(uid);
     return loadEntitlement();
+  }
+
+  Future<AppEntitlement> purchaseCloudBackupProduct(String productId) async {
+    final uid = authService.uid;
+    if (uid == null) return AppEntitlement.signedOut;
+    final entitlement = await loadEntitlement();
+    if (!entitlement.isPaidPlan) {
+      throw const CloudBackupRequiresProException();
+    }
+    await _purchaseService.purchaseCloudBackupProduct(uid, productId);
+    return loadEntitlement();
+  }
+
+  Future<List<RevenueCatPackageOption>> proPackageOptions() async {
+    final uid = authService.uid;
+    if (uid == null) return const [];
+    return _purchaseService.proPackageOptions(uid);
+  }
+
+  Future<List<RevenueCatPackageOption>> cloudBackupPackageOptions() async {
+    final uid = authService.uid;
+    if (uid == null) return const [];
+    return _purchaseService.cloudBackupPackageOptions(uid);
   }
 
   Future<AppEntitlement> restorePurchases() async {
@@ -117,11 +173,10 @@ class EntitlementService {
       return snapshot.data() ?? const <String, Object?>{};
     }
 
-    final now = DateTime.now();
     final data = <String, Object?>{
       'plan': SubscriptionPlan.free.name,
-      'appTrialStartedAt': Timestamp.fromDate(now),
-      'appTrialEndsAt': Timestamp.fromDate(now.add(appTrialDuration)),
+      'manualAppTrialStartedAt': null,
+      'manualAppTrialEndsAt': null,
       'cloudTrialStartedAt': null,
       'cloudTrialEndsAt': null,
       'createdAt': FieldValue.serverTimestamp(),
@@ -145,6 +200,13 @@ class EntitlementService {
     if (value is String) return DateTime.tryParse(value);
     return null;
   }
+}
+
+class CloudTrialRequiresProOrTrialException implements Exception {
+  const CloudTrialRequiresProOrTrialException();
+
+  @override
+  String toString() => 'Cloud Backup 체험은 App Trial 또는 Pro 상태에서 시작할 수 있습니다.';
 }
 
 class CloudBackupRequiresProException implements Exception {

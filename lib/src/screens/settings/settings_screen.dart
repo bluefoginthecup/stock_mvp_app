@@ -23,6 +23,7 @@ import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
 import '/src/services/full_restore_service.dart';
 import '/src/services/restore_rollback_service.dart';
+import '/src/services/revenuecat_purchase_service.dart';
 import '/src/services/storage_usage_service.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
@@ -670,6 +671,108 @@ class _AccountSectionState extends State<_AccountSection> {
     }
   }
 
+  Future<void> _runPurchaseOptionAction({
+    required String title,
+    required Future<List<RevenueCatPackageOption>> Function(
+      EntitlementService service,
+    ) loadOptions,
+    required Future<AppEntitlement> Function(
+      EntitlementService service,
+      String productId,
+    ) purchase,
+    required String successMessage,
+  }) async {
+    final service = _entitlementService;
+    if (service == null || _workingEntitlement) return;
+
+    setState(() {
+      _workingEntitlement = true;
+      _entitlementError = null;
+    });
+
+    try {
+      final options = await loadOptions(service);
+      if (!mounted) return;
+      setState(() => _workingEntitlement = false);
+
+      final selected = await _showPurchaseOptions(
+        context: context,
+        title: title,
+        options: options,
+      );
+      if (selected == null) return;
+
+      setState(() => _workingEntitlement = true);
+      final entitlement = await purchase(service, selected.productId);
+      if (!mounted) return;
+      setState(() => _entitlement = entitlement);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _entitlementError = e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _workingEntitlement = false);
+    }
+  }
+
+  Future<RevenueCatPackageOption?> _showPurchaseOptions({
+    required BuildContext context,
+    required String title,
+    required List<RevenueCatPackageOption> options,
+  }) {
+    if (options.isEmpty) {
+      throw const RevenueCatProductNotFoundException(<String>{});
+    }
+
+    return showModalBottomSheet<RevenueCatPackageOption>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Text(
+                  title,
+                  style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+              for (final option in options)
+                ListTile(
+                  title: Text(option.displayName),
+                  subtitle: Text(
+                    [
+                      option.periodLabel,
+                      option.productId,
+                    ].whereType<String>().join(' · '),
+                  ),
+                  trailing: Text(
+                    option.priceString,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  onTap: () => Navigator.of(sheetContext).pop(option),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _signOut(BuildContext context) async {
     final ok = await showDialog<bool>(
       context: context,
@@ -711,6 +814,8 @@ class _AccountSectionState extends State<_AccountSection> {
     const limits = AttachmentLimitConfig.defaults;
     final service = _entitlementService;
     final purchasesReady = service?.purchaseConfigured ?? false;
+    final appTrialAvailable =
+        _entitlement.appTrialEndsAt == null && !_entitlement.isPaidPlan;
     final cloudTrialAvailable = _entitlement.cloudTrialEndsAt == null &&
         !_entitlement.hasCloudBackup &&
         _entitlement.canUseProFeatures;
@@ -731,6 +836,7 @@ class _AccountSectionState extends State<_AccountSection> {
           value: _trialStatus(
             active: _entitlement.isAppTrialActive,
             endsAt: _entitlement.appTrialEndsAt,
+            notStartedLabel: '시작 전',
           ),
         ),
         const SizedBox(height: 8),
@@ -755,12 +861,27 @@ class _AccountSectionState extends State<_AccountSection> {
             FilledButton.icon(
               onPressed: _workingEntitlement ||
                       _loadingEntitlement ||
+                      !appTrialAvailable
+                  ? null
+                  : () => _runEntitlementAction(
+                        (service) => service.startAppTrial(),
+                        '7일 무료체험을 시작했습니다.',
+                      ),
+              icon: const Icon(Icons.play_circle_outline),
+              label: const Text('7일 무료체험 시작'),
+            ),
+            FilledButton.icon(
+              onPressed: _workingEntitlement ||
+                      _loadingEntitlement ||
                       _entitlement.isPaidPlan ||
                       !purchasesReady
                   ? null
-                  : () => _runEntitlementAction(
-                        (service) => service.purchasePro(),
-                        'Pro 구독 상태를 확인했습니다.',
+                  : () => _runPurchaseOptionAction(
+                        title: 'Pro 구독 선택',
+                        loadOptions: (service) => service.proPackageOptions(),
+                        purchase: (service, productId) =>
+                            service.purchaseProProduct(productId),
+                        successMessage: 'Pro 구독 상태를 확인했습니다.',
                       ),
               icon: const Icon(Icons.workspace_premium_outlined),
               label: const Text('Pro 구독'),
@@ -784,9 +905,13 @@ class _AccountSectionState extends State<_AccountSection> {
                       _entitlement.hasCloudBackup ||
                       !purchasesReady
                   ? null
-                  : () => _runEntitlementAction(
-                        (service) => service.purchaseCloudBackup(),
-                        'Cloud Backup 구독 상태를 확인했습니다.',
+                  : () => _runPurchaseOptionAction(
+                        title: 'Cloud Backup 구독 선택',
+                        loadOptions: (service) =>
+                            service.cloudBackupPackageOptions(),
+                        purchase: (service, productId) =>
+                            service.purchaseCloudBackupProduct(productId),
+                        successMessage: 'Cloud Backup 구독 상태를 확인했습니다.',
                       ),
               icon: const Icon(Icons.cloud_upload_outlined),
               label: const Text('Cloud Backup 구독'),
