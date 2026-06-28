@@ -939,6 +939,825 @@ class _EditableDashboardSection extends StatelessWidget {
   }
 }
 
+class _TodayTarotCard extends StatelessWidget {
+  const _TodayTarotCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final reading = _TodayTarotReading.forDate(DateTime.now());
+    final card = reading.card;
+    final direction = reading.reversed ? '역방향' : '정방향';
+    final keyword = reading.reversed ? card.reversedKeyword : card.keyword;
+    final message = reading.reversed
+        ? '오늘은 $keyword 기운이 비칩니다. 서두르기보다 마음의 균형을 먼저 살피면 흐름이 부드러워져요.'
+        : '오늘은 $keyword 기운이 함께합니다. 자연스럽게 다가오는 감각을 믿고, 하루의 작은 신호를 놓치지 마세요.';
+
+    return Material(
+      color: Colors.white.withValues(alpha: 0.9),
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const _TarotHomeScreen()),
+          );
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE5D9F8)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F7A6B99),
+                blurRadius: 18,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _TarotMiniCard(reading: reading),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${_formatTarotDate(reading.date)}의 카드',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: const Color(0xFF8A8297),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF0E8FF),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            direction,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: const Color(0xFF7355D9),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      card.koreanName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w900,
+                            color: const Color(0xFF202027),
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${card.name} · ${card.group}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: const Color(0xFF8A8297),
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      message,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            height: 1.35,
+                            color: const Color(0xFF3A3543),
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TarotHomeScreen extends StatelessWidget {
+  const _TarotHomeScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final reading = _TodayTarotReading.forDate(DateTime.now());
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('오늘의 타로')),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _TarotReadingPanel(reading: reading),
+            const SizedBox(height: 16),
+            Card(
+              margin: EdgeInsets.zero,
+              child: ListTile(
+                leading: const Icon(Icons.style_rounded),
+                title: const Text('78장 카드보기'),
+                subtitle: const Text('메이저와 마이너 아르카나의 정방향, 역방향 의미'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const _TarotDeckScreen()),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TarotReadingPanel extends StatelessWidget {
+  final _TodayTarotReading reading;
+
+  const _TarotReadingPanel({required this.reading});
+
+  @override
+  Widget build(BuildContext context) {
+    final card = reading.card;
+    final direction = reading.reversed ? '역방향' : '정방향';
+    final keyword = reading.reversed ? card.reversedKeyword : card.keyword;
+    final message = reading.reversed
+        ? '오늘은 $keyword 기운이 비칩니다. 서두르기보다 마음의 균형을 먼저 살피면 흐름이 부드러워져요.'
+        : '오늘은 $keyword 기운이 함께합니다. 자연스럽게 다가오는 감각을 믿고, 하루의 작은 신호를 놓치지 마세요.';
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5D9F8)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _TarotMiniCard(reading: reading),
+            const SizedBox(height: 14),
+            Text(
+              '${_formatTarotDate(reading.date)}의 카드',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF8A8297),
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              card.koreanName,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF202027),
+                  ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${card.name} · ${card.group} · $direction',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF8A8297),
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    height: 1.42,
+                    color: const Color(0xFF3A3543),
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TarotDeckScreen extends StatefulWidget {
+  const _TarotDeckScreen();
+
+  @override
+  State<_TarotDeckScreen> createState() => _TarotDeckScreenState();
+}
+
+class _TarotDeckScreenState extends State<_TarotDeckScreen> {
+  String _filter = '전체';
+
+  List<String> get _filters => const [
+        '전체',
+        '메이저',
+        '완드',
+        '컵',
+        '소드',
+        '펜타클',
+      ];
+
+  List<_TarotCardData> get _cards {
+    final all = _TarotCardData.deck;
+    if (_filter == '전체') return all;
+    if (_filter == '메이저') {
+      return all.where((card) => card.group == '메이저').toList();
+    }
+    return all.where((card) => card.group.contains(_filter)).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = _cards;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('78장 카드보기')),
+      body: SafeArea(
+        child: Column(
+          children: [
+            SizedBox(
+              height: 52,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                itemBuilder: (context, index) {
+                  final filter = _filters[index];
+                  return ChoiceChip(
+                    label: Text(filter),
+                    selected: _filter == filter,
+                    onSelected: (_) => setState(() => _filter = filter),
+                  );
+                },
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemCount: _filters.length,
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                itemBuilder: (context, index) {
+                  return _TarotDeckCardTile(card: cards[index]);
+                },
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemCount: cards.length,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TarotDeckCardTile extends StatelessWidget {
+  final _TarotCardData card;
+
+  const _TarotDeckCardTile({required this.card});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ExpansionTile(
+        leading: Container(
+          width: 42,
+          height: 56,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2D2547),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            size: 18,
+            color: Color(0xFFFFD66B),
+          ),
+        ),
+        title: Text(
+          card.koreanName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        subtitle: Text(
+          '${card.name} · ${card.group}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          _TarotMeaningRow(
+            label: '정방향',
+            text: card.keyword,
+            icon: Icons.north_rounded,
+          ),
+          const SizedBox(height: 10),
+          _TarotMeaningRow(
+            label: '역방향',
+            text: card.reversedKeyword,
+            icon: Icons.south_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TarotMeaningRow extends StatelessWidget {
+  final String label;
+  final String text;
+  final IconData icon;
+
+  const _TarotMeaningRow({
+    required this.label,
+    required this.text,
+    required this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: const Color(0xFF7355D9)),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 56,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF7355D9),
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: const Color(0xFF3A3543),
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TarotMiniCard extends StatelessWidget {
+  final _TodayTarotReading reading;
+
+  const _TarotMiniCard({required this.reading});
+
+  @override
+  Widget build(BuildContext context) {
+    final card = reading.card;
+    return Container(
+      width: 88,
+      height: 132,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D2547),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFBBA7F3), width: 1.2),
+      ),
+      child: Column(
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: Transform.rotate(
+              angle: reading.reversed ? math.pi : 0,
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                size: 16,
+                color: Color(0xFFFFD66B),
+              ),
+            ),
+          ),
+          const Spacer(),
+          Text(
+            card.shortLabel,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            card.group,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: const Color(0xFFD8CDF8),
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayTarotReading {
+  final _TarotCardData card;
+  final bool reversed;
+  final DateTime date;
+
+  const _TodayTarotReading({
+    required this.card,
+    required this.reversed,
+    required this.date,
+  });
+
+  factory _TodayTarotReading.forDate(DateTime value) {
+    final date = DateTime(value.year, value.month, value.day);
+    final seed = date.year * 10000 + date.month * 100 + date.day;
+    final random = math.Random(seed);
+    final deck = _TarotCardData.deck;
+    return _TodayTarotReading(
+      card: deck[random.nextInt(deck.length)],
+      reversed: random.nextBool(),
+      date: date,
+    );
+  }
+}
+
+class _TarotCardData {
+  final String name;
+  final String koreanName;
+  final String group;
+  final String keyword;
+  final String reversedKeyword;
+
+  const _TarotCardData({
+    required this.name,
+    required this.koreanName,
+    required this.group,
+    required this.keyword,
+    required this.reversedKeyword,
+  });
+
+  String get shortLabel {
+    final parts = koreanName.split(' ');
+    if (parts.length <= 1) return koreanName;
+    return parts.last;
+  }
+
+  static final List<_TarotCardData> deck = [
+    ..._majorArcana,
+    ..._minorArcana,
+  ];
+
+  static const List<_TarotCardData> _majorArcana = [
+    _TarotCardData(
+      name: 'The Fool',
+      koreanName: '광대',
+      group: '메이저',
+      keyword: '새 출발과 가벼운 시도',
+      reversedKeyword: '성급한 시작과 준비 부족',
+    ),
+    _TarotCardData(
+      name: 'The Magician',
+      koreanName: '마법사',
+      group: '메이저',
+      keyword: '도구 활용과 실행력',
+      reversedKeyword: '산만함과 과장된 판단',
+    ),
+    _TarotCardData(
+      name: 'The High Priestess',
+      koreanName: '여사제',
+      group: '메이저',
+      keyword: '직감과 숨은 정보',
+      reversedKeyword: '확인되지 않은 추측',
+    ),
+    _TarotCardData(
+      name: 'The Empress',
+      koreanName: '여황제',
+      group: '메이저',
+      keyword: '풍요와 생산성',
+      reversedKeyword: '과잉과 관리 누락',
+    ),
+    _TarotCardData(
+      name: 'The Emperor',
+      koreanName: '황제',
+      group: '메이저',
+      keyword: '질서와 기준 세우기',
+      reversedKeyword: '고집과 경직된 운영',
+    ),
+    _TarotCardData(
+      name: 'The Hierophant',
+      koreanName: '교황',
+      group: '메이저',
+      keyword: '규칙과 검증된 방식',
+      reversedKeyword: '낡은 방식에 대한 집착',
+    ),
+    _TarotCardData(
+      name: 'The Lovers',
+      koreanName: '연인',
+      group: '메이저',
+      keyword: '선택과 협력',
+      reversedKeyword: '흔들리는 우선순위',
+    ),
+    _TarotCardData(
+      name: 'The Chariot',
+      koreanName: '전차',
+      group: '메이저',
+      keyword: '추진과 집중',
+      reversedKeyword: '방향 상실과 무리한 속도',
+    ),
+    _TarotCardData(
+      name: 'Strength',
+      koreanName: '힘',
+      group: '메이저',
+      keyword: '인내와 부드러운 통제',
+      reversedKeyword: '조급함과 소진',
+    ),
+    _TarotCardData(
+      name: 'The Hermit',
+      koreanName: '은둔자',
+      group: '메이저',
+      keyword: '점검과 깊은 집중',
+      reversedKeyword: '고립과 지연',
+    ),
+    _TarotCardData(
+      name: 'Wheel of Fortune',
+      koreanName: '운명의 수레바퀴',
+      group: '메이저',
+      keyword: '흐름 변화와 기회',
+      reversedKeyword: '반복되는 변수',
+    ),
+    _TarotCardData(
+      name: 'Justice',
+      koreanName: '정의',
+      group: '메이저',
+      keyword: '균형과 정확한 기록',
+      reversedKeyword: '불균형과 누락된 근거',
+    ),
+    _TarotCardData(
+      name: 'The Hanged Man',
+      koreanName: '매달린 사람',
+      group: '메이저',
+      keyword: '관점 전환과 기다림',
+      reversedKeyword: '불필요한 정체',
+    ),
+    _TarotCardData(
+      name: 'Death',
+      koreanName: '죽음',
+      group: '메이저',
+      keyword: '정리와 새 단계',
+      reversedKeyword: '끝내야 할 것의 지연',
+    ),
+    _TarotCardData(
+      name: 'Temperance',
+      koreanName: '절제',
+      group: '메이저',
+      keyword: '조율과 적정선',
+      reversedKeyword: '과부하와 섞이지 않는 계획',
+    ),
+    _TarotCardData(
+      name: 'The Devil',
+      koreanName: '악마',
+      group: '메이저',
+      keyword: '집착을 알아차리는 힘',
+      reversedKeyword: '습관적 반복과 유혹',
+    ),
+    _TarotCardData(
+      name: 'The Tower',
+      koreanName: '탑',
+      group: '메이저',
+      keyword: '갑작스러운 재정비',
+      reversedKeyword: '미뤄둔 문제의 확대',
+    ),
+    _TarotCardData(
+      name: 'The Star',
+      koreanName: '별',
+      group: '메이저',
+      keyword: '회복과 희망적인 계획',
+      reversedKeyword: '기대치 조정 필요',
+    ),
+    _TarotCardData(
+      name: 'The Moon',
+      koreanName: '달',
+      group: '메이저',
+      keyword: '불확실성 속 관찰',
+      reversedKeyword: '오해와 흐릿한 정보',
+    ),
+    _TarotCardData(
+      name: 'The Sun',
+      koreanName: '태양',
+      group: '메이저',
+      keyword: '명확함과 좋은 성과',
+      reversedKeyword: '과신과 세부 확인 부족',
+    ),
+    _TarotCardData(
+      name: 'Judgement',
+      koreanName: '심판',
+      group: '메이저',
+      keyword: '결산과 재평가',
+      reversedKeyword: '판단 보류와 미해결',
+    ),
+    _TarotCardData(
+      name: 'The World',
+      koreanName: '세계',
+      group: '메이저',
+      keyword: '완성과 다음 단계',
+      reversedKeyword: '마무리 직전의 누락',
+    ),
+  ];
+
+  static final List<_TarotCardData> _minorArcana = [
+    for (final suit in _TarotSuitData.values)
+      for (final rank in _TarotRankData.values)
+        _TarotCardData(
+          name: '${rank.name} of ${suit.name}',
+          koreanName: '${suit.koreanName} ${rank.koreanName}',
+          group: suit.group,
+          keyword: '${suit.keyword} 속 ${rank.keyword}',
+          reversedKeyword: '${suit.keyword}에서 ${rank.reversedKeyword}',
+        ),
+  ];
+}
+
+class _TarotSuitData {
+  final String name;
+  final String koreanName;
+  final String group;
+  final String keyword;
+
+  const _TarotSuitData({
+    required this.name,
+    required this.koreanName,
+    required this.group,
+    required this.keyword,
+  });
+
+  static const values = [
+    _TarotSuitData(
+      name: 'Wands',
+      koreanName: '완드',
+      group: '마이너 · 완드',
+      keyword: '추진력',
+    ),
+    _TarotSuitData(
+      name: 'Cups',
+      koreanName: '컵',
+      group: '마이너 · 컵',
+      keyword: '감정과 관계',
+    ),
+    _TarotSuitData(
+      name: 'Swords',
+      koreanName: '소드',
+      group: '마이너 · 소드',
+      keyword: '판단과 소통',
+    ),
+    _TarotSuitData(
+      name: 'Pentacles',
+      koreanName: '펜타클',
+      group: '마이너 · 펜타클',
+      keyword: '현실과 자원',
+    ),
+  ];
+}
+
+class _TarotRankData {
+  final String name;
+  final String koreanName;
+  final String keyword;
+  final String reversedKeyword;
+
+  const _TarotRankData({
+    required this.name,
+    required this.koreanName,
+    required this.keyword,
+    required this.reversedKeyword,
+  });
+
+  static const values = [
+    _TarotRankData(
+      name: 'Ace',
+      koreanName: '에이스',
+      keyword: '새로운 씨앗',
+      reversedKeyword: '시작 전 망설임',
+    ),
+    _TarotRankData(
+      name: 'Two',
+      koreanName: '2',
+      keyword: '선택과 균형',
+      reversedKeyword: '우선순위 혼선',
+    ),
+    _TarotRankData(
+      name: 'Three',
+      koreanName: '3',
+      keyword: '확장과 협업',
+      reversedKeyword: '손발이 맞지 않음',
+    ),
+    _TarotRankData(
+      name: 'Four',
+      koreanName: '4',
+      keyword: '안정과 기반',
+      reversedKeyword: '닫힌 태도',
+    ),
+    _TarotRankData(
+      name: 'Five',
+      koreanName: '5',
+      keyword: '변화와 마찰',
+      reversedKeyword: '불필요한 충돌',
+    ),
+    _TarotRankData(
+      name: 'Six',
+      koreanName: '6',
+      keyword: '회복과 나눔',
+      reversedKeyword: '과거 방식의 반복',
+    ),
+    _TarotRankData(
+      name: 'Seven',
+      koreanName: '7',
+      keyword: '점검과 전략',
+      reversedKeyword: '집중력 분산',
+    ),
+    _TarotRankData(
+      name: 'Eight',
+      koreanName: '8',
+      keyword: '숙련과 빠른 진행',
+      reversedKeyword: '무리한 속도',
+    ),
+    _TarotRankData(
+      name: 'Nine',
+      koreanName: '9',
+      keyword: '성과와 인내',
+      reversedKeyword: '피로 누적',
+    ),
+    _TarotRankData(
+      name: 'Ten',
+      koreanName: '10',
+      keyword: '완성과 부담',
+      reversedKeyword: '과부하',
+    ),
+    _TarotRankData(
+      name: 'Page',
+      koreanName: '페이지',
+      keyword: '학습과 작은 소식',
+      reversedKeyword: '서툰 전달',
+    ),
+    _TarotRankData(
+      name: 'Knight',
+      koreanName: '기사',
+      keyword: '움직임과 실행',
+      reversedKeyword: '성급한 움직임',
+    ),
+    _TarotRankData(
+      name: 'Queen',
+      koreanName: '여왕',
+      keyword: '관리와 돌봄',
+      reversedKeyword: '감정적 과잉',
+    ),
+    _TarotRankData(
+      name: 'King',
+      koreanName: '왕',
+      keyword: '책임과 통솔',
+      reversedKeyword: '통제 과잉',
+    ),
+  ];
+}
+
+String _formatTarotDate(DateTime date) {
+  return '${date.month}월 ${date.day}일';
+}
+
 class _SummaryPanel extends StatelessWidget {
   final int itemCount;
   final int totalQty;

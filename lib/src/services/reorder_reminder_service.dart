@@ -46,14 +46,13 @@ class ReorderReminderService {
     if (!_initialized) return;
     await cancelForItem(item.id);
 
-    if (!item.reorderReminderEnabled ||
-        item.reorderIntervalDays == null ||
-        item.nextReorderDate == null) {
+    final nextReorderDate = ReorderScheduleUtils.effectiveNextReorderDate(item);
+    if (!item.reorderReminderEnabled || nextReorderDate == null) {
       return;
     }
 
     final reminderDate = ReorderScheduleUtils.reminderDate(
-      nextReorderDate: item.nextReorderDate,
+      nextReorderDate: nextReorderDate,
       daysBefore: item.reorderReminderDaysBefore,
     );
     if (reminderDate == null) return;

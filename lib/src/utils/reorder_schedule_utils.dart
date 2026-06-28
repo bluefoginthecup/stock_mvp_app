@@ -17,12 +17,15 @@ class ReorderScheduleUtils {
       DateTime(date.year, date.month, date.day);
 
   static DateTime? effectiveNextReorderDate(Item item, {DateTime? now}) {
+    if (item.nextReorderDate != null) {
+      return dateOnly(item.nextReorderDate!);
+    }
     final calculated = calculateNextReorderDate(
       lastOrderedAt: item.lastOrderedAt,
       intervalDays: item.reorderIntervalDays,
       now: now,
     );
-    return calculated ?? item.nextReorderDate;
+    return calculated;
   }
 
   static DateTime? calculateNextReorderDate({
@@ -46,7 +49,7 @@ class ReorderScheduleUtils {
 
   static bool isReminderDue(Item item, {DateTime? now}) {
     final nextReorderDate = effectiveNextReorderDate(item, now: now);
-    if (item.reorderIntervalDays == null || nextReorderDate == null) {
+    if (nextReorderDate == null) {
       return false;
     }
     final today = dateOnly(now ?? DateTime.now());

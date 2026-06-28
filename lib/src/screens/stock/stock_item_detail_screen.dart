@@ -134,6 +134,73 @@ class _PriceEditDialogState extends State<_PriceEditDialog> {
   }
 }
 
+class _CustomReorderIntervalDialog extends StatefulWidget {
+  final int? initialDays;
+
+  const _CustomReorderIntervalDialog({required this.initialDays});
+
+  @override
+  State<_CustomReorderIntervalDialog> createState() =>
+      _CustomReorderIntervalDialogState();
+}
+
+class _CustomReorderIntervalDialogState
+    extends State<_CustomReorderIntervalDialog> {
+  late final TextEditingController _controller;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.initialDays == null ? '' : widget.initialDays.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final days = int.tryParse(_controller.text.trim());
+    if (days == null || days <= 0) {
+      setState(() => _errorText = '1일 이상의 숫자를 입력해주세요.');
+      return;
+    }
+    Navigator.pop(context, days);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('사용자 지정 발주 주기'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: '며칠마다 발주할까요?',
+          suffixText: '일마다',
+          errorText: _errorText,
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('적용'),
+        ),
+      ],
+    );
+  }
+}
+
 class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
   Item? _item; // 사람 읽는 이름 (repo.nameOf)
   bool? _isFinished; // finished/semi 추정
@@ -348,8 +415,44 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     );
   }
 
+  Future<void> _setCustomReorderInterval(Item item) async {
+    final result = await showDialog<int>(
+      context: context,
+      builder: (_) => _CustomReorderIntervalDialog(
+        initialDays: item.reorderIntervalDays,
+      ),
+    );
+    if (!mounted || result == null) return;
+    await _setReorderInterval(item, result);
+  }
+
+  Future<void> _pickNextReorderDate(Item item) async {
+    final today = ReorderScheduleUtils.dateOnly(DateTime.now());
+    final currentNext = ReorderScheduleUtils.effectiveNextReorderDate(item);
+    final initialDate = currentNext == null || currentNext.isBefore(today)
+        ? today
+        : currentNext;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: today,
+      lastDate: DateTime(today.year + 10, 12, 31),
+      helpText: '다음 발주예정일 선택',
+      cancelText: '취소',
+      confirmText: '선택',
+    );
+    if (!mounted || picked == null) return;
+    await _saveItemMeta(
+      _copyItemMeta(
+        item,
+        nextReorderDate: ReorderScheduleUtils.dateOnly(picked),
+        setNextReorderDate: true,
+      ),
+    );
+  }
+
   Future<void> _setReorderReminderEnabled(Item item, bool enabled) async {
-    if (item.reorderIntervalDays == null) return;
+    if (ReorderScheduleUtils.effectiveNextReorderDate(item) == null) return;
     await _saveItemMeta(
       _copyItemMeta(item, reorderReminderEnabled: enabled),
     );
@@ -405,7 +508,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
         case 365:
           return '1년마다';
         default:
-          return '$days일마다';
+          return '사용자 지정 ($days일마다)';
       }
     }
 
@@ -416,10 +519,12 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
           item.lastOrderedAt,
           snapshot.data,
         );
-        final nextDate = ReorderScheduleUtils.calculateNextReorderDate(
+        final calculatedNextDate =
+            ReorderScheduleUtils.calculateNextReorderDate(
           lastOrderedAt: effectiveLastOrderedAt,
           intervalDays: item.reorderIntervalDays,
         );
+        final nextDate = item.nextReorderDate ?? calculatedNextDate;
         return Card(
           margin: EdgeInsets.zero,
           child: Padding(
@@ -441,9 +546,18 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                         value: days,
                         child: Text(intervalLabel(days)),
                       ),
+                    const DropdownMenuItem<int>(
+                      value: -1,
+                      child: Text('사용자 지정'),
+                    ),
                   ],
-                  onChanged: (value) =>
-                      _setReorderInterval(item, value == 0 ? null : value),
+                  onChanged: (value) {
+                    if (value == -1) {
+                      _setCustomReorderInterval(item);
+                      return;
+                    }
+                    _setReorderInterval(item, value == 0 ? null : value);
+                  },
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -455,23 +569,22 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                       label:
                           Text('최근 발주일: ${_dateText(effectiveLastOrderedAt)}'),
                     ),
-                    Chip(
+                    ActionChip(
                       avatar: const Icon(Icons.event_available, size: 16),
                       label: Text('다음 발주 예정일: ${_dateText(nextDate)}'),
+                      onPressed: () => _pickNextReorderDate(item),
                     ),
                   ],
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('발주 알림 받기'),
-                  value: item.reorderReminderEnabled &&
-                      item.reorderIntervalDays != null,
-                  onChanged: item.reorderIntervalDays == null
+                  value: item.reorderReminderEnabled && nextDate != null,
+                  onChanged: nextDate == null
                       ? null
                       : (value) => _setReorderReminderEnabled(item, value),
                 ),
-                if (item.reorderReminderEnabled &&
-                    item.reorderIntervalDays != null)
+                if (item.reorderReminderEnabled && nextDate != null)
                   Wrap(
                     spacing: 8,
                     children: [
