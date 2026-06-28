@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:provider/provider.dart';
 import 'package:reorderable_grid_view/reorderable_grid_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app/main_tab_controller.dart';
 import '../db/app_database.dart';
@@ -17,6 +18,46 @@ import '../ui/common/ui.dart';
 import 'dashboard/dashboard_quick_actions.dart';
 import 'stock/stock_browser_screen.dart';
 
+const _dashboardSectionOrderPrefsKey = 'dashboard.sectionOrder.v1';
+const _dashboardHiddenSectionsPrefsKey = 'dashboard.hiddenSections.v1';
+
+enum _DashboardSectionType {
+  summary('summary', '현재 요약', Icons.dashboard_customize_rounded),
+  assistant('assistant', '오늘의 찰스톡', Icons.pets_rounded),
+  purchaseStats('purchaseStats', '발주 통계', Icons.local_shipping_rounded),
+  quickActions('quickActions', '빠른 실행', Icons.bolt_rounded);
+
+  final String id;
+  final String label;
+  final IconData icon;
+
+  const _DashboardSectionType(this.id, this.label, this.icon);
+}
+
+const _defaultDashboardSectionOrder = [
+  _DashboardSectionType.summary,
+  _DashboardSectionType.assistant,
+  _DashboardSectionType.purchaseStats,
+  _DashboardSectionType.quickActions,
+];
+
+List<_DashboardSectionType> _mergeDashboardSectionOrder(List<String>? ids) {
+  final byId = {
+    for (final section in _defaultDashboardSectionOrder) section.id: section,
+  };
+  final seen = <_DashboardSectionType>{};
+  final merged = <_DashboardSectionType>[];
+
+  for (final id in ids ?? const <String>[]) {
+    final section = byId[id];
+    if (section != null && seen.add(section)) merged.add(section);
+  }
+  for (final section in _defaultDashboardSectionOrder) {
+    if (seen.add(section)) merged.add(section);
+  }
+  return merged;
+}
+
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
@@ -26,6 +67,13 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late List<QuickActionType> _order;
+  List<_DashboardSectionType> _sectionOrder = [
+    ..._defaultDashboardSectionOrder,
+  ];
+  Set<_DashboardSectionType> _visibleSections = {
+    ..._defaultDashboardSectionOrder,
+  };
+  bool _editingDashboard = false;
 
   @override
   void initState() {
@@ -33,7 +81,116 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _order = [...defaultQuickActionOrder];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadOrderFromDb();
+      _loadDashboardLayout();
     });
+  }
+
+  Future<void> _loadDashboardLayout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final ids = prefs.getStringList(_dashboardSectionOrderPrefsKey);
+      final hiddenIds =
+          prefs.getStringList(_dashboardHiddenSectionsPrefsKey) ?? const [];
+      if (!mounted) return;
+
+      setState(() {
+        _sectionOrder = _mergeDashboardSectionOrder(ids);
+        _visibleSections = _defaultDashboardSectionOrder
+            .where((section) => !hiddenIds.contains(section.id))
+            .toSet();
+      });
+      await _persistDashboardLayout();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _sectionOrder = [..._defaultDashboardSectionOrder];
+        _visibleSections = {..._defaultDashboardSectionOrder};
+      });
+    }
+  }
+
+  Future<void> _persistDashboardLayout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        _dashboardSectionOrderPrefsKey,
+        _sectionOrder.map((section) => section.id).toList(),
+      );
+      await prefs.setStringList(
+        _dashboardHiddenSectionsPrefsKey,
+        _defaultDashboardSectionOrder
+            .where((section) => !_visibleSections.contains(section))
+            .map((section) => section.id)
+            .toList(),
+      );
+    } catch (_) {
+      // 저장 실패는 대시보드 표시를 막지 않는다.
+    }
+  }
+
+  Future<void> _hideDashboardSection(_DashboardSectionType section) async {
+    setState(() => _visibleSections.remove(section));
+    await _persistDashboardLayout();
+  }
+
+  Future<void> _restoreDashboardSection(_DashboardSectionType section) async {
+    setState(() => _visibleSections.add(section));
+    await _persistDashboardLayout();
+  }
+
+  Future<void> _reorderDashboardSection(int oldIndex, int newIndex) async {
+    final visibleSections =
+        _sectionOrder.where(_visibleSections.contains).toList();
+    if (oldIndex < 0 || oldIndex >= visibleSections.length) return;
+
+    if (newIndex > oldIndex) newIndex -= 1;
+    final moving = visibleSections.removeAt(oldIndex);
+    visibleSections.insert(newIndex, moving);
+
+    final hiddenSections =
+        _sectionOrder.where((section) => !_visibleSections.contains(section));
+    setState(() => _sectionOrder = [...visibleSections, ...hiddenSections]);
+    await _persistDashboardLayout();
+  }
+
+  Future<void> _showAddSectionSheet() async {
+    final hiddenSections = _defaultDashboardSectionOrder
+        .where((section) => !_visibleSections.contains(section))
+        .toList();
+    if (hiddenSections.isEmpty) return;
+
+    final selected = await showModalBottomSheet<_DashboardSectionType>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                child: Text(
+                  '카드 추가',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              for (final section in hiddenSections)
+                ListTile(
+                  leading: Icon(section.icon),
+                  title: Text(section.label),
+                  onTap: () => Navigator.of(context).pop(section),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null || !mounted) return;
+    await _restoreDashboardSection(selected);
   }
 
   Future<void> _loadOrderFromDb() async {
@@ -79,27 +236,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         actions: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                tooltip: '알림',
-                icon: const Icon(Icons.notifications_none_rounded),
-                onPressed: () {},
-              ),
-              Positioned(
-                right: 12,
-                top: 12,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF8B6BEF),
-                    shape: BoxShape.circle,
+          if (!_editingDashboard)
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  tooltip: '알림',
+                  icon: const Icon(Icons.notifications_none_rounded),
+                  onPressed: () {},
+                ),
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF8B6BEF),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
+          if (_editingDashboard)
+            IconButton(
+              tooltip: '카드 추가',
+              icon: const Icon(Icons.add_circle_outline_rounded),
+              onPressed: _showAddSectionSheet,
+            ),
+          TextButton(
+            onPressed: () {
+              setState(() => _editingDashboard = !_editingDashboard);
+            },
+            child: Text(_editingDashboard ? '완료' : '편집'),
           ),
           const SizedBox(width: 4),
         ],
@@ -146,6 +316,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     purchaseStats:
                         purchaseStatsSnap.data ?? DashboardPurchaseStats.empty,
                     actions: actions.toList(),
+                    sectionOrder: _sectionOrder,
+                    visibleSections: _visibleSections,
+                    editing: _editingDashboard,
                     onStockTap: () =>
                         context.read<MainTabController>().setIndex(2),
                     onLowStockTap: () {
@@ -158,12 +331,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       );
                     },
                     onReorder: (oldIndex, newIndex) async {
+                      if (_editingDashboard) return;
                       setState(() {
                         final item = _order.removeAt(oldIndex);
                         _order.insert(newIndex, item);
                       });
                       await _persistOrderToDb();
                     },
+                    onSectionReorder: _reorderDashboardSection,
+                    onHideSection: _hideDashboardSection,
                   );
                 },
               );
@@ -182,9 +358,14 @@ class _DashboardContent extends StatelessWidget {
   final TodayActivitySummary todaySummary;
   final DashboardPurchaseStats purchaseStats;
   final List<DashboardQuickAction> actions;
+  final List<_DashboardSectionType> sectionOrder;
+  final Set<_DashboardSectionType> visibleSections;
+  final bool editing;
   final VoidCallback onStockTap;
   final VoidCallback onLowStockTap;
   final ReorderCallback onReorder;
+  final ReorderCallback onSectionReorder;
+  final ValueChanged<_DashboardSectionType> onHideSection;
 
   const _DashboardContent({
     required this.itemCount,
@@ -193,9 +374,14 @@ class _DashboardContent extends StatelessWidget {
     required this.todaySummary,
     required this.purchaseStats,
     required this.actions,
+    required this.sectionOrder,
+    required this.visibleSections,
+    required this.editing,
     required this.onStockTap,
     required this.onLowStockTap,
     required this.onReorder,
+    required this.onSectionReorder,
+    required this.onHideSection,
   });
 
   @override
@@ -206,6 +392,49 @@ class _DashboardContent extends StatelessWidget {
         final horizontalPadding = wide ? 24.0 : 16.0;
         final contentWidth = constraints.maxWidth - horizontalPadding * 2;
         final gridHeight = _actionGridHeight(contentWidth, actions.length);
+        final sections = sectionOrder
+            .where((section) => visibleSections.contains(section))
+            .toList();
+
+        if (editing) {
+          if (sections.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  '표시할 카드가 없습니다. 상단의 + 버튼으로 카드를 추가하세요.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: const Color(0xFF6F6878),
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            );
+          }
+
+          return ReorderableListView.builder(
+            buildDefaultDragHandles: false,
+            padding: EdgeInsets.fromLTRB(
+                horizontalPadding, 8, horizontalPadding, 24),
+            itemCount: sections.length,
+            onReorder: onSectionReorder,
+            itemBuilder: (context, index) {
+              final section = sections[index];
+              return Padding(
+                key: ValueKey('dashboard-section-${section.id}'),
+                padding: EdgeInsets.only(
+                    bottom: index == sections.length - 1 ? 0 : 18),
+                child: _EditableDashboardSection(
+                  index: index,
+                  section: section,
+                  onHide: () => onHideSection(section),
+                  child: _buildSection(context, section, gridHeight),
+                ),
+              );
+            },
+          );
+        }
 
         return SingleChildScrollView(
           padding:
@@ -213,97 +442,68 @@ class _DashboardContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                context.t.dashboard_summary,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF202027),
-                    ),
-              ),
-              const SizedBox(height: 12),
-              if (wide)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: _SummaryPanel(
-                        itemCount: itemCount,
-                        totalQty: totalQty,
-                        lowCount: lowCount,
-                        onStockTap: onStockTap,
-                        onLowStockTap: onLowStockTap,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 2,
-                      child: _ChalstockAssistantCard(
-                        lowCount: lowCount,
-                        todaySummary: todaySummary,
-                        onOpenOrders: () =>
-                            context.read<MainTabController>().setIndex(1),
-                        onOpenTxns: () =>
-                            context.read<MainTabController>().setIndex(3),
-                        onOpenWorks: () =>
-                            context.read<MainTabController>().setIndex(4),
-                        onOpenPurchases: () =>
-                            context.read<MainTabController>().setIndex(5),
-                        onOpenSchedules: () => context
-                            .read<MainTabController>()
-                            .openShellRoute('/schedules'),
-                      ),
-                    ),
-                  ],
-                )
-              else ...[
-                _SummaryPanel(
-                  itemCount: itemCount,
-                  totalQty: totalQty,
-                  lowCount: lowCount,
-                  onStockTap: onStockTap,
-                  onLowStockTap: onLowStockTap,
-                ),
-                const SizedBox(height: 12),
-                _ChalstockAssistantCard(
-                  lowCount: lowCount,
-                  todaySummary: todaySummary,
-                  onOpenOrders: () =>
-                      context.read<MainTabController>().setIndex(1),
-                  onOpenTxns: () =>
-                      context.read<MainTabController>().setIndex(3),
-                  onOpenWorks: () =>
-                      context.read<MainTabController>().setIndex(4),
-                  onOpenPurchases: () =>
-                      context.read<MainTabController>().setIndex(5),
-                  onOpenSchedules: () => context
-                      .read<MainTabController>()
-                      .openShellRoute('/schedules'),
-                ),
+              for (var i = 0; i < sections.length; i++) ...[
+                if (i > 0) const SizedBox(height: 18),
+                _buildSection(context, sections[i], gridHeight),
               ],
-              const SizedBox(height: 18),
-              _PurchaseStatsSection(stats: purchaseStats),
-              const SizedBox(height: 28),
-              Text(
-                '빠른 실행 (${actions.length})',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF202027),
-                    ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: gridHeight,
-                child: _DashboardActionGrid(
-                  actions: actions,
-                  onReorder: onReorder,
-                ),
-              ),
             ],
           ),
         );
       },
     );
+  }
+
+  Widget _buildSection(
+    BuildContext context,
+    _DashboardSectionType section,
+    double gridHeight,
+  ) {
+    switch (section) {
+      case _DashboardSectionType.summary:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _DashboardSectionTitle(label: context.t.dashboard_summary),
+            const SizedBox(height: 12),
+            _SummaryPanel(
+              itemCount: itemCount,
+              totalQty: totalQty,
+              lowCount: lowCount,
+              onStockTap: onStockTap,
+              onLowStockTap: onLowStockTap,
+            ),
+          ],
+        );
+      case _DashboardSectionType.assistant:
+        return _ChalstockAssistantCard(
+          lowCount: lowCount,
+          todaySummary: todaySummary,
+          onOpenOrders: () => context.read<MainTabController>().setIndex(1),
+          onOpenTxns: () => context.read<MainTabController>().setIndex(3),
+          onOpenWorks: () => context.read<MainTabController>().setIndex(4),
+          onOpenPurchases: () => context.read<MainTabController>().setIndex(5),
+          onOpenSchedules: () =>
+              context.read<MainTabController>().openShellRoute('/schedules'),
+        );
+      case _DashboardSectionType.purchaseStats:
+        return _PurchaseStatsSection(stats: purchaseStats);
+      case _DashboardSectionType.quickActions:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _DashboardSectionTitle(label: '빠른 실행 (${actions.length})'),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: gridHeight,
+              child: _DashboardActionGrid(
+                actions: actions,
+                onReorder: onReorder,
+                enabled: !editing,
+              ),
+            ),
+          ],
+        );
+    }
   }
 
   double _actionGridHeight(double contentWidth, int actionCount) {
@@ -320,6 +520,76 @@ class _DashboardContent extends StatelessWidget {
         (gridWidth - crossSpacing * (crossAxisCount - 1)) / crossAxisCount;
 
     return tileSize * rows + mainSpacing * (rows - 1);
+  }
+}
+
+class _DashboardSectionTitle extends StatelessWidget {
+  final String label;
+
+  const _DashboardSectionTitle({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF202027),
+          ),
+    );
+  }
+}
+
+class _EditableDashboardSection extends StatelessWidget {
+  final int index;
+  final _DashboardSectionType section;
+  final VoidCallback onHide;
+  final Widget child;
+
+  const _EditableDashboardSection({
+    required this.index,
+    required this.section,
+    required this.onHide,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFBDA7F5), width: 1.5),
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 44, 8, 8),
+            child: child,
+          ),
+          Positioned(
+            left: 8,
+            top: 6,
+            child: IconButton.filledTonal(
+              tooltip: '${section.label} 숨기기',
+              icon: const Icon(Icons.visibility_off_rounded),
+              onPressed: onHide,
+            ),
+          ),
+          Positioned(
+            right: 8,
+            top: 6,
+            child: ReorderableDragStartListener(
+              index: index,
+              child: IconButton.filledTonal(
+                tooltip: '${section.label} 이동',
+                icon: const Icon(Icons.drag_handle_rounded),
+                onPressed: () {},
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1220,10 +1490,12 @@ class _PurchaseTopRow extends StatelessWidget {
 class _DashboardActionGrid extends StatelessWidget {
   final List<DashboardQuickAction> actions;
   final ReorderCallback onReorder;
+  final bool enabled;
 
   const _DashboardActionGrid({
     required this.actions,
     required this.onReorder,
+    this.enabled = true,
   });
 
   @override
@@ -1257,28 +1529,39 @@ class _DashboardActionGrid extends StatelessWidget {
         final gridContentWidth =
             tileSize * crossAxisCount + crossSpacing * (crossAxisCount - 1);
 
+        final children = [
+          for (final action in actions)
+            DashboardQuickActionGridTile(
+              key: action.key,
+              action: action,
+            ),
+        ];
+
         return Center(
           child: SizedBox(
             width: gridContentWidth,
             height: availableHeight,
-            child: ReorderableGridView.count(
-              physics: actions.length > (crossAxisCount * rowsForLayout)
-                  ? const BouncingScrollPhysics()
-                  : const NeverScrollableScrollPhysics(),
-              crossAxisCount: crossAxisCount,
-              mainAxisSpacing: mainSpacing,
-              crossAxisSpacing: crossSpacing,
-              childAspectRatio: 1.0,
-              dragWidgetBuilder: (index, child) => child,
-              onReorder: onReorder,
-              children: [
-                for (final action in actions)
-                  DashboardQuickActionGridTile(
-                    key: action.key,
-                    action: action,
+            child: enabled
+                ? ReorderableGridView.count(
+                    physics: actions.length > (crossAxisCount * rowsForLayout)
+                        ? const BouncingScrollPhysics()
+                        : const NeverScrollableScrollPhysics(),
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: mainSpacing,
+                    crossAxisSpacing: crossSpacing,
+                    childAspectRatio: 1.0,
+                    dragWidgetBuilder: (index, child) => child,
+                    onReorder: onReorder,
+                    children: children,
+                  )
+                : GridView.count(
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: mainSpacing,
+                    crossAxisSpacing: crossSpacing,
+                    childAspectRatio: 1.0,
+                    children: children,
                   ),
-              ],
-            ),
           ),
         );
       },
