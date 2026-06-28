@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../app/main_tab_controller.dart';
 import '../db/app_database.dart';
 import '../db/quick_actions_order_dao.dart';
+import '../models/app_schedule.dart';
 import '../models/dashboard_purchase_stats.dart';
 import '../models/today_activity_summary.dart';
 import '../repos/repo_interfaces.dart';
@@ -20,10 +21,12 @@ import 'stock/stock_browser_screen.dart';
 
 const _dashboardSectionOrderPrefsKey = 'dashboard.sectionOrder.v1';
 const _dashboardHiddenSectionsPrefsKey = 'dashboard.hiddenSections.v1';
+const _dashboardCollapsedSectionsPrefsKey = 'dashboard.collapsedSections.v1';
 
 enum _DashboardSectionType {
   summary('summary', '현재 요약', Icons.dashboard_customize_rounded),
   assistant('assistant', '오늘의 찰스톡', Icons.pets_rounded),
+  schedules('schedules', '일정', Icons.event_note_rounded),
   purchaseStats('purchaseStats', '발주 통계', Icons.local_shipping_rounded),
   quickActions('quickActions', '빠른 실행', Icons.bolt_rounded);
 
@@ -37,6 +40,7 @@ enum _DashboardSectionType {
 const _defaultDashboardSectionOrder = [
   _DashboardSectionType.summary,
   _DashboardSectionType.assistant,
+  _DashboardSectionType.schedules,
   _DashboardSectionType.purchaseStats,
   _DashboardSectionType.quickActions,
 ];
@@ -73,6 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Set<_DashboardSectionType> _visibleSections = {
     ..._defaultDashboardSectionOrder,
   };
+  Set<_DashboardSectionType> _collapsedSections = {};
   bool _editingDashboard = false;
 
   @override
@@ -91,12 +96,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final ids = prefs.getStringList(_dashboardSectionOrderPrefsKey);
       final hiddenIds =
           prefs.getStringList(_dashboardHiddenSectionsPrefsKey) ?? const [];
+      final collapsedIds =
+          prefs.getStringList(_dashboardCollapsedSectionsPrefsKey) ?? const [];
       if (!mounted) return;
 
       setState(() {
         _sectionOrder = _mergeDashboardSectionOrder(ids);
         _visibleSections = _defaultDashboardSectionOrder
             .where((section) => !hiddenIds.contains(section.id))
+            .toSet();
+        _collapsedSections = _defaultDashboardSectionOrder
+            .where((section) => collapsedIds.contains(section.id))
             .toSet();
       });
       await _persistDashboardLayout();
@@ -105,6 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() {
         _sectionOrder = [..._defaultDashboardSectionOrder];
         _visibleSections = {..._defaultDashboardSectionOrder};
+        _collapsedSections = {};
       });
     }
   }
@@ -123,6 +134,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             .map((section) => section.id)
             .toList(),
       );
+      await prefs.setStringList(
+        _dashboardCollapsedSectionsPrefsKey,
+        _collapsedSections.map((section) => section.id).toList(),
+      );
     } catch (_) {
       // 저장 실패는 대시보드 표시를 막지 않는다.
     }
@@ -135,6 +150,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _restoreDashboardSection(_DashboardSectionType section) async {
     setState(() => _visibleSections.add(section));
+    await _persistDashboardLayout();
+  }
+
+  Future<void> _toggleDashboardSectionCollapsed(
+    _DashboardSectionType section,
+  ) async {
+    setState(() {
+      if (!_collapsedSections.add(section)) {
+        _collapsedSections.remove(section);
+      }
+    });
     await _persistDashboardLayout();
   }
 
@@ -224,6 +250,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final itemRepo = context.read<ItemRepo>();
+    final scheduleRepo = context.read<ScheduleRepo>();
     final activityService = context.read<DashboardActivityService>();
     final purchaseStatsService = context.read<DashboardPurchaseStatsService>();
 
@@ -303,43 +330,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
             stream: purchaseStatsService.watchStats(),
             initialData: DashboardPurchaseStats.empty,
             builder: (context, purchaseStatsSnap) {
-              return StreamBuilder<TodayActivitySummary>(
-                stream: activityService.watchTodaySummary(),
-                initialData: TodayActivitySummary.empty,
-                builder: (context, activitySnap) {
-                  return _DashboardContent(
-                    itemCount: items.length,
-                    totalQty: totalQty,
-                    lowCount: low.length,
-                    todaySummary:
-                        activitySnap.data ?? TodayActivitySummary.empty,
-                    purchaseStats:
-                        purchaseStatsSnap.data ?? DashboardPurchaseStats.empty,
-                    actions: actions.toList(),
-                    sectionOrder: _sectionOrder,
-                    visibleSections: _visibleSections,
-                    editing: _editingDashboard,
-                    onStockTap: () =>
-                        context.read<MainTabController>().setIndex(2),
-                    onLowStockTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              const StockBrowserScreen(showLowStockOnly: true),
-                        ),
+              return StreamBuilder<List<AppSchedule>>(
+                stream: scheduleRepo.watchSchedules(date: DateTime.now()),
+                initialData: const <AppSchedule>[],
+                builder: (context, scheduleSnap) {
+                  return StreamBuilder<TodayActivitySummary>(
+                    stream: activityService.watchTodaySummary(),
+                    initialData: TodayActivitySummary.empty,
+                    builder: (context, activitySnap) {
+                      return _DashboardContent(
+                        itemCount: items.length,
+                        totalQty: totalQty,
+                        lowCount: low.length,
+                        todaySchedules:
+                            scheduleSnap.data ?? const <AppSchedule>[],
+                        todaySummary:
+                            activitySnap.data ?? TodayActivitySummary.empty,
+                        purchaseStats: purchaseStatsSnap.data ??
+                            DashboardPurchaseStats.empty,
+                        actions: actions.toList(),
+                        sectionOrder: _sectionOrder,
+                        visibleSections: _visibleSections,
+                        collapsedSections: _collapsedSections,
+                        editing: _editingDashboard,
+                        onStockTap: () =>
+                            context.read<MainTabController>().setIndex(2),
+                        onLowStockTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const StockBrowserScreen(
+                                showLowStockOnly: true,
+                              ),
+                            ),
+                          );
+                        },
+                        onOpenSchedules: () => context
+                            .read<MainTabController>()
+                            .openShellRoute('/schedules'),
+                        onReorder: (oldIndex, newIndex) async {
+                          if (_editingDashboard) return;
+                          setState(() {
+                            final item = _order.removeAt(oldIndex);
+                            _order.insert(newIndex, item);
+                          });
+                          await _persistOrderToDb();
+                        },
+                        onSectionReorder: _reorderDashboardSection,
+                        onHideSection: _hideDashboardSection,
+                        onToggleSectionCollapsed:
+                            _toggleDashboardSectionCollapsed,
                       );
                     },
-                    onReorder: (oldIndex, newIndex) async {
-                      if (_editingDashboard) return;
-                      setState(() {
-                        final item = _order.removeAt(oldIndex);
-                        _order.insert(newIndex, item);
-                      });
-                      await _persistOrderToDb();
-                    },
-                    onSectionReorder: _reorderDashboardSection,
-                    onHideSection: _hideDashboardSection,
                   );
                 },
               );
@@ -355,33 +397,41 @@ class _DashboardContent extends StatelessWidget {
   final int itemCount;
   final int totalQty;
   final int lowCount;
+  final List<AppSchedule> todaySchedules;
   final TodayActivitySummary todaySummary;
   final DashboardPurchaseStats purchaseStats;
   final List<DashboardQuickAction> actions;
   final List<_DashboardSectionType> sectionOrder;
   final Set<_DashboardSectionType> visibleSections;
+  final Set<_DashboardSectionType> collapsedSections;
   final bool editing;
   final VoidCallback onStockTap;
   final VoidCallback onLowStockTap;
+  final VoidCallback onOpenSchedules;
   final ReorderCallback onReorder;
   final ReorderCallback onSectionReorder;
   final ValueChanged<_DashboardSectionType> onHideSection;
+  final ValueChanged<_DashboardSectionType> onToggleSectionCollapsed;
 
   const _DashboardContent({
     required this.itemCount,
     required this.totalQty,
     required this.lowCount,
+    required this.todaySchedules,
     required this.todaySummary,
     required this.purchaseStats,
     required this.actions,
     required this.sectionOrder,
     required this.visibleSections,
+    required this.collapsedSections,
     required this.editing,
     required this.onStockTap,
     required this.onLowStockTap,
+    required this.onOpenSchedules,
     required this.onReorder,
     required this.onSectionReorder,
     required this.onHideSection,
+    required this.onToggleSectionCollapsed,
   });
 
   @override
@@ -458,21 +508,30 @@ class _DashboardContent extends StatelessWidget {
     _DashboardSectionType section,
     double gridHeight,
   ) {
+    final child = _buildSectionBody(context, section, gridHeight);
+    if (editing) return child;
+
+    return _DashboardSectionShell(
+      section: section,
+      collapsed: collapsedSections.contains(section),
+      onToggleCollapsed: () => onToggleSectionCollapsed(section),
+      child: child,
+    );
+  }
+
+  Widget _buildSectionBody(
+    BuildContext context,
+    _DashboardSectionType section,
+    double gridHeight,
+  ) {
     switch (section) {
       case _DashboardSectionType.summary:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _DashboardSectionTitle(label: context.t.dashboard_summary),
-            const SizedBox(height: 12),
-            _SummaryPanel(
-              itemCount: itemCount,
-              totalQty: totalQty,
-              lowCount: lowCount,
-              onStockTap: onStockTap,
-              onLowStockTap: onLowStockTap,
-            ),
-          ],
+        return _SummaryPanel(
+          itemCount: itemCount,
+          totalQty: totalQty,
+          lowCount: lowCount,
+          onStockTap: onStockTap,
+          onLowStockTap: onLowStockTap,
         );
       case _DashboardSectionType.assistant:
         return _ChalstockAssistantCard(
@@ -482,26 +541,23 @@ class _DashboardContent extends StatelessWidget {
           onOpenTxns: () => context.read<MainTabController>().setIndex(3),
           onOpenWorks: () => context.read<MainTabController>().setIndex(4),
           onOpenPurchases: () => context.read<MainTabController>().setIndex(5),
-          onOpenSchedules: () =>
-              context.read<MainTabController>().openShellRoute('/schedules'),
+          onOpenSchedules: onOpenSchedules,
+        );
+      case _DashboardSectionType.schedules:
+        return _ScheduleDashboardCard(
+          schedules: todaySchedules,
+          onOpenSchedules: onOpenSchedules,
         );
       case _DashboardSectionType.purchaseStats:
         return _PurchaseStatsSection(stats: purchaseStats);
       case _DashboardSectionType.quickActions:
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _DashboardSectionTitle(label: '빠른 실행 (${actions.length})'),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: gridHeight,
-              child: _DashboardActionGrid(
-                actions: actions,
-                onReorder: onReorder,
-                enabled: !editing,
-              ),
-            ),
-          ],
+        return SizedBox(
+          height: gridHeight,
+          child: _DashboardActionGrid(
+            actions: actions,
+            onReorder: onReorder,
+            enabled: !editing,
+          ),
         );
     }
   }
@@ -523,19 +579,59 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-class _DashboardSectionTitle extends StatelessWidget {
-  final String label;
+class _DashboardSectionShell extends StatelessWidget {
+  final _DashboardSectionType section;
+  final bool collapsed;
+  final VoidCallback onToggleCollapsed;
+  final Widget child;
 
-  const _DashboardSectionTitle({required this.label});
+  const _DashboardSectionShell({
+    required this.section,
+    required this.collapsed,
+    required this.onToggleCollapsed,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: const Color(0xFF202027),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(section.icon, color: const Color(0xFF8B6BEF), size: 21),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  section.label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: const Color(0xFF202027),
+                      ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: onToggleCollapsed,
+                icon: Icon(
+                  collapsed
+                      ? Icons.keyboard_arrow_down_rounded
+                      : Icons.keyboard_arrow_up_rounded,
+                  size: 20,
+                ),
+                label: Text(collapsed ? '펼치기' : '접기'),
+              ),
+            ],
           ),
+          if (!collapsed) ...[
+            const SizedBox(height: 12),
+            child,
+          ],
+        ],
+      ),
     );
   }
 }
@@ -565,6 +661,21 @@ class _EditableDashboardSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 44, 8, 8),
             child: child,
+          ),
+          Positioned(
+            left: 56,
+            right: 56,
+            top: 14,
+            child: Text(
+              section.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: const Color(0xFF7756E7),
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
           ),
           Positioned(
             left: 8,
@@ -1148,6 +1259,199 @@ class _TipPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ScheduleDashboardCard extends StatelessWidget {
+  final List<AppSchedule> schedules;
+  final VoidCallback onOpenSchedules;
+
+  const _ScheduleDashboardCard({
+    required this.schedules,
+    required this.onOpenSchedules,
+  });
+
+  String _time(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pending =
+        schedules.where((s) => s.status == AppScheduleStatus.pending).toList();
+    final done =
+        schedules.where((s) => s.status == AppScheduleStatus.done).toList();
+    final preview = [
+      ...pending,
+      ...done,
+    ].take(3).toList();
+
+    return Material(
+      color: Colors.white.withValues(alpha: 0.9),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE9E2F5)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpenSchedules,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _ScheduleCountPill(
+                    label: '할일',
+                    value: pending.length,
+                    color: const Color(0xFF8B6BEF),
+                  ),
+                  const SizedBox(width: 8),
+                  _ScheduleCountPill(
+                    label: '완료',
+                    value: done.length,
+                    color: const Color(0xFF37A66B),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF8B6BEF),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (preview.isEmpty)
+                const Text(
+                  '오늘 등록된 일정이 없습니다.',
+                  style: TextStyle(
+                    color: Color(0xFF7A7480),
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                )
+              else
+                Column(
+                  children: [
+                    for (var i = 0; i < preview.length; i++)
+                      _SchedulePreviewRow(
+                        schedule: preview[i],
+                        time: _time(preview[i].date),
+                        showDivider: i != preview.length - 1,
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleCountPill extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+
+  const _ScheduleCountPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$value',
+              style: const TextStyle(
+                color: Color(0xFF202027),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SchedulePreviewRow extends StatelessWidget {
+  final AppSchedule schedule;
+  final String time;
+  final bool showDivider;
+
+  const _SchedulePreviewRow({
+    required this.schedule,
+    required this.time,
+    required this.showDivider,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final done = schedule.status == AppScheduleStatus.done;
+    final color = done ? const Color(0xFF37A66B) : const Color(0xFF8B6BEF);
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Row(
+            children: [
+              Icon(
+                done ? Icons.task_alt_rounded : Icons.radio_button_unchecked,
+                color: color,
+                size: 21,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                time,
+                style: const TextStyle(
+                  color: Color(0xFF7A7480),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  schedule.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: const Color(0xFF202027),
+                    fontWeight: FontWeight.w800,
+                    decoration: done ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider) const Divider(height: 1, indent: 31),
+      ],
     );
   }
 }
