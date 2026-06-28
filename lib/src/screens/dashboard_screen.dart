@@ -30,6 +30,7 @@ const _dashboardCollapsedSectionsPrefsKey = 'dashboard.collapsedSections.v1';
 enum _DashboardSectionType {
   summary('summary', '현재 요약', Icons.dashboard_customize_rounded),
   assistant('assistant', '오늘의 찰스톡', Icons.pets_rounded),
+  tarot('tarot', '오늘의 타로', Icons.auto_awesome_rounded),
   schedules('schedules', '일정', Icons.event_note_rounded),
   purchaseStats('purchaseStats', '발주 통계', Icons.local_shipping_rounded),
   quickActions('quickActions', '빠른 실행', Icons.bolt_rounded);
@@ -44,6 +45,7 @@ enum _DashboardSectionType {
 const _defaultDashboardSectionOrder = [
   _DashboardSectionType.summary,
   _DashboardSectionType.assistant,
+  _DashboardSectionType.tarot,
   _DashboardSectionType.schedules,
   _DashboardSectionType.purchaseStats,
   _DashboardSectionType.quickActions,
@@ -762,6 +764,8 @@ class _DashboardContent extends StatelessWidget {
           onOpenPurchases: () => context.read<MainTabController>().setIndex(5),
           onOpenSchedules: onOpenSchedules,
         );
+      case _DashboardSectionType.tarot:
+        return const _TodayTarotCard();
       case _DashboardSectionType.schedules:
         return _ScheduleDashboardCard(
           schedules: todaySchedules,

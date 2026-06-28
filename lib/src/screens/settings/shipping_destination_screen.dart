@@ -58,12 +58,15 @@ class _ShippingDestinationScreenState extends State<ShippingDestinationScreen> {
     }
   }
 
-  Future<void> _archive(ShippingDestination destination) async {
+  Future<void> _delete(ShippingDestination destination) async {
+    final repo = context.read<ShippingDestinationRepo>();
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('배송지 보관'),
-        content: Text('${destination.name} 배송지를 보관할까요?'),
+        title: const Text('배송지 삭제'),
+        content: Text(
+          '${destination.name} 배송지를 삭제할까요?\n기존 발주서에 저장된 배송지 정보는 유지됩니다.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -71,17 +74,19 @@ class _ShippingDestinationScreenState extends State<ShippingDestinationScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('보관'),
+            child: const Text('삭제'),
           ),
         ],
       ),
     );
     if (ok != true) return;
 
-    await context
-        .read<ShippingDestinationRepo>()
-        .archiveShippingDestination(destination.id);
+    await repo.archiveShippingDestination(destination.id);
     await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('배송지를 삭제했습니다')),
+    );
   }
 
   @override
@@ -134,16 +139,16 @@ class _ShippingDestinationScreenState extends State<ShippingDestinationScreen> {
                             onTap: () => _openEditor(destination),
                             trailing: PopupMenuButton<String>(
                               onSelected: (value) {
-                                if (value == 'archive') {
-                                  _archive(destination);
+                                if (value == 'delete') {
+                                  _delete(destination);
                                 }
                               },
                               itemBuilder: (_) => const [
                                 PopupMenuItem(
-                                  value: 'archive',
+                                  value: 'delete',
                                   child: ListTile(
-                                    leading: Icon(Icons.archive_outlined),
-                                    title: Text('보관'),
+                                    leading: Icon(Icons.delete_outline),
+                                    title: Text('삭제'),
                                   ),
                                 ),
                               ],
@@ -185,6 +190,7 @@ class _ShippingDestinationEditorScreenState
 
   late final String _destinationId;
   bool _loading = true;
+  bool _saving = false;
   List<Supplier> _suppliers = const [];
   Set<String> _selectedSupplierIds = {};
   String _query = '';
@@ -238,6 +244,7 @@ class _ShippingDestinationEditorScreenState
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_saving) return;
 
     final repo = context.read<ShippingDestinationRepo>();
     final now = DateTime.now();
@@ -255,18 +262,28 @@ class _ShippingDestinationEditorScreenState
       updatedAt: now,
     );
 
-    if (existing == null) {
-      await repo.createShippingDestination(destination);
-    } else {
-      await repo.updateShippingDestination(destination);
-    }
-    await repo.setDefaultDestinationForSuppliers(
-      destinationId: destination.id,
-      supplierIds: _selectedSupplierIds,
-    );
+    setState(() => _saving = true);
+    try {
+      if (existing == null) {
+        await repo.createShippingDestination(destination);
+      } else {
+        await repo.updateShippingDestination(destination);
+      }
+      await repo.setDefaultDestinationForSuppliers(
+        destinationId: destination.id,
+        supplierIds: _selectedSupplierIds,
+      );
 
-    if (!mounted) return;
-    Navigator.of(context).pop(true);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('배송지를 저장하지 못했습니다: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   String? _nullIfBlank(String value) {
@@ -306,7 +323,7 @@ class _ShippingDestinationEditorScreenState
         actions: [
           IconButton(
             tooltip: '저장',
-            onPressed: _save,
+            onPressed: _saving ? null : _save,
             icon: const Icon(Icons.check),
           ),
         ],
@@ -421,9 +438,15 @@ class _ShippingDestinationEditorScreenState
                     }),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: _save,
-                    icon: const Icon(Icons.check),
-                    label: const Text('저장'),
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
+                    label: Text(_saving ? '저장 중...' : '저장'),
                   ),
                 ],
               ),

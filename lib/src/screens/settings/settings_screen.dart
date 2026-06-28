@@ -2190,11 +2190,13 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
         encryption: encryptionRequest,
         onUploadProgress: (progress) {
           if (!mounted) return;
+          final fraction = progress.fraction;
           setState(() {
-            _uploadProgress = progress.fraction;
-            final percent = progress.fraction == null
+            _uploadProgress =
+                fraction == null || !fraction.isFinite ? null : fraction;
+            final percent = _uploadProgress == null
                 ? null
-                : (progress.fraction! * 100).clamp(0, 100).round();
+                : (_uploadProgress! * 100).clamp(0, 100).round();
             _uploadStatusMessage = percent == null
                 ? '클라우드에 백업을 업로드하는 중입니다. 앱을 종료하지 마세요.'
                 : '클라우드 백업 진행중입니다. $percent% 완료 - 앱을 종료하지 마세요.';
@@ -2471,10 +2473,11 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                     label: const Text('새로고침'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: _uploading
-                        ? null
-                        : () => Navigator.of(context)
-                            .pushNamed('/settings/cloud-backups'),
+                    onPressed:
+                        uid == null || _uploading || !canCreateCloudBackup
+                            ? null
+                            : () => Navigator.of(context)
+                                .pushNamed('/settings/cloud-backups'),
                     icon: const Icon(Icons.list_alt_outlined),
                     label: const Text('백업 목록 보기'),
                   ),
@@ -2511,8 +2514,12 @@ class _CloudBackupProgressNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final percent =
-        progress == null ? null : '${(progress! * 100).clamp(0, 100).round()}%';
+    final safeProgress = progress == null || !progress!.isFinite
+        ? null
+        : progress!.clamp(0.0, 1.0).toDouble();
+    final percent = safeProgress == null
+        ? null
+        : '${(safeProgress * 100).clamp(0, 100).round()}%';
 
     return Container(
       width: double.infinity,
@@ -2557,7 +2564,7 @@ class _CloudBackupProgressNotice extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          LinearProgressIndicator(value: progress),
+          LinearProgressIndicator(value: safeProgress),
         ],
       ),
     );

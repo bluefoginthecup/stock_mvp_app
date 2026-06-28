@@ -2,9 +2,47 @@ part of '../drift_unified_repo.dart';
 
 mixin _ShippingDestinationRepoMixin on _RepoCore
     implements ShippingDestinationRepo {
+  Future<void> _ensureShippingDestinationTables() async {
+    await db.customStatement('''
+      CREATE TABLE IF NOT EXISTS shipping_destinations (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        address TEXT NOT NULL DEFAULT '',
+        contact_name TEXT NULL,
+        phone TEXT NULL,
+        memo TEXT NULL,
+        map_image_path TEXT NULL,
+        is_archived INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.customStatement('''
+      CREATE TABLE IF NOT EXISTS supplier_shipping_destinations (
+        supplier_id TEXT NOT NULL,
+        shipping_destination_id TEXT NOT NULL,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (supplier_id, shipping_destination_id),
+        FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE,
+        FOREIGN KEY (shipping_destination_id) REFERENCES shipping_destinations(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_supplier_shipping_supplier
+      ON supplier_shipping_destinations(supplier_id)
+    ''');
+    await db.customStatement('''
+      CREATE INDEX IF NOT EXISTS idx_supplier_shipping_destination
+      ON supplier_shipping_destinations(shipping_destination_id)
+    ''');
+  }
+
   @override
   Future<String> createShippingDestination(
       ShippingDestination destination) async {
+    await _ensureShippingDestinationTables();
     await db.customStatement(
       '''
       INSERT OR REPLACE INTO shipping_destinations
@@ -32,6 +70,7 @@ mixin _ShippingDestinationRepoMixin on _RepoCore
   @override
   Future<void> updateShippingDestination(
       ShippingDestination destination) async {
+    await _ensureShippingDestinationTables();
     await db.customStatement(
       '''
       UPDATE shipping_destinations
@@ -56,6 +95,7 @@ mixin _ShippingDestinationRepoMixin on _RepoCore
 
   @override
   Future<void> archiveShippingDestination(String id) async {
+    await _ensureShippingDestinationTables();
     final now = DateTime.now().toIso8601String();
     await db.transaction(() async {
       await db.customStatement(
@@ -83,6 +123,7 @@ mixin _ShippingDestinationRepoMixin on _RepoCore
 
   @override
   Future<List<ShippingDestination>> listActiveShippingDestinations() async {
+    await _ensureShippingDestinationTables();
     final rows = await db.customSelect(
       '''
       SELECT id, name, address, contact_name, phone, memo, map_image_path,
@@ -98,6 +139,7 @@ mixin _ShippingDestinationRepoMixin on _RepoCore
   @override
   Future<List<ShippingDestination>> listDestinationsForSupplier(
       String supplierId) async {
+    await _ensureShippingDestinationTables();
     final rows = await db.customSelect(
       '''
       SELECT d.id, d.name, d.address, d.contact_name, d.phone, d.memo,
@@ -116,6 +158,7 @@ mixin _ShippingDestinationRepoMixin on _RepoCore
   @override
   Future<ShippingDestination?> getDefaultDestinationForSupplier(
       String supplierId) async {
+    await _ensureShippingDestinationTables();
     final row = await db.customSelect(
       '''
       SELECT d.id, d.name, d.address, d.contact_name, d.phone, d.memo,
@@ -136,6 +179,7 @@ mixin _ShippingDestinationRepoMixin on _RepoCore
   @override
   Future<List<Supplier>> listDefaultSuppliersForDestination(
       String destinationId) async {
+    await _ensureShippingDestinationTables();
     final rows = await db.customSelect(
       '''
       SELECT s.*
@@ -158,6 +202,7 @@ mixin _ShippingDestinationRepoMixin on _RepoCore
     required String supplierId,
     required String destinationId,
   }) async {
+    await _ensureShippingDestinationTables();
     final now = DateTime.now().toIso8601String();
     await db.transaction(() async {
       await db.customStatement(
@@ -188,6 +233,7 @@ mixin _ShippingDestinationRepoMixin on _RepoCore
     required String destinationId,
     required Set<String> supplierIds,
   }) async {
+    await _ensureShippingDestinationTables();
     final now = DateTime.now().toIso8601String();
     await db.transaction(() async {
       await db.customStatement(

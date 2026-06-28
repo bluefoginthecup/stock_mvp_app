@@ -1,6 +1,7 @@
 // lib/src/providers/cart_manager.dart
 import 'package:flutter/foundation.dart';
 
+import '../models/buyer_profile.dart';
 import '../models/cart_item.dart';
 import '../models/item.dart';
 import '../models/purchase_line.dart';
@@ -199,6 +200,7 @@ class CartManager extends ChangeNotifier {
     required PurchaseOrderRepo poRepo,
     required ItemRepo itemRepo,
     required SupplierRepo supplierRepo,
+    BuyerProfile? buyerProfile,
   }) async {
     if (picked.isEmpty) return [];
 
@@ -224,8 +226,10 @@ class CartManager extends ChangeNotifier {
         eta: DateTime.now().add(const Duration(days: 2)),
         status: PurchaseOrderStatus.draft,
       );
+      final poWithBuyer =
+          buyerProfile == null ? po : po.copyWithBuyerProfile(buyerProfile);
 
-      final savedId = await poRepo.createPurchaseOrder(po);
+      final savedId = await poRepo.createPurchaseOrder(poWithBuyer);
 
       final lines = <PurchaseLine>[];
       for (var i = 0; i < entry.value.length; i++) {

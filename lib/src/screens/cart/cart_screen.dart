@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/main_tab_controller.dart';
+import '../../db/app_database.dart';
 import '../../providers/cart_manager.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../screens/orders/order_from_cart.dart';
+import '../../services/buyer_profile_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -230,12 +232,16 @@ class _CartScreenState extends State<CartScreen> {
       final picked = cart.pickByIndexes(_selected);
 
       try {
+        final buyerProfile =
+            await BuyerProfileService(ctx.read<AppDatabase>()).defaultProfile();
+
         // ✅ 선택된 항목만으로 발주서 생성
         final ids = await cart.createPurchaseOrdersFromPicked(
           picked: picked,
           poRepo: poRepo,
           itemRepo: itemRepo,
           supplierRepo: supplierRepo,
+          buyerProfile: buyerProfile,
         );
 
         // ✅ 선택된 항목만 장바구니에서 제거

@@ -76,7 +76,8 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     });
 
     try {
-      final po = await widget.repo.getPurchaseOrderById(_orderId);
+      var po = await widget.repo.getPurchaseOrderById(_orderId);
+      po = await _applyDefaultBuyerIfMissing(po);
       final lines = await widget.repo.getLines(_orderId);
       final receipts = await _repairReceiptFilePaths(
         await widget.repo.getPurchaseReceipts(_orderId),
@@ -101,6 +102,35 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         _loading = false;
       });
     }
+  }
+
+  Future<PurchaseOrder?> _applyDefaultBuyerIfMissing(PurchaseOrder? po) async {
+    if (po == null) return null;
+    if (!_needsDefaultBuyer(po)) return po;
+
+    final defaultProfile =
+        await BuyerProfileService(context.read<AppDatabase>()).defaultProfile();
+    if (!defaultProfile.isConfigured) return po;
+
+    final updated = po.copyWithBuyerProfile(defaultProfile);
+    await widget.repo.updatePurchaseOrder(updated);
+    return updated;
+  }
+
+  bool _needsDefaultBuyer(PurchaseOrder po) {
+    final hasSnapshot = [
+      po.buyerCompanyName,
+      po.buyerBusinessNumber,
+      po.buyerRepresentative,
+      po.buyerAddress,
+      po.buyerBusinessType,
+      po.buyerBusinessItem,
+      po.buyerPhoneFax,
+    ].any((value) => value?.trim().isNotEmpty == true);
+    if (!hasSnapshot) return true;
+
+    return po.buyerCompanyName?.trim() == '홍길동 상사' &&
+        po.buyerBusinessNumber?.trim() == '000-00-00000';
   }
 
   List<String> get _navigationIds {
@@ -795,174 +825,20 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
   Future<void> _editDeliveryInfo(PurchaseOrder po) async {
     final shippingRepo = context.read<ShippingDestinationRepo>();
-    final destinations = (po.supplierId ?? '').isEmpty
-        ? <ShippingDestination>[]
-        : await shippingRepo.listDestinationsForSupplier(po.supplierId!);
-    final nameC = TextEditingController(text: po.deliveryName ?? '');
-    final addressC = TextEditingController(text: po.deliveryAddress ?? '');
-    final phoneC = TextEditingController(text: po.deliveryPhone ?? '');
-    final memoC = TextEditingController(text: po.deliveryMemo ?? '');
-    var selectedDestinationId = po.shippingDestinationId;
-    var showOnPrint = po.showDeliveryOnPrint;
+    final destinations = await shippingRepo.listActiveShippingDestinations();
 
-    try {
-      final updated = await showModalBottomSheet<PurchaseOrder>(
-        context: context,
-        isScrollControlled: true,
-        builder: (sheetContext) {
-          return StatefulBuilder(
-            builder: (context, setSheetState) {
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text(
-                        '배송지',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('발주서에 배송지 표시'),
-                        subtitle: const Text('기본값은 표시 안 함입니다.'),
-                        value: showOnPrint,
-                        onChanged: (value) {
-                          setSheetState(() => showOnPrint = value);
-                        },
-                      ),
-                      if ((po.supplierId ?? '').isEmpty) ...[
-                        const SizedBox(height: 8),
-                        const ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.info_outline),
-                          title: Text('거래처를 먼저 연결해주세요'),
-                          subtitle: Text('거래처 기본 배송지를 기준으로 선택할 수 있습니다.'),
-                        ),
-                      ] else if (destinations.isEmpty) ...[
-                        const SizedBox(height: 8),
-                        const ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.info_outline),
-                          title: Text('연결된 배송지가 없습니다'),
-                          subtitle: Text('설정 > 배송지 관리에서 거래처 기본 배송지를 지정해주세요.'),
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          value: destinations.any(
-                            (destination) =>
-                                destination.id == selectedDestinationId,
-                          )
-                              ? selectedDestinationId
-                              : null,
-                          decoration:
-                              const InputDecoration(labelText: '배송지 선택'),
-                          items: [
-                            for (final destination in destinations)
-                              DropdownMenuItem(
-                                value: destination.id,
-                                child: Text(destination.name),
-                              ),
-                          ],
-                          onChanged: (value) {
-                            ShippingDestination? destination;
-                            for (final item in destinations) {
-                              if (item.id == value) {
-                                destination = item;
-                                break;
-                              }
-                            }
-                            if (destination == null) return;
-                            final picked = destination;
-                            setSheetState(() {
-                              selectedDestinationId = picked.id;
-                              nameC.text = picked.name;
-                              addressC.text = picked.address;
-                              phoneC.text = picked.phone ?? '';
-                              memoC.text = picked.memo ?? '';
-                            });
-                          },
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: nameC,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: '수령처',
-                          hintText: '예: 자장노래 본사, 보령 창고',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: addressC,
-                        minLines: 1,
-                        maxLines: 3,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(labelText: '주소'),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: phoneC,
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(labelText: '연락처'),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: memoC,
-                        minLines: 1,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: '배송 메모',
-                          hintText: '예: 1층 입구 앞, 오전 수령 가능',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: () {
-                          Navigator.pop(
-                            sheetContext,
-                            po.copyWith(
-                              deliveryName: nameC.text.trim(),
-                              deliveryAddress: addressC.text.trim(),
-                              deliveryPhone: phoneC.text.trim(),
-                              deliveryMemo: memoC.text.trim(),
-                              showDeliveryOnPrint: showOnPrint,
-                              shippingDestinationId: selectedDestinationId,
-                              updatedAt: DateTime.now(),
-                            ),
-                          );
-                        },
-                        child: const Text('저장'),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      );
+    final updated = await showModalBottomSheet<PurchaseOrder>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _DeliveryInfoSheet(
+        po: po,
+        destinations: destinations,
+      ),
+    );
 
-      if (updated == null) return;
-      await widget.repo.updatePurchaseOrder(updated);
-      await _reload();
-    } finally {
-      nameC.dispose();
-      addressC.dispose();
-      phoneC.dispose();
-      memoC.dispose();
-    }
+    if (updated == null) return;
+    await widget.repo.updatePurchaseOrder(updated);
+    await _reload();
   }
 
   Future<void> _handleDateTap(int index) async {
@@ -2294,6 +2170,183 @@ class _ExpandedImageReceiptTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DeliveryInfoSheet extends StatefulWidget {
+  final PurchaseOrder po;
+  final List<ShippingDestination> destinations;
+
+  const _DeliveryInfoSheet({
+    required this.po,
+    required this.destinations,
+  });
+
+  @override
+  State<_DeliveryInfoSheet> createState() => _DeliveryInfoSheetState();
+}
+
+class _DeliveryInfoSheetState extends State<_DeliveryInfoSheet> {
+  late final TextEditingController _nameC;
+  late final TextEditingController _addressC;
+  late final TextEditingController _phoneC;
+  late final TextEditingController _memoC;
+  late String? _selectedDestinationId;
+  late bool _showOnPrint;
+
+  @override
+  void initState() {
+    super.initState();
+    final po = widget.po;
+    _nameC = TextEditingController(text: po.deliveryName ?? '');
+    _addressC = TextEditingController(text: po.deliveryAddress ?? '');
+    _phoneC = TextEditingController(text: po.deliveryPhone ?? '');
+    _memoC = TextEditingController(text: po.deliveryMemo ?? '');
+    _selectedDestinationId = po.shippingDestinationId;
+    _showOnPrint = po.showDeliveryOnPrint;
+  }
+
+  @override
+  void dispose() {
+    _nameC.dispose();
+    _addressC.dispose();
+    _phoneC.dispose();
+    _memoC.dispose();
+    super.dispose();
+  }
+
+  void _applyDestination(String? value) {
+    ShippingDestination? destination;
+    for (final item in widget.destinations) {
+      if (item.id == value) {
+        destination = item;
+        break;
+      }
+    }
+    if (destination == null) return;
+    setState(() {
+      _selectedDestinationId = destination!.id;
+      _nameC.text = destination.name;
+      _addressC.text = destination.address;
+      _phoneC.text = destination.phone ?? '';
+      _memoC.text = destination.memo ?? '';
+    });
+  }
+
+  void _save() {
+    Navigator.pop(
+      context,
+      widget.po.copyWith(
+        deliveryName: _nameC.text.trim(),
+        deliveryAddress: _addressC.text.trim(),
+        deliveryPhone: _phoneC.text.trim(),
+        deliveryMemo: _memoC.text.trim(),
+        showDeliveryOnPrint: _showOnPrint,
+        shippingDestinationId: _selectedDestinationId,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final destinations = widget.destinations;
+    final validSelectedId = destinations
+            .any((destination) => destination.id == _selectedDestinationId)
+        ? _selectedDestinationId
+        : null;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '배송지',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('발주서에 배송지 표시'),
+              subtitle: const Text('기본값은 표시 안 함입니다.'),
+              value: _showOnPrint,
+              onChanged: (value) => setState(() => _showOnPrint = value),
+            ),
+            if (destinations.isEmpty) ...[
+              const SizedBox(height: 8),
+              const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.info_outline),
+                title: Text('등록된 배송지가 없습니다'),
+                subtitle: Text('설정 > 배송지 관리에서 배송지를 먼저 등록해주세요.'),
+              ),
+            ] else ...[
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: validSelectedId,
+                decoration: const InputDecoration(labelText: '배송지 선택'),
+                items: [
+                  for (final destination in destinations)
+                    DropdownMenuItem(
+                      value: destination.id,
+                      child: Text(destination.name),
+                    ),
+                ],
+                onChanged: _applyDestination,
+              ),
+            ],
+            const SizedBox(height: 8),
+            TextField(
+              controller: _nameC,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: '수령처',
+                hintText: '예: 자장노래 본사, 보령 창고',
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _addressC,
+              minLines: 1,
+              maxLines: 3,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: '주소'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _phoneC,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: '연락처'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _memoC,
+              minLines: 1,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: '배송 메모',
+                hintText: '예: 1층 입구 앞, 오전 수령 가능',
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _save,
+              child: const Text('저장'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -42,6 +42,9 @@ class EntitlementService {
           'revenueCatUserId': uid,
           'revenueCatProActive': purchaseSnapshot.proActive,
           'revenueCatCloudBackupActive': purchaseSnapshot.cloudBackupActive,
+          'revenueCatProProductId': purchaseSnapshot.activeProProductId,
+          'revenueCatCloudBackupProductId':
+              purchaseSnapshot.activeCloudBackupProductId,
           'lastSyncedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -61,6 +64,8 @@ class EntitlementService {
       isCloudTrialActive:
           cloudTrialEndsAt != null && now.isBefore(cloudTrialEndsAt),
       hasCloudBackup: hasCloudBackup,
+      activeProProductId: purchaseSnapshot.activeProProductId,
+      activeCloudBackupProductId: purchaseSnapshot.activeCloudBackupProductId,
       appTrialEndsAt: appTrialEndsAt,
       cloudTrialEndsAt: cloudTrialEndsAt,
     );

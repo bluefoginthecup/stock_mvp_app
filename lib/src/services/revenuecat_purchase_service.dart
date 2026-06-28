@@ -7,10 +7,14 @@ import 'package:purchases_flutter/purchases_flutter.dart' as rc;
 class RevenueCatEntitlementSnapshot {
   final bool proActive;
   final bool cloudBackupActive;
+  final String? activeProProductId;
+  final String? activeCloudBackupProductId;
 
   const RevenueCatEntitlementSnapshot({
     required this.proActive,
     required this.cloudBackupActive,
+    this.activeProProductId,
+    this.activeCloudBackupProductId,
   });
 
   static const empty = RevenueCatEntitlementSnapshot(
@@ -233,16 +237,36 @@ class RevenueCatPurchaseService {
   ) {
     final entitlements = customerInfo.entitlements.all;
     final activeSubscriptions = customerInfo.activeSubscriptions.toSet();
+    final activeProProductId = _firstMatchingProductId(
+      activeSubscriptions,
+      proProductIds,
+    );
+    final activeCloudBackupProductId = _firstMatchingProductId(
+      activeSubscriptions,
+      cloudBackupProductIds,
+    );
     final proActive =
         _isAnyEntitlementActive(entitlements, _proEntitlementIds) ||
-            activeSubscriptions.any(proProductIds.contains);
+            activeProProductId != null;
     final cloudBackupActive =
         _isAnyEntitlementActive(entitlements, _cloudBackupEntitlementIds) ||
-            activeSubscriptions.any(cloudBackupProductIds.contains);
+            activeCloudBackupProductId != null;
     return RevenueCatEntitlementSnapshot(
       proActive: proActive,
       cloudBackupActive: cloudBackupActive,
+      activeProProductId: activeProProductId,
+      activeCloudBackupProductId: activeCloudBackupProductId,
     );
+  }
+
+  String? _firstMatchingProductId(
+    Set<String> activeSubscriptions,
+    Set<String> productIds,
+  ) {
+    for (final productId in productIds) {
+      if (activeSubscriptions.contains(productId)) return productId;
+    }
+    return null;
   }
 
   bool _isAnyEntitlementActive(

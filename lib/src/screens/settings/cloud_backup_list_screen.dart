@@ -49,7 +49,12 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
     });
 
     try {
-      final cleanupResult = await service.cleanupBackups();
+      CloudBackupCleanupResult? cleanupResult;
+      try {
+        cleanupResult = await service.cleanupBackups();
+      } catch (e) {
+        debugPrint('☁️ CloudBackup cleanup skipped on list screen: $e');
+      }
       final backups = await service.listBackups();
       if (!mounted) return;
       setState(() {
