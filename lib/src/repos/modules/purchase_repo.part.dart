@@ -7,9 +7,11 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
     return po.id;
   }
 
+  @override
   Future<void> updatePurchaseOrder(PurchaseOrder po) async {
     await (db.update(db.purchaseOrders)..where((t) => t.id.equals(po.id)))
         .write(po.toCompanion());
+    await _markOrderedItemsIfNeeded(po.id, po.status);
   }
 
   @override
@@ -21,12 +23,7 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
         updatedAt: Value(DateTime.now().toIso8601String()),
       ),
     );
-    if (status == PurchaseOrderStatus.received) {
-      final lines = await getLines(id);
-      await (this as ItemRepo).markItemsOrderedNow(
-        lines.map((line) => line.itemId),
-      );
-    }
+    await _markOrderedItemsIfNeeded(id, status);
   }
 
   @override
@@ -128,6 +125,24 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
         await db.into(db.purchaseLines).insert(safeLine.toCompanion());
       }
     });
+    final po = await getPurchaseOrderById(orderId);
+    if (po != null) {
+      await _markOrderedItemsIfNeeded(orderId, po.status);
+    }
+  }
+
+  Future<void> _markOrderedItemsIfNeeded(
+    String orderId,
+    PurchaseOrderStatus status,
+  ) async {
+    if (status != PurchaseOrderStatus.ordered &&
+        status != PurchaseOrderStatus.received) {
+      return;
+    }
+    final lines = await getLines(orderId);
+    await (this as ItemRepo).markItemsOrderedNow(
+      lines.map((line) => line.itemId),
+    );
   }
 
   Future<double> _resolvePrice(String itemId) async {

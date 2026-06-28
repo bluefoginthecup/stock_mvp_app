@@ -242,6 +242,31 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   }
 
   @override
+  Future<DateTime?> latestPurchaseOrderedAtForItem(String itemId) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT po.created_at AS ordered_at
+      FROM purchase_lines pl
+      JOIN purchase_orders po ON po.id = pl.order_id
+      WHERE pl.item_id = ?
+        AND po.is_deleted = 0
+        AND po.status IN (?, ?)
+      ORDER BY po.created_at DESC
+      LIMIT 1
+      ''',
+      variables: [
+        Variable.withString(itemId),
+        Variable.withString(PurchaseOrderStatus.ordered.name),
+        Variable.withString(PurchaseOrderStatus.received.name),
+      ],
+    ).get();
+    if (rows.isEmpty) return null;
+    final value = rows.first.data['ordered_at'] as String?;
+    if (value == null) return null;
+    return DateTime.tryParse(value);
+  }
+
+  @override
   Future<void> markItemsOrderedNow(Iterable<String> itemIds) async {
     final ids = itemIds.toSet();
     if (ids.isEmpty) return;

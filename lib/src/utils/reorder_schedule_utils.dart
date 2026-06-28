@@ -16,6 +16,15 @@ class ReorderScheduleUtils {
   static DateTime dateOnly(DateTime date) =>
       DateTime(date.year, date.month, date.day);
 
+  static DateTime? effectiveNextReorderDate(Item item, {DateTime? now}) {
+    final calculated = calculateNextReorderDate(
+      lastOrderedAt: item.lastOrderedAt,
+      intervalDays: item.reorderIntervalDays,
+      now: now,
+    );
+    return calculated ?? item.nextReorderDate;
+  }
+
   static DateTime? calculateNextReorderDate({
     required DateTime? lastOrderedAt,
     required int? intervalDays,
@@ -36,19 +45,21 @@ class ReorderScheduleUtils {
   }
 
   static bool isReminderDue(Item item, {DateTime? now}) {
-    if (item.reorderIntervalDays == null || item.nextReorderDate == null) {
+    final nextReorderDate = effectiveNextReorderDate(item, now: now);
+    if (item.reorderIntervalDays == null || nextReorderDate == null) {
       return false;
     }
     final today = dateOnly(now ?? DateTime.now());
     final reminder = reminderDate(
-      nextReorderDate: item.nextReorderDate,
+      nextReorderDate: nextReorderDate,
       daysBefore: item.reorderReminderDaysBefore,
     );
     return reminder != null && !today.isBefore(reminder);
   }
 
   static ReorderScheduleStatus statusFor(Item item, {DateTime? now}) {
-    if (!isReminderDue(item, now: now) || item.nextReorderDate == null) {
+    final nextReorderDate = effectiveNextReorderDate(item, now: now);
+    if (!isReminderDue(item, now: now) || nextReorderDate == null) {
       return const ReorderScheduleStatus(
         shouldShow: false,
         label: '',
@@ -57,7 +68,7 @@ class ReorderScheduleUtils {
     }
 
     final today = dateOnly(now ?? DateTime.now());
-    final next = dateOnly(item.nextReorderDate!);
+    final next = dateOnly(nextReorderDate);
     final diff = next.difference(today).inDays;
     if (diff < 0) {
       return const ReorderScheduleStatus(

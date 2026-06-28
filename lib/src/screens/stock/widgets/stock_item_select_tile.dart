@@ -81,7 +81,7 @@ class StockItemSelectTile extends StatelessWidget {
               ],
             ),
           ),
-          if (item.nextReorderDate != null) ...[
+          if (ReorderScheduleUtils.effectiveNextReorderDate(item) != null) ...[
             const SizedBox(height: 2),
             Row(
               children: [
@@ -89,7 +89,7 @@ class StockItemSelectTile extends StatelessWidget {
                 const SizedBox(width: 2),
                 Flexible(
                   child: Text(
-                    '다음 발주: ${_formatDate(item.nextReorderDate!)}',
+                    '다음 발주: ${_formatDate(ReorderScheduleUtils.effectiveNextReorderDate(item)!)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 12, color: Colors.black54),

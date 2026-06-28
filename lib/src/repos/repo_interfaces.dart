@@ -60,6 +60,7 @@ abstract class ItemRepo {
   Future<void> upsertItem(Item item);
   Future<void> markItemOrderedNow(String itemId);
   Future<void> markItemsOrderedNow(Iterable<String> itemIds);
+  Future<DateTime?> latestPurchaseOrderedAtForItem(String itemId);
   Future<void> deleteItem(String id);
 
   /// 아이템 ID로 경로명(루트~디자인)을 반환

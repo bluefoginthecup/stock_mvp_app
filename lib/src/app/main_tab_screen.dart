@@ -53,14 +53,14 @@ class _ScrollableBottomTabs extends StatelessWidget {
   final String selectedId;
   final ScrollController scrollController;
   final ValueChanged<String> onSelect;
-  final VoidCallback onLongPress;
+  final VoidCallback onEdit;
 
   const _ScrollableBottomTabs({
     required this.tabs,
     required this.selectedId,
     required this.scrollController,
     required this.onSelect,
-    required this.onLongPress,
+    required this.onEdit,
   });
 
   @override
@@ -85,15 +85,17 @@ class _ScrollableBottomTabs extends StatelessWidget {
               controller: scrollController,
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              itemCount: tabs.length,
+              itemCount: tabs.length + 1,
               separatorBuilder: (_, __) => const SizedBox(width: 4),
               itemBuilder: (context, index) {
+                if (index == tabs.length) {
+                  return _BottomTabEditButton(onTap: onEdit);
+                }
                 final tab = tabs[index];
                 return _BottomTabButton(
                   tab: tab,
                   selected: tab.id == selectedId,
                   onTap: () => onSelect(tab.id),
-                  onLongPress: onLongPress,
                 );
               },
             ),
@@ -108,13 +110,11 @@ class _BottomTabButton extends StatelessWidget {
   final _BottomTabSpec tab;
   final bool selected;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
 
   const _BottomTabButton({
     required this.tab,
     required this.selected,
     required this.onTap,
-    required this.onLongPress,
   });
 
   @override
@@ -131,7 +131,6 @@ class _BottomTabButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           onTap: onTap,
-          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(18),
           child: SizedBox(
             width: 76,
@@ -154,6 +153,42 @@ class _BottomTabButton extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomTabEditButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _BottomTabEditButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: SizedBox(
+            width: 56,
+            child: Center(
+              child: Tooltip(
+                message: '하단 탭 편집',
+                child: Icon(
+                  Icons.edit_rounded,
+                  color: scheme.onSurfaceVariant,
+                  size: 24,
+                ),
               ),
             ),
           ),
@@ -606,7 +641,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
             }
             _selectTab(id);
           },
-          onLongPress: _showBottomTabEditor,
+          onEdit: _showBottomTabEditor,
         ),
         drawer: Drawer(
           width: math.min(360, MediaQuery.of(context).size.width * 0.88),

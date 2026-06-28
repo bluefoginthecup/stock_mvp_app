@@ -173,13 +173,6 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     super.dispose();
   }
 
-  DateTime? _previewNextReorderDate(Item item) {
-    return ReorderScheduleUtils.calculateNextReorderDate(
-      lastOrderedAt: item.lastOrderedAt,
-      intervalDays: _currentReorderIntervalDays(),
-    );
-  }
-
   int? _currentReorderIntervalDays() {
     if (_reorderCustomSelected) {
       return int.tryParse(reorderCustomDaysC.text.trim());
@@ -187,10 +180,10 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     return _reorderIntervalDays;
   }
 
-  String _dateText(DateTime? value) {
-    if (value == null) return '없음';
-    final d = ReorderScheduleUtils.dateOnly(value);
-    return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+  DateTime? _latestDate(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return b.isAfter(a) ? b : a;
   }
 
   void _resetAttrEditors(Map<String, dynamic>? attrs) {
@@ -293,8 +286,11 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       );
       return;
     }
+    final latestOrderedAt = await repo.latestPurchaseOrderedAtForItem(i.id);
+    final effectiveLastOrderedAt =
+        _latestDate(i.lastOrderedAt, latestOrderedAt);
     final nextReorderDate = ReorderScheduleUtils.calculateNextReorderDate(
-      lastOrderedAt: i.lastOrderedAt,
+      lastOrderedAt: effectiveLastOrderedAt,
       intervalDays: reorderInterval,
     );
 
@@ -327,7 +323,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       defaultPurchasePrice: purchasePrice ?? i.defaultPurchasePrice,
       defaultSalePrice: salePrice ?? i.defaultSalePrice,
       reorderIntervalDays: reorderInterval,
-      lastOrderedAt: i.lastOrderedAt,
+      lastOrderedAt: effectiveLastOrderedAt,
       nextReorderDate: nextReorderDate,
       reorderReminderEnabled:
           reorderInterval != null && _reorderReminderEnabled,
@@ -343,6 +339,41 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
         const SnackBar(content: Text('정식등록 완료')),
       );
     }
+    Navigator.pop(context, true);
+  }
+
+  Future<void> _moveToTrash() async {
+    final item = _loaded;
+    if (item == null) return;
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('아이템 삭제'),
+            content: Text('"${item.displayName ?? item.name}"을 휴지통으로 보낼까요?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('삭제'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok || !mounted) return;
+
+    await context.read<ItemRepo>().moveItemToTrash(item.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('휴지통으로 이동했습니다.')),
+    );
     Navigator.pop(context, true);
   }
 
@@ -368,96 +399,6 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
       _selectedSupplierId = null;
       supplierC.clear();
     });
-  }
-
-  Widget _buildReorderSection(Item item) {
-    final text = Theme.of(context).textTheme;
-    final selectedValue =
-        _reorderCustomSelected ? -1 : (_reorderIntervalDays ?? 0);
-    final nextDate = _previewNextReorderDate(item);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('정기 발주', style: text.titleSmall),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<int>(
-          value: selectedValue,
-          decoration: const InputDecoration(labelText: '발주 주기'),
-          items: const [
-            DropdownMenuItem<int>(value: 0, child: Text('없음')),
-            DropdownMenuItem<int>(value: 7, child: Text('7일마다')),
-            DropdownMenuItem<int>(value: 14, child: Text('14일마다')),
-            DropdownMenuItem<int>(value: 30, child: Text('1개월마다')),
-            DropdownMenuItem<int>(value: 90, child: Text('3개월마다')),
-            DropdownMenuItem<int>(value: 180, child: Text('6개월마다')),
-            DropdownMenuItem<int>(value: 365, child: Text('1년마다')),
-            DropdownMenuItem<int>(value: -1, child: Text('사용자 지정')),
-          ],
-          onChanged: (value) {
-            setState(() {
-              _reorderCustomSelected = value == -1;
-              _reorderIntervalDays = value == -1 || value == 0 ? null : value;
-              if (value == 0) {
-                _reorderReminderEnabled = false;
-              }
-            });
-          },
-        ),
-        if (_reorderCustomSelected) ...[
-          const SizedBox(height: 8),
-          TextFormField(
-            controller: reorderCustomDaysC,
-            decoration: const InputDecoration(labelText: '사용자 지정 일수'),
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
-            validator: (_) {
-              if (!_reorderCustomSelected) return null;
-              final days = int.tryParse(reorderCustomDaysC.text.trim());
-              if (days == null || days <= 0) return '1 이상의 정수';
-              return null;
-            },
-          ),
-        ],
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            Chip(
-              avatar: const Icon(Icons.history, size: 16),
-              label: Text('최근 발주일: ${_dateText(item.lastOrderedAt)}'),
-            ),
-            Chip(
-              avatar: const Icon(Icons.event_available, size: 16),
-              label: Text('다음 발주 예정일: ${_dateText(nextDate)}'),
-            ),
-          ],
-        ),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('발주 알림 받기'),
-          value:
-              _reorderReminderEnabled && _currentReorderIntervalDays() != null,
-          onChanged: _currentReorderIntervalDays() == null
-              ? null
-              : (value) => setState(() => _reorderReminderEnabled = value),
-        ),
-        if (_reorderReminderEnabled && _currentReorderIntervalDays() != null)
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final option in const [0, 1, 3, 7])
-                ChoiceChip(
-                  label: Text(option == 0 ? '당일' : '$option일 전'),
-                  selected: _reorderReminderDaysBefore == option,
-                  onSelected: (_) {
-                    setState(() => _reorderReminderDaysBefore = option);
-                  },
-                ),
-            ],
-          ),
-      ],
-    );
   }
 
   Future<void> _moveThisItem() async {
@@ -824,29 +765,6 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
 
                   const SizedBox(height: 16),
                   Text('재고/임계치', style: text.titleSmall),
-                  const SizedBox(height: 16),
-                  Text('가격', style: text.titleSmall),
-                  const SizedBox(height: 8),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: purchasePriceC,
-                          decoration: _dec('기본 입고가'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: salePriceC,
-                          decoration: _dec('기본 출고가'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: minQtyC,
@@ -866,9 +784,6 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
                         _dec('qty (권장: Adjust 사용)', hint: '롱프레스 or 하단 버튼 사용'),
                     keyboardType: TextInputType.number,
                   ),
-
-                  const SizedBox(height: 16),
-                  _buildReorderSection(item),
 
                   const SizedBox(height: 16),
                   Text('분류/속성', style: text.titleSmall),
@@ -947,6 +862,21 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
                     onPressed: _save,
                     icon: const Icon(Icons.save),
                     label: const Text('저장'),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _moveToTrash,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('삭제'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                      side: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .error
+                            .withValues(alpha: 0.55),
+                      ),
+                    ),
                   ),
                 ],
               ),

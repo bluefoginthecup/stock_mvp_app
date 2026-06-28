@@ -11,14 +11,17 @@ import '../db/app_database.dart';
 import '../db/quick_actions_order_dao.dart';
 import '../models/app_schedule.dart';
 import '../models/dashboard_purchase_stats.dart';
+import '../models/item.dart';
 import '../models/today_activity_summary.dart';
 import '../repos/repo_interfaces.dart';
 import '../services/dashboard_activity_service.dart';
 import '../services/dashboard_purchase_stats_service.dart';
 import '../ui/common/ui.dart';
+import '../utils/reorder_schedule_utils.dart';
 import 'dashboard/dashboard_quick_actions.dart';
 import 'schedules/schedule_edit_screen.dart';
 import 'stock/stock_browser_screen.dart';
+import 'stock/stock_item_detail_screen.dart';
 
 const _dashboardSectionOrderPrefsKey = 'dashboard.sectionOrder.v1';
 const _dashboardHiddenSectionsPrefsKey = 'dashboard.hiddenSections.v1';
@@ -248,6 +251,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<List<Item>> _loadReorderAlertItems(ItemRepo repo) async {
+    final items = await repo.listItems();
+    return _reorderAlertItems(items);
+  }
+
+  List<Item> _reorderAlertItems(Iterable<Item> items) {
+    final now = DateTime.now();
+    final alerts = items.where((item) {
+      if (!item.reorderReminderEnabled) return false;
+      return ReorderScheduleUtils.statusFor(item, now: now).shouldShow;
+    }).toList();
+
+    alerts.sort((a, b) {
+      final aStatus = ReorderScheduleUtils.statusFor(a, now: now);
+      final bStatus = ReorderScheduleUtils.statusFor(b, now: now);
+      if (aStatus.overdue != bStatus.overdue) {
+        return aStatus.overdue ? -1 : 1;
+      }
+      final aDate = ReorderScheduleUtils.effectiveNextReorderDate(a, now: now);
+      final bDate = ReorderScheduleUtils.effectiveNextReorderDate(b, now: now);
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return aDate.compareTo(bDate);
+    });
+    return alerts;
+  }
+
+  Future<void> _showReorderAlerts(ItemRepo repo) async {
+    final items = await _loadReorderAlertItems(repo);
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) => _ReorderAlertSheet(
+        items: items,
+        onOpenItem: (item) {
+          Navigator.of(sheetContext).pop();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => StockItemDetailScreen(itemId: item.id),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final itemRepo = context.read<ItemRepo>();
@@ -265,27 +317,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         elevation: 0,
         actions: [
           if (!_editingDashboard)
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  tooltip: '알림',
-                  icon: const Icon(Icons.notifications_none_rounded),
-                  onPressed: () {},
-                ),
-                Positioned(
-                  right: 12,
-                  top: 12,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF8B6BEF),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
+            _DashboardNotificationButton(
+              stream: itemRepo.watchItems().map(_reorderAlertItems),
+              onPressed: () => _showReorderAlerts(itemRepo),
             ),
           if (_editingDashboard)
             IconButton(
@@ -293,12 +327,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               icon: const Icon(Icons.add_circle_outline_rounded),
               onPressed: _showAddSectionSheet,
             ),
-          TextButton(
-            onPressed: () {
-              setState(() => _editingDashboard = !_editingDashboard);
-            },
-            child: Text(_editingDashboard ? '완료' : '편집'),
-          ),
+          if (_editingDashboard)
+            TextButton(
+              onPressed: () {
+                setState(() => _editingDashboard = false);
+              },
+              child: const Text('완료'),
+            ),
           const SizedBox(width: 4),
         ],
       ),
@@ -381,6 +416,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onHideSection: _hideDashboardSection,
                         onToggleSectionCollapsed:
                             _toggleDashboardSectionCollapsed,
+                        onEnterEditMode: () {
+                          if (!_editingDashboard) {
+                            setState(() => _editingDashboard = true);
+                          }
+                        },
                       );
                     },
                   );
@@ -389,6 +429,167 @@ class _DashboardScreenState extends State<DashboardScreen> {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _DashboardNotificationButton extends StatelessWidget {
+  final Stream<List<Item>> stream;
+  final VoidCallback onPressed;
+
+  const _DashboardNotificationButton({
+    required this.stream,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<Item>>(
+      stream: stream,
+      initialData: const <Item>[],
+      builder: (context, snapshot) {
+        final count = snapshot.data?.length ?? 0;
+        return Semantics(
+          label: count > 0 ? '발주 알림 $count개' : '알림',
+          button: true,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                tooltip: '알림',
+                icon: const Icon(Icons.notifications_none_rounded),
+                onPressed: onPressed,
+              ),
+              if (count > 0)
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF8B6BEF),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ReorderAlertSheet extends StatelessWidget {
+  final List<Item> items;
+  final ValueChanged<Item> onOpenItem;
+
+  const _ReorderAlertSheet({
+    required this.items,
+    required this.onOpenItem,
+  });
+
+  String _dateText(DateTime? value) {
+    if (value == null) return '예정일 없음';
+    final d = ReorderScheduleUtils.dateOnly(value);
+    return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final height = math.min(MediaQuery.of(context).size.height * 0.72, 560.0);
+
+    return SafeArea(
+      child: SizedBox(
+        height: height,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.notifications_active_outlined,
+                    color: Color(0xFF7756E7),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '발주 알림',
+                    style: text.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${items.length}개',
+                    style: text.bodyMedium?.copyWith(
+                      color: const Color(0xFF6F6878),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            if (items.isEmpty)
+              const Expanded(
+                child: Center(
+                  child: Text(
+                    '지금 확인할 발주 알림이 없습니다.',
+                    style: TextStyle(
+                      color: Color(0xFF6F6878),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final status = ReorderScheduleUtils.statusFor(item);
+                    final nextDate =
+                        ReorderScheduleUtils.effectiveNextReorderDate(item);
+                    final color = status.overdue
+                        ? Colors.deepOrange.shade700
+                        : const Color(0xFF7756E7);
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: color.withValues(alpha: 0.1),
+                        foregroundColor: color,
+                        child: Icon(
+                          status.overdue
+                              ? Icons.priority_high_rounded
+                              : Icons.event_repeat_rounded,
+                        ),
+                      ),
+                      title: Text(
+                        item.displayName ?? item.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                      subtitle: Text(
+                        '${status.label} · ${_dateText(nextDate)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => onOpenItem(item),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -413,6 +614,7 @@ class _DashboardContent extends StatelessWidget {
   final ReorderCallback onSectionReorder;
   final ValueChanged<_DashboardSectionType> onHideSection;
   final ValueChanged<_DashboardSectionType> onToggleSectionCollapsed;
+  final VoidCallback onEnterEditMode;
 
   const _DashboardContent({
     required this.itemCount,
@@ -433,6 +635,7 @@ class _DashboardContent extends StatelessWidget {
     required this.onSectionReorder,
     required this.onHideSection,
     required this.onToggleSectionCollapsed,
+    required this.onEnterEditMode,
   });
 
   @override
@@ -494,7 +697,10 @@ class _DashboardContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (var i = 0; i < sections.length; i++) ...[
-                if (i > 0) const SizedBox(height: 18),
+                if (i > 0)
+                  SizedBox(
+                    height: _sectionGapBefore(sections[i - 1], sections[i]),
+                  ),
                 _buildSection(context, sections[i], gridHeight),
               ],
             ],
@@ -502,6 +708,17 @@ class _DashboardContent extends StatelessWidget {
         );
       },
     );
+  }
+
+  double _sectionGapBefore(
+    _DashboardSectionType previous,
+    _DashboardSectionType current,
+  ) {
+    final previousCollapsed = collapsedSections.contains(previous);
+    final currentCollapsed = collapsedSections.contains(current);
+    if (previousCollapsed && currentCollapsed) return 6;
+    if (previousCollapsed || currentCollapsed) return 10;
+    return 18;
   }
 
   Widget _buildSection(
@@ -516,6 +733,7 @@ class _DashboardContent extends StatelessWidget {
       section: section,
       collapsed: collapsedSections.contains(section),
       onToggleCollapsed: () => onToggleSectionCollapsed(section),
+      onLongPressHeader: onEnterEditMode,
       child: child,
     );
   }
@@ -584,12 +802,14 @@ class _DashboardSectionShell extends StatelessWidget {
   final _DashboardSectionType section;
   final bool collapsed;
   final VoidCallback onToggleCollapsed;
+  final VoidCallback onLongPressHeader;
   final Widget child;
 
   const _DashboardSectionShell({
     required this.section,
     required this.collapsed,
     required this.onToggleCollapsed,
+    required this.onLongPressHeader,
     required this.child,
   });
 
@@ -602,30 +822,40 @@ class _DashboardSectionShell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(section.icon, color: const Color(0xFF8B6BEF), size: 21),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  section.label,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: const Color(0xFF202027),
-                      ),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onLongPress: onLongPressHeader,
+            child: Row(
+              children: [
+                Icon(section.icon, color: const Color(0xFF8B6BEF), size: 21),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    section.label,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF202027),
+                        ),
+                  ),
                 ),
-              ),
-              TextButton.icon(
-                onPressed: onToggleCollapsed,
-                icon: Icon(
-                  collapsed
-                      ? Icons.keyboard_arrow_down_rounded
-                      : Icons.keyboard_arrow_up_rounded,
-                  size: 20,
+                IconButton(
+                  tooltip: collapsed ? '펼치기' : '접기',
+                  onPressed: onToggleCollapsed,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  icon: Icon(
+                    collapsed
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
+                    size: 20,
+                  ),
                 ),
-                label: Text(collapsed ? '펼치기' : '접기'),
-              ),
-            ],
+              ],
+            ),
           ),
           if (!collapsed) ...[
             const SizedBox(height: 12),
@@ -922,35 +1152,24 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        const Icon(Icons.pets_rounded, color: Color(0xFF8B6BEF), size: 22),
-        const SizedBox(width: 8),
-        Text(
-          '오늘의 찰스톡',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: const Color(0xFF7756E7),
-                fontWeight: FontWeight.w800,
-              ),
-        ),
-        const Spacer(),
-        Icon(
-          _expanded
-              ? Icons.keyboard_arrow_up_rounded
-              : Icons.chevron_right_rounded,
-          color: const Color(0xFF8B6BEF),
-        ),
-      ],
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Icon(
+        _expanded
+            ? Icons.keyboard_arrow_up_rounded
+            : Icons.chevron_right_rounded,
+        color: const Color(0xFF8B6BEF),
+      ),
     );
   }
 
   Widget _buildCompact(BuildContext context) {
     return SizedBox(
-      height: 132,
+      height: 118,
       child: Column(
         children: [
           _buildHeader(context),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Expanded(
             child: Row(
               children: [
@@ -1311,7 +1530,7 @@ class _ScheduleDashboardCard extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1324,7 +1543,7 @@ class _ScheduleDashboardCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Color(0xFF050507),
-                      fontSize: 28,
+                      fontSize: 22,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1334,13 +1553,13 @@ class _ScheduleDashboardCard extends StatelessWidget {
                   _updateLabel(),
                   style: const TextStyle(
                     color: Color(0xFF8E8A94),
-                    fontSize: 15,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -1380,7 +1599,7 @@ class _ScheduleDashboardCard extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 10,
               runSpacing: 8,
@@ -1399,7 +1618,7 @@ class _ScheduleDashboardCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
             if (visibleSchedules.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 6),
@@ -1419,12 +1638,11 @@ class _ScheduleDashboardCard extends StatelessWidget {
                     _ScheduleWidgetRow(schedule: visibleSchedules[i]),
                 ],
               ),
-            const SizedBox(height: 6),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
                 onPressed: onOpenSchedules,
-                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                icon: const Icon(Icons.open_in_new_rounded, size: 17),
                 label: const Text('전체 보기'),
               ),
             ),
@@ -1455,17 +1673,17 @@ class _ScheduleWidgetAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 22, color: const Color(0xFF101013)),
-              const SizedBox(width: 8),
+              Icon(icon, size: 19, color: const Color(0xFF101013)),
+              const SizedBox(width: 7),
               Text(
                 label,
                 style: const TextStyle(
                   color: Color(0xFF101013),
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1498,12 +1716,12 @@ class _ScheduleStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
         child: Text(
           '$label $value',
           style: TextStyle(
             color: color,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -1529,15 +1747,15 @@ class _ScheduleWidgetRow extends StatelessWidget {
             ),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: Row(
             children: [
               Icon(
                 done ? Icons.check_circle_rounded : Icons.circle_outlined,
                 color: done ? const Color(0xFF35C56F) : const Color(0xFFC04FDD),
-                size: 25,
+                size: 21,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   schedule.title,
@@ -1545,7 +1763,7 @@ class _ScheduleWidgetRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: const Color(0xFF08080A),
-                    fontSize: 19,
+                    fontSize: 15,
                     fontWeight: FontWeight.w800,
                     decoration: done ? TextDecoration.lineThrough : null,
                   ),
@@ -1601,29 +1819,6 @@ class _PurchaseStatsSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const Icon(
-                    Icons.local_shipping_rounded,
-                    color: Color(0xFF7756E7),
-                    size: 22,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '발주 통계',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: const Color(0xFF2B2930),
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const Spacer(),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF8B6BEF),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final twoColumns = constraints.maxWidth >= 520;

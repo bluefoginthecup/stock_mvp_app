@@ -29,7 +29,6 @@ import 'widgets/item_meta_overview.dart';
 import 'widgets/reorder_badge.dart';
 import '../../ui/common/qty_set_sheet.dart';
 import '../../ui/common/inout_flow.dart';
-import '../../ui/common/path_picker.dart';
 
 import '../../dev/bom_debug.dart'; // 콘솔 덤프 유틸
 import '../../providers/cart_manager.dart';
@@ -61,6 +60,78 @@ class _ItemLocationViewData {
     required this.links,
     required this.allLocations,
   });
+}
+
+class _ClearPrice {
+  const _ClearPrice();
+}
+
+class _PriceEditDialog extends StatefulWidget {
+  final String label;
+  final String initialText;
+
+  const _PriceEditDialog({
+    required this.label,
+    required this.initialText,
+  });
+
+  @override
+  State<_PriceEditDialog> createState() => _PriceEditDialogState();
+}
+
+class _PriceEditDialogState extends State<_PriceEditDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('${widget.label} 입력'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        decoration: InputDecoration(
+          labelText: widget.label,
+          hintText: '0',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, const _ClearPrice()),
+          child: const Text('비우기'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final raw = _controller.text.trim();
+            if (raw.isEmpty) {
+              Navigator.pop(context, const _ClearPrice());
+              return;
+            }
+            final parsed = double.tryParse(raw);
+            if (parsed == null || parsed < 0) return;
+            Navigator.pop(context, parsed);
+          },
+          child: const Text('저장'),
+        ),
+      ],
+    );
+  }
 }
 
 class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
@@ -147,6 +218,278 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       _isFinished = finishedGuess;
       _registrationMissing = missing;
     });
+  }
+
+  String _dateText(DateTime? value) {
+    if (value == null) return '없음';
+    final d = ReorderScheduleUtils.dateOnly(value);
+    return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+  }
+
+  DateTime? _latestDate(DateTime? a, DateTime? b) {
+    if (a == null) return b;
+    if (b == null) return a;
+    return b.isAfter(a) ? b : a;
+  }
+
+  String _priceText(double? value) {
+    final price = value ?? 0;
+    if (price == price.roundToDouble()) return price.toInt().toString();
+    return price.toStringAsFixed(2);
+  }
+
+  Item _copyItemMeta(
+    Item item, {
+    double? defaultPurchasePrice,
+    bool setDefaultPurchasePrice = false,
+    double? defaultSalePrice,
+    bool setDefaultSalePrice = false,
+    int? reorderIntervalDays,
+    bool setReorderIntervalDays = false,
+    DateTime? lastOrderedAt,
+    bool setLastOrderedAt = false,
+    DateTime? nextReorderDate,
+    bool setNextReorderDate = false,
+    bool? reorderReminderEnabled,
+    int? reorderReminderDaysBefore,
+  }) {
+    return Item(
+      id: item.id,
+      name: item.name,
+      displayName: item.displayName,
+      sku: item.sku,
+      unit: item.unit,
+      folder: item.folder,
+      subfolder: item.subfolder,
+      subsubfolder: item.subsubfolder,
+      minQty: item.minQty,
+      qty: item.qty,
+      kind: item.kind,
+      attrs: item.attrs,
+      unitIn: item.unitIn,
+      unitOut: item.unitOut,
+      conversionRate: item.conversionRate,
+      conversionMode: item.conversionMode,
+      stockHints: item.stockHints,
+      supplierName: item.supplierName,
+      defaultSupplierId: item.defaultSupplierId,
+      defaultPrice: item.defaultPrice,
+      isFavorite: item.isFavorite,
+      defaultPurchasePrice: setDefaultPurchasePrice
+          ? defaultPurchasePrice
+          : item.defaultPurchasePrice,
+      defaultSalePrice:
+          setDefaultSalePrice ? defaultSalePrice : item.defaultSalePrice,
+      reorderIntervalDays: setReorderIntervalDays
+          ? reorderIntervalDays
+          : item.reorderIntervalDays,
+      lastOrderedAt: setLastOrderedAt ? lastOrderedAt : item.lastOrderedAt,
+      nextReorderDate:
+          setNextReorderDate ? nextReorderDate : item.nextReorderDate,
+      reorderReminderEnabled:
+          reorderReminderEnabled ?? item.reorderReminderEnabled,
+      reorderReminderDaysBefore:
+          reorderReminderDaysBefore ?? item.reorderReminderDaysBefore,
+    );
+  }
+
+  Future<void> _saveItemMeta(Item updated) async {
+    await context.read<ItemRepo>().updateItemMeta(updated);
+    if (!mounted) return;
+    await _load();
+  }
+
+  Future<void> _editPrice(Item item, {required bool purchase}) async {
+    final label = purchase ? '입고가' : '출고가';
+    final result = await showDialog<Object?>(
+      context: context,
+      builder: (_) => _PriceEditDialog(
+        label: label,
+        initialText: _priceText(
+          purchase ? item.defaultPurchasePrice : item.defaultSalePrice,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    if (result == null) return;
+    final value = result is _ClearPrice ? null : result as double;
+
+    await _saveItemMeta(
+      _copyItemMeta(
+        item,
+        defaultPurchasePrice: purchase ? value : null,
+        setDefaultPurchasePrice: purchase,
+        defaultSalePrice: purchase ? null : value,
+        setDefaultSalePrice: !purchase,
+      ),
+    );
+  }
+
+  Future<void> _setReorderInterval(Item item, int? days) async {
+    final latestOrderedAt =
+        await context.read<ItemRepo>().latestPurchaseOrderedAtForItem(item.id);
+    final effectiveLastOrderedAt =
+        _latestDate(item.lastOrderedAt, latestOrderedAt);
+    final nextDate = ReorderScheduleUtils.calculateNextReorderDate(
+      lastOrderedAt: effectiveLastOrderedAt,
+      intervalDays: days,
+    );
+    await _saveItemMeta(
+      _copyItemMeta(
+        item,
+        reorderIntervalDays: days,
+        setReorderIntervalDays: true,
+        lastOrderedAt: effectiveLastOrderedAt,
+        setLastOrderedAt: true,
+        nextReorderDate: nextDate,
+        setNextReorderDate: true,
+        reorderReminderEnabled: days != null && item.reorderReminderEnabled,
+      ),
+    );
+  }
+
+  Future<void> _setReorderReminderEnabled(Item item, bool enabled) async {
+    if (item.reorderIntervalDays == null) return;
+    await _saveItemMeta(
+      _copyItemMeta(item, reorderReminderEnabled: enabled),
+    );
+  }
+
+  Future<void> _setReorderReminderDaysBefore(Item item, int days) async {
+    await _saveItemMeta(
+      _copyItemMeta(item, reorderReminderDaysBefore: days),
+    );
+  }
+
+  Widget _buildPriceActions(Item item) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ActionChip(
+          avatar: const Icon(Icons.download, size: 16),
+          label: Text('입고가: ${_priceText(item.defaultPurchasePrice)}'),
+          onPressed: () => _editPrice(item, purchase: true),
+        ),
+        ActionChip(
+          avatar: const Icon(Icons.upload, size: 16),
+          label: Text('출고가: ${_priceText(item.defaultSalePrice)}'),
+          onPressed: () => _editPrice(item, purchase: false),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReorderSettings(Item item) {
+    final intervalOptions = <int>[0, 7, 14, 30, 90, 180, 365];
+    final current = item.reorderIntervalDays ?? 0;
+    if (!intervalOptions.contains(current)) {
+      intervalOptions.add(current);
+      intervalOptions.sort();
+    }
+
+    String intervalLabel(int days) {
+      switch (days) {
+        case 0:
+          return '없음';
+        case 7:
+          return '7일마다';
+        case 14:
+          return '14일마다';
+        case 30:
+          return '1개월마다';
+        case 90:
+          return '3개월마다';
+        case 180:
+          return '6개월마다';
+        case 365:
+          return '1년마다';
+        default:
+          return '$days일마다';
+      }
+    }
+
+    return FutureBuilder<DateTime?>(
+      future: context.read<ItemRepo>().latestPurchaseOrderedAtForItem(item.id),
+      builder: (context, snapshot) {
+        final effectiveLastOrderedAt = _latestDate(
+          item.lastOrderedAt,
+          snapshot.data,
+        );
+        final nextDate = ReorderScheduleUtils.calculateNextReorderDate(
+          lastOrderedAt: effectiveLastOrderedAt,
+          intervalDays: item.reorderIntervalDays,
+        );
+        return Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '정기 발주',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<int>(
+                  value: current,
+                  decoration: const InputDecoration(labelText: '발주 주기'),
+                  items: [
+                    for (final days in intervalOptions)
+                      DropdownMenuItem<int>(
+                        value: days,
+                        child: Text(intervalLabel(days)),
+                      ),
+                  ],
+                  onChanged: (value) =>
+                      _setReorderInterval(item, value == 0 ? null : value),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Chip(
+                      avatar: const Icon(Icons.history, size: 16),
+                      label:
+                          Text('최근 발주일: ${_dateText(effectiveLastOrderedAt)}'),
+                    ),
+                    Chip(
+                      avatar: const Icon(Icons.event_available, size: 16),
+                      label: Text('다음 발주 예정일: ${_dateText(nextDate)}'),
+                    ),
+                  ],
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('발주 알림 받기'),
+                  value: item.reorderReminderEnabled &&
+                      item.reorderIntervalDays != null,
+                  onChanged: item.reorderIntervalDays == null
+                      ? null
+                      : (value) => _setReorderReminderEnabled(item, value),
+                ),
+                if (item.reorderReminderEnabled &&
+                    item.reorderIntervalDays != null)
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      for (final option in const [0, 1, 3, 7])
+                        ChoiceChip(
+                          label: Text(option == 0 ? '당일' : '$option일 전'),
+                          selected: item.reorderReminderDaysBefore == option,
+                          onSelected: (_) =>
+                              _setReorderReminderDaysBefore(item, option),
+                        ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showRecentTxns() async {
@@ -877,27 +1220,6 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     );
   }
 
-  Future<bool> _confirm(BuildContext context, String message) async {
-    return (await showDialog<bool>(
-          context: context,
-          builder: (dialogCtx) => AlertDialog(
-            title: const Text('확인'),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogCtx, false), // ✅ 변경
-                child: const Text('취소'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogCtx, true), // ✅ 변경
-                child: const Text('확인'),
-              ),
-            ],
-          ),
-        )) ??
-        false;
-  }
-
   Future<void> _toggleFavorite() async {
     final it = _item;
     if (it == null) return;
@@ -909,68 +1231,6 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       SnackBar(content: Text(next ? '즐겨찾기에 추가했습니다.' : '즐겨찾기 해제했습니다.')),
     );
     await _load();
-  }
-
-  Future<void> _moveThisItem() async {
-    final it = _item;
-    if (it == null) return;
-    final folderRepo = context.read<FolderTreeRepo>();
-    final dest = await showPathPicker(
-      context,
-      // ✅ 상세화면에서는 인라인으로 FolderNode → PathNode 매핑
-      childrenProvider: (String? parentId) async {
-        final folders = await folderRepo.listFolderChildren(parentId);
-        return folders.map((f) => PathNode(f.id, f.name)).toList();
-      },
-      title: '아이템 이동..',
-      maxDepth: 3,
-    );
-    if (dest == null || dest.isEmpty) return;
-    try {
-      final moved =
-          await folderRepo.moveItemsToPath(itemIds: [it.id], pathIds: dest);
-      final finalized =
-          await context.read<ItemRepo>().tryFinalizeRegistration(it.id);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(finalized ? '정식등록 완료' : '아이템 $moved개 이동')),
-      );
-      await _load();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('이동 실패: $e')));
-    }
-  }
-
-  Future<void> _trashThisItem() async {
-    final it = _item;
-    if (it == null) return;
-    final ok =
-        await _confirm(context, '"${it.displayName ?? it.name}"을 휴지통으로 보낼까요?');
-    if (!ok) return;
-    try {
-      await context.read<ItemRepo>().moveItemToTrash(it.id);
-      if (!context.mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('휴지통 이동됨'),
-          action: SnackBarAction(
-            label: '열기',
-            onPressed: () =>
-                context.read<MainTabController>().openShellRoute('/trash'),
-          ),
-        ),
-      );
-
-// 👉 그 다음 pop
-      Navigator.of(context).pop();
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('이동 실패: $e')));
-    }
   }
 
   void _addThisToCart() {
@@ -1021,14 +1281,20 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
         actions: [
           IconButton(
             tooltip: '모든 필드 편집',
-            icon: const Icon(Icons.tune),
+            icon: const Icon(Icons.edit_outlined),
             onPressed: () async {
-              final changed = await Navigator.of(context).push<bool>(
+              final navigator = Navigator.of(context);
+              final changed = await navigator.push<bool>(
                 MaterialPageRoute(
                   builder: (_) => StockItemFullEditScreen(itemId: _item!.id),
                 ),
               );
-              if (changed == true) await _load();
+              if (changed == true) {
+                await _load();
+                if (mounted && _item == null) {
+                  navigator.pop(true);
+                }
+              }
             },
           ),
           if (_item != null)
@@ -1040,15 +1306,9 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
             ),
           if (_item != null)
             IconButton(
-              tooltip: '이동',
-              icon: const Icon(Icons.drive_file_move),
-              onPressed: _moveThisItem,
-            ),
-          if (_item != null)
-            IconButton(
-              tooltip: '휴지통으로',
-              icon: const Icon(Icons.delete_outline),
-              onPressed: _trashThisItem,
+              tooltip: '장바구니 담기',
+              icon: const Icon(Icons.add_shopping_cart),
+              onPressed: _addThisToCart,
             ),
         ],
       ),
@@ -1111,11 +1371,6 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                           avatar: const Icon(Icons.straighten, size: 16),
                           label: Text('${context.t.item_unit}: ${item.unit}'),
                         ),
-                        IconButton(
-                          tooltip: '장바구니 담기',
-                          icon: const Icon(Icons.add_shopping_cart),
-                          onPressed: _addThisToCart,
-                        ),
                       ],
                     ),
 
@@ -1132,20 +1387,9 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        Chip(
-                          avatar: const Icon(Icons.download, size: 16),
-                          label: Text('입고가: ${item.defaultPurchasePrice ?? 0}'),
-                        ),
-                        Chip(
-                          avatar: const Icon(Icons.upload, size: 16),
-                          label: Text('출고가: ${item.defaultSalePrice ?? 0}'),
-                        ),
-                      ],
-                    ),
+                    _buildPriceActions(item),
+                    const SizedBox(height: 12),
+                    _buildReorderSettings(item),
 
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
