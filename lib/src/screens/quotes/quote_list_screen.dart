@@ -6,10 +6,12 @@ import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../db/app_database.dart';
+import '../../models/calendar_event.dart';
 import '../../models/quote.dart';
 import '../../models/quote_line.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/buyer_profile_service.dart';
+import '../../ui/common/common_calendar_view.dart';
 import 'quote_detail_screen.dart';
 
 class QuoteListScreen extends StatefulWidget {
@@ -24,6 +26,12 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
   String _query = '';
   Timer? _debounce;
   bool _creating = false;
+  bool _isCalendarView = true;
+  DateTime? _focusedDay;
+  final Set<CalendarEventType> _eventTypeFilter = {
+    CalendarEventType.quoteDate,
+    CalendarEventType.quoteValidUntil,
+  };
 
   @override
   void initState() {
@@ -77,6 +85,92 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
     await context.read<QuoteRepo>().softDeleteQuote(quote.id);
   }
 
+  Future<void> _openQuoteDetail(String quoteId) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => QuoteDetailScreen(quoteId: quoteId)),
+    );
+  }
+
+  String _quoteCustomerName(Quote quote) {
+    final name = quote.customerName.trim();
+    return name.isEmpty ? '거래처 미지정' : name;
+  }
+
+  String _quoteLineSubtitle(List<QuoteLine> lines) {
+    if (lines.isEmpty) return '품목 없음';
+    if (lines.length == 1) return lines.first.name;
+    return '${lines.first.name} 외 ${lines.length - 1}개 품목';
+  }
+
+  List<CalendarEvent> _mapQuoteEvents(
+    List<Quote> quotes,
+    Map<String, List<QuoteLine>> linesMap,
+  ) {
+    return [
+      for (final quote in quotes) ...[
+        CalendarEvent(
+          date: quote.quoteDate,
+          type: CalendarEventType.quoteDate,
+          title: '견적 - ${_quoteCustomerName(quote)}',
+          subtitle: _quoteLineSubtitle(linesMap[quote.id] ?? const []),
+          refId: quote.id,
+          searchText: _quoteSearchText(quote, linesMap[quote.id] ?? const []),
+        ),
+        if (quote.validUntil != null)
+          CalendarEvent(
+            date: quote.validUntil!,
+            type: CalendarEventType.quoteValidUntil,
+            title: '유효기한 - ${_quoteCustomerName(quote)}',
+            subtitle: _quoteLineSubtitle(linesMap[quote.id] ?? const []),
+            refId: quote.id,
+            searchText: _quoteSearchText(quote, linesMap[quote.id] ?? const []),
+          ),
+      ],
+    ];
+  }
+
+  String _quoteSearchText(Quote quote, List<QuoteLine> lines) {
+    return '${quote.customerName} ${lines.map((line) => line.name).join(' ')}'
+        .toLowerCase();
+  }
+
+  Widget _buildFilterChip(String label, CalendarEventType type) {
+    final selected = _eventTypeFilter.contains(type);
+    final color = _colorForType(type);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: FilterChip(
+        selected: selected,
+        showCheckmark: false,
+        selectedColor: color.withValues(alpha: 0.18),
+        backgroundColor: Colors.grey.shade200,
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text(label),
+          ],
+        ),
+        onSelected: (_) {
+          setState(() {
+            if (selected) {
+              _eventTypeFilter.remove(type);
+            } else {
+              _eventTypeFilter.add(type);
+            }
+          });
+        },
+      ),
+    );
+  }
+
   String _statusText(QuoteStatus status) {
     switch (status) {
       case QuoteStatus.draft:
@@ -109,6 +203,15 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
                   ),
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: _isCalendarView ? '목록 보기' : '달력 보기',
+            icon: Icon(_isCalendarView ? Icons.list : Icons.calendar_today),
+            onPressed: () {
+              setState(() => _isCalendarView = !_isCalendarView);
+            },
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: _creating
@@ -145,6 +248,53 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
                 return const Center(child: Text('견적서가 없습니다.'));
               }
 
+              if (_isCalendarView) {
+                final events = _mapQuoteEvents(quotes, linesMap);
+                final filteredEvents = events
+                    .where((event) => _eventTypeFilter.contains(event.type))
+                    .toList();
+
+                if (_query.isNotEmpty && filteredEvents.isNotEmpty) {
+                  filteredEvents.sort((a, b) => b.date.compareTo(a.date));
+                  final nextFocusedDay = filteredEvents.first.date;
+                  if (_focusedDay != nextFocusedDay) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      setState(() => _focusedDay = nextFocusedDay);
+                    });
+                  }
+                }
+
+                return SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                        child: Row(
+                          children: [
+                            _buildFilterChip(
+                              '견적',
+                              CalendarEventType.quoteDate,
+                            ),
+                            _buildFilterChip(
+                              '유효기한',
+                              CalendarEventType.quoteValidUntil,
+                            ),
+                          ],
+                        ),
+                      ),
+                      CommonCalendarView(
+                        events: filteredEvents,
+                        focusedDay: _focusedDay,
+                        scrollEvents: false,
+                        onEventTap: (event) => _openQuoteDetail(event.refId),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
               return ListView.separated(
                 padding: const EdgeInsets.fromLTRB(12, 12, 12, 96),
                 itemCount: quotes.length,
@@ -161,11 +311,7 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
                   return Card(
                     child: ListTile(
                       leading: const Icon(Icons.request_quote_outlined),
-                      title: Text(
-                        quote.customerName.trim().isEmpty
-                            ? '거래처 미지정'
-                            : quote.customerName,
-                      ),
+                      title: Text(_quoteCustomerName(quote)),
                       subtitle: Text(
                         '${DateFormat('yyyy.MM.dd').format(quote.quoteDate)} · '
                         '${_statusText(quote.status)} · ${lines.length}개 품목',
@@ -187,12 +333,7 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
                           ),
                         ],
                       ),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => QuoteDetailScreen(quoteId: quote.id),
-                        ),
-                      ),
+                      onTap: () => _openQuoteDetail(quote.id),
                     ),
                   );
                 },
@@ -202,5 +343,16 @@ class _QuoteListScreenState extends State<QuoteListScreen> {
         },
       ),
     );
+  }
+}
+
+Color _colorForType(CalendarEventType type) {
+  switch (type) {
+    case CalendarEventType.quoteDate:
+      return Colors.indigo;
+    case CalendarEventType.quoteValidUntil:
+      return Colors.deepOrange;
+    default:
+      return Colors.grey;
   }
 }

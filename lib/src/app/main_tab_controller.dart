@@ -2,8 +2,23 @@
 import 'package:flutter/foundation.dart';
 
 class MainTabController extends ChangeNotifier {
-  int _index = 0;
-  int get index => _index;
+  static const dashboardTabId = 'dashboard';
+  static const _legacyTabIds = [
+    dashboardTabId,
+    'orders',
+    'stock',
+    'txns',
+    'works',
+    'purchases',
+  ];
+
+  String _tabId = dashboardTabId;
+  String get tabId => _tabId;
+
+  int get index {
+    final legacyIndex = _legacyTabIds.indexOf(_tabId);
+    return legacyIndex < 0 ? 0 : legacyIndex;
+  }
 
   get jumpTo => null;
 
@@ -36,8 +51,16 @@ class MainTabController extends ChangeNotifier {
   }
 
   void setIndex(int i) {
-    if (_index == i) return;
-    _index = i;
+    if (i < 0 || i >= _legacyTabIds.length) {
+      setTabId(dashboardTabId);
+      return;
+    }
+    setTabId(_legacyTabIds[i]);
+  }
+
+  void setTabId(String id) {
+    if (_tabId == id) return;
+    _tabId = id;
     notifyListeners();
   }
 

@@ -95,6 +95,10 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
           return Colors.blue;
         case CalendarEventType.workDone:
           return Colors.green;
+        case CalendarEventType.quoteDate:
+          return Colors.indigo;
+        case CalendarEventType.quoteValidUntil:
+          return Colors.deepOrange;
         default:
           return Colors.grey;
       }
@@ -119,9 +123,13 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
                 e.subtitle ?? _typeLabel(e.type),
               ),
               onTap: () {
-                setState(() {
-                  _expandedIndex = _expandedIndex == i ? -1 : i;
-                });
+                if (widget.expandedBuilder == null) {
+                  widget.onEventTap?.call(e);
+                } else {
+                  setState(() {
+                    _expandedIndex = _expandedIndex == i ? -1 : i;
+                  });
+                }
               },
             ),
           ),
@@ -243,6 +251,10 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
         return Icons.play_circle;
       case CalendarEventType.workDone:
         return Icons.task_alt;
+      case CalendarEventType.quoteDate:
+        return Icons.request_quote_outlined;
+      case CalendarEventType.quoteValidUntil:
+        return Icons.event_available;
       default:
         return Icons.event;
     }
@@ -268,6 +280,10 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
         return '진행 작업';
       case CalendarEventType.workDone:
         return '완료 작업';
+      case CalendarEventType.quoteDate:
+        return '견적일';
+      case CalendarEventType.quoteValidUntil:
+        return '유효기한';
       default:
         return '';
     }

@@ -9,6 +9,8 @@ enum CalendarEventType {
   workPlanned,
   workInProgress,
   workDone,
+  quoteDate,
+  quoteValidUntil,
 }
 
 class CalendarEvent {

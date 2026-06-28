@@ -1284,10 +1284,10 @@ class _ScheduleDashboardCard extends StatelessWidget {
         schedules.where((s) => s.status == AppScheduleStatus.pending).toList();
     final done =
         schedules.where((s) => s.status == AppScheduleStatus.done).toList();
-    final preview = [
+    final visibleSchedules = [
       ...pending,
       ...done,
-    ].take(3).toList();
+    ];
 
     return Material(
       color: Colors.white.withValues(alpha: 0.9),
@@ -1325,7 +1325,7 @@ class _ScheduleDashboardCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 14),
-              if (preview.isEmpty)
+              if (visibleSchedules.isEmpty)
                 const Text(
                   '오늘 등록된 일정이 없습니다.',
                   style: TextStyle(
@@ -1337,11 +1337,11 @@ class _ScheduleDashboardCard extends StatelessWidget {
               else
                 Column(
                   children: [
-                    for (var i = 0; i < preview.length; i++)
+                    for (var i = 0; i < visibleSchedules.length; i++)
                       _SchedulePreviewRow(
-                        schedule: preview[i],
-                        time: _time(preview[i].date),
-                        showDivider: i != preview.length - 1,
+                        schedule: visibleSchedules[i],
+                        time: _time(visibleSchedules[i].date),
+                        showDivider: i != visibleSchedules.length - 1,
                       ),
                   ],
                 ),

@@ -40,11 +40,25 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  Future<void> _openEditor({AppSchedule? schedule}) async {
+  Future<void> _openEditor({
+    AppSchedule? schedule,
+    DateTime? initialDate,
+  }) async {
+    final draft = schedule == null
+        ? ScheduleDraft(
+            title: '',
+            body: '',
+            date: _dayOnly(initialDate ?? DateTime.now()),
+          )
+        : null;
+
     await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => ScheduleEditScreen(schedule: schedule),
+        builder: (_) => ScheduleEditScreen(
+          schedule: schedule,
+          draft: draft,
+        ),
       ),
     );
   }
@@ -482,7 +496,9 @@ class _ScheduleListScreenState extends State<ScheduleListScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openEditor(),
+        onPressed: () => _openEditor(
+          initialDate: _isCalendarView ? _selectedDay : DateTime.now(),
+        ),
         icon: const Icon(Icons.add),
         label: const Text('새 일정'),
       ),

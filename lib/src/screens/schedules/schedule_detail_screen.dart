@@ -68,6 +68,19 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     setState(() => _schedule = next);
   }
 
+  Future<void> _toggleStatus() async {
+    final nextStatus = _schedule.status == AppScheduleStatus.pending
+        ? AppScheduleStatus.done
+        : AppScheduleStatus.pending;
+    final next = _schedule.copyWith(
+      status: nextStatus,
+      updatedAt: DateTime.now(),
+    );
+    await context.read<ScheduleRepo>().updateSchedule(next);
+    if (!mounted) return;
+    setState(() => _schedule = next);
+  }
+
   Future<void> _delete() async {
     final repo = context.read<ScheduleRepo>();
     final confirmed = await showDialog<bool>(
@@ -263,6 +276,17 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         title: const Text('일정 상세'),
         actions: [
           IconButton(
+            tooltip: _schedule.status == AppScheduleStatus.pending
+                ? '한일로 변경'
+                : '할일로 변경',
+            icon: Icon(
+              _schedule.status == AppScheduleStatus.pending
+                  ? Icons.task_alt_rounded
+                  : Icons.radio_button_unchecked,
+            ),
+            onPressed: _toggleStatus,
+          ),
+          IconButton(
             tooltip: _schedule.isPinned ? '고정 해제' : '고정',
             icon: Icon(
               _schedule.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
@@ -312,6 +336,20 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
               Chip(label: Text(dateText)),
               for (final tag in _schedule.tags) Chip(label: Text('#$tag')),
             ],
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            onPressed: _toggleStatus,
+            icon: Icon(
+              _schedule.status == AppScheduleStatus.pending
+                  ? Icons.task_alt_rounded
+                  : Icons.radio_button_unchecked,
+            ),
+            label: Text(
+              _schedule.status == AppScheduleStatus.pending
+                  ? '한일로 변경'
+                  : '할일로 변경',
+            ),
           ),
           if (_schedule.body.trim().isNotEmpty) ...[
             const SizedBox(height: 18),
