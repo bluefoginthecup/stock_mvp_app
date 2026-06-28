@@ -17,6 +17,7 @@ import '../services/dashboard_activity_service.dart';
 import '../services/dashboard_purchase_stats_service.dart';
 import '../ui/common/ui.dart';
 import 'dashboard/dashboard_quick_actions.dart';
+import 'schedules/schedule_edit_screen.dart';
 import 'stock/stock_browser_screen.dart';
 
 const _dashboardSectionOrderPrefsKey = 'dashboard.sectionOrder.v1';
@@ -1272,10 +1273,17 @@ class _ScheduleDashboardCard extends StatelessWidget {
     required this.onOpenSchedules,
   });
 
-  String _time(DateTime value) {
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+  String _todayLabel() {
+    final now = DateTime.now();
+    const weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
+    return '${now.month}월 ${now.day}일 ${weekdays[now.weekday - 1]}';
+  }
+
+  String _updateLabel() {
+    final now = DateTime.now();
+    final hour = now.hour.toString().padLeft(2, '0');
+    final minute = now.minute.toString().padLeft(2, '0');
+    return '업데이트 $hour:$minute';
   }
 
   @override
@@ -1289,107 +1297,135 @@ class _ScheduleDashboardCard extends StatelessWidget {
       ...done,
     ];
 
-    return Material(
-      color: Colors.white.withValues(alpha: 0.9),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE9E2F5)),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE9E2F5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F7A6B99),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpenSchedules,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _todayLabel(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF050507),
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _updateLabel(),
+                  style: const TextStyle(
+                    color: Color(0xFF8E8A94),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
                 children: [
-                  _ScheduleCountPill(
-                    label: '할일',
-                    value: pending.length,
-                    color: const Color(0xFF8B6BEF),
+                  _ScheduleWidgetAction(
+                    icon: Icons.checklist_rtl_rounded,
+                    label: '일정 추가',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ScheduleEditScreen(
+                            draft: ScheduleDraft(
+                              title: '',
+                              body: '',
+                              date: DateTime.now(),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(width: 8),
-                  _ScheduleCountPill(
-                    label: '완료',
-                    value: done.length,
-                    color: const Color(0xFF37A66B),
+                  const SizedBox(width: 10),
+                  _ScheduleWidgetAction(
+                    icon: Icons.notes_rounded,
+                    label: '메모',
+                    onTap: () => context
+                        .read<MainTabController>()
+                        .openShellRoute('/memo'),
                   ),
-                  const Spacer(),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Color(0xFF8B6BEF),
+                  const SizedBox(width: 10),
+                  _ScheduleWidgetAction(
+                    icon: Icons.inventory_2_outlined,
+                    label: '재고',
+                    onTap: () => context.read<MainTabController>().setIndex(2),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
-              if (visibleSchedules.isEmpty)
-                const Text(
+            ),
+            const SizedBox(height: 18),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                _ScheduleStatusBadge(
+                  label: '할일',
+                  value: pending.length,
+                  color: const Color(0xFFC04FDD),
+                  background: const Color(0xFFF6E6FB),
+                ),
+                _ScheduleStatusBadge(
+                  label: '완료',
+                  value: done.length,
+                  color: const Color(0xFF31B765),
+                  background: const Color(0xFFE7F9ED),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            if (visibleSchedules.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Text(
                   '오늘 등록된 일정이 없습니다.',
                   style: TextStyle(
                     color: Color(0xFF7A7480),
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                     height: 1.35,
                   ),
-                )
-              else
-                Column(
-                  children: [
-                    for (var i = 0; i < visibleSchedules.length; i++)
-                      _SchedulePreviewRow(
-                        schedule: visibleSchedules[i],
-                        time: _time(visibleSchedules[i].date),
-                        showDivider: i != visibleSchedules.length - 1,
-                      ),
-                  ],
                 ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ScheduleCountPill extends StatelessWidget {
-  final String label;
-  final int value;
-  final Color color;
-
-  const _ScheduleCountPill({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w900,
+              )
+            else
+              Column(
+                children: [
+                  for (var i = 0; i < visibleSchedules.length; i++)
+                    _ScheduleWidgetRow(schedule: visibleSchedules[i]),
+                ],
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '$value',
-              style: const TextStyle(
-                color: Color(0xFF202027),
-                fontWeight: FontWeight.w900,
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onOpenSchedules,
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: const Text('전체 보기'),
               ),
             ),
           ],
@@ -1399,40 +1435,107 @@ class _ScheduleCountPill extends StatelessWidget {
   }
 }
 
-class _SchedulePreviewRow extends StatelessWidget {
-  final AppSchedule schedule;
-  final String time;
-  final bool showDivider;
+class _ScheduleWidgetAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
-  const _SchedulePreviewRow({
-    required this.schedule,
-    required this.time,
-    required this.showDivider,
+  const _ScheduleWidgetAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final done = schedule.status == AppScheduleStatus.done;
-    final color = done ? const Color(0xFF37A66B) : const Color(0xFF8B6BEF);
+    return Material(
+      color: const Color(0xFFF0EFF2),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22, color: const Color(0xFF101013)),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Color(0xFF101013),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
+class _ScheduleStatusBadge extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+  final Color background;
+
+  const _ScheduleStatusBadge({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        child: Text(
+          '$label $value',
+          style: TextStyle(
+            color: color,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleWidgetRow extends StatelessWidget {
+  final AppSchedule schedule;
+
+  const _ScheduleWidgetRow({required this.schedule});
+
+  @override
+  Widget build(BuildContext context) {
+    final done = schedule.status == AppScheduleStatus.done;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.read<MainTabController>().openShellRoute(
+              '/schedules',
+            ),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             children: [
               Icon(
-                done ? Icons.task_alt_rounded : Icons.radio_button_unchecked,
-                color: color,
-                size: 21,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                time,
-                style: const TextStyle(
-                  color: Color(0xFF7A7480),
-                  fontWeight: FontWeight.w800,
-                ),
+                done ? Icons.check_circle_rounded : Icons.circle_outlined,
+                color: done ? const Color(0xFF35C56F) : const Color(0xFFC04FDD),
+                size: 25,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1441,7 +1544,8 @@ class _SchedulePreviewRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: const Color(0xFF202027),
+                    color: const Color(0xFF08080A),
+                    fontSize: 19,
                     fontWeight: FontWeight.w800,
                     decoration: done ? TextDecoration.lineThrough : null,
                   ),
@@ -1450,8 +1554,7 @@ class _SchedulePreviewRow extends StatelessWidget {
             ],
           ),
         ),
-        if (showDivider) const Divider(height: 1, indent: 31),
-      ],
+      ),
     );
   }
 }

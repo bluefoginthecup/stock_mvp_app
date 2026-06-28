@@ -64,7 +64,6 @@ class CartManager extends ChangeNotifier {
     return out;
   }
 
-
   /// UNDO 복구 등에 사용
   void insert(int index, CartItem item) {
     if (index < 0 || index > _items.length) {
@@ -102,8 +101,29 @@ class CartManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  int get supplierCount => _items.map((e) => e.supplierName.trim()).toSet().length;
+  int get supplierCount =>
+      _items.map((e) => e.supplierName.trim()).toSet().length;
   double get totalQty => _items.fold(0.0, (acc, e) => acc + e.qty);
+
+  String _normalizeSupplierName(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+  }
+
+  Future<String?> _findSupplierIdByName(
+    SupplierRepo supplierRepo,
+    String supplierName,
+  ) async {
+    final normalized = _normalizeSupplierName(supplierName);
+    if (normalized.isEmpty) return null;
+
+    final suppliers = await supplierRepo.list(onlyActive: false);
+    for (final supplier in suppliers) {
+      if (_normalizeSupplierName(supplier.name) == normalized) {
+        return supplier.id;
+      }
+    }
+    return null;
+  }
 
   /// ✅ 표준 인터페이스에 정확히 맞춤
   /// - PO 생성: createPurchaseOrder(po) → String (생성된 id)
@@ -112,11 +132,13 @@ class CartManager extends ChangeNotifier {
   Future<List<String>> createPurchaseOrdersFromCart({
     required PurchaseOrderRepo poRepo,
     required ItemRepo itemRepo,
+    required SupplierRepo supplierRepo,
   }) async {
     // 1) 공급처별 그룹핑
     final grouped = <String, List<CartItem>>{};
     for (final c in _items) {
-      final key = c.supplierName.trim().isEmpty ? '(미지정)' : c.supplierName.trim();
+      final key =
+          c.supplierName.trim().isEmpty ? '(미지정)' : c.supplierName.trim();
       (grouped[key] ??= []).add(c);
     }
 
@@ -125,11 +147,13 @@ class CartManager extends ChangeNotifier {
 
     for (final entry in grouped.entries) {
       final supplier = entry.key == '(미지정)' ? '' : entry.key;
+      final supplierId = await _findSupplierIdByName(supplierRepo, supplier);
 
       // id는 구현에 따라 내부에서 생성될 수도 있으므로, 모델에 임시 id를 넣어도 되고 비워도 됨.
       final po = PurchaseOrder(
         id: 'po_${DateTime.now().microsecondsSinceEpoch}_${created.length}',
         supplierName: supplier,
+        supplierId: supplierId,
         eta: DateTime.now().add(const Duration(days: 2)),
         status: PurchaseOrderStatus.draft,
       );
@@ -168,18 +192,21 @@ class CartManager extends ChangeNotifier {
     // 3) 정리
     return created;
   }
+
   /// ✅ 선택된 항목(picked)만으로 발주서 생성
   Future<List<String>> createPurchaseOrdersFromPicked({
     required List<CartItem> picked,
     required PurchaseOrderRepo poRepo,
     required ItemRepo itemRepo,
+    required SupplierRepo supplierRepo,
   }) async {
     if (picked.isEmpty) return [];
 
     // 1) 공급처별 그룹핑
     final grouped = <String, List<CartItem>>{};
     for (final c in picked) {
-      final key = c.supplierName.trim().isEmpty ? '(미지정)' : c.supplierName.trim();
+      final key =
+          c.supplierName.trim().isEmpty ? '(미지정)' : c.supplierName.trim();
       (grouped[key] ??= []).add(c);
     }
 
@@ -188,10 +215,12 @@ class CartManager extends ChangeNotifier {
 
     for (final entry in grouped.entries) {
       final supplier = entry.key == '(미지정)' ? '' : entry.key;
+      final supplierId = await _findSupplierIdByName(supplierRepo, supplier);
 
       final po = PurchaseOrder(
         id: 'po_${DateTime.now().microsecondsSinceEpoch}_${created.length}',
         supplierName: supplier,
+        supplierId: supplierId,
         eta: DateTime.now().add(const Duration(days: 2)),
         status: PurchaseOrderStatus.draft,
       );
@@ -227,5 +256,4 @@ class CartManager extends ChangeNotifier {
 
     return created;
   }
-
 }

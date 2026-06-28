@@ -1,4 +1,4 @@
-// ignore_for_file: unused_element
+// ignore_for_file: no_leading_underscores_for_local_identifiers, unused_element, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -51,6 +51,7 @@ class _CartScreenState extends State<CartScreen> {
     final cart = context.watch<CartManager>();
     final poRepo = context.read<PurchaseOrderRepo>();
     final itemRepo = context.read<ItemRepo>();
+    final supplierRepo = context.read<SupplierRepo>();
 
     Future<void> _editQty(BuildContext ctx, int index, double current) async {
       final c = TextEditingController(text: current.toStringAsFixed(0));
@@ -234,6 +235,7 @@ class _CartScreenState extends State<CartScreen> {
           picked: picked,
           poRepo: poRepo,
           itemRepo: itemRepo,
+          supplierRepo: supplierRepo,
         );
 
         // ✅ 선택된 항목만 장바구니에서 제거

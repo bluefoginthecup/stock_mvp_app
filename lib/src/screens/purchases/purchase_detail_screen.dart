@@ -1,3 +1,5 @@
+// ignore_for_file: prefer_const_constructors, unnecessary_import, use_build_context_synchronously
+
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -53,6 +55,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   PurchaseOrder? _po;
   List<PurchaseLine> _lines = const [];
   List<PurchaseReceipt> _receipts = const [];
+  final Set<String> _selectedLineIds = <String>{};
   final Set<String> _collapsedReceiptIds = <String>{};
   late String _orderId;
   bool _loading = true;
@@ -86,6 +89,9 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
         _po = po;
         _lines = lines;
         _receipts = receipts;
+        _selectedLineIds.removeWhere(
+          (id) => !lines.any((line) => line.id == id),
+        );
         _collapsedReceiptIds.removeWhere((id) => !receiptIds.contains(id));
         _loading = false;
       });
@@ -1429,9 +1435,17 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title:
+            Text(_isSelectingLines ? '선택 ${_selectedLineIds.length}개' : title),
+        leading: _isSelectingLines
+            ? IconButton(
+                tooltip: '선택 해제',
+                icon: const Icon(Icons.close),
+                onPressed: _clearLineSelection,
+              )
+            : null,
         actions: [
-          if (navIds.length > 1) ...[
+          if (!_isSelectingLines && navIds.length > 1) ...[
             IconButton(
               tooltip: '이전 발주',
               onPressed:
@@ -1444,21 +1458,27 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
               icon: const Icon(Icons.chevron_right),
             ),
           ],
-          DeleteMoreMenu<PurchaseOrder>(
-            entity: po,
-            onChanged: () {
-              if (!mounted) return;
-              Navigator.of(context).maybePop();
-            },
-          ),
-          PurchasePrintAction(poId: _orderId),
+          if (!_isSelectingLines) ...[
+            DeleteMoreMenu<PurchaseOrder>(
+              entity: po,
+              onChanged: () {
+                if (!mounted) return;
+                Navigator.of(context).maybePop();
+              },
+            ),
+            PurchasePrintAction(poId: _orderId),
+          ],
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addLineFull,
-        icon: const Icon(Icons.add),
-        label: Text('추가'),
-      ),
+      floatingActionButton: _isSelectingLines
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _addLineFull,
+              icon: const Icon(Icons.add),
+              label: Text('추가'),
+            ),
+      bottomNavigationBar:
+          _isSelectingLines ? _buildLineBulkActionBar(context) : null,
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onHorizontalDragEnd: navIds.length > 1 ? _handleHorizontalSwipe : null,
@@ -1609,6 +1629,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                         children: _lines.map((ln) {
                           final name =
                               ln.name.trim().isEmpty ? ln.itemId : ln.name;
+                          final selected = _selectedLineIds.contains(ln.id);
                           final vatLabel = switch (ln.vatType) {
                             VatType.exclusive => '별도',
                             VatType.inclusive => '포함',
@@ -1616,6 +1637,13 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           };
 
                           return ListTile(
+                            selected: selected,
+                            leading: _isSelectingLines
+                                ? Checkbox(
+                                    value: selected,
+                                    onChanged: (_) => _toggleLineSelection(ln),
+                                  )
+                                : null,
                             title: Text('$name × ${ln.qty}'),
                             subtitle: Text(
                               '단가 ${_fmt(ln.unitPrice)} · $vatLabel / '
@@ -1626,9 +1654,14 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                             trailing: IconButton(
                               tooltip: '발주라인 편집',
                               icon: const Icon(Icons.chevron_right),
-                              onPressed: () => _openLineFull(ln),
+                              onPressed: _isSelectingLines
+                                  ? null
+                                  : () => _openLineFull(ln),
                             ),
-                            onTap: () => _openLineItemDetail(ln),
+                            onTap: () => _isSelectingLines
+                                ? _toggleLineSelection(ln)
+                                : _openLineItemDetail(ln),
+                            onLongPress: () => _toggleLineSelection(ln),
                           );
                         }).toList(),
                       ),
@@ -1667,6 +1700,224 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                 ),
               ),
               const SizedBox(height: 80),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool get _isSelectingLines => _selectedLineIds.isNotEmpty;
+
+  List<PurchaseLine> get _selectedLines => _lines
+      .where((line) => _selectedLineIds.contains(line.id))
+      .toList(growable: false);
+
+  void _toggleLineSelection(PurchaseLine line) {
+    setState(() {
+      if (!_selectedLineIds.add(line.id)) {
+        _selectedLineIds.remove(line.id);
+      }
+    });
+  }
+
+  void _clearLineSelection() {
+    if (_selectedLineIds.isEmpty) return;
+    setState(_selectedLineIds.clear);
+  }
+
+  Future<double?> _askBulkNumber({
+    required String title,
+    required String label,
+    required String confirmLabel,
+  }) async {
+    final controller = TextEditingController();
+    final result = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: label),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = double.tryParse(
+                  controller.text.trim().replaceAll(',', ''),
+                );
+                Navigator.pop(
+                  dialogContext,
+                  value == null || value < 0 ? null : value,
+                );
+              },
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+    return result;
+  }
+
+  Future<void> _bulkUpdateSelectedLines(
+    PurchaseLine Function(PurchaseLine line) update,
+  ) async {
+    final selectedIds = {..._selectedLineIds};
+    if (selectedIds.isEmpty) return;
+
+    final nextLines = [
+      for (final line in _lines)
+        selectedIds.contains(line.id) ? update(line) : line,
+    ];
+    await widget.repo.upsertLines(_orderId, nextLines);
+    _clearLineSelection();
+    await _reload();
+  }
+
+  Future<void> _bulkEditUnitPrice() async {
+    final value = await _askBulkNumber(
+      title: '선택 품목 단가 변경',
+      label: '새 단가',
+      confirmLabel: '적용',
+    );
+    if (value == null) return;
+    await _bulkUpdateSelectedLines(
+      (line) => line.copyWith(unitPrice: value, amountEdited: false),
+    );
+  }
+
+  Future<void> _bulkEditQty() async {
+    final value = await _askBulkNumber(
+      title: '선택 품목 수량 변경',
+      label: '새 수량',
+      confirmLabel: '적용',
+    );
+    if (value == null || value <= 0) return;
+    await _bulkUpdateSelectedLines(
+      (line) => line.copyWith(qty: value, amountEdited: false),
+    );
+  }
+
+  Future<void> _bulkEditVatType() async {
+    final selected = await showDialog<VatType>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('선택 품목 부가세 변경'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext, VatType.exclusive),
+            child: const ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('부가세 별도'),
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext, VatType.inclusive),
+            child: const ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('부가세 포함'),
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext, VatType.exempt),
+            child: const ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('면세'),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (selected == null) return;
+    await _bulkUpdateSelectedLines(
+      (line) => line.copyWith(vatType: selected, amountEdited: false),
+    );
+  }
+
+  Future<void> _bulkDeleteSelectedLines() async {
+    final selected = _selectedLines;
+    if (selected.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('선택 ${selected.length}개 삭제'),
+        content: const Text('선택한 발주 품목을 삭제할까요?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final deleteIds = selected.map((line) => line.id).toSet();
+    final nextLines =
+        _lines.where((line) => !deleteIds.contains(line.id)).toList();
+    await widget.repo.upsertLines(_orderId, nextLines);
+    _clearLineSelection();
+    await _reload();
+  }
+
+  Widget _buildLineBulkActionBar(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border:
+              Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 8),
+          ],
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+          child: Row(
+            children: [
+              Text(
+                '${_selectedLineIds.length}개 선택',
+                style: const TextStyle(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.tonalIcon(
+                onPressed: _bulkEditUnitPrice,
+                icon: const Icon(Icons.sell_outlined),
+                label: const Text('단가'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: _bulkEditQty,
+                icon: const Icon(Icons.exposure),
+                label: const Text('수량'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: _bulkEditVatType,
+                icon: const Icon(Icons.percent),
+                label: const Text('부가세'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: _bulkDeleteSelectedLines,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('삭제'),
+              ),
             ],
           ),
         ),

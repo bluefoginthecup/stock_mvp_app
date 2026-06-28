@@ -567,7 +567,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
         tabs.add(selectedHiddenTab.first);
       }
     }
-    final selectedIndex = tabs.indexWhere((tab) => tab.id == selectedId);
+    final stackTabs = _allTabs;
+    final selectedIndex = stackTabs.indexWhere((tab) => tab.id == selectedId);
 
     // ignore: deprecated_member_use
     return WillPopScope(
@@ -590,7 +591,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
         body: IndexedStack(
           index: selectedIndex < 0 ? 0 : selectedIndex,
           children: [
-            for (final tab in tabs) _buildTabNavigator(context, tab.id),
+            for (final tab in stackTabs) _buildTabNavigator(context, tab.id),
           ],
         ),
         bottomNavigationBar: _ScrollableBottomTabs(

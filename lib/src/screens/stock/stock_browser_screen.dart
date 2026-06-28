@@ -663,25 +663,32 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
           onPressed: () async {
             if (sel.selectedCount == 0) return;
 
+            final repo = context.read<FolderTreeRepo>();
+            final itemRepo = context.read<ItemRepo>();
+            final selectedItemIds = sel.selectedItems.toList(growable: false);
             final dest = await showPathPicker(
               context,
-              childrenProvider:
-                  pathChildrenFromFolderRepo(context.read<FolderTreeRepo>()),
+              childrenProvider: pathChildrenFromFolderRepo(repo),
               title: sel.selectedFolders.isEmpty ? '아이템 이동..' : '선택 항목 이동..',
               maxDepth: sel.selectedFolders.isEmpty ? 3 : 2,
             );
             if (dest == null || dest.isEmpty) return;
 
-            final repo = context.read<FolderTreeRepo>();
             var movedItems = 0;
             var movedFolders = 0;
+            var finalizedItems = 0;
 
             try {
-              if (sel.selectedItems.isNotEmpty) {
+              if (selectedItemIds.isNotEmpty) {
                 movedItems = await repo.moveItemsToPath(
-                  itemIds: sel.selectedItems.toList(),
+                  itemIds: selectedItemIds,
                   pathIds: dest,
                 );
+                for (final itemId in selectedItemIds) {
+                  if (await itemRepo.tryFinalizeRegistration(itemId)) {
+                    finalizedItems++;
+                  }
+                }
               }
 
               final foldersToMove = await _topLevelSelectedFolders(repo, sel);
@@ -704,8 +711,14 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             }
 
             if (!context.mounted) return;
+            final registrationSuffix =
+                finalizedItems > 0 ? ' · 정식등록 $finalizedItems개 완료' : '';
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('아이템 $movedItems개, 폴더 $movedFolders개 이동')),
+              SnackBar(
+                content: Text(
+                  '아이템 $movedItems개, 폴더 $movedFolders개 이동$registrationSuffix',
+                ),
+              ),
             );
 
             sel.exit();
