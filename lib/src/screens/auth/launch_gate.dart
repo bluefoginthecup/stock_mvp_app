@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/cloud_auto_backup_service.dart';
 import '../../services/entitlement_service.dart';
 import '../../ui/intro_loading_screen.dart';
+import '../../ui/intro_timing.dart';
 import 'start_screen.dart';
 
 /// 앱 시작 시 로그인 상태를 점검하고,
@@ -51,9 +52,8 @@ class _LaunchGateState extends State<LaunchGate> {
       debugPrint('[LaunchGate] silent sign-in failed: $e');
     } finally {
       final elapsed = DateTime.now().difference(startedAt);
-      const minIntroDuration = Duration(milliseconds: 1500);
-      if (elapsed < minIntroDuration) {
-        await Future<void>.delayed(minIntroDuration - elapsed);
+      if (elapsed < introMinimumDuration) {
+        await Future<void>.delayed(introMinimumDuration - elapsed);
       }
       if (mounted) setState(() => _booting = false);
     }

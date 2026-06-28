@@ -13,6 +13,7 @@ ios/.symlinks/
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
 ios/Flutter/Generated.xcconfig
+ios/Flutter/LocalDebug.xcconfig
 ios/Flutter/ephemeral/
 
 # Android

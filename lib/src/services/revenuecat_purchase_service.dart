@@ -38,6 +38,15 @@ class RevenueCatPackageOption {
 class RevenueCatPurchaseService {
   static const proEntitlementId = 'pro';
   static const cloudBackupEntitlementId = 'cloud_backup';
+  static const _proEntitlementIds = {
+    proEntitlementId,
+    'chalstock Pro',
+  };
+  static const _cloudBackupEntitlementIds = {
+    cloudBackupEntitlementId,
+    'Cloud Backup',
+    'chalstock Cloud Backup',
+  };
 
   static const proProductIds = {
     'chalstock_pro_6m',
@@ -45,6 +54,7 @@ class RevenueCatPurchaseService {
   };
   static const cloudBackupProductIds = {
     'chalstock_cloud_backup_1y',
+    'cloud_backup_yearly',
   };
 
   static const _iosApiKey = String.fromEnvironment('REVENUECAT_IOS_API_KEY');
@@ -222,13 +232,24 @@ class RevenueCatPurchaseService {
     rc.CustomerInfo customerInfo,
   ) {
     final entitlements = customerInfo.entitlements.all;
-    final proActive = entitlements[proEntitlementId]?.isActive ?? false;
+    final activeSubscriptions = customerInfo.activeSubscriptions.toSet();
+    final proActive =
+        _isAnyEntitlementActive(entitlements, _proEntitlementIds) ||
+            activeSubscriptions.any(proProductIds.contains);
     final cloudBackupActive =
-        entitlements[cloudBackupEntitlementId]?.isActive ?? false;
+        _isAnyEntitlementActive(entitlements, _cloudBackupEntitlementIds) ||
+            activeSubscriptions.any(cloudBackupProductIds.contains);
     return RevenueCatEntitlementSnapshot(
       proActive: proActive,
       cloudBackupActive: cloudBackupActive,
     );
+  }
+
+  bool _isAnyEntitlementActive(
+    Map<String, rc.EntitlementInfo> entitlements,
+    Set<String> entitlementIds,
+  ) {
+    return entitlementIds.any((id) => entitlements[id]?.isActive ?? false);
   }
 
   String? _apiKeyForCurrentPlatform() {
@@ -250,6 +271,7 @@ class RevenueCatPurchaseService {
       case 'chalstock_pro_1y':
         return 'Pro 12개월';
       case 'chalstock_cloud_backup_1y':
+      case 'cloud_backup_yearly':
         return 'Cloud Backup 12개월';
       default:
         return fallbackTitle;
@@ -274,6 +296,7 @@ class RevenueCatPurchaseService {
       case 'chalstock_pro_1y':
         return 20;
       case 'chalstock_cloud_backup_1y':
+      case 'cloud_backup_yearly':
         return 30;
       default:
         return 100;

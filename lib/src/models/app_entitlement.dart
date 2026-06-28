@@ -37,6 +37,7 @@ class AppEntitlement {
   bool get canRestoreCloudBackup => true;
 
   String get planLabel {
+    if (isPaidPlan) return plan.label;
     if (isAppTrialActive) return 'Trial';
     return plan.label;
   }

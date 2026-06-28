@@ -56,6 +56,7 @@ import 'db/app_database.dart';
 import 'repos/timeline_repo.dart';
 import 'ui/common/selection/item_selection_controller.dart';
 import 'ui/intro_loading_screen.dart';
+import 'ui/intro_timing.dart';
 import 'ui/nav/item_detail_opener.dart';
 import 'utils/item_presentation.dart';
 
@@ -233,9 +234,8 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
     Future.microtask(() => repo.refreshBomSnapshot());
 
     final elapsed = DateTime.now().difference(startedAt);
-    const minIntroDuration = Duration(milliseconds: 1500);
-    if (elapsed < minIntroDuration) {
-      await Future<void>.delayed(minIntroDuration - elapsed);
+    if (elapsed < introMinimumDuration) {
+      await Future<void>.delayed(introMinimumDuration - elapsed);
     }
 
     return _AccountData(db: db, repo: repo);

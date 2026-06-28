@@ -819,6 +819,13 @@ class _AccountSectionState extends State<_AccountSection> {
     final cloudTrialAvailable = _entitlement.cloudTrialEndsAt == null &&
         !_entitlement.hasCloudBackup &&
         _entitlement.canUseProFeatures;
+    final showAppTrial = !_entitlement.isPaidPlan;
+    final showCloudTrial = !_entitlement.hasCloudBackup;
+    final showAppTrialButton = appTrialAvailable;
+    final showProButton = !_entitlement.isPaidPlan;
+    final showCloudTrialButton = cloudTrialAvailable;
+    final showCloudBackupButton =
+        _entitlement.isPaidPlan && !_entitlement.hasCloudBackup;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -830,92 +837,93 @@ class _AccountSectionState extends State<_AccountSection> {
           label: '현재 플랜',
           value: _loadingEntitlement ? '확인 중...' : _entitlement.planLabel,
         ),
-        const SizedBox(height: 8),
-        _StorageUsageRow(
-          label: 'App Trial',
-          value: _trialStatus(
-            active: _entitlement.isAppTrialActive,
-            endsAt: _entitlement.appTrialEndsAt,
-            notStartedLabel: '시작 전',
+        if (showAppTrial) ...[
+          const SizedBox(height: 8),
+          _StorageUsageRow(
+            label: 'App Trial',
+            value: _trialStatus(
+              active: _entitlement.isAppTrialActive,
+              endsAt: _entitlement.appTrialEndsAt,
+              notStartedLabel: '시작 전',
+            ),
           ),
-        ),
+        ],
         const SizedBox(height: 8),
         _StorageUsageRow(
           label: 'Cloud Backup',
           value: _entitlement.cloudBackupLabel,
         ),
-        const SizedBox(height: 8),
-        _StorageUsageRow(
-          label: 'Cloud Trial',
-          value: _trialStatus(
-            active: _entitlement.isCloudTrialActive,
-            endsAt: _entitlement.cloudTrialEndsAt,
-            notStartedLabel: '시작 전',
+        if (showCloudTrial) ...[
+          const SizedBox(height: 8),
+          _StorageUsageRow(
+            label: 'Cloud Trial',
+            value: _trialStatus(
+              active: _entitlement.isCloudTrialActive,
+              endsAt: _entitlement.cloudTrialEndsAt,
+              notStartedLabel: '시작 전',
+            ),
           ),
-        ),
+        ],
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilledButton.icon(
-              onPressed: _workingEntitlement ||
-                      _loadingEntitlement ||
-                      !appTrialAvailable
-                  ? null
-                  : () => _runEntitlementAction(
-                        (service) => service.startAppTrial(),
-                        '7일 무료체험을 시작했습니다.',
-                      ),
-              icon: const Icon(Icons.play_circle_outline),
-              label: const Text('7일 무료체험 시작'),
-            ),
-            FilledButton.icon(
-              onPressed: _workingEntitlement ||
-                      _loadingEntitlement ||
-                      _entitlement.isPaidPlan ||
-                      !purchasesReady
-                  ? null
-                  : () => _runPurchaseOptionAction(
-                        title: 'Pro 구독 선택',
-                        loadOptions: (service) => service.proPackageOptions(),
-                        purchase: (service, productId) =>
-                            service.purchaseProProduct(productId),
-                        successMessage: 'Pro 구독 상태를 확인했습니다.',
-                      ),
-              icon: const Icon(Icons.workspace_premium_outlined),
-              label: const Text('Pro 구독'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _workingEntitlement ||
-                      _loadingEntitlement ||
-                      !cloudTrialAvailable
-                  ? null
-                  : () => _runEntitlementAction(
-                        (service) => service.startCloudTrial(),
-                        'Cloud Backup 체험을 시작했습니다.',
-                      ),
-              icon: const Icon(Icons.cloud_outlined),
-              label: const Text('Cloud Backup 체험 시작'),
-            ),
-            OutlinedButton.icon(
-              onPressed: _workingEntitlement ||
-                      _loadingEntitlement ||
-                      !_entitlement.isPaidPlan ||
-                      _entitlement.hasCloudBackup ||
-                      !purchasesReady
-                  ? null
-                  : () => _runPurchaseOptionAction(
-                        title: 'Cloud Backup 구독 선택',
-                        loadOptions: (service) =>
-                            service.cloudBackupPackageOptions(),
-                        purchase: (service, productId) =>
-                            service.purchaseCloudBackupProduct(productId),
-                        successMessage: 'Cloud Backup 구독 상태를 확인했습니다.',
-                      ),
-              icon: const Icon(Icons.cloud_upload_outlined),
-              label: const Text('Cloud Backup 구독'),
-            ),
+            if (showAppTrialButton)
+              FilledButton.icon(
+                onPressed: _workingEntitlement || _loadingEntitlement
+                    ? null
+                    : () => _runEntitlementAction(
+                          (service) => service.startAppTrial(),
+                          '7일 무료체험을 시작했습니다.',
+                        ),
+                icon: const Icon(Icons.play_circle_outline),
+                label: const Text('7일 무료체험 시작'),
+              ),
+            if (showProButton)
+              FilledButton.icon(
+                onPressed: _workingEntitlement ||
+                        _loadingEntitlement ||
+                        !purchasesReady
+                    ? null
+                    : () => _runPurchaseOptionAction(
+                          title: 'Pro 구독 선택',
+                          loadOptions: (service) => service.proPackageOptions(),
+                          purchase: (service, productId) =>
+                              service.purchaseProProduct(productId),
+                          successMessage: 'Pro 구독 상태를 확인했습니다.',
+                        ),
+                icon: const Icon(Icons.workspace_premium_outlined),
+                label: const Text('Pro 구독'),
+              ),
+            if (showCloudTrialButton)
+              OutlinedButton.icon(
+                onPressed: _workingEntitlement || _loadingEntitlement
+                    ? null
+                    : () => _runEntitlementAction(
+                          (service) => service.startCloudTrial(),
+                          'Cloud Backup 체험을 시작했습니다.',
+                        ),
+                icon: const Icon(Icons.cloud_outlined),
+                label: const Text('Cloud Backup 체험 시작'),
+              ),
+            if (showCloudBackupButton)
+              OutlinedButton.icon(
+                onPressed: _workingEntitlement ||
+                        _loadingEntitlement ||
+                        !purchasesReady
+                    ? null
+                    : () => _runPurchaseOptionAction(
+                          title: 'Cloud Backup 구독 선택',
+                          loadOptions: (service) =>
+                              service.cloudBackupPackageOptions(),
+                          purchase: (service, productId) =>
+                              service.purchaseCloudBackupProduct(productId),
+                          successMessage: 'Cloud Backup 구독 상태를 확인했습니다.',
+                        ),
+                icon: const Icon(Icons.cloud_upload_outlined),
+                label: const Text('Cloud Backup 구독'),
+              ),
             OutlinedButton.icon(
               onPressed:
                   _workingEntitlement || _loadingEntitlement || !purchasesReady
