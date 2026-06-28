@@ -25,6 +25,7 @@ import '/src/services/full_restore_service.dart';
 import '/src/services/restore_rollback_service.dart';
 import '/src/services/revenuecat_purchase_service.dart';
 import '/src/services/storage_usage_service.dart';
+import 'cloud_backup_list_screen.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
 class SettingsScreen extends StatelessWidget {
@@ -2473,11 +2474,15 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
                     label: const Text('새로고침'),
                   ),
                   OutlinedButton.icon(
-                    onPressed:
-                        uid == null || _uploading || !canCreateCloudBackup
-                            ? null
-                            : () => Navigator.of(context)
-                                .pushNamed('/settings/cloud-backups'),
+                    onPressed: uid == null ||
+                            _uploading ||
+                            !canCreateCloudBackup
+                        ? null
+                        : () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const CloudBackupListScreen(),
+                              ),
+                            ),
                     icon: const Icon(Icons.list_alt_outlined),
                     label: const Text('백업 목록 보기'),
                   ),

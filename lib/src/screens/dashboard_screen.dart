@@ -1247,7 +1247,15 @@ class _TarotDeckCardTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: EdgeInsets.zero,
-      child: ExpansionTile(
+      child: ListTile(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => _TarotCardDetailScreen(card: card),
+            ),
+          );
+        },
         leading: Container(
           width: 42,
           height: 56,
@@ -1273,65 +1281,203 @@ class _TarotDeckCardTile extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          _TarotMeaningRow(
-            label: '정방향',
-            text: card.keyword,
-            icon: Icons.north_rounded,
-          ),
-          const SizedBox(height: 10),
-          _TarotMeaningRow(
-            label: '역방향',
-            text: card.reversedKeyword,
-            icon: Icons.south_rounded,
-          ),
-        ],
+        trailing: const Icon(Icons.chevron_right_rounded),
       ),
     );
   }
 }
 
-class _TarotMeaningRow extends StatelessWidget {
-  final String label;
+class _TarotCardDetailScreen extends StatelessWidget {
+  final _TarotCardData card;
+
+  const _TarotCardDetailScreen({required this.card});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(card.koreanName)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _TarotCardHero(card: card),
+            const SizedBox(height: 16),
+            _TarotDetailSection(
+              title: '카드의 핵심',
+              icon: Icons.auto_awesome_rounded,
+              text: _tarotCoreMessage(card),
+            ),
+            const SizedBox(height: 12),
+            _TarotDetailSection(
+              title: '정방향 의미',
+              icon: Icons.north_rounded,
+              text: _tarotUprightMessage(card),
+            ),
+            const SizedBox(height: 12),
+            _TarotDetailSection(
+              title: '역방향 의미',
+              icon: Icons.south_rounded,
+              text: _tarotReversedMessage(card),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TarotCardHero extends StatelessWidget {
+  final _TarotCardData card;
+
+  const _TarotCardHero({required this.card});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5D9F8)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          children: [
+            Container(
+              width: 116,
+              height: 172,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2D2547),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFBBA7F3), width: 1.2),
+              ),
+              child: Column(
+                children: [
+                  const Align(
+                    alignment: Alignment.centerRight,
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 18,
+                      color: Color(0xFFFFD66B),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    card.shortLabel,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    card.group,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: const Color(0xFFD8CDF8),
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              card.koreanName,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: const Color(0xFF202027),
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${card.name} · ${card.group}',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF8A8297),
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TarotDetailSection extends StatelessWidget {
+  final String title;
   final String text;
   final IconData icon;
 
-  const _TarotMeaningRow({
-    required this.label,
+  const _TarotDetailSection({
+    required this.title,
     required this.text,
     required this.icon,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: const Color(0xFF7355D9)),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 56,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF7355D9),
-                  fontWeight: FontWeight.w900,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFECE5F4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 18, color: const Color(0xFF7355D9)),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: const Color(0xFF202027),
+                        fontWeight: FontWeight.w900,
+                      ),
                 ),
-          ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              text,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    height: 1.45,
+                    color: const Color(0xFF3A3543),
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
         ),
-        Expanded(
-          child: Text(
-            text,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF3A3543),
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ),
-      ],
+      ),
     );
   }
+}
+
+String _tarotCoreMessage(_TarotCardData card) {
+  return '${card.koreanName} 카드는 ${card.keyword}을 중심으로 삶의 흐름을 바라보게 합니다. '
+      '지금 눈앞에 드러난 사건보다 그 안에서 반복되는 마음의 패턴과 선택의 방향을 살펴보라는 카드입니다.';
+}
+
+String _tarotUprightMessage(_TarotCardData card) {
+  return '정방향의 ${card.koreanName}은 ${card.keyword}을 긍정적으로 받아들이라는 메시지를 전합니다. '
+      '상황을 억지로 밀어붙이기보다, 카드가 가리키는 흐름을 의식하면서 한 걸음씩 움직이면 좋습니다.';
+}
+
+String _tarotReversedMessage(_TarotCardData card) {
+  return '역방향의 ${card.koreanName}은 ${card.reversedKeyword}을 돌아보라는 신호입니다. '
+      '겉으로 드러난 결과보다 마음속 저항, 불균형, 미뤄둔 감정이 어디에서 시작됐는지 조용히 살펴보세요.';
 }
 
 class _TarotMiniCard extends StatelessWidget {
