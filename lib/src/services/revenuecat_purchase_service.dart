@@ -48,8 +48,6 @@ class RevenueCatPurchaseService {
   };
   static const _cloudBackupEntitlementIds = {
     cloudBackupEntitlementId,
-    'Cloud Backup',
-    'chalstock Cloud Backup',
   };
 
   static const proProductIds = {
@@ -58,6 +56,9 @@ class RevenueCatPurchaseService {
   };
   static const cloudBackupProductIds = {
     'chalstock_cloud_backup_1y',
+    'chalstock_cloud_backup_yearly',
+    'chalstock_cloud_yearly',
+    'cloud_backup_1y',
     'cloud_backup_yearly',
   };
 
@@ -155,7 +156,7 @@ class RevenueCatPurchaseService {
     String productId, {
     required Set<String> allowedProductIds,
   }) async {
-    if (!allowedProductIds.contains(productId)) {
+    if (!_matchesProductSet(productId, allowedProductIds)) {
       throw RevenueCatProductNotFoundException({productId});
     }
 
@@ -177,8 +178,10 @@ class RevenueCatPurchaseService {
     final packages =
         offerings.current?.availablePackages ?? const <rc.Package>[];
     return packages
-        .where(
-            (package) => productIds.contains(package.storeProduct.identifier))
+        .where((package) => _matchesProductSet(
+              package.storeProduct.identifier,
+              productIds,
+            ))
         .map(_optionFromPackage)
         .toList()
       ..sort(
@@ -191,7 +194,7 @@ class RevenueCatPurchaseService {
     final packages =
         offerings.current?.availablePackages ?? const <rc.Package>[];
     return packages.where((candidate) {
-      return productIds.contains(candidate.storeProduct.identifier);
+      return _matchesProductSet(candidate.storeProduct.identifier, productIds);
     }).firstOrNull;
   }
 
@@ -239,11 +242,15 @@ class RevenueCatPurchaseService {
     final activeSubscriptions = customerInfo.activeSubscriptions.toSet();
     final activeProProductId = _firstMatchingProductId(
       activeSubscriptions,
-      proProductIds,
+      _isProProductId,
     );
     final activeCloudBackupProductId = _firstMatchingProductId(
       activeSubscriptions,
-      cloudBackupProductIds,
+      _isCloudBackupProductId,
+    );
+    debugPrint(
+      'RevenueCat activeSubscriptions=$activeSubscriptions '
+      'activeEntitlements=${entitlements.entries.where((entry) => entry.value.isActive).map((entry) => entry.key).toList()}',
     );
     final proActive =
         _isAnyEntitlementActive(entitlements, _proEntitlementIds) ||
@@ -261,10 +268,10 @@ class RevenueCatPurchaseService {
 
   String? _firstMatchingProductId(
     Set<String> activeSubscriptions,
-    Set<String> productIds,
+    bool Function(String productId) matches,
   ) {
-    for (final productId in productIds) {
-      if (activeSubscriptions.contains(productId)) return productId;
+    for (final productId in activeSubscriptions) {
+      if (matches(productId)) return productId;
     }
     return null;
   }
@@ -274,6 +281,22 @@ class RevenueCatPurchaseService {
     Set<String> entitlementIds,
   ) {
     return entitlementIds.any((id) => entitlements[id]?.isActive ?? false);
+  }
+
+  bool _matchesProductSet(String productId, Set<String> productIds) {
+    if (identical(productIds, proProductIds)) return _isProProductId(productId);
+    if (identical(productIds, cloudBackupProductIds)) {
+      return _isCloudBackupProductId(productId);
+    }
+    return productIds.contains(productId);
+  }
+
+  bool _isProProductId(String productId) {
+    return proProductIds.contains(productId);
+  }
+
+  bool _isCloudBackupProductId(String productId) {
+    return cloudBackupProductIds.contains(productId);
   }
 
   String? _apiKeyForCurrentPlatform() {
@@ -295,6 +318,9 @@ class RevenueCatPurchaseService {
       case 'chalstock_pro_1y':
         return 'Pro 12개월';
       case 'chalstock_cloud_backup_1y':
+      case 'chalstock_cloud_backup_yearly':
+      case 'chalstock_cloud_yearly':
+      case 'cloud_backup_1y':
       case 'cloud_backup_yearly':
         return 'Cloud Backup 12개월';
       default:
@@ -320,6 +346,9 @@ class RevenueCatPurchaseService {
       case 'chalstock_pro_1y':
         return 20;
       case 'chalstock_cloud_backup_1y':
+      case 'chalstock_cloud_backup_yearly':
+      case 'chalstock_cloud_yearly':
+      case 'cloud_backup_1y':
       case 'cloud_backup_yearly':
         return 30;
       default:

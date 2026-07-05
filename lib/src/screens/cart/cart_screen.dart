@@ -19,6 +19,26 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   final Set<int> _selected = {}; // ✅ 멀티 선택(인덱스 기반)
+  int _lastSeenCartCount = -1;
+  bool _autoSelectPending = true;
+
+  void _syncDefaultSelection(int total) {
+    if (total <= 0) {
+      _lastSeenCartCount = total;
+      _autoSelectPending = true;
+      _selected.clear();
+      return;
+    }
+
+    final cartCountChanged = total != _lastSeenCartCount;
+    if ((_autoSelectPending || cartCountChanged) && _selected.isEmpty) {
+      _selected.addAll(List<int>.generate(total, (i) => i));
+    } else {
+      _selected.removeWhere((index) => index < 0 || index >= total);
+    }
+    _lastSeenCartCount = total;
+    _autoSelectPending = false;
+  }
 
   bool _isAllSelected(int total) => total > 0 && _selected.length == total;
 
@@ -45,7 +65,10 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _clearSelection() {
-    setState(() => _selected.clear());
+    setState(() {
+      _autoSelectPending = false;
+      _selected.clear();
+    });
   }
 
   @override
@@ -54,6 +77,7 @@ class _CartScreenState extends State<CartScreen> {
     final poRepo = context.read<PurchaseOrderRepo>();
     final itemRepo = context.read<ItemRepo>();
     final supplierRepo = context.read<SupplierRepo>();
+    _syncDefaultSelection(cart.count);
 
     Future<void> _editQty(BuildContext ctx, int index, double current) async {
       final c = TextEditingController(text: current.toStringAsFixed(0));

@@ -70,6 +70,9 @@ class AppEntitlement {
   String? _cloudBackupProductLabel(String? productId) {
     switch (productId) {
       case 'chalstock_cloud_backup_1y':
+      case 'chalstock_cloud_backup_yearly':
+      case 'chalstock_cloud_yearly':
+      case 'cloud_backup_1y':
       case 'cloud_backup_yearly':
         return 'Cloud Backup 12개월';
       default:

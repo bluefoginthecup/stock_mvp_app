@@ -1272,6 +1272,30 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
   }
 
+  Future<void> _reorderPurchaseLines(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 || oldIndex >= _lines.length) return;
+    if (newIndex > oldIndex) newIndex -= 1;
+    if (newIndex < 0 || newIndex >= _lines.length) return;
+    if (oldIndex == newIndex) return;
+
+    final previous = [..._lines];
+    final next = [..._lines];
+    final moved = next.removeAt(oldIndex);
+    next.insert(newIndex, moved);
+
+    setState(() => _lines = next);
+
+    try {
+      await widget.repo.upsertLines(_orderId, next);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _lines = previous);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('품목 순서 변경 실패: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -1501,8 +1525,16 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                       ),
                     )
                   : Card(
-                      child: Column(
-                        children: _lines.map((ln) {
+                      child: ReorderableListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        buildDefaultDragHandles: false,
+                        onReorder: _isSelectingLines
+                            ? (_, __) {}
+                            : _reorderPurchaseLines,
+                        itemCount: _lines.length,
+                        itemBuilder: (context, index) {
+                          final ln = _lines[index];
                           final name =
                               ln.name.trim().isEmpty ? ln.itemId : ln.name;
                           final selected = _selectedLineIds.contains(ln.id);
@@ -1513,6 +1545,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                           };
 
                           return ListTile(
+                            key: ValueKey(ln.id),
                             selected: selected,
                             leading: _isSelectingLines
                                 ? Checkbox(
@@ -1527,19 +1560,34 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
                               '부가세 ${_fmt(ln.vatAmount)} · '
                               '합계 ${_fmt(ln.totalAmount)}',
                             ),
-                            trailing: IconButton(
-                              tooltip: '발주라인 편집',
-                              icon: const Icon(Icons.chevron_right),
-                              onPressed: _isSelectingLines
-                                  ? null
-                                  : () => _openLineFull(ln),
-                            ),
+                            trailing: _isSelectingLines
+                                ? null
+                                : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: '발주라인 편집',
+                                        icon: const Icon(Icons.chevron_right),
+                                        onPressed: () => _openLineFull(ln),
+                                      ),
+                                      ReorderableDragStartListener(
+                                        index: index,
+                                        child: IconButton(
+                                          tooltip: '품목 순서 변경',
+                                          icon: const Icon(
+                                            Icons.drag_handle_rounded,
+                                          ),
+                                          onPressed: () {},
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                             onTap: () => _isSelectingLines
                                 ? _toggleLineSelection(ln)
                                 : _openLineItemDetail(ln),
                             onLongPress: () => _toggleLineSelection(ln),
                           );
-                        }).toList(),
+                        },
                       ),
                     ),
               const SizedBox(height: 8),
