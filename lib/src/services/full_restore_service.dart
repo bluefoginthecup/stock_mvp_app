@@ -111,6 +111,7 @@ class FullRestoreService {
         extracted.purchaseReceiptsDir,
         extracted.scheduleAttachmentsDir,
         extracted.itemImagesDir,
+        extracted.productionGuidesDir,
       );
       await _validateChecksums(
         manifest,
@@ -118,6 +119,7 @@ class FullRestoreService {
         extracted.purchaseReceiptsDir,
         extracted.scheduleAttachmentsDir,
         extracted.itemImagesDir,
+        extracted.productionGuidesDir,
       );
       _validateBackupDatabase(extracted.databaseFile);
 
@@ -191,6 +193,10 @@ class FullRestoreService {
       p.join(workDir.path, AppPathService.itemImagesRelativeRoot),
     );
     await itemImagesDir.create(recursive: true);
+    final productionGuidesDir = Directory(
+      p.join(workDir.path, AppPathService.productionGuidesRelativeRoot),
+    );
+    await productionGuidesDir.create(recursive: true);
 
     for (final entry in archive.files) {
       if (entry.name
@@ -214,6 +220,13 @@ class FullRestoreService {
           itemImagesDir,
           AppPathService.itemImagesRelativeRoot,
         );
+      } else if (entry.name
+          .startsWith('${AppPathService.productionGuidesRelativeRoot}/')) {
+        await _extractBackupDirectoryEntry(
+          entry,
+          productionGuidesDir,
+          AppPathService.productionGuidesRelativeRoot,
+        );
       }
     }
 
@@ -223,6 +236,7 @@ class FullRestoreService {
       purchaseReceiptsDir: receiptsDir,
       scheduleAttachmentsDir: scheduleAttachmentsDir,
       itemImagesDir: itemImagesDir,
+      productionGuidesDir: productionGuidesDir,
     );
   }
 
@@ -299,12 +313,14 @@ class FullRestoreService {
     Directory receiptsDir,
     Directory scheduleAttachmentsDir,
     Directory itemImagesDir,
+    Directory productionGuidesDir,
   ) async {
     final expectedSize = _intValue(manifest['totalSizeBytes']);
     final actualSize = await dbFile.length() +
         await _directorySize(receiptsDir) +
         await _directorySize(scheduleAttachmentsDir) +
-        await _directorySize(itemImagesDir);
+        await _directorySize(itemImagesDir) +
+        await _directorySize(productionGuidesDir);
     if (actualSize != expectedSize) {
       throw FullRestoreException(
         '백업 파일 크기 검증 실패: manifest totalSizeBytes=$expectedSize, '
@@ -320,6 +336,7 @@ class FullRestoreService {
     Directory receiptsDir,
     Directory scheduleAttachmentsDir,
     Directory itemImagesDir,
+    Directory productionGuidesDir,
   ) async {
     final stockappDb = manifest['stockappDb'];
     if (stockappDb != null) {
@@ -396,6 +413,12 @@ class FullRestoreService {
       manifest: manifest,
       extractedRoot: itemImagesDir,
       relativeRoot: AppPathService.itemImagesRelativeRoot,
+    );
+    await _validateManifestDirectoryHashes(
+      manifestKey: 'productionGuideFiles',
+      manifest: manifest,
+      extractedRoot: productionGuidesDir,
+      relativeRoot: AppPathService.productionGuidesRelativeRoot,
     );
   }
 
@@ -635,6 +658,19 @@ class FullRestoreService {
       );
     }
 
+    final productionGuidesRoot = await paths.productionGuidesRoot();
+    if (await productionGuidesRoot.exists()) {
+      await _copyDirectory(
+        productionGuidesRoot,
+        Directory(
+          p.join(
+            rollbackDir.path,
+            AppPathService.productionGuidesRelativeRoot,
+          ),
+        ),
+      );
+    }
+
     return rollbackDir;
   }
 
@@ -665,6 +701,12 @@ class FullRestoreService {
       await itemImagesRoot.delete(recursive: true);
     }
     await _copyDirectory(backup.itemImagesDir, itemImagesRoot);
+
+    final productionGuidesRoot = await paths.productionGuidesRoot();
+    if (await productionGuidesRoot.exists()) {
+      await productionGuidesRoot.delete(recursive: true);
+    }
+    await _copyDirectory(backup.productionGuidesDir, productionGuidesRoot);
   }
 
   Future<void> _rollback(Directory rollbackDir) async {
@@ -716,6 +758,18 @@ class FullRestoreService {
     );
     if (await rollbackItemImages.exists()) {
       await _copyDirectory(rollbackItemImages, itemImagesRoot);
+    }
+
+    final productionGuidesRoot = await paths.productionGuidesRoot();
+    if (await productionGuidesRoot.exists()) {
+      await productionGuidesRoot.delete(recursive: true);
+    }
+
+    final rollbackProductionGuides = Directory(
+      p.join(rollbackDir.path, AppPathService.productionGuidesRelativeRoot),
+    );
+    if (await rollbackProductionGuides.exists()) {
+      await _copyDirectory(rollbackProductionGuides, productionGuidesRoot);
     }
   }
 
@@ -904,6 +958,7 @@ class _ExtractedFullBackup {
   final Directory purchaseReceiptsDir;
   final Directory scheduleAttachmentsDir;
   final Directory itemImagesDir;
+  final Directory productionGuidesDir;
 
   const _ExtractedFullBackup({
     required this.manifest,
@@ -911,5 +966,6 @@ class _ExtractedFullBackup {
     required this.purchaseReceiptsDir,
     required this.scheduleAttachmentsDir,
     required this.itemImagesDir,
+    required this.productionGuidesDir,
   });
 }

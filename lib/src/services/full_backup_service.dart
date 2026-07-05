@@ -89,6 +89,7 @@ class FullBackupService {
         AppPathService.purchaseReceiptsRelativeRoot,
         AppPathService.scheduleAttachmentsRelativeRoot,
         AppPathService.itemImagesRelativeRoot,
+        AppPathService.productionGuidesRelativeRoot,
       ];
       final receiptFilesSize = await _directorySize(
         await paths.purchaseReceiptsRoot(),
@@ -99,6 +100,9 @@ class FullBackupService {
       final itemImageFilesSize = await _directorySize(
         await paths.itemImagesRoot(),
       );
+      final productionGuideFilesSize = await _directorySize(
+        await paths.productionGuidesRoot(),
+      );
       final receiptFilesCount = await _directoryFileCount(
         await paths.purchaseReceiptsRoot(),
       );
@@ -108,11 +112,15 @@ class FullBackupService {
       final itemImageFilesCount = await _directoryFileCount(
         await paths.itemImagesRoot(),
       );
+      final productionGuideFilesCount = await _directoryFileCount(
+        await paths.productionGuidesRoot(),
+      );
       final dbSize = await dbBackup.length();
       final totalSizeBytes = dbSize +
           receiptFilesSize +
           scheduleAttachmentFilesSize +
-          itemImageFilesSize;
+          itemImageFilesSize +
+          productionGuideFilesSize;
       final dbHash = await hashService.hashFile(
         file: dbBackup,
         relativePath: 'stockapp.db',
@@ -129,11 +137,16 @@ class FullBackupService {
         root: await paths.itemImagesRoot(),
         relativeRoot: AppPathService.itemImagesRelativeRoot,
       );
+      final productionGuideFileHashes = await hashService.hashDirectoryFiles(
+        root: await paths.productionGuidesRoot(),
+        relativeRoot: AppPathService.productionGuidesRelativeRoot,
+      );
       final contentHash = _buildContentHash(
         dbHash: dbHash,
         receiptFileHashes: receiptFileHashes,
         scheduleAttachmentFileHashes: scheduleAttachmentFileHashes,
         itemImageFileHashes: itemImageFileHashes,
+        productionGuideFileHashes: productionGuideFileHashes,
       );
 
       final manifest = <String, Object?>{
@@ -157,6 +170,9 @@ class FullBackupService {
         'itemImageFiles': itemImageFileHashes
             .map((fileHash) => fileHash.toJson())
             .toList(growable: false),
+        'productionGuideFiles': productionGuideFileHashes
+            .map((fileHash) => fileHash.toJson())
+            .toList(growable: false),
       };
 
       await manifestFile.writeAsString(
@@ -168,9 +184,12 @@ class FullBackupService {
         manifest: manifest,
         attachmentFileCount: receiptFilesCount +
             scheduleAttachmentFilesCount +
-            itemImageFilesCount,
-        attachmentSizeBytes:
-            receiptFilesSize + scheduleAttachmentFilesSize + itemImageFilesSize,
+            itemImageFilesCount +
+            productionGuideFilesCount,
+        attachmentSizeBytes: receiptFilesSize +
+            scheduleAttachmentFilesSize +
+            itemImageFilesSize +
+            productionGuideFilesSize,
       );
 
       await _writeZip(
@@ -193,6 +212,7 @@ class FullBackupService {
     required List<BackupFileHash> receiptFileHashes,
     required List<BackupFileHash> scheduleAttachmentFileHashes,
     required List<BackupFileHash> itemImageFileHashes,
+    required List<BackupFileHash> productionGuideFileHashes,
   }) {
     final content = <String, Object?>{
       'stockappDb': dbHash.toJson(),
@@ -203,6 +223,9 @@ class FullBackupService {
           .map((fileHash) => fileHash.toJson())
           .toList(growable: false),
       'itemImageFiles': itemImageFileHashes
+          .map((fileHash) => fileHash.toJson())
+          .toList(growable: false),
+      'productionGuideFiles': productionGuideFileHashes
           .map((fileHash) => fileHash.toJson())
           .toList(growable: false),
     };
@@ -268,6 +291,20 @@ class FullBackupService {
       if (await itemImagesRoot.exists()) {
         await encoder.addDirectory(
           itemImagesRoot,
+          includeDirName: true,
+          level: ZipFileEncoder.gzip,
+          followLinks: false,
+        );
+      }
+
+      encoder.addArchiveFile(
+        ArchiveFile.directory(AppPathService.productionGuidesRelativeRoot),
+      );
+
+      final productionGuidesRoot = await paths.productionGuidesRoot();
+      if (await productionGuidesRoot.exists()) {
+        await encoder.addDirectory(
+          productionGuidesRoot,
           includeDirName: true,
           level: ZipFileEncoder.gzip,
           followLinks: false,

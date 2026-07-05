@@ -681,7 +681,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 43; //
+  int get schemaVersion => 44; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -697,6 +697,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureStorageLocationMovementTable();
           await _ensureScheduleAttachmentsTable();
           await _ensureItemImagesTable();
+          await _ensureProductionGuideTables();
         },
         beforeOpen: (details) async {
           await _ensurePurchaseLineAmountColumns();
@@ -1012,6 +1013,9 @@ class AppDatabase extends _$AppDatabase {
                 'item_price_histories', 'source_ref_type', 'TEXT');
             await _addColumnIfMissing(
                 'item_price_histories', 'source_ref_id', 'TEXT');
+          }
+          if (from < 44) {
+            await _ensureProductionGuideTables();
           }
         },
       );
@@ -1501,6 +1505,41 @@ class AppDatabase extends _$AppDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_item_images_item '
       'ON item_images(item_id, sort_order, created_at)',
+    );
+  }
+
+  Future<void> _ensureProductionGuideTables() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS item_production_guides (
+        id TEXT PRIMARY KEY NOT NULL,
+        item_id TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS item_production_guide_blocks (
+        id TEXT PRIMARY KEY NOT NULL,
+        guide_id TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        type TEXT NOT NULL,
+        text TEXT,
+        file_name TEXT,
+        file_path TEXT,
+        mime_type TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (guide_id) REFERENCES item_production_guides(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_item_production_guides_item '
+      'ON item_production_guides(item_id)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_item_production_guide_blocks_guide '
+      'ON item_production_guide_blocks(guide_id, sort_order, created_at)',
     );
   }
 

@@ -28,7 +28,6 @@ import '../../services/attachment_policy_service.dart';
 import '../../services/buyer_profile_service.dart';
 import '../../services/entitlement_service.dart';
 import '../../services/inventory_service.dart';
-import '../../ui/common/delete_more_menu.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
 import '../../ui/common/ui.dart';
 import '../stock/stock_item_detail_screen.dart';
@@ -50,6 +49,8 @@ class PurchaseDetailScreen extends StatefulWidget {
   @override
   State<PurchaseDetailScreen> createState() => _PurchaseDetailScreenState();
 }
+
+enum _PurchaseMoreAction { copy, softDelete, hardDelete }
 
 class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   PurchaseOrder? _po;
@@ -1015,6 +1016,172 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
     }
   }
 
+  Future<void> _copyPurchaseOrder() async {
+    final po = _po;
+    if (po == null) return;
+
+    final newOrderId = _uuid.v4();
+    final now = DateTime.now();
+    final copiedOrder = PurchaseOrder(
+      id: newOrderId,
+      supplierName: po.supplierName,
+      supplierId: po.supplierId,
+      eta: now,
+      status: PurchaseOrderStatus.draft,
+      createdAt: now,
+      updatedAt: now,
+      memo: po.memo,
+      deliveryName: po.deliveryName,
+      deliveryAddress: po.deliveryAddress,
+      deliveryPhone: po.deliveryPhone,
+      deliveryMemo: po.deliveryMemo,
+      showDeliveryOnPrint: po.showDeliveryOnPrint,
+      shippingDestinationId: po.shippingDestinationId,
+      buyerProfileId: po.buyerProfileId,
+      buyerProfileName: po.buyerProfileName,
+      buyerBusinessNumber: po.buyerBusinessNumber,
+      buyerCompanyName: po.buyerCompanyName,
+      buyerRepresentative: po.buyerRepresentative,
+      buyerAddress: po.buyerAddress,
+      buyerBusinessType: po.buyerBusinessType,
+      buyerBusinessItem: po.buyerBusinessItem,
+      buyerPhoneFax: po.buyerPhoneFax,
+      shippingCost: po.shippingCost,
+      extraCost: po.extraCost,
+      vatType: po.vatType,
+    );
+    final copiedLines = [
+      for (final line in _lines)
+        PurchaseLine(
+          id: _uuid.v4(),
+          orderId: newOrderId,
+          itemId: line.itemId,
+          name: line.name,
+          unit: line.unit,
+          qty: line.qty,
+          note: line.note,
+          memo: line.memo,
+          colorNo: line.colorNo,
+          unitPrice: line.unitPrice,
+          vatType: line.vatType,
+          supplyAmount: line.amountEdited ? line.supplyAmount : null,
+          vatAmount: line.amountEdited ? line.vatAmount : null,
+          totalAmount: line.amountEdited ? line.totalAmount : null,
+          amountEdited: line.amountEdited,
+          printAttrs: line.printAttrs,
+        ),
+    ];
+
+    try {
+      await widget.repo.createPurchaseOrder(copiedOrder);
+      await widget.repo.upsertLines(newOrderId, copiedLines);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('발주를 복사했습니다.')),
+      );
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PurchaseDetailScreen(
+            repo: widget.repo,
+            orderId: newOrderId,
+            navigationOrderIds: [newOrderId],
+          ),
+        ),
+      );
+      if (mounted) await _reload();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('발주 복사에 실패했습니다: $e')),
+      );
+    }
+  }
+
+  Future<void> _deletePurchaseOrder({required bool hard}) async {
+    final po = _po;
+    if (po == null) return;
+
+    final confirmed = await confirmDelete(
+      context,
+      title: '발주 ${hard ? '완전 삭제' : '삭제'}',
+      message: hard ? '이 발주를 완전히 삭제할까요? (되돌릴 수 없음)' : '이 발주를 삭제할까요?',
+      confirmLabel: hard ? '완전 삭제' : '삭제',
+    );
+    if (!confirmed) return;
+
+    final inv = context.read<InventoryService>();
+    final snap = await widget.repo.getPurchaseOrderById(po.id);
+    await inv.deletePurchase(po.id, hard: hard);
+
+    if (!mounted) return;
+    if (!hard) {
+      showUndoSnackBar(
+        context,
+        message: '발주를 삭제했어요',
+        onUndo: () async {
+          if (snap != null) {
+            await widget.repo.updatePurchaseOrder(
+              snap.copyWith(isDeleted: false),
+            );
+          }
+        },
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('발주를 완전 삭제했어요')),
+      );
+    }
+    Navigator.of(context).maybePop();
+  }
+
+  Widget _buildPurchaseMoreMenu() {
+    return PopupMenuButton<_PurchaseMoreAction>(
+      tooltip: '더보기',
+      onSelected: (action) async {
+        switch (action) {
+          case _PurchaseMoreAction.copy:
+            await _copyPurchaseOrder();
+            break;
+          case _PurchaseMoreAction.softDelete:
+            await _deletePurchaseOrder(hard: false);
+            break;
+          case _PurchaseMoreAction.hardDelete:
+            await _deletePurchaseOrder(hard: true);
+            break;
+        }
+      },
+      itemBuilder: (_) => const <PopupMenuEntry<_PurchaseMoreAction>>[
+        PopupMenuItem(
+          value: _PurchaseMoreAction.copy,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.copy_all_outlined),
+            title: Text('발주복사'),
+          ),
+        ),
+        PopupMenuDivider(),
+        PopupMenuItem(
+          value: _PurchaseMoreAction.softDelete,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.delete_outline),
+            title: Text('발주 삭제'),
+          ),
+        ),
+        PopupMenuDivider(),
+        PopupMenuItem(
+          value: _PurchaseMoreAction.hardDelete,
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.delete_forever),
+            title: Text('발주 완전 삭제'),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _handleTimelineTap(int index) async {
     final po = _po;
     if (po == null) return;
@@ -1359,13 +1526,7 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
             ),
           ],
           if (!_isSelectingLines) ...[
-            DeleteMoreMenu<PurchaseOrder>(
-              entity: po,
-              onChanged: () {
-                if (!mounted) return;
-                Navigator.of(context).maybePop();
-              },
-            ),
+            _buildPurchaseMoreMenu(),
             PurchasePrintAction(poId: _orderId),
           ],
         ],

@@ -3,6 +3,7 @@
 
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Variable;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -12,18 +13,24 @@ import '../../db/app_database.dart' hide TxnRow;
 import '../../models/attachment_domain.dart';
 import '../../models/item_image.dart';
 import '../../models/item.dart';
+import '../../models/purchase_line.dart';
+import '../../models/purchase_order.dart';
+import '../../models/production_guide.dart';
 import '../../models/storage_location.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../services/buyer_profile_service.dart';
 
 import '../../ui/common/ui.dart';
 import '../../utils/item_presentation.dart'; // ItemLabel
 
 import '../bom/finished_bom_edit_screen.dart';
 import '../bom/semi_bom_edit_screen.dart';
+import '../purchases/purchase_detail_screen.dart';
 
 import '../txns/adjust_form.dart';
 import '../../models/txn.dart' show Txn;
 import '../txns/widgets/txn_row.dart';
+import 'item_production_guide_screen.dart';
 import 'stock_price_history_screen.dart';
 import 'stock_item_full_edit_screen.dart';
 import 'widgets/item_meta_overview.dart';
@@ -39,6 +46,7 @@ import '../../services/app_path_service.dart';
 import '../../services/attachment_file_service.dart';
 import '../../services/attachment_policy_service.dart';
 import '../../services/entitlement_service.dart';
+import '../../services/production_guide_service.dart';
 import '../../utils/item_registration.dart';
 import '../../utils/reorder_schedule_utils.dart';
 import '../../app/main_tab_controller.dart';
@@ -465,6 +473,125 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     );
   }
 
+  Future<(PurchaseOrder, PurchaseLine)?> _latestPurchaseConditionForItem(
+    Item item,
+  ) async {
+    final db = context.read<AppDatabase>();
+    final poRepo = context.read<PurchaseOrderRepo>();
+    final row = await db.customSelect(
+      '''
+      SELECT po.id AS order_id, pl.id AS line_id
+      FROM purchase_lines pl
+      INNER JOIN purchase_orders po ON po.id = pl.order_id
+      WHERE pl.item_id = ?
+        AND COALESCE(po.is_deleted, 0) = 0
+        AND COALESCE(pl.is_deleted, 0) = 0
+        AND po.status IN ('ordered', 'received')
+      ORDER BY COALESCE(po.received_at, po.updated_at, po.created_at) DESC,
+        po.id DESC,
+        pl.id DESC
+      LIMIT 1
+      ''',
+      variables: [Variable.withString(item.id)],
+      readsFrom: {db.purchaseOrders, db.purchaseLines},
+    ).getSingleOrNull();
+    if (row == null) return null;
+
+    final orderId = row.data['order_id'] as String;
+    final lineId = row.data['line_id'] as String;
+    final order = await poRepo.getPurchaseOrderById(orderId);
+    final lines = await poRepo.getLines(orderId);
+    PurchaseLine? line;
+    for (final candidate in lines) {
+      if (candidate.id == lineId) {
+        line = candidate;
+        break;
+      }
+    }
+    if (order == null || line == null) return null;
+    return (order, line);
+  }
+
+  Future<void> _createPurchaseFromRecentCondition(Item item) async {
+    final condition = await _latestPurchaseConditionForItem(item);
+    if (!mounted) return;
+    if (condition == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('최근 발주 조건을 찾지 못했습니다.')),
+      );
+      return;
+    }
+
+    final poRepo = context.read<PurchaseOrderRepo>();
+    final buyerProfile =
+        await BuyerProfileService(context.read<AppDatabase>()).defaultProfile();
+    if (!mounted) return;
+
+    final (sourceOrder, sourceLine) = condition;
+    final newOrderId = const Uuid().v4();
+    final newLineId = const Uuid().v4();
+    final now = DateTime.now();
+    final itemName = item.displayName?.trim().isNotEmpty == true
+        ? item.displayName!.trim()
+        : item.name;
+    final newOrder = PurchaseOrder(
+      id: newOrderId,
+      supplierName: sourceOrder.supplierName,
+      supplierId: sourceOrder.supplierId,
+      eta: now,
+      status: PurchaseOrderStatus.draft,
+      createdAt: now,
+      updatedAt: now,
+      memo: '최근 조건으로 발주: $itemName',
+      deliveryName: sourceOrder.deliveryName,
+      deliveryAddress: sourceOrder.deliveryAddress,
+      deliveryPhone: sourceOrder.deliveryPhone,
+      deliveryMemo: sourceOrder.deliveryMemo,
+      showDeliveryOnPrint: sourceOrder.showDeliveryOnPrint,
+      shippingDestinationId: sourceOrder.shippingDestinationId,
+      vatType: sourceOrder.vatType,
+    ).copyWithBuyerProfile(buyerProfile);
+    final newLine = PurchaseLine(
+      id: newLineId,
+      orderId: newOrderId,
+      itemId: sourceLine.itemId,
+      name: sourceLine.name,
+      unit: sourceLine.unit,
+      qty: sourceLine.qty,
+      note: sourceLine.note,
+      memo: sourceLine.memo,
+      colorNo: sourceLine.colorNo,
+      unitPrice: sourceLine.unitPrice,
+      vatType: sourceLine.vatType,
+      supplyAmount: sourceLine.amountEdited ? sourceLine.supplyAmount : null,
+      vatAmount: sourceLine.amountEdited ? sourceLine.vatAmount : null,
+      totalAmount: sourceLine.amountEdited ? sourceLine.totalAmount : null,
+      amountEdited: sourceLine.amountEdited,
+      printAttrs: sourceLine.printAttrs,
+    );
+
+    try {
+      await poRepo.createPurchaseOrder(newOrder);
+      await poRepo.upsertLines(newOrderId, [newLine]);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PurchaseDetailScreen(
+            repo: poRepo,
+            orderId: newOrderId,
+            navigationOrderIds: [newOrderId],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('최근 조건으로 발주를 만들지 못했습니다: $e')),
+      );
+    }
+  }
+
   Widget _buildPriceActions(Item item) {
     return Wrap(
       spacing: 8,
@@ -591,6 +718,11 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                       avatar: const Icon(Icons.event_available, size: 16),
                       label: Text('다음 발주 예정일: ${_dateText(nextDate)}'),
                       onPressed: () => _pickNextReorderDate(item),
+                    ),
+                    ActionChip(
+                      avatar: const Icon(Icons.replay, size: 16),
+                      label: const Text('최근 조건으로 발주'),
+                      onPressed: () => _createPurchaseFromRecentCondition(item),
                     ),
                   ],
                 ),
@@ -1176,6 +1308,62 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     );
   }
 
+  Widget _buildProductionGuideSection(Item item) {
+    final service = ProductionGuideService(context.read<AppDatabase>());
+    final itemName = item.displayName?.trim().isNotEmpty == true
+        ? item.displayName!.trim()
+        : item.name;
+    return StreamBuilder<ProductionGuideData?>(
+      stream: service.watchGuideData(item.id),
+      builder: (context, snapshot) {
+        final data = snapshot.data;
+        final hasGuide = data != null && data.blocks.isNotEmpty;
+        final summary = hasGuide
+            ? '단계 ${data.stepCount}개 · 사진 ${data.imageCount}장'
+            : '아직 제작 가이드가 없습니다';
+
+        return Card(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ItemProductionGuideScreen(
+                    itemId: item.id,
+                    itemName: itemName,
+                  ),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  const Icon(Icons.fact_check_outlined, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '제작 가이드',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(summary),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildStorageLocationSection(Item item) {
     return FutureBuilder<_ItemLocationViewData>(
       future: _loadItemLocationViewData(item.id),
@@ -1475,6 +1663,8 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
                     ),
                     const SizedBox(height: 12),
                     _buildItemImageSection(item),
+                    const SizedBox(height: 12),
+                    _buildProductionGuideSection(item),
                     const SizedBox(height: 12),
                     if (ReorderScheduleUtils.statusFor(item).shouldShow) ...[
                       ReorderBadge(item: item),

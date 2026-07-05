@@ -7,6 +7,7 @@ class AppPathService {
   static const purchaseReceiptsRelativeRoot = 'purchase_receipts';
   static const scheduleAttachmentsRelativeRoot = 'schedule_attachments';
   static const itemImagesRelativeRoot = 'item_images';
+  static const productionGuidesRelativeRoot = 'production_guides';
   static String? _activeUserId;
 
   const AppPathService();
@@ -102,6 +103,11 @@ class AppPathService {
     return Directory(p.join(dir.path, itemImagesRelativeRoot));
   }
 
+  Future<Directory> productionGuidesRoot() async {
+    final dir = await userSupportDirectory();
+    return Directory(p.join(dir.path, productionGuidesRelativeRoot));
+  }
+
   Future<Directory> purchaseReceiptOrderDirectory(
       String purchaseOrderId) async {
     final root = await purchaseReceiptsRoot();
@@ -140,12 +146,28 @@ class AppPathService {
     return Directory(p.join(root.path, itemId));
   }
 
+  Future<Directory> productionGuideDirectory(String itemId) async {
+    final root = await productionGuidesRoot();
+    return Directory(p.join(root.path, itemId));
+  }
+
   String itemImageRelativePath(
     String itemId,
     String fileName,
   ) {
     return p.posix.join(
       itemImagesRelativeRoot,
+      itemId,
+      fileName,
+    );
+  }
+
+  String productionGuideRelativePath(
+    String itemId,
+    String fileName,
+  ) {
+    return p.posix.join(
+      productionGuidesRelativeRoot,
       itemId,
       fileName,
     );
@@ -185,6 +207,16 @@ class AppPathService {
         ]));
       }
 
+      final productionGuidesIndex =
+          parts.lastIndexOf(productionGuidesRelativeRoot);
+      if (productionGuidesIndex >= 0 &&
+          productionGuidesIndex < parts.length - 1) {
+        return File(p.joinAll([
+          dir.path,
+          ...parts.skip(productionGuidesIndex),
+        ]));
+      }
+
       return File(storedPath);
     }
 
@@ -220,6 +252,13 @@ class AppPathService {
     final itemImagesIndex = parts.lastIndexOf(itemImagesRelativeRoot);
     if (itemImagesIndex >= 0 && itemImagesIndex < parts.length - 1) {
       return p.posix.joinAll(parts.skip(itemImagesIndex));
+    }
+
+    final productionGuidesIndex =
+        parts.lastIndexOf(productionGuidesRelativeRoot);
+    if (productionGuidesIndex >= 0 &&
+        productionGuidesIndex < parts.length - 1) {
+      return p.posix.joinAll(parts.skip(productionGuidesIndex));
     }
 
     return absoluteOrRelativePath;
