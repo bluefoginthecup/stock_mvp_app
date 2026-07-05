@@ -7743,14 +7743,36 @@ class $ItemPriceHistoriesTable extends ItemPriceHistories
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('manual'));
+  static const VerificationMeta _sourceRefTypeMeta =
+      const VerificationMeta('sourceRefType');
+  @override
+  late final GeneratedColumn<String> sourceRefType = GeneratedColumn<String>(
+      'source_ref_type', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _sourceRefIdMeta =
+      const VerificationMeta('sourceRefId');
+  @override
+  late final GeneratedColumn<String> sourceRefId = GeneratedColumn<String>(
+      'source_ref_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _noteMeta = const VerificationMeta('note');
   @override
   late final GeneratedColumn<String> note = GeneratedColumn<String>(
       'note', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, itemId, kind, changedAt, oldPrice, newPrice, source, note];
+  List<GeneratedColumn> get $columns => [
+        id,
+        itemId,
+        kind,
+        changedAt,
+        oldPrice,
+        newPrice,
+        source,
+        sourceRefType,
+        sourceRefId,
+        note
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -7797,6 +7819,18 @@ class $ItemPriceHistoriesTable extends ItemPriceHistories
       context.handle(_sourceMeta,
           source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
     }
+    if (data.containsKey('source_ref_type')) {
+      context.handle(
+          _sourceRefTypeMeta,
+          sourceRefType.isAcceptableOrUnknown(
+              data['source_ref_type']!, _sourceRefTypeMeta));
+    }
+    if (data.containsKey('source_ref_id')) {
+      context.handle(
+          _sourceRefIdMeta,
+          sourceRefId.isAcceptableOrUnknown(
+              data['source_ref_id']!, _sourceRefIdMeta));
+    }
     if (data.containsKey('note')) {
       context.handle(
           _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
@@ -7824,6 +7858,10 @@ class $ItemPriceHistoriesTable extends ItemPriceHistories
           .read(DriftSqlType.double, data['${effectivePrefix}new_price']),
       source: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
+      sourceRefType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_ref_type']),
+      sourceRefId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source_ref_id']),
       note: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}note']),
     );
@@ -7844,6 +7882,8 @@ class ItemPriceHistoryRow extends DataClass
   final double? oldPrice;
   final double? newPrice;
   final String source;
+  final String? sourceRefType;
+  final String? sourceRefId;
   final String? note;
   const ItemPriceHistoryRow(
       {required this.id,
@@ -7853,6 +7893,8 @@ class ItemPriceHistoryRow extends DataClass
       this.oldPrice,
       this.newPrice,
       required this.source,
+      this.sourceRefType,
+      this.sourceRefId,
       this.note});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7868,6 +7910,12 @@ class ItemPriceHistoryRow extends DataClass
       map['new_price'] = Variable<double>(newPrice);
     }
     map['source'] = Variable<String>(source);
+    if (!nullToAbsent || sourceRefType != null) {
+      map['source_ref_type'] = Variable<String>(sourceRefType);
+    }
+    if (!nullToAbsent || sourceRefId != null) {
+      map['source_ref_id'] = Variable<String>(sourceRefId);
+    }
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
@@ -7887,6 +7935,12 @@ class ItemPriceHistoryRow extends DataClass
           ? const Value.absent()
           : Value(newPrice),
       source: Value(source),
+      sourceRefType: sourceRefType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceRefType),
+      sourceRefId: sourceRefId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceRefId),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
     );
   }
@@ -7902,6 +7956,8 @@ class ItemPriceHistoryRow extends DataClass
       oldPrice: serializer.fromJson<double?>(json['oldPrice']),
       newPrice: serializer.fromJson<double?>(json['newPrice']),
       source: serializer.fromJson<String>(json['source']),
+      sourceRefType: serializer.fromJson<String?>(json['sourceRefType']),
+      sourceRefId: serializer.fromJson<String?>(json['sourceRefId']),
       note: serializer.fromJson<String?>(json['note']),
     );
   }
@@ -7916,6 +7972,8 @@ class ItemPriceHistoryRow extends DataClass
       'oldPrice': serializer.toJson<double?>(oldPrice),
       'newPrice': serializer.toJson<double?>(newPrice),
       'source': serializer.toJson<String>(source),
+      'sourceRefType': serializer.toJson<String?>(sourceRefType),
+      'sourceRefId': serializer.toJson<String?>(sourceRefId),
       'note': serializer.toJson<String?>(note),
     };
   }
@@ -7928,6 +7986,8 @@ class ItemPriceHistoryRow extends DataClass
           Value<double?> oldPrice = const Value.absent(),
           Value<double?> newPrice = const Value.absent(),
           String? source,
+          Value<String?> sourceRefType = const Value.absent(),
+          Value<String?> sourceRefId = const Value.absent(),
           Value<String?> note = const Value.absent()}) =>
       ItemPriceHistoryRow(
         id: id ?? this.id,
@@ -7937,6 +7997,9 @@ class ItemPriceHistoryRow extends DataClass
         oldPrice: oldPrice.present ? oldPrice.value : this.oldPrice,
         newPrice: newPrice.present ? newPrice.value : this.newPrice,
         source: source ?? this.source,
+        sourceRefType:
+            sourceRefType.present ? sourceRefType.value : this.sourceRefType,
+        sourceRefId: sourceRefId.present ? sourceRefId.value : this.sourceRefId,
         note: note.present ? note.value : this.note,
       );
   ItemPriceHistoryRow copyWithCompanion(ItemPriceHistoriesCompanion data) {
@@ -7948,6 +8011,11 @@ class ItemPriceHistoryRow extends DataClass
       oldPrice: data.oldPrice.present ? data.oldPrice.value : this.oldPrice,
       newPrice: data.newPrice.present ? data.newPrice.value : this.newPrice,
       source: data.source.present ? data.source.value : this.source,
+      sourceRefType: data.sourceRefType.present
+          ? data.sourceRefType.value
+          : this.sourceRefType,
+      sourceRefId:
+          data.sourceRefId.present ? data.sourceRefId.value : this.sourceRefId,
       note: data.note.present ? data.note.value : this.note,
     );
   }
@@ -7962,14 +8030,16 @@ class ItemPriceHistoryRow extends DataClass
           ..write('oldPrice: $oldPrice, ')
           ..write('newPrice: $newPrice, ')
           ..write('source: $source, ')
+          ..write('sourceRefType: $sourceRefType, ')
+          ..write('sourceRefId: $sourceRefId, ')
           ..write('note: $note')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, itemId, kind, changedAt, oldPrice, newPrice, source, note);
+  int get hashCode => Object.hash(id, itemId, kind, changedAt, oldPrice,
+      newPrice, source, sourceRefType, sourceRefId, note);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -7981,6 +8051,8 @@ class ItemPriceHistoryRow extends DataClass
           other.oldPrice == this.oldPrice &&
           other.newPrice == this.newPrice &&
           other.source == this.source &&
+          other.sourceRefType == this.sourceRefType &&
+          other.sourceRefId == this.sourceRefId &&
           other.note == this.note);
 }
 
@@ -7992,6 +8064,8 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
   final Value<double?> oldPrice;
   final Value<double?> newPrice;
   final Value<String> source;
+  final Value<String?> sourceRefType;
+  final Value<String?> sourceRefId;
   final Value<String?> note;
   final Value<int> rowid;
   const ItemPriceHistoriesCompanion({
@@ -8002,6 +8076,8 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
     this.oldPrice = const Value.absent(),
     this.newPrice = const Value.absent(),
     this.source = const Value.absent(),
+    this.sourceRefType = const Value.absent(),
+    this.sourceRefId = const Value.absent(),
     this.note = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -8013,6 +8089,8 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
     this.oldPrice = const Value.absent(),
     this.newPrice = const Value.absent(),
     this.source = const Value.absent(),
+    this.sourceRefType = const Value.absent(),
+    this.sourceRefId = const Value.absent(),
     this.note = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -8027,6 +8105,8 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
     Expression<double>? oldPrice,
     Expression<double>? newPrice,
     Expression<String>? source,
+    Expression<String>? sourceRefType,
+    Expression<String>? sourceRefId,
     Expression<String>? note,
     Expression<int>? rowid,
   }) {
@@ -8038,6 +8118,8 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
       if (oldPrice != null) 'old_price': oldPrice,
       if (newPrice != null) 'new_price': newPrice,
       if (source != null) 'source': source,
+      if (sourceRefType != null) 'source_ref_type': sourceRefType,
+      if (sourceRefId != null) 'source_ref_id': sourceRefId,
       if (note != null) 'note': note,
       if (rowid != null) 'rowid': rowid,
     });
@@ -8051,6 +8133,8 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
       Value<double?>? oldPrice,
       Value<double?>? newPrice,
       Value<String>? source,
+      Value<String?>? sourceRefType,
+      Value<String?>? sourceRefId,
       Value<String?>? note,
       Value<int>? rowid}) {
     return ItemPriceHistoriesCompanion(
@@ -8061,6 +8145,8 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
       oldPrice: oldPrice ?? this.oldPrice,
       newPrice: newPrice ?? this.newPrice,
       source: source ?? this.source,
+      sourceRefType: sourceRefType ?? this.sourceRefType,
+      sourceRefId: sourceRefId ?? this.sourceRefId,
       note: note ?? this.note,
       rowid: rowid ?? this.rowid,
     );
@@ -8090,6 +8176,12 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
     if (source.present) {
       map['source'] = Variable<String>(source.value);
     }
+    if (sourceRefType.present) {
+      map['source_ref_type'] = Variable<String>(sourceRefType.value);
+    }
+    if (sourceRefId.present) {
+      map['source_ref_id'] = Variable<String>(sourceRefId.value);
+    }
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
@@ -8109,6 +8201,8 @@ class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
           ..write('oldPrice: $oldPrice, ')
           ..write('newPrice: $newPrice, ')
           ..write('source: $source, ')
+          ..write('sourceRefType: $sourceRefType, ')
+          ..write('sourceRefId: $sourceRefId, ')
           ..write('note: $note, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -19226,6 +19320,8 @@ typedef $$ItemPriceHistoriesTableCreateCompanionBuilder
   Value<double?> oldPrice,
   Value<double?> newPrice,
   Value<String> source,
+  Value<String?> sourceRefType,
+  Value<String?> sourceRefId,
   Value<String?> note,
   Value<int> rowid,
 });
@@ -19238,6 +19334,8 @@ typedef $$ItemPriceHistoriesTableUpdateCompanionBuilder
   Value<double?> oldPrice,
   Value<double?> newPrice,
   Value<String> source,
+  Value<String?> sourceRefType,
+  Value<String?> sourceRefId,
   Value<String?> note,
   Value<int> rowid,
 });
@@ -19288,6 +19386,12 @@ class $$ItemPriceHistoriesTableFilterComposer
 
   ColumnFilters<String> get source => $composableBuilder(
       column: $table.source, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceRefType => $composableBuilder(
+      column: $table.sourceRefType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get sourceRefId => $composableBuilder(
+      column: $table.sourceRefId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnFilters(column));
@@ -19340,6 +19444,13 @@ class $$ItemPriceHistoriesTableOrderingComposer
   ColumnOrderings<String> get source => $composableBuilder(
       column: $table.source, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get sourceRefType => $composableBuilder(
+      column: $table.sourceRefType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get sourceRefId => $composableBuilder(
+      column: $table.sourceRefId, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get note => $composableBuilder(
       column: $table.note, builder: (column) => ColumnOrderings(column));
 
@@ -19390,6 +19501,12 @@ class $$ItemPriceHistoriesTableAnnotationComposer
 
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceRefType => $composableBuilder(
+      column: $table.sourceRefType, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceRefId => $composableBuilder(
+      column: $table.sourceRefId, builder: (column) => column);
 
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
@@ -19447,6 +19564,8 @@ class $$ItemPriceHistoriesTableTableManager extends RootTableManager<
             Value<double?> oldPrice = const Value.absent(),
             Value<double?> newPrice = const Value.absent(),
             Value<String> source = const Value.absent(),
+            Value<String?> sourceRefType = const Value.absent(),
+            Value<String?> sourceRefId = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -19458,6 +19577,8 @@ class $$ItemPriceHistoriesTableTableManager extends RootTableManager<
             oldPrice: oldPrice,
             newPrice: newPrice,
             source: source,
+            sourceRefType: sourceRefType,
+            sourceRefId: sourceRefId,
             note: note,
             rowid: rowid,
           ),
@@ -19469,6 +19590,8 @@ class $$ItemPriceHistoriesTableTableManager extends RootTableManager<
             Value<double?> oldPrice = const Value.absent(),
             Value<double?> newPrice = const Value.absent(),
             Value<String> source = const Value.absent(),
+            Value<String?> sourceRefType = const Value.absent(),
+            Value<String?> sourceRefId = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -19480,6 +19603,8 @@ class $$ItemPriceHistoriesTableTableManager extends RootTableManager<
             oldPrice: oldPrice,
             newPrice: newPrice,
             source: source,
+            sourceRefType: sourceRefType,
+            sourceRefId: sourceRefId,
             note: note,
             rowid: rowid,
           ),

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
@@ -303,9 +302,6 @@ class _QuoteLineEditScreenState extends State<QuoteLineEditScreen> {
   double _parseMoney(TextEditingController controller) =>
       double.tryParse(controller.text.trim().replaceAll(',', '')) ?? 0;
 
-  String _formatMoney(double value) =>
-      NumberFormat.decimalPattern('ko_KR').format(value.round());
-
   void _recalculateAmountsIfNeeded() {
     if (!_amountEdited) _recalculateAmounts();
   }
@@ -346,7 +342,7 @@ class _QuoteLineEditScreenState extends State<QuoteLineEditScreen> {
             vatType: _vatType,
           );
     if (!createdTemporaryItem) {
-      await _maybeSaveLineDefaultsToItem(price);
+      await _maybeSaveLineDefaultsToItem();
       if (!mounted) return;
     }
     Navigator.pop(
@@ -369,7 +365,7 @@ class _QuoteLineEditScreenState extends State<QuoteLineEditScreen> {
     );
   }
 
-  Future<void> _maybeSaveLineDefaultsToItem(double price) async {
+  Future<void> _maybeSaveLineDefaultsToItem() async {
     final itemId = _itemIdC.text.trim();
     if (itemId.isEmpty) return;
 
@@ -380,13 +376,10 @@ class _QuoteLineEditScreenState extends State<QuoteLineEditScreen> {
     final attrs = Map<String, dynamic>.from(item.attrs ?? const {});
     final spec = _specController.text.trim();
     final currentSpec = attrs['nominalSize']?.toString().trim() ?? '';
-    final canSavePrice = price > 0 &&
-        (item.defaultSalePrice == null || item.defaultSalePrice! <= 0);
     final canSaveSpec = spec.isNotEmpty && currentSpec.isEmpty;
-    if (!canSavePrice && !canSaveSpec) return;
+    if (!canSaveSpec) return;
 
     final lines = <String>[
-      if (canSavePrice) '출고가: ${_formatMoney(price)}원',
       if (canSaveSpec) '규격: $spec',
     ];
     final shouldSave = await showDialog<bool>(
@@ -420,7 +413,6 @@ class _QuoteLineEditScreenState extends State<QuoteLineEditScreen> {
     if (canSaveSpec) attrs['nominalSize'] = spec;
     await itemRepo.upsertItem(
       item.copyWith(
-        defaultSalePrice: canSavePrice ? price : item.defaultSalePrice,
         attrs: attrs,
       ),
     );

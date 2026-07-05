@@ -362,6 +362,12 @@ class InventoryService {
         note: 'purchase actual in',
         unitPrice: line.unitPrice,
       );
+      await items.updateDefaultPurchasePriceFromPurchase(
+        itemId: line.itemId,
+        unitPrice: line.unitPrice,
+        purchaseId: po.id,
+        purchaseLineId: line.id,
+      );
     }
 
     await purchases.updatePurchaseOrder(

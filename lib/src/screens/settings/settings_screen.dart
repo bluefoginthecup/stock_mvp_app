@@ -22,6 +22,7 @@ import '/src/services/entitlement_service.dart';
 import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
 import '/src/services/full_restore_service.dart';
+import '/src/services/purchase_price_backfill_service.dart';
 import '/src/services/restore_rollback_service.dart';
 import '/src/services/revenuecat_purchase_service.dart';
 import '/src/services/storage_usage_service.dart';
@@ -159,6 +160,42 @@ class SettingsScreen extends StatelessWidget {
           const _BackupEncryptionSection(),
           const _CloudBackupSection(),
           const _SectionHeader('데이터'),
+          ListTile(
+            leading: const Icon(Icons.trending_up),
+            title: const Text('발주 단가로 입고가 이력 백필'),
+            subtitle: const Text('입고완료된 과거 발주의 단가를 아이템 입고가/가격 추이에 반영합니다'),
+            onTap: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('입고가 이력 백필'),
+                  content: const Text(
+                    '입고완료된 발주 라인의 단가를 날짜순으로 읽어 가격 이력에 추가하고, '
+                    '각 아이템의 현재 입고가를 가장 최근 발주 단가로 갱신합니다.\n\n'
+                    '이미 반영된 발주 라인은 다시 추가하지 않습니다.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      child: const Text('취소'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      child: const Text('실행'),
+                    ),
+                  ],
+                ),
+              );
+              if (ok != true) return;
+
+              await runWithSpinnerMessage(() async {
+                final result = await PurchasePriceBackfillService(
+                  context.read<AppDatabase>(),
+                ).backfillFromReceivedPurchases();
+                return result.message;
+              });
+            },
+          ),
           if (showDeveloperSeedImport) ...[
             const _SectionHeader('개발자 도구'),
             ListTile(

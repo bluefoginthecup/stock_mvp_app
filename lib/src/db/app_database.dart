@@ -203,6 +203,8 @@ class ItemPriceHistories extends Table {
   RealColumn get oldPrice => real().nullable()();
   RealColumn get newPrice => real().nullable()();
   TextColumn get source => text().withDefault(const Constant('manual'))();
+  TextColumn get sourceRefType => text().nullable()();
+  TextColumn get sourceRefId => text().nullable()();
   TextColumn get note => text().nullable()();
 
   @override
@@ -679,7 +681,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 42; //
+  int get schemaVersion => 43; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -1004,6 +1006,12 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 42) {
             await m.createTable(itemPriceHistories);
+          }
+          if (from < 43) {
+            await _addColumnIfMissing(
+                'item_price_histories', 'source_ref_type', 'TEXT');
+            await _addColumnIfMissing(
+                'item_price_histories', 'source_ref_id', 'TEXT');
           }
         },
       );

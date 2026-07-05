@@ -40,6 +40,14 @@ abstract class ItemRepo {
   /// 메타 업데이트 (이름/표시이름/단위/속성/공급처 등)
   Future<void> updateItemMeta(Item item);
 
+  /// 발주 입고 단가를 아이템 기본 입고가로 반영하고 가격 이력에 기록
+  Future<void> updateDefaultPurchasePriceFromPurchase({
+    required String itemId,
+    required double unitPrice,
+    required String purchaseId,
+    required String purchaseLineId,
+  });
+
   /// 임시/정식등록 필요 아이템의 부족 필수값 목록
   Future<List<String>> registrationMissingFields(String itemId);
 

@@ -226,6 +226,8 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     required double? oldPrice,
     required double? newPrice,
     String source = 'manual',
+    String? sourceRefType,
+    String? sourceRefId,
     String? note,
   }) async {
     if (!_priceChanged(oldPrice, newPrice)) return;
@@ -241,6 +243,8 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
             oldPrice: Value(oldPrice),
             newPrice: Value(newPrice),
             source: Value(source),
+            sourceRefType: Value(sourceRefType),
+            sourceRefId: Value(sourceRefId),
             note: Value(note),
           ),
         );
@@ -473,6 +477,43 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     }
     print(
         'DB 저장 후: ${check?.defaultPurchasePrice} / ${check?.defaultSalePrice}');
+  }
+
+  @override
+  Future<void> updateDefaultPurchasePriceFromPurchase({
+    required String itemId,
+    required double unitPrice,
+    required String purchaseId,
+    required String purchaseLineId,
+  }) async {
+    if (unitPrice <= 0) return;
+    final before = await getItem(itemId);
+    if (before == null) return;
+    final after = before.copyWith(defaultPurchasePrice: unitPrice);
+
+    await db.transaction(() async {
+      await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
+        ItemsCompanion(defaultPurchasePrice: Value(unitPrice)),
+      );
+      await _insertItemPriceHistory(
+        itemId: itemId,
+        kind: 'purchase',
+        oldPrice: before.defaultPurchasePrice,
+        newPrice: unitPrice,
+        source: 'purchase',
+        sourceRefType: 'purchase_line',
+        sourceRefId: purchaseLineId,
+        note: '발주 입고가 반영: $purchaseId',
+      );
+    });
+
+    final fresh = await getItem(itemId);
+    if (fresh != null) {
+      _cacheItem(fresh);
+      await ReorderReminderService.rescheduleForItem(fresh);
+    } else {
+      _cacheItem(after);
+    }
   }
 
   @override
