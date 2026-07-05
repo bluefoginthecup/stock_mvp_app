@@ -173,6 +173,10 @@ class Txns extends Table {
   TextColumn get note => text().nullable()();
   TextColumn get memo => text().nullable()();
   TextColumn get sourceKey => text().nullable()();
+  IntColumn get beforeQty => integer().nullable()();
+  IntColumn get afterQty => integer().nullable()();
+  RealColumn get unitPrice => real().nullable()();
+  TextColumn get reason => text().nullable()();
 
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
   TextColumn get deletedAt => text().nullable()(); // ISO8601
@@ -182,6 +186,30 @@ class Txns extends Table {
   List<Index> get indexes => [
         Index('idx_txn_item', 'itemId'),
         Index('idx_txn_ts', 'ts'),
+      ];
+}
+
+/// =======================
+///  ItemPriceHistories (입고가/출고가 변경 이력)
+/// =======================
+
+@DataClassName('ItemPriceHistoryRow')
+class ItemPriceHistories extends Table {
+  TextColumn get id => text()();
+  TextColumn get itemId =>
+      text().references(Items, #id, onDelete: KeyAction.cascade)();
+  TextColumn get kind => text()(); // purchase | sale
+  TextColumn get changedAt => text()(); // ISO8601
+  RealColumn get oldPrice => real().nullable()();
+  RealColumn get newPrice => real().nullable()();
+  TextColumn get source => text().withDefault(const Constant('manual'))();
+  TextColumn get note => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+  List<Index> get indexes => [
+        Index(
+            'idx_item_price_history_item_kind_date', 'itemId, kind, changedAt'),
       ];
 }
 
@@ -611,6 +639,7 @@ class QuickActionOrders extends Table {
     Works,
     PurchaseOrders,
     PurchaseLines,
+    ItemPriceHistories,
     Quotes,
     QuoteLines,
     Suppliers,
@@ -650,7 +679,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 40; //
+  int get schemaVersion => 42; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -966,6 +995,15 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 40) {
             await _ensureItemLocationQuantityColumn(backfill: true);
+          }
+          if (from < 41) {
+            await _addColumnIfMissing('txns', 'before_qty', 'INTEGER');
+            await _addColumnIfMissing('txns', 'after_qty', 'INTEGER');
+            await _addColumnIfMissing('txns', 'unit_price', 'REAL');
+            await _addColumnIfMissing('txns', 'reason', 'TEXT');
+          }
+          if (from < 42) {
+            await m.createTable(itemPriceHistories);
           }
         },
       );
@@ -1640,6 +1678,10 @@ extension TxnRowMapping on TxnRow {
         note: note,
         memo: memo,
         sourceKey: sourceKey,
+        beforeQty: beforeQty,
+        afterQty: afterQty,
+        unitPrice: unitPrice,
+        reason: reason,
       );
 }
 
@@ -1656,6 +1698,10 @@ extension TxnToCompanion on Txn {
         note: Value(note),
         memo: Value(memo),
         sourceKey: Value(sourceKey),
+        beforeQty: Value(beforeQty),
+        afterQty: Value(afterQty),
+        unitPrice: Value(unitPrice),
+        reason: Value(reason),
       );
 }
 

@@ -2471,6 +2471,29 @@ class $TxnsTable extends Txns with TableInfo<$TxnsTable, TxnRow> {
   late final GeneratedColumn<String> sourceKey = GeneratedColumn<String>(
       'source_key', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _beforeQtyMeta =
+      const VerificationMeta('beforeQty');
+  @override
+  late final GeneratedColumn<int> beforeQty = GeneratedColumn<int>(
+      'before_qty', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _afterQtyMeta =
+      const VerificationMeta('afterQty');
+  @override
+  late final GeneratedColumn<int> afterQty = GeneratedColumn<int>(
+      'after_qty', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _unitPriceMeta =
+      const VerificationMeta('unitPrice');
+  @override
+  late final GeneratedColumn<double> unitPrice = GeneratedColumn<double>(
+      'unit_price', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  @override
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+      'reason', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _isDeletedMeta =
       const VerificationMeta('isDeleted');
   @override
@@ -2500,6 +2523,10 @@ class $TxnsTable extends Txns with TableInfo<$TxnsTable, TxnRow> {
         note,
         memo,
         sourceKey,
+        beforeQty,
+        afterQty,
+        unitPrice,
+        reason,
         isDeleted,
         deletedAt
       ];
@@ -2571,6 +2598,22 @@ class $TxnsTable extends Txns with TableInfo<$TxnsTable, TxnRow> {
       context.handle(_sourceKeyMeta,
           sourceKey.isAcceptableOrUnknown(data['source_key']!, _sourceKeyMeta));
     }
+    if (data.containsKey('before_qty')) {
+      context.handle(_beforeQtyMeta,
+          beforeQty.isAcceptableOrUnknown(data['before_qty']!, _beforeQtyMeta));
+    }
+    if (data.containsKey('after_qty')) {
+      context.handle(_afterQtyMeta,
+          afterQty.isAcceptableOrUnknown(data['after_qty']!, _afterQtyMeta));
+    }
+    if (data.containsKey('unit_price')) {
+      context.handle(_unitPriceMeta,
+          unitPrice.isAcceptableOrUnknown(data['unit_price']!, _unitPriceMeta));
+    }
+    if (data.containsKey('reason')) {
+      context.handle(_reasonMeta,
+          reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta));
+    }
     if (data.containsKey('is_deleted')) {
       context.handle(_isDeletedMeta,
           isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta));
@@ -2610,6 +2653,14 @@ class $TxnsTable extends Txns with TableInfo<$TxnsTable, TxnRow> {
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
       sourceKey: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}source_key']),
+      beforeQty: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}before_qty']),
+      afterQty: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}after_qty']),
+      unitPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}unit_price']),
+      reason: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}reason']),
       isDeleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_deleted'])!,
       deletedAt: attachedDatabase.typeMapping
@@ -2635,6 +2686,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
   final String? note;
   final String? memo;
   final String? sourceKey;
+  final int? beforeQty;
+  final int? afterQty;
+  final double? unitPrice;
+  final String? reason;
   final bool isDeleted;
   final String? deletedAt;
   const TxnRow(
@@ -2649,6 +2704,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
       this.note,
       this.memo,
       this.sourceKey,
+      this.beforeQty,
+      this.afterQty,
+      this.unitPrice,
+      this.reason,
       required this.isDeleted,
       this.deletedAt});
   @override
@@ -2670,6 +2729,18 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
     }
     if (!nullToAbsent || sourceKey != null) {
       map['source_key'] = Variable<String>(sourceKey);
+    }
+    if (!nullToAbsent || beforeQty != null) {
+      map['before_qty'] = Variable<int>(beforeQty);
+    }
+    if (!nullToAbsent || afterQty != null) {
+      map['after_qty'] = Variable<int>(afterQty);
+    }
+    if (!nullToAbsent || unitPrice != null) {
+      map['unit_price'] = Variable<double>(unitPrice);
+    }
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
     }
     map['is_deleted'] = Variable<bool>(isDeleted);
     if (!nullToAbsent || deletedAt != null) {
@@ -2693,6 +2764,17 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
       sourceKey: sourceKey == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceKey),
+      beforeQty: beforeQty == null && nullToAbsent
+          ? const Value.absent()
+          : Value(beforeQty),
+      afterQty: afterQty == null && nullToAbsent
+          ? const Value.absent()
+          : Value(afterQty),
+      unitPrice: unitPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(unitPrice),
+      reason:
+          reason == null && nullToAbsent ? const Value.absent() : Value(reason),
       isDeleted: Value(isDeleted),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
@@ -2715,6 +2797,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
       note: serializer.fromJson<String?>(json['note']),
       memo: serializer.fromJson<String?>(json['memo']),
       sourceKey: serializer.fromJson<String?>(json['sourceKey']),
+      beforeQty: serializer.fromJson<int?>(json['beforeQty']),
+      afterQty: serializer.fromJson<int?>(json['afterQty']),
+      unitPrice: serializer.fromJson<double?>(json['unitPrice']),
+      reason: serializer.fromJson<String?>(json['reason']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
       deletedAt: serializer.fromJson<String?>(json['deletedAt']),
     );
@@ -2734,6 +2820,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
       'note': serializer.toJson<String?>(note),
       'memo': serializer.toJson<String?>(memo),
       'sourceKey': serializer.toJson<String?>(sourceKey),
+      'beforeQty': serializer.toJson<int?>(beforeQty),
+      'afterQty': serializer.toJson<int?>(afterQty),
+      'unitPrice': serializer.toJson<double?>(unitPrice),
+      'reason': serializer.toJson<String?>(reason),
       'isDeleted': serializer.toJson<bool>(isDeleted),
       'deletedAt': serializer.toJson<String?>(deletedAt),
     };
@@ -2751,6 +2841,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
           Value<String?> note = const Value.absent(),
           Value<String?> memo = const Value.absent(),
           Value<String?> sourceKey = const Value.absent(),
+          Value<int?> beforeQty = const Value.absent(),
+          Value<int?> afterQty = const Value.absent(),
+          Value<double?> unitPrice = const Value.absent(),
+          Value<String?> reason = const Value.absent(),
           bool? isDeleted,
           Value<String?> deletedAt = const Value.absent()}) =>
       TxnRow(
@@ -2765,6 +2859,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
         note: note.present ? note.value : this.note,
         memo: memo.present ? memo.value : this.memo,
         sourceKey: sourceKey.present ? sourceKey.value : this.sourceKey,
+        beforeQty: beforeQty.present ? beforeQty.value : this.beforeQty,
+        afterQty: afterQty.present ? afterQty.value : this.afterQty,
+        unitPrice: unitPrice.present ? unitPrice.value : this.unitPrice,
+        reason: reason.present ? reason.value : this.reason,
         isDeleted: isDeleted ?? this.isDeleted,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
       );
@@ -2781,6 +2879,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
       note: data.note.present ? data.note.value : this.note,
       memo: data.memo.present ? data.memo.value : this.memo,
       sourceKey: data.sourceKey.present ? data.sourceKey.value : this.sourceKey,
+      beforeQty: data.beforeQty.present ? data.beforeQty.value : this.beforeQty,
+      afterQty: data.afterQty.present ? data.afterQty.value : this.afterQty,
+      unitPrice: data.unitPrice.present ? data.unitPrice.value : this.unitPrice,
+      reason: data.reason.present ? data.reason.value : this.reason,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
     );
@@ -2800,6 +2902,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
           ..write('note: $note, ')
           ..write('memo: $memo, ')
           ..write('sourceKey: $sourceKey, ')
+          ..write('beforeQty: $beforeQty, ')
+          ..write('afterQty: $afterQty, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('reason: $reason, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt')
           ..write(')'))
@@ -2807,8 +2913,24 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
   }
 
   @override
-  int get hashCode => Object.hash(id, ts, type, status, itemId, qty, refType,
-      refId, note, memo, sourceKey, isDeleted, deletedAt);
+  int get hashCode => Object.hash(
+      id,
+      ts,
+      type,
+      status,
+      itemId,
+      qty,
+      refType,
+      refId,
+      note,
+      memo,
+      sourceKey,
+      beforeQty,
+      afterQty,
+      unitPrice,
+      reason,
+      isDeleted,
+      deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2824,6 +2946,10 @@ class TxnRow extends DataClass implements Insertable<TxnRow> {
           other.note == this.note &&
           other.memo == this.memo &&
           other.sourceKey == this.sourceKey &&
+          other.beforeQty == this.beforeQty &&
+          other.afterQty == this.afterQty &&
+          other.unitPrice == this.unitPrice &&
+          other.reason == this.reason &&
           other.isDeleted == this.isDeleted &&
           other.deletedAt == this.deletedAt);
 }
@@ -2840,6 +2966,10 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
   final Value<String?> note;
   final Value<String?> memo;
   final Value<String?> sourceKey;
+  final Value<int?> beforeQty;
+  final Value<int?> afterQty;
+  final Value<double?> unitPrice;
+  final Value<String?> reason;
   final Value<bool> isDeleted;
   final Value<String?> deletedAt;
   final Value<int> rowid;
@@ -2855,6 +2985,10 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
     this.note = const Value.absent(),
     this.memo = const Value.absent(),
     this.sourceKey = const Value.absent(),
+    this.beforeQty = const Value.absent(),
+    this.afterQty = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    this.reason = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2871,6 +3005,10 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
     this.note = const Value.absent(),
     this.memo = const Value.absent(),
     this.sourceKey = const Value.absent(),
+    this.beforeQty = const Value.absent(),
+    this.afterQty = const Value.absent(),
+    this.unitPrice = const Value.absent(),
+    this.reason = const Value.absent(),
     this.isDeleted = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2894,6 +3032,10 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
     Expression<String>? note,
     Expression<String>? memo,
     Expression<String>? sourceKey,
+    Expression<int>? beforeQty,
+    Expression<int>? afterQty,
+    Expression<double>? unitPrice,
+    Expression<String>? reason,
     Expression<bool>? isDeleted,
     Expression<String>? deletedAt,
     Expression<int>? rowid,
@@ -2910,6 +3052,10 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
       if (note != null) 'note': note,
       if (memo != null) 'memo': memo,
       if (sourceKey != null) 'source_key': sourceKey,
+      if (beforeQty != null) 'before_qty': beforeQty,
+      if (afterQty != null) 'after_qty': afterQty,
+      if (unitPrice != null) 'unit_price': unitPrice,
+      if (reason != null) 'reason': reason,
       if (isDeleted != null) 'is_deleted': isDeleted,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (rowid != null) 'rowid': rowid,
@@ -2928,6 +3074,10 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
       Value<String?>? note,
       Value<String?>? memo,
       Value<String?>? sourceKey,
+      Value<int?>? beforeQty,
+      Value<int?>? afterQty,
+      Value<double?>? unitPrice,
+      Value<String?>? reason,
       Value<bool>? isDeleted,
       Value<String?>? deletedAt,
       Value<int>? rowid}) {
@@ -2943,6 +3093,10 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
       note: note ?? this.note,
       memo: memo ?? this.memo,
       sourceKey: sourceKey ?? this.sourceKey,
+      beforeQty: beforeQty ?? this.beforeQty,
+      afterQty: afterQty ?? this.afterQty,
+      unitPrice: unitPrice ?? this.unitPrice,
+      reason: reason ?? this.reason,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedAt: deletedAt ?? this.deletedAt,
       rowid: rowid ?? this.rowid,
@@ -2985,6 +3139,18 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
     if (sourceKey.present) {
       map['source_key'] = Variable<String>(sourceKey.value);
     }
+    if (beforeQty.present) {
+      map['before_qty'] = Variable<int>(beforeQty.value);
+    }
+    if (afterQty.present) {
+      map['after_qty'] = Variable<int>(afterQty.value);
+    }
+    if (unitPrice.present) {
+      map['unit_price'] = Variable<double>(unitPrice.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
@@ -3011,6 +3177,10 @@ class TxnsCompanion extends UpdateCompanion<TxnRow> {
           ..write('note: $note, ')
           ..write('memo: $memo, ')
           ..write('sourceKey: $sourceKey, ')
+          ..write('beforeQty: $beforeQty, ')
+          ..write('afterQty: $afterQty, ')
+          ..write('unitPrice: $unitPrice, ')
+          ..write('reason: $reason, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('rowid: $rowid')
@@ -7518,6 +7688,428 @@ class PurchaseLinesCompanion extends UpdateCompanion<PurchaseLineRow> {
           ..write('printAttrsJson: $printAttrsJson, ')
           ..write('isDeleted: $isDeleted, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ItemPriceHistoriesTable extends ItemPriceHistories
+    with TableInfo<$ItemPriceHistoriesTable, ItemPriceHistoryRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ItemPriceHistoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+      'item_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES items (id) ON DELETE CASCADE'));
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _changedAtMeta =
+      const VerificationMeta('changedAt');
+  @override
+  late final GeneratedColumn<String> changedAt = GeneratedColumn<String>(
+      'changed_at', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _oldPriceMeta =
+      const VerificationMeta('oldPrice');
+  @override
+  late final GeneratedColumn<double> oldPrice = GeneratedColumn<double>(
+      'old_price', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _newPriceMeta =
+      const VerificationMeta('newPrice');
+  @override
+  late final GeneratedColumn<double> newPrice = GeneratedColumn<double>(
+      'new_price', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+      'source', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('manual'));
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, itemId, kind, changedAt, oldPrice, newPrice, source, note];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'item_price_histories';
+  @override
+  VerificationContext validateIntegrity(
+      Insertable<ItemPriceHistoryRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(_itemIdMeta,
+          itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta));
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('changed_at')) {
+      context.handle(_changedAtMeta,
+          changedAt.isAcceptableOrUnknown(data['changed_at']!, _changedAtMeta));
+    } else if (isInserting) {
+      context.missing(_changedAtMeta);
+    }
+    if (data.containsKey('old_price')) {
+      context.handle(_oldPriceMeta,
+          oldPrice.isAcceptableOrUnknown(data['old_price']!, _oldPriceMeta));
+    }
+    if (data.containsKey('new_price')) {
+      context.handle(_newPriceMeta,
+          newPrice.isAcceptableOrUnknown(data['new_price']!, _newPriceMeta));
+    }
+    if (data.containsKey('source')) {
+      context.handle(_sourceMeta,
+          source.isAcceptableOrUnknown(data['source']!, _sourceMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ItemPriceHistoryRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ItemPriceHistoryRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      itemId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}item_id'])!,
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      changedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}changed_at'])!,
+      oldPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}old_price']),
+      newPrice: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}new_price']),
+      source: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}source'])!,
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+    );
+  }
+
+  @override
+  $ItemPriceHistoriesTable createAlias(String alias) {
+    return $ItemPriceHistoriesTable(attachedDatabase, alias);
+  }
+}
+
+class ItemPriceHistoryRow extends DataClass
+    implements Insertable<ItemPriceHistoryRow> {
+  final String id;
+  final String itemId;
+  final String kind;
+  final String changedAt;
+  final double? oldPrice;
+  final double? newPrice;
+  final String source;
+  final String? note;
+  const ItemPriceHistoryRow(
+      {required this.id,
+      required this.itemId,
+      required this.kind,
+      required this.changedAt,
+      this.oldPrice,
+      this.newPrice,
+      required this.source,
+      this.note});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['item_id'] = Variable<String>(itemId);
+    map['kind'] = Variable<String>(kind);
+    map['changed_at'] = Variable<String>(changedAt);
+    if (!nullToAbsent || oldPrice != null) {
+      map['old_price'] = Variable<double>(oldPrice);
+    }
+    if (!nullToAbsent || newPrice != null) {
+      map['new_price'] = Variable<double>(newPrice);
+    }
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    return map;
+  }
+
+  ItemPriceHistoriesCompanion toCompanion(bool nullToAbsent) {
+    return ItemPriceHistoriesCompanion(
+      id: Value(id),
+      itemId: Value(itemId),
+      kind: Value(kind),
+      changedAt: Value(changedAt),
+      oldPrice: oldPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(oldPrice),
+      newPrice: newPrice == null && nullToAbsent
+          ? const Value.absent()
+          : Value(newPrice),
+      source: Value(source),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+    );
+  }
+
+  factory ItemPriceHistoryRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ItemPriceHistoryRow(
+      id: serializer.fromJson<String>(json['id']),
+      itemId: serializer.fromJson<String>(json['itemId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      changedAt: serializer.fromJson<String>(json['changedAt']),
+      oldPrice: serializer.fromJson<double?>(json['oldPrice']),
+      newPrice: serializer.fromJson<double?>(json['newPrice']),
+      source: serializer.fromJson<String>(json['source']),
+      note: serializer.fromJson<String?>(json['note']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'itemId': serializer.toJson<String>(itemId),
+      'kind': serializer.toJson<String>(kind),
+      'changedAt': serializer.toJson<String>(changedAt),
+      'oldPrice': serializer.toJson<double?>(oldPrice),
+      'newPrice': serializer.toJson<double?>(newPrice),
+      'source': serializer.toJson<String>(source),
+      'note': serializer.toJson<String?>(note),
+    };
+  }
+
+  ItemPriceHistoryRow copyWith(
+          {String? id,
+          String? itemId,
+          String? kind,
+          String? changedAt,
+          Value<double?> oldPrice = const Value.absent(),
+          Value<double?> newPrice = const Value.absent(),
+          String? source,
+          Value<String?> note = const Value.absent()}) =>
+      ItemPriceHistoryRow(
+        id: id ?? this.id,
+        itemId: itemId ?? this.itemId,
+        kind: kind ?? this.kind,
+        changedAt: changedAt ?? this.changedAt,
+        oldPrice: oldPrice.present ? oldPrice.value : this.oldPrice,
+        newPrice: newPrice.present ? newPrice.value : this.newPrice,
+        source: source ?? this.source,
+        note: note.present ? note.value : this.note,
+      );
+  ItemPriceHistoryRow copyWithCompanion(ItemPriceHistoriesCompanion data) {
+    return ItemPriceHistoryRow(
+      id: data.id.present ? data.id.value : this.id,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      changedAt: data.changedAt.present ? data.changedAt.value : this.changedAt,
+      oldPrice: data.oldPrice.present ? data.oldPrice.value : this.oldPrice,
+      newPrice: data.newPrice.present ? data.newPrice.value : this.newPrice,
+      source: data.source.present ? data.source.value : this.source,
+      note: data.note.present ? data.note.value : this.note,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ItemPriceHistoryRow(')
+          ..write('id: $id, ')
+          ..write('itemId: $itemId, ')
+          ..write('kind: $kind, ')
+          ..write('changedAt: $changedAt, ')
+          ..write('oldPrice: $oldPrice, ')
+          ..write('newPrice: $newPrice, ')
+          ..write('source: $source, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id, itemId, kind, changedAt, oldPrice, newPrice, source, note);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ItemPriceHistoryRow &&
+          other.id == this.id &&
+          other.itemId == this.itemId &&
+          other.kind == this.kind &&
+          other.changedAt == this.changedAt &&
+          other.oldPrice == this.oldPrice &&
+          other.newPrice == this.newPrice &&
+          other.source == this.source &&
+          other.note == this.note);
+}
+
+class ItemPriceHistoriesCompanion extends UpdateCompanion<ItemPriceHistoryRow> {
+  final Value<String> id;
+  final Value<String> itemId;
+  final Value<String> kind;
+  final Value<String> changedAt;
+  final Value<double?> oldPrice;
+  final Value<double?> newPrice;
+  final Value<String> source;
+  final Value<String?> note;
+  final Value<int> rowid;
+  const ItemPriceHistoriesCompanion({
+    this.id = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.changedAt = const Value.absent(),
+    this.oldPrice = const Value.absent(),
+    this.newPrice = const Value.absent(),
+    this.source = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ItemPriceHistoriesCompanion.insert({
+    required String id,
+    required String itemId,
+    required String kind,
+    required String changedAt,
+    this.oldPrice = const Value.absent(),
+    this.newPrice = const Value.absent(),
+    this.source = const Value.absent(),
+    this.note = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        itemId = Value(itemId),
+        kind = Value(kind),
+        changedAt = Value(changedAt);
+  static Insertable<ItemPriceHistoryRow> custom({
+    Expression<String>? id,
+    Expression<String>? itemId,
+    Expression<String>? kind,
+    Expression<String>? changedAt,
+    Expression<double>? oldPrice,
+    Expression<double>? newPrice,
+    Expression<String>? source,
+    Expression<String>? note,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (itemId != null) 'item_id': itemId,
+      if (kind != null) 'kind': kind,
+      if (changedAt != null) 'changed_at': changedAt,
+      if (oldPrice != null) 'old_price': oldPrice,
+      if (newPrice != null) 'new_price': newPrice,
+      if (source != null) 'source': source,
+      if (note != null) 'note': note,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ItemPriceHistoriesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? itemId,
+      Value<String>? kind,
+      Value<String>? changedAt,
+      Value<double?>? oldPrice,
+      Value<double?>? newPrice,
+      Value<String>? source,
+      Value<String?>? note,
+      Value<int>? rowid}) {
+    return ItemPriceHistoriesCompanion(
+      id: id ?? this.id,
+      itemId: itemId ?? this.itemId,
+      kind: kind ?? this.kind,
+      changedAt: changedAt ?? this.changedAt,
+      oldPrice: oldPrice ?? this.oldPrice,
+      newPrice: newPrice ?? this.newPrice,
+      source: source ?? this.source,
+      note: note ?? this.note,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (changedAt.present) {
+      map['changed_at'] = Variable<String>(changedAt.value);
+    }
+    if (oldPrice.present) {
+      map['old_price'] = Variable<double>(oldPrice.value);
+    }
+    if (newPrice.present) {
+      map['new_price'] = Variable<double>(newPrice.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ItemPriceHistoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('itemId: $itemId, ')
+          ..write('kind: $kind, ')
+          ..write('changedAt: $changedAt, ')
+          ..write('oldPrice: $oldPrice, ')
+          ..write('newPrice: $newPrice, ')
+          ..write('source: $source, ')
+          ..write('note: $note, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -12900,6 +13492,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WorksTable works = $WorksTable(this);
   late final $PurchaseOrdersTable purchaseOrders = $PurchaseOrdersTable(this);
   late final $PurchaseLinesTable purchaseLines = $PurchaseLinesTable(this);
+  late final $ItemPriceHistoriesTable itemPriceHistories =
+      $ItemPriceHistoriesTable(this);
   late final $QuotesTable quotes = $QuotesTable(this);
   late final $QuoteLinesTable quoteLines = $QuoteLinesTable(this);
   late final $SuppliersTable suppliers = $SuppliersTable(this);
@@ -12930,6 +13524,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         works,
         purchaseOrders,
         purchaseLines,
+        itemPriceHistories,
         quotes,
         quoteLines,
         suppliers,
@@ -13020,6 +13615,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('purchase_lines', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('items',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('item_price_histories', kind: UpdateKind.delete),
             ],
           ),
           WritePropagation(
@@ -13232,6 +13834,24 @@ final class $$ItemsTableReferences
         .filter((f) => f.itemId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_purchaseLinesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$ItemPriceHistoriesTable,
+      List<ItemPriceHistoryRow>> _itemPriceHistoriesRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.itemPriceHistories,
+          aliasName:
+              $_aliasNameGenerator(db.items.id, db.itemPriceHistories.itemId));
+
+  $$ItemPriceHistoriesTableProcessedTableManager get itemPriceHistoriesRefs {
+    final manager =
+        $$ItemPriceHistoriesTableTableManager($_db, $_db.itemPriceHistories)
+            .filter((f) => f.itemId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_itemPriceHistoriesRefsTable($_db));
     return ProcessedTableManager(
         manager.$state.copyWith(prefetchedData: cache));
   }
@@ -13504,6 +14124,27 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
             $$PurchaseLinesTableFilterComposer(
               $db: $db,
               $table: $db.purchaseLines,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> itemPriceHistoriesRefs(
+      Expression<bool> Function($$ItemPriceHistoriesTableFilterComposer f) f) {
+    final $$ItemPriceHistoriesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.itemPriceHistories,
+        getReferencedColumn: (t) => t.itemId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemPriceHistoriesTableFilterComposer(
+              $db: $db,
+              $table: $db.itemPriceHistories,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -13928,6 +14569,28 @@ class $$ItemsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> itemPriceHistoriesRefs<T extends Object>(
+      Expression<T> Function($$ItemPriceHistoriesTableAnnotationComposer a) f) {
+    final $$ItemPriceHistoriesTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.itemPriceHistories,
+            getReferencedColumn: (t) => t.itemId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$ItemPriceHistoriesTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.itemPriceHistories,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
+
   Expression<T> quoteLinesRefs<T extends Object>(
       Expression<T> Function($$QuoteLinesTableAnnotationComposer a) f) {
     final $$QuoteLinesTableAnnotationComposer composer = $composerBuilder(
@@ -14009,6 +14672,7 @@ class $$ItemsTableTableManager extends RootTableManager<
         bool orderLinesRefs,
         bool worksRefs,
         bool purchaseLinesRefs,
+        bool itemPriceHistoriesRefs,
         bool quoteLinesRefs,
         bool itemLocationsRefs,
         bool lotsRefs})> {
@@ -14184,6 +14848,7 @@ class $$ItemsTableTableManager extends RootTableManager<
               orderLinesRefs = false,
               worksRefs = false,
               purchaseLinesRefs = false,
+              itemPriceHistoriesRefs = false,
               quoteLinesRefs = false,
               itemLocationsRefs = false,
               lotsRefs = false}) {
@@ -14195,6 +14860,7 @@ class $$ItemsTableTableManager extends RootTableManager<
                 if (orderLinesRefs) db.orderLines,
                 if (worksRefs) db.works,
                 if (purchaseLinesRefs) db.purchaseLines,
+                if (itemPriceHistoriesRefs) db.itemPriceHistories,
                 if (quoteLinesRefs) db.quoteLines,
                 if (itemLocationsRefs) db.itemLocations,
                 if (lotsRefs) db.lots
@@ -14262,6 +14928,19 @@ class $$ItemsTableTableManager extends RootTableManager<
                                 referencedItems) =>
                             referencedItems.where((e) => e.itemId == item.id),
                         typedResults: items),
+                  if (itemPriceHistoriesRefs)
+                    await $_getPrefetchedData<ItemRow, $ItemsTable,
+                            ItemPriceHistoryRow>(
+                        currentTable: table,
+                        referencedTable: $$ItemsTableReferences
+                            ._itemPriceHistoriesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$ItemsTableReferences(db, table, p0)
+                                .itemPriceHistoriesRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.itemId == item.id),
+                        typedResults: items),
                   if (quoteLinesRefs)
                     await $_getPrefetchedData<ItemRow, $ItemsTable,
                             QuoteLineRow>(
@@ -14323,6 +15002,7 @@ typedef $$ItemsTableProcessedTableManager = ProcessedTableManager<
         bool orderLinesRefs,
         bool worksRefs,
         bool purchaseLinesRefs,
+        bool itemPriceHistoriesRefs,
         bool quoteLinesRefs,
         bool itemLocationsRefs,
         bool lotsRefs})>;
@@ -15167,6 +15847,10 @@ typedef $$TxnsTableCreateCompanionBuilder = TxnsCompanion Function({
   Value<String?> note,
   Value<String?> memo,
   Value<String?> sourceKey,
+  Value<int?> beforeQty,
+  Value<int?> afterQty,
+  Value<double?> unitPrice,
+  Value<String?> reason,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
   Value<int> rowid,
@@ -15183,6 +15867,10 @@ typedef $$TxnsTableUpdateCompanionBuilder = TxnsCompanion Function({
   Value<String?> note,
   Value<String?> memo,
   Value<String?> sourceKey,
+  Value<int?> beforeQty,
+  Value<int?> afterQty,
+  Value<double?> unitPrice,
+  Value<String?> reason,
   Value<bool> isDeleted,
   Value<String?> deletedAt,
   Value<int> rowid,
@@ -15244,6 +15932,18 @@ class $$TxnsTableFilterComposer extends Composer<_$AppDatabase, $TxnsTable> {
 
   ColumnFilters<String> get sourceKey => $composableBuilder(
       column: $table.sourceKey, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get beforeQty => $composableBuilder(
+      column: $table.beforeQty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get afterQty => $composableBuilder(
+      column: $table.afterQty, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get unitPrice => $composableBuilder(
+      column: $table.unitPrice, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get reason => $composableBuilder(
+      column: $table.reason, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnFilters(column));
@@ -15309,6 +16009,18 @@ class $$TxnsTableOrderingComposer extends Composer<_$AppDatabase, $TxnsTable> {
 
   ColumnOrderings<String> get sourceKey => $composableBuilder(
       column: $table.sourceKey, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get beforeQty => $composableBuilder(
+      column: $table.beforeQty, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get afterQty => $composableBuilder(
+      column: $table.afterQty, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get unitPrice => $composableBuilder(
+      column: $table.unitPrice, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+      column: $table.reason, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<bool> get isDeleted => $composableBuilder(
       column: $table.isDeleted, builder: (column) => ColumnOrderings(column));
@@ -15376,6 +16088,18 @@ class $$TxnsTableAnnotationComposer
   GeneratedColumn<String> get sourceKey =>
       $composableBuilder(column: $table.sourceKey, builder: (column) => column);
 
+  GeneratedColumn<int> get beforeQty =>
+      $composableBuilder(column: $table.beforeQty, builder: (column) => column);
+
+  GeneratedColumn<int> get afterQty =>
+      $composableBuilder(column: $table.afterQty, builder: (column) => column);
+
+  GeneratedColumn<double> get unitPrice =>
+      $composableBuilder(column: $table.unitPrice, builder: (column) => column);
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
 
@@ -15437,6 +16161,10 @@ class $$TxnsTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> sourceKey = const Value.absent(),
+            Value<int?> beforeQty = const Value.absent(),
+            Value<int?> afterQty = const Value.absent(),
+            Value<double?> unitPrice = const Value.absent(),
+            Value<String?> reason = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -15453,6 +16181,10 @@ class $$TxnsTableTableManager extends RootTableManager<
             note: note,
             memo: memo,
             sourceKey: sourceKey,
+            beforeQty: beforeQty,
+            afterQty: afterQty,
+            unitPrice: unitPrice,
+            reason: reason,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
             rowid: rowid,
@@ -15469,6 +16201,10 @@ class $$TxnsTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<String?> sourceKey = const Value.absent(),
+            Value<int?> beforeQty = const Value.absent(),
+            Value<int?> afterQty = const Value.absent(),
+            Value<double?> unitPrice = const Value.absent(),
+            Value<String?> reason = const Value.absent(),
             Value<bool> isDeleted = const Value.absent(),
             Value<String?> deletedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -15485,6 +16221,10 @@ class $$TxnsTableTableManager extends RootTableManager<
             note: note,
             memo: memo,
             sourceKey: sourceKey,
+            beforeQty: beforeQty,
+            afterQty: afterQty,
+            unitPrice: unitPrice,
+            reason: reason,
             isDeleted: isDeleted,
             deletedAt: deletedAt,
             rowid: rowid,
@@ -18477,6 +19217,328 @@ typedef $$PurchaseLinesTableProcessedTableManager = ProcessedTableManager<
     (PurchaseLineRow, $$PurchaseLinesTableReferences),
     PurchaseLineRow,
     PrefetchHooks Function({bool orderId, bool itemId})>;
+typedef $$ItemPriceHistoriesTableCreateCompanionBuilder
+    = ItemPriceHistoriesCompanion Function({
+  required String id,
+  required String itemId,
+  required String kind,
+  required String changedAt,
+  Value<double?> oldPrice,
+  Value<double?> newPrice,
+  Value<String> source,
+  Value<String?> note,
+  Value<int> rowid,
+});
+typedef $$ItemPriceHistoriesTableUpdateCompanionBuilder
+    = ItemPriceHistoriesCompanion Function({
+  Value<String> id,
+  Value<String> itemId,
+  Value<String> kind,
+  Value<String> changedAt,
+  Value<double?> oldPrice,
+  Value<double?> newPrice,
+  Value<String> source,
+  Value<String?> note,
+  Value<int> rowid,
+});
+
+final class $$ItemPriceHistoriesTableReferences extends BaseReferences<
+    _$AppDatabase, $ItemPriceHistoriesTable, ItemPriceHistoryRow> {
+  $$ItemPriceHistoriesTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $ItemsTable _itemIdTable(_$AppDatabase db) => db.items.createAlias(
+      $_aliasNameGenerator(db.itemPriceHistories.itemId, db.items.id));
+
+  $$ItemsTableProcessedTableManager get itemId {
+    final $_column = $_itemColumn<String>('item_id')!;
+
+    final manager = $$ItemsTableTableManager($_db, $_db.items)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_itemIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$ItemPriceHistoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $ItemPriceHistoriesTable> {
+  $$ItemPriceHistoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get changedAt => $composableBuilder(
+      column: $table.changedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get oldPrice => $composableBuilder(
+      column: $table.oldPrice, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get newPrice => $composableBuilder(
+      column: $table.newPrice, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnFilters(column));
+
+  $$ItemsTableFilterComposer get itemId {
+    final $$ItemsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableFilterComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ItemPriceHistoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ItemPriceHistoriesTable> {
+  $$ItemPriceHistoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+      column: $table.kind, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get changedAt => $composableBuilder(
+      column: $table.changedAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get oldPrice => $composableBuilder(
+      column: $table.oldPrice, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get newPrice => $composableBuilder(
+      column: $table.newPrice, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get source => $composableBuilder(
+      column: $table.source, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get note => $composableBuilder(
+      column: $table.note, builder: (column) => ColumnOrderings(column));
+
+  $$ItemsTableOrderingComposer get itemId {
+    final $$ItemsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableOrderingComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ItemPriceHistoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ItemPriceHistoriesTable> {
+  $$ItemPriceHistoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get changedAt =>
+      $composableBuilder(column: $table.changedAt, builder: (column) => column);
+
+  GeneratedColumn<double> get oldPrice =>
+      $composableBuilder(column: $table.oldPrice, builder: (column) => column);
+
+  GeneratedColumn<double> get newPrice =>
+      $composableBuilder(column: $table.newPrice, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  $$ItemsTableAnnotationComposer get itemId {
+    final $$ItemsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.itemId,
+        referencedTable: $db.items,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ItemsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.items,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$ItemPriceHistoriesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $ItemPriceHistoriesTable,
+    ItemPriceHistoryRow,
+    $$ItemPriceHistoriesTableFilterComposer,
+    $$ItemPriceHistoriesTableOrderingComposer,
+    $$ItemPriceHistoriesTableAnnotationComposer,
+    $$ItemPriceHistoriesTableCreateCompanionBuilder,
+    $$ItemPriceHistoriesTableUpdateCompanionBuilder,
+    (ItemPriceHistoryRow, $$ItemPriceHistoriesTableReferences),
+    ItemPriceHistoryRow,
+    PrefetchHooks Function({bool itemId})> {
+  $$ItemPriceHistoriesTableTableManager(
+      _$AppDatabase db, $ItemPriceHistoriesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ItemPriceHistoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ItemPriceHistoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ItemPriceHistoriesTableAnnotationComposer(
+                  $db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> itemId = const Value.absent(),
+            Value<String> kind = const Value.absent(),
+            Value<String> changedAt = const Value.absent(),
+            Value<double?> oldPrice = const Value.absent(),
+            Value<double?> newPrice = const Value.absent(),
+            Value<String> source = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ItemPriceHistoriesCompanion(
+            id: id,
+            itemId: itemId,
+            kind: kind,
+            changedAt: changedAt,
+            oldPrice: oldPrice,
+            newPrice: newPrice,
+            source: source,
+            note: note,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String itemId,
+            required String kind,
+            required String changedAt,
+            Value<double?> oldPrice = const Value.absent(),
+            Value<double?> newPrice = const Value.absent(),
+            Value<String> source = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              ItemPriceHistoriesCompanion.insert(
+            id: id,
+            itemId: itemId,
+            kind: kind,
+            changedAt: changedAt,
+            oldPrice: oldPrice,
+            newPrice: newPrice,
+            source: source,
+            note: note,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$ItemPriceHistoriesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({itemId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (itemId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.itemId,
+                    referencedTable:
+                        $$ItemPriceHistoriesTableReferences._itemIdTable(db),
+                    referencedColumn:
+                        $$ItemPriceHistoriesTableReferences._itemIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$ItemPriceHistoriesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $ItemPriceHistoriesTable,
+    ItemPriceHistoryRow,
+    $$ItemPriceHistoriesTableFilterComposer,
+    $$ItemPriceHistoriesTableOrderingComposer,
+    $$ItemPriceHistoriesTableAnnotationComposer,
+    $$ItemPriceHistoriesTableCreateCompanionBuilder,
+    $$ItemPriceHistoriesTableUpdateCompanionBuilder,
+    (ItemPriceHistoryRow, $$ItemPriceHistoriesTableReferences),
+    ItemPriceHistoryRow,
+    PrefetchHooks Function({bool itemId})>;
 typedef $$QuotesTableCreateCompanionBuilder = QuotesCompanion Function({
   required String id,
   required String customerName,
@@ -22384,6 +23446,8 @@ class $AppDatabaseManager {
       $$PurchaseOrdersTableTableManager(_db, _db.purchaseOrders);
   $$PurchaseLinesTableTableManager get purchaseLines =>
       $$PurchaseLinesTableTableManager(_db, _db.purchaseLines);
+  $$ItemPriceHistoriesTableTableManager get itemPriceHistories =>
+      $$ItemPriceHistoriesTableTableManager(_db, _db.itemPriceHistories);
   $$QuotesTableTableManager get quotes =>
       $$QuotesTableTableManager(_db, _db.quotes);
   $$QuoteLinesTableTableManager get quoteLines =>

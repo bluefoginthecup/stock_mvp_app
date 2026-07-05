@@ -360,6 +360,7 @@ class InventoryService {
         refType: 'purchase',
         refId: po.id,
         note: 'purchase actual in',
+        unitPrice: line.unitPrice,
       );
     }
 

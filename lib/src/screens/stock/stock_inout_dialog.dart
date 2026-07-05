@@ -8,6 +8,7 @@ class StockInOutResult {
   final String targetUnit; // 실제 재고단위(=아이템 단위) 또는 선택한 출고단위
   final double conversionRate; // 1 enteredUnit = conversionRate targetUnit
   final String? memo; // 메모
+  final double? unitPrice; // 입고 단가
   final bool updateProfile; // 이번 설정을 아이템 프로필에 반영할지
 
   const StockInOutResult({
@@ -17,6 +18,7 @@ class StockInOutResult {
     required this.targetUnit,
     required this.conversionRate,
     this.memo,
+    this.unitPrice,
     required this.updateProfile,
   });
 }
@@ -28,6 +30,7 @@ Future<StockInOutResult?> showStockInOutDialog(
   String? unitInHint, // 기존 unitIn 힌트
   String? unitOutHint, // 기존 unitOut 힌트
   double? conversionRateHint, // 기존 환산율 힌트
+  double? unitPriceHint,
   int? currentQtyHint, // int/double 앱 스키마에 맞춰서
 }) {
   final formKey = GlobalKey<FormState>();
@@ -40,6 +43,11 @@ Future<StockInOutResult?> showStockInOutDialog(
   final qtyC = TextEditingController(text: '');
   final safeConv = (conversionRateHint ?? 0) > 0 ? conversionRateHint! : 1.0;
   final convC = TextEditingController(text: safeConv.toString());
+  final unitPriceC = TextEditingController(
+    text: unitPriceHint != null && unitPriceHint > 0
+        ? unitPriceHint.round().toString()
+        : '',
+  );
 
   final memoC = TextEditingController();
   bool updateProfile = false; // <-- 지역 상태
@@ -138,6 +146,26 @@ Future<StockInOutResult?> showStockInOutDialog(
                   ),
 
                   const SizedBox(height: 12),
+                  if (isIn) ...[
+                    TextFormField(
+                      controller: unitPriceC,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: '입고 단가',
+                        hintText: '예: 3500',
+                      ),
+                      validator: (v) {
+                        final text = (v ?? '').trim();
+                        if (text.isEmpty) return null;
+                        final d = double.tryParse(text);
+                        if (d == null || d < 0) {
+                          return ctx.t.validate_positive_number;
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   // 미리보기
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,6 +221,7 @@ Future<StockInOutResult?> showStockInOutDialog(
               if (!formKey.currentState!.validate()) return;
               final entered = double.tryParse(qtyC.text.trim())!;
               final conv = double.tryParse(convC.text.trim())!;
+              final unitPrice = double.tryParse(unitPriceC.text.trim());
               Navigator.pop(
                 ctx,
                 StockInOutResult(
@@ -202,6 +231,7 @@ Future<StockInOutResult?> showStockInOutDialog(
                   targetUnit: targetUnit,
                   conversionRate: conv,
                   memo: memoC.text.trim().isEmpty ? null : memoC.text.trim(),
+                  unitPrice: isIn ? unitPrice : null,
                   updateProfile: updateProfile, // ← 여기!
                 ),
               );

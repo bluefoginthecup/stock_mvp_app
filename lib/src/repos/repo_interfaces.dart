@@ -75,6 +75,7 @@ abstract class ItemRepo {
     String? refId,
     String? note,
     String? memo,
+    double? unitPrice,
   });
 
   /// 단위/환산 프로필 업데이트 (선택적 필드만 변경)
@@ -183,6 +184,7 @@ abstract class TxnRepo {
     required String refType,
     required String refId,
     String? note,
+    double? unitPrice,
   });
 
 // ✅ 출고(OUT) 추가
@@ -229,7 +231,8 @@ abstract class TxnRepo {
       String? refType,
       String? refId,
       String? note,
-      String? memo});
+      String? memo,
+      double? unitPrice});
   Future<void> updateUnits(
       {required String itemId,
       String? unitIn,

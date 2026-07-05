@@ -34,6 +34,23 @@ class TxnRow extends StatelessWidget {
   final Widget? trailing;
   const TxnRow({super.key, required this.t, this.trailing});
 
+  String? get _stockTransitionText {
+    final before = t.beforeQty;
+    final after = t.afterQty;
+    if (before == null || after == null) return null;
+    return '재고 $before → $after';
+  }
+
+  String? get _unitPriceText {
+    final price = t.unitPrice;
+    if (price == null || price <= 0) return null;
+    final rounded = price.round();
+    return '단가 ${rounded.toString().replaceAllMapped(
+          RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (_) => ',',
+        )}원';
+  }
+
   Future<(String, String?)> _loadNames(BuildContext ctx) async {
     _d('----- _loadNames start: itemId=${t.itemId}, refType=${t.refType}, refId=${t.refId}, ts=${t.ts}');
     final itemRepo = _tryRead<ItemRepo>(ctx);
@@ -196,8 +213,20 @@ class TxnRow extends StatelessWidget {
                     Text('주문번호 ${shortId(t.refId)}')
                   else if (t.refType == RefType.work)
                     Text('작업번호 ${shortId(t.refId)}'),
+                  if (_stockTransitionText != null) Text(_stockTransitionText!),
+                  if (_unitPriceText != null) Text(_unitPriceText!),
                 ],
               ),
+              if (t.note != null && t.note!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    '사유: ${t.note!}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               if (t.memo != null && t.memo!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),

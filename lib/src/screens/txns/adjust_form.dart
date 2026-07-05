@@ -1,4 +1,3 @@
-
 import 'package:provider/provider.dart';
 import '../../models/item.dart';
 import '../../repos/repo_interfaces.dart';
@@ -14,30 +13,62 @@ class AdjustForm extends StatefulWidget {
 
 class _AdjustFormState extends State<AdjustForm> {
   final _deltaC = TextEditingController(text: '1');
+  final _unitPriceC = TextEditingController();
   final _noteC = TextEditingController();
+
+  @override
+  void dispose() {
+    _deltaC.dispose();
+    _unitPriceC.dispose();
+    _noteC.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final repo = context.read<ItemRepo>();
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(widget.item.name, style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(widget.item.name,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text('현재 수량: ${widget.item.qty} (min ${widget.item.minQty})'),
               const SizedBox(height: 12),
-              TextField(controller: _deltaC, decoration: const InputDecoration(labelText: 'context.t.adjust_delta_hint'), keyboardType: TextInputType.number),
-              TextField(controller: _noteC, decoration: const InputDecoration(labelText: 'context.t.field_memo_optional')),
+              TextField(
+                controller: _deltaC,
+                decoration: const InputDecoration(
+                    labelText: 'context.t.adjust_delta_hint'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: _unitPriceC,
+                decoration: const InputDecoration(labelText: '입고 단가'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: _noteC,
+                decoration: const InputDecoration(
+                    labelText: 'context.t.field_memo_optional'),
+              ),
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: () async {
                   final delta = int.tryParse(_deltaC.text.trim()) ?? 0;
-                  await repo.adjustQty(itemId: widget.item.id, delta: delta, refType: 'MANUAL', note: _noteC.text.trim());
+                  final unitPrice = double.tryParse(_unitPriceC.text.trim());
+                  await repo.adjustQty(
+                    itemId: widget.item.id,
+                    delta: delta,
+                    refType: 'MANUAL',
+                    note: _noteC.text.trim(),
+                    unitPrice: delta > 0 ? unitPrice : null,
+                  );
                   if (!mounted) return;
                   Navigator.pop(context);
                 },

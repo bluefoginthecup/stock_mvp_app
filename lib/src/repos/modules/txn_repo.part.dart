@@ -167,6 +167,7 @@ mixin TxnRepoMixin on _RepoCore implements TxnRepo {
     required String refType,
     required String refId,
     String? note,
+    double? unitPrice,
   }) async {
     if (qty <= 0) return; // 🔒 최후방어
     final rt = RefTypeX.fromString(refType);
@@ -176,6 +177,10 @@ mixin TxnRepoMixin on _RepoCore implements TxnRepo {
     final convertedQty = (qty * rate).round();
 
     await db.transaction(() async {
+      final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
+          .getSingleOrNull();
+      final before = row?.qty ?? 0;
+      final after = before + convertedQty; // 🔥 여기
       await db.into(db.txns).insert(
             Txn.in_(
               id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
@@ -185,13 +190,12 @@ mixin TxnRepoMixin on _RepoCore implements TxnRepo {
               refId: refId,
               status: TxnStatus.actual,
               note: note,
+              beforeQty: before,
+              afterQty: after,
+              unitPrice: unitPrice,
+              reason: note,
             ).toCompanion(),
           );
-
-      final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
-          .getSingleOrNull();
-      final before = row?.qty ?? 0;
-      final after = before + convertedQty; // 🔥 여기
       await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
         ItemsCompanion(qty: Value(after)),
       );
@@ -242,6 +246,10 @@ mixin TxnRepoMixin on _RepoCore implements TxnRepo {
       final item = await getItem(itemId);
       final rate = item?.conversionRate ?? 1.0;
       final convertedQty = (qty * rate).round();
+      final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
+          .getSingleOrNull();
+      final before = row?.qty ?? 0;
+      final after = before - convertedQty;
       await db.into(db.txns).insert(
             Txn.out_(
               id: 'txn_${DateTime.now().microsecondsSinceEpoch}',
@@ -252,13 +260,11 @@ mixin TxnRepoMixin on _RepoCore implements TxnRepo {
               status: TxnStatus.actual,
               note: note,
               memo: memo,
+              beforeQty: before,
+              afterQty: after,
+              reason: note,
             ).toCompanion(),
           );
-
-      final row = await (db.select(db.items)..where((t) => t.id.equals(itemId)))
-          .getSingleOrNull();
-      final before = row?.qty ?? 0;
-      final after = before - convertedQty;
       await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
         ItemsCompanion(qty: Value(after)),
       );
@@ -329,6 +335,7 @@ mixin TxnRepoMixin on _RepoCore implements TxnRepo {
     String? refId,
     String? note,
     String? memo,
+    double? unitPrice,
   }) async {
     if (delta == 0) return; // 🔒 0 조정은 기록/반영하지 않음
     final now = DateTime.now();
@@ -338,8 +345,10 @@ mixin TxnRepoMixin on _RepoCore implements TxnRepo {
           .getSingleOrNull();
 
       if (row == null) return;
+      final before = row.qty;
+      final after = before + delta;
       await (db.update(db.items)..where((t) => t.id.equals(itemId))).write(
-        ItemsCompanion(qty: Value((row.qty) + delta)),
+        ItemsCompanion(qty: Value(after)),
       );
 
       await db.into(db.txns).insert(
@@ -357,6 +366,10 @@ mixin TxnRepoMixin on _RepoCore implements TxnRepo {
               note: note,
               memo: memo,
               sourceKey: null,
+              beforeQty: before,
+              afterQty: after,
+              unitPrice: delta > 0 ? unitPrice : null,
+              reason: note,
             ).toCompanion(),
           );
     });

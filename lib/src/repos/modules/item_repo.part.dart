@@ -214,9 +214,68 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return _itemsById[id];
   }
 
+  bool _priceChanged(double? oldPrice, double? newPrice) {
+    if (oldPrice == null && newPrice == null) return false;
+    if (oldPrice == null || newPrice == null) return true;
+    return (oldPrice - newPrice).abs() > 0.0001;
+  }
+
+  Future<void> _insertItemPriceHistory({
+    required String itemId,
+    required String kind,
+    required double? oldPrice,
+    required double? newPrice,
+    String source = 'manual',
+    String? note,
+  }) async {
+    if (!_priceChanged(oldPrice, newPrice)) return;
+    final now = DateTime.now();
+    await db.into(db.itemPriceHistories).insert(
+          ItemPriceHistoriesCompanion(
+            id: Value(
+              'iph_${now.microsecondsSinceEpoch}_${kind}_$itemId',
+            ),
+            itemId: Value(itemId),
+            kind: Value(kind),
+            changedAt: Value(now.toIso8601String()),
+            oldPrice: Value(oldPrice),
+            newPrice: Value(newPrice),
+            source: Value(source),
+            note: Value(note),
+          ),
+        );
+  }
+
+  Future<void> _recordItemPriceChanges({
+    required Item? before,
+    required Item after,
+    String source = 'manual',
+  }) async {
+    await _insertItemPriceHistory(
+      itemId: after.id,
+      kind: 'purchase',
+      oldPrice: before?.defaultPurchasePrice,
+      newPrice: after.defaultPurchasePrice,
+      source: source,
+      note: '입고가 변경',
+    );
+    await _insertItemPriceHistory(
+      itemId: after.id,
+      kind: 'sale',
+      oldPrice: before?.defaultSalePrice,
+      newPrice: after.defaultSalePrice,
+      source: source,
+      note: '출고가 변경',
+    );
+  }
+
   @override
   Future<void> upsertItem(Item item) async {
     await db.transaction(() async {
+      final beforeRow = await (db.select(db.items)
+            ..where((t) => t.id.equals(item.id)))
+          .getSingleOrNull();
+      final before = beforeRow?.toDomain();
       final keys = buildItemSearchKeys(item);
 
       await db.into(db.items).insertOnConflictUpdate(
@@ -229,6 +288,11 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
                   defaultSalePrice: Value(item.defaultSalePrice), // ⭐ 여기
                 ),
           );
+      await _recordItemPriceChanges(
+        before: before,
+        after: item,
+        source: before == null ? 'initial' : 'manual',
+      );
     });
 
     final fresh = await getItem(item.id);
@@ -384,6 +448,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   Future<void> updateItemMeta(Item item) async {
     final keys = buildItemSearchKeys(item);
     print('DB 저장 직전: ${item.defaultPurchasePrice} / ${item.defaultSalePrice}');
+    final before = await getItem(item.id);
 
     final updated = item.toCompanion().copyWith(
           searchNormalized: Value(keys.nameNorm),
@@ -393,7 +458,13 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
           defaultSalePrice: Value(item.defaultSalePrice),
         );
 
-    await db.update(db.items).replace(updated);
+    await db.transaction(() async {
+      await db.update(db.items).replace(updated);
+      await _recordItemPriceChanges(
+        before: before,
+        after: item,
+      );
+    });
 
     final check = await getItem(item.id);
     if (check != null) {

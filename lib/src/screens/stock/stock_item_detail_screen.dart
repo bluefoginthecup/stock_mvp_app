@@ -24,6 +24,7 @@ import '../bom/semi_bom_edit_screen.dart';
 import '../txns/adjust_form.dart';
 import '../../models/txn.dart' show Txn;
 import '../txns/widgets/txn_row.dart';
+import 'stock_price_history_screen.dart';
 import 'stock_item_full_edit_screen.dart';
 import 'widgets/item_meta_overview.dart';
 import 'widgets/reorder_badge.dart';
@@ -468,6 +469,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         ActionChip(
           avatar: const Icon(Icons.download, size: 16),
@@ -478,6 +480,22 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
           avatar: const Icon(Icons.upload, size: 16),
           label: Text('출고가: ${_priceText(item.defaultSalePrice)}'),
           onPressed: () => _editPrice(item, purchase: false),
+        ),
+        IconButton(
+          tooltip: '가격 추이',
+          icon: const Icon(Icons.show_chart),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StockPriceHistoryScreen(
+                  itemId: item.id,
+                  itemName: item.displayName?.trim().isNotEmpty == true
+                      ? item.displayName!.trim()
+                      : item.name,
+                ),
+              ),
+            );
+          },
         ),
       ],
     );
