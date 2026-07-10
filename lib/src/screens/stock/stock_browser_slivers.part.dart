@@ -95,6 +95,7 @@ Widget _buildFolderTile(
         moveLabel: '폴더 이동',
       );
       if (action == null) return;
+      if (!context.mounted) return;
 
       final repo = context.read<FolderTreeRepo>();
       switch (action) {
@@ -122,6 +123,7 @@ Widget _buildFolderTile(
               if (!context.mounted) return;
               setState(() {});
             } catch (e) {
+              if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('이동 실패: $e')),
               );
@@ -150,9 +152,160 @@ Widget _buildFolderTile(
 
           setState(() {});
           break;
+
+        case EntityAction.cloneConfiguration:
+          final options = await _showFolderConfigurationCloneDialog(
+            context,
+            sourceName: n.name,
+          );
+          if (options == null) return;
+          if (!context.mounted) return;
+
+          try {
+            final service = context.read<FolderService>();
+            final result = await service.cloneFolderConfiguration(
+              sourceFolderId: n.id,
+              options: options,
+            );
+
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '"${result.newFolderName}" 구성 ${result.itemCount}개를 만들었습니다.',
+                ),
+              ),
+            );
+            setState(() {});
+          } catch (e) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('구성복제 실패: $e')),
+            );
+          }
+          break;
       }
     },
   );
+}
+
+Future<FolderCloneOptions?> _showFolderConfigurationCloneDialog(
+  BuildContext context, {
+  required String sourceName,
+}) async {
+  final replaceFromController = TextEditingController(text: sourceName);
+  final replaceToController = TextEditingController();
+  var resetQty = true;
+  var replaceSku = true;
+  var copyBom = true;
+
+  final result = await showDialog<FolderCloneOptions>(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('구성복제'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: replaceFromController,
+                    decoration: const InputDecoration(
+                      labelText: '바꿀 이름',
+                    ),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: replaceToController,
+                    decoration: const InputDecoration(
+                      labelText: '새 이름',
+                      hintText: '예: 플로라 핑크',
+                    ),
+                    autofocus: true,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      final replaceFrom = replaceFromController.text.trim();
+                      final replaceTo = replaceToController.text.trim();
+                      if (replaceFrom.isEmpty || replaceTo.isEmpty) return;
+                      Navigator.pop(
+                        dialogContext,
+                        FolderCloneOptions(
+                          replaceFrom: replaceFrom,
+                          replaceTo: replaceTo,
+                          resetQty: resetQty,
+                          replaceSku: replaceSku,
+                          copyBom: copyBom,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: resetQty,
+                    title: const Text('현재고 0으로 시작'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: (value) {
+                      setDialogState(() => resetQty = value ?? true);
+                    },
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: replaceSku,
+                    title: const Text('SKU도 새 이름 반영'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: (value) {
+                      setDialogState(() => replaceSku = value ?? true);
+                    },
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: copyBom,
+                    title: const Text('BOM/소요자재 구성 복사'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: (value) {
+                      setDialogState(() => copyBom = value ?? true);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final replaceFrom = replaceFromController.text.trim();
+                  final replaceTo = replaceToController.text.trim();
+                  if (replaceFrom.isEmpty || replaceTo.isEmpty) return;
+                  Navigator.pop(
+                    dialogContext,
+                    FolderCloneOptions(
+                      replaceFrom: replaceFrom,
+                      replaceTo: replaceTo,
+                      resetQty: resetQty,
+                      replaceSku: replaceSku,
+                      copyBom: copyBom,
+                    ),
+                  );
+                },
+                child: const Text('복제하기'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+
+  replaceFromController.dispose();
+  replaceToController.dispose();
+  return result;
 }
 
 SliverList _buildItemSliver(

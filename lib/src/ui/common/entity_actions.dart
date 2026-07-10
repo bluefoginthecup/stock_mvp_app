@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
 /// 엔터티 공통 액션
-enum EntityAction { rename, move, delete, copy }
+enum EntityAction { rename, move, delete, copy, cloneConfiguration }
 
 /// 하단 액션 시트: 필요한 버튼만 보여주기
 Future<EntityAction?> showEntityActionsSheet(
-    BuildContext context, {
-      bool enableRename = true,
-      bool enableMove = true,
-      bool enableDelete = true,
-      String? renameLabel,
-      String? moveLabel,
-      String? deleteLabel,
-    }) {
+  BuildContext context, {
+  bool enableRename = true,
+  bool enableMove = true,
+  bool enableDelete = true,
+  String? renameLabel,
+  String? moveLabel,
+  String? deleteLabel,
+}) {
   return showModalBottomSheet<EntityAction>(
     context: context,
     builder: (sheetContext) => SafeArea(
@@ -22,15 +22,28 @@ Future<EntityAction?> showEntityActionsSheet(
             leading: const Icon(Icons.drive_file_rename_outline),
             title: Text(renameLabel ?? '이름 변경'),
             onTap: () {
-              final nav = Navigator.maybeOf(sheetContext)
-                  ?? Navigator.of(context, rootNavigator: true);
+              final nav = Navigator.maybeOf(sheetContext) ??
+                  Navigator.of(context, rootNavigator: true);
               nav.pop(EntityAction.rename);
             },
-  ),
+          ),
         ListTile(
-          leading: Icon(Icons.copy),
-          title: Text('복사'),
-          onTap: () => Navigator.pop(context, EntityAction.copy),
+          leading: const Icon(Icons.copy),
+          title: const Text('복사'),
+          onTap: () {
+            final nav = Navigator.maybeOf(sheetContext) ??
+                Navigator.of(context, rootNavigator: true);
+            nav.pop(EntityAction.copy);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.content_copy),
+          title: const Text('구성복제'),
+          onTap: () {
+            final nav = Navigator.maybeOf(sheetContext) ??
+                Navigator.of(context, rootNavigator: true);
+            nav.pop(EntityAction.cloneConfiguration);
+          },
         ),
         if (enableMove)
           ListTile(
@@ -42,26 +55,24 @@ Future<EntityAction?> showEntityActionsSheet(
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: Text(deleteLabel ?? '삭제'),
-  onTap: () {
-  final nav = Navigator.maybeOf(sheetContext)
-  ?? Navigator.of(context, rootNavigator: true);
-  nav.pop(EntityAction.delete);
-  },
+            onTap: () {
+              final nav = Navigator.maybeOf(sheetContext) ??
+                  Navigator.of(context, rootNavigator: true);
+              nav.pop(EntityAction.delete);
+            },
           )
-
-  ]),
+      ]),
     ),
   );
 }
 
-
 Future<bool?> showDeleteConfirm(
-    BuildContext rootContext, {
-      String title = '삭제하시겠어요?',
-      String message = '이 작업은 되돌릴 수 없습니다.',
-      String cancelText = '취소',
-      String okText = '삭제',
-    }) {
+  BuildContext rootContext, {
+  String title = '삭제하시겠어요?',
+  String message = '이 작업은 되돌릴 수 없습니다.',
+  String cancelText = '취소',
+  String okText = '삭제',
+}) {
   return showDialog<bool>(
     context: rootContext, // ✅ 반드시 화면(페이지)의 context 사용
     builder: (dialogContext) {
@@ -71,16 +82,16 @@ Future<bool?> showDeleteConfirm(
         actions: [
           TextButton(
             onPressed: () {
-              final nav = Navigator.maybeOf(dialogContext)
-                  ?? Navigator.of(rootContext, rootNavigator: true);
+              final nav = Navigator.maybeOf(dialogContext) ??
+                  Navigator.of(rootContext, rootNavigator: true);
               nav.pop(false);
             },
             child: Text(cancelText),
           ),
           FilledButton.tonal(
             onPressed: () {
-              final nav = Navigator.maybeOf(dialogContext)
-                  ?? Navigator.of(rootContext, rootNavigator: true);
+              final nav = Navigator.maybeOf(dialogContext) ??
+                  Navigator.of(rootContext, rootNavigator: true);
               nav.pop(true);
             },
             child: Text(okText),
