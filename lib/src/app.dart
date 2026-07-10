@@ -6,6 +6,7 @@ import 'models/purchase_order.dart';
 import 'models/txn.dart';
 import 'providers/cart_manager.dart';
 import 'screens/orders/order_list_screen.dart';
+import 'screens/integrations/playauto_order_import_screen.dart';
 import 'screens/stock/stock_browser_screen.dart';
 import 'screens/txns/txn_list_screen.dart';
 import 'screens/works/work_list_screen.dart';
@@ -189,6 +190,7 @@ class _StockMaterialAppState extends State<_StockMaterialApp> {
         '/schedules': (_) => const ScheduleListScreen(),
         '/schedules/new': (_) => const ScheduleEditScreen(),
         '/fabric-cutting': (_) => const FabricCuttingHomeScreen(),
+        '/playauto-test': (_) => const PlayAutoOrderImportScreen(),
       },
     );
   }

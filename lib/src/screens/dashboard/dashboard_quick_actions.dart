@@ -21,6 +21,7 @@ enum QuickActionType {
   memo,
   schedules,
   fabricCutting,
+  playAuto,
 }
 
 const defaultQuickActionOrder = <QuickActionType>[
@@ -40,6 +41,7 @@ const defaultQuickActionOrder = <QuickActionType>[
   QuickActionType.memo,
   QuickActionType.schedules,
   QuickActionType.fabricCutting,
+  QuickActionType.playAuto,
 ];
 
 String quickActionIdOf(QuickActionType type) => type.name;
@@ -262,6 +264,17 @@ DashboardQuickAction buildDashboardQuickAction(
           final tabs = context.read<MainTabController>();
           onBeforeNavigate?.call();
           tabs.openShellRoute('/fabric-cutting');
+        },
+      );
+    case QuickActionType.playAuto:
+      return DashboardQuickAction(
+        key: const ValueKey('playAuto'),
+        icon: Icons.flash_on,
+        label: '플토',
+        onTap: () {
+          final tabs = context.read<MainTabController>();
+          onBeforeNavigate?.call();
+          tabs.openShellRoute('/playauto-test');
         },
       );
   }

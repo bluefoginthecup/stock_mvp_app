@@ -21,6 +21,7 @@ class _DashboardQuickPanelState extends State<DashboardQuickPanel> {
   static const _favoriteIdsKey = 'dashboardQuickPanelFavoriteMenuIds';
 
   static const _defaultFavorites = <QuickActionType>[
+    QuickActionType.playAuto,
     QuickActionType.stock,
     QuickActionType.purchases,
     QuickActionType.shortage,
@@ -44,6 +45,7 @@ class _DashboardQuickPanelState extends State<DashboardQuickPanel> {
         QuickActionType.orders,
         QuickActionType.quotes,
         QuickActionType.schedules,
+        QuickActionType.playAuto,
       ],
     ),
     _QuickPanelMenuGroup(
@@ -125,6 +127,9 @@ class _DashboardQuickPanelState extends State<DashboardQuickPanel> {
       if (seen.add(type)) {
         result.add(type);
       }
+    }
+    if (seen.add(QuickActionType.playAuto)) {
+      result.insert(0, QuickActionType.playAuto);
     }
     return result;
   }
