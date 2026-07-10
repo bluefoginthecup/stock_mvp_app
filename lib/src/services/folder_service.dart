@@ -7,6 +7,8 @@ import '../models/item.dart';
 class FolderCloneOptions {
   final String replaceFrom;
   final String replaceTo;
+  final String skuReplaceFrom;
+  final String skuReplaceTo;
   final bool resetQty;
   final bool replaceSku;
   final bool copyBom;
@@ -14,6 +16,8 @@ class FolderCloneOptions {
   const FolderCloneOptions({
     required this.replaceFrom,
     required this.replaceTo,
+    this.skuReplaceFrom = '',
+    this.skuReplaceTo = '',
     this.resetQty = true,
     this.replaceSku = true,
     this.copyBom = true,
@@ -45,8 +49,34 @@ class FolderService {
   String _newId() => _uuid.v4();
 
   String _replaceText(String value, FolderCloneOptions options) {
-    if (options.replaceFrom.trim().isEmpty) return value;
-    return value.replaceAll(options.replaceFrom, options.replaceTo);
+    return _replaceTextWith(
+      value,
+      replaceFrom: options.replaceFrom,
+      replaceTo: options.replaceTo,
+    );
+  }
+
+  String _replaceTextWith(
+    String value, {
+    required String replaceFrom,
+    required String replaceTo,
+  }) {
+    replaceFrom = replaceFrom.trim();
+    if (replaceFrom.isEmpty) return value;
+
+    var replaced = value.replaceAll(replaceFrom, replaceTo);
+    final parts = replaceFrom
+        .split(RegExp(r'\s+'))
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    if (parts.length <= 1) return replaced;
+
+    final flexibleWhitespacePattern = parts.map(RegExp.escape).join(r'\s*');
+    return replaced.replaceAll(
+      RegExp(flexibleWhitespacePattern),
+      replaceTo,
+    );
   }
 
   String? _replaceNullableText(String? value, FolderCloneOptions options) {
@@ -126,6 +156,22 @@ class FolderService {
     );
   }
 
+  Future<List<String>> sampleSkusInFolder(
+    String sourceFolderId, {
+    int limit = 8,
+  }) async {
+    final items = await _getAllItemsInTree({sourceFolderId});
+    final skus = <String>[];
+    final seen = <String>{};
+    for (final item in items) {
+      final sku = item.sku.trim();
+      if (sku.isEmpty || !seen.add(sku)) continue;
+      skus.add(sku);
+      if (skus.length >= limit) break;
+    }
+    return skus;
+  }
+
   Future<void> _cloneFolderRecursive({
     required FolderNode source,
     required String? newParentId,
@@ -163,19 +209,52 @@ class FolderService {
   ) async {
     final result = <String, String>{};
     final allItems = await _getAllItemsInTree(folderIdMap.keys.toSet());
+    final usedSkus = (await repo.listItems()).map((item) => item.sku).toSet();
 
     for (final item in allItems) {
-      final newId = await _cloneItemWithMapping(item, folderIdMap, options);
+      final newId = await _cloneItemWithMapping(
+        item,
+        folderIdMap,
+        options,
+        usedSkus,
+      );
       result[item.id] = newId;
     }
 
     return result;
   }
 
+  String _uniqueSku(String desiredSku, Set<String> usedSkus) {
+    final baseSku = desiredSku.trim().isEmpty ? _newId() : desiredSku.trim();
+    if (usedSkus.add(baseSku)) return baseSku;
+
+    var index = 2;
+    while (!usedSkus.add('$baseSku-$index')) {
+      index++;
+    }
+    return '$baseSku-$index';
+  }
+
+  String _cloneSku(
+    Item item,
+    FolderCloneOptions options,
+    Set<String> usedSkus,
+  ) {
+    final desiredSku = options.replaceSku
+        ? _replaceTextWith(
+            item.sku,
+            replaceFrom: options.skuReplaceFrom,
+            replaceTo: options.skuReplaceTo,
+          )
+        : item.sku;
+    return _uniqueSku(desiredSku, usedSkus);
+  }
+
   Future<String> _cloneItemWithMapping(
     Item item,
     Map<String, String> folderIdMap,
     FolderCloneOptions options,
+    Set<String> usedSkus,
   ) async {
     final newId = _newId();
     final path = await _getItemPath(item.id);
@@ -198,7 +277,7 @@ class FolderService {
       id: newId,
       name: _replaceText(item.name, options),
       displayName: _replaceNullableText(item.displayName, options),
-      sku: options.replaceSku ? _replaceText(item.sku, options) : item.sku,
+      sku: _cloneSku(item, options, usedSkus),
       unit: item.unit,
       folder: item.folder,
       subfolder: item.subfolder,
@@ -367,11 +446,12 @@ class FolderService {
         : oldL3;
 
     // 👉 여기 중요 (id 안전하게 생성)
+    final usedSkus = (await repo.listItems()).map((item) => item.sku).toSet();
     final newItem = Item(
       id: newId,
       name: '${item.name} copy',
       displayName: item.displayName,
-      sku: item.sku,
+      sku: _uniqueSku(item.sku, usedSkus),
       unit: item.unit,
       folder: item.folder,
       subfolder: item.subfolder,
