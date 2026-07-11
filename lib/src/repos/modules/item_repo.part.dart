@@ -69,7 +69,12 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     for (final t in tokens) {
       final key = normalizeForSearch(t);
       if (key.isEmpty) return const Constant(false);
-      expr = expr & col.like('%${_escapeLike(key)}%', escapeChar: '\\');
+      final rawKey = t.toLowerCase();
+      expr = expr &
+          (col.like('%${_escapeLike(key)}%', escapeChar: '\\') |
+              i.supplierName
+                  .lower()
+                  .like('%${_escapeLike(rawKey)}%', escapeChar: '\\'));
     }
     return expr;
   }

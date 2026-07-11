@@ -54,7 +54,10 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
   final _searchC = TextEditingController();
   final _selectedIds = <String>[];
   final _selectedNames = <String>[];
+  final _childrenCache = <String, Future<List<PathNode>>>{};
   late Future<List<_PathChoice>> _allPathsFuture;
+  bool _canConfirm = false;
+  String? _confirmHint;
 
   @override
   void initState() {
@@ -75,6 +78,55 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
     return _selectedNames.join(' > ');
   }
 
+  String _cacheKey(String? parentId) => parentId ?? '__root__';
+
+  Future<List<PathNode>> _childrenFor(String? parentId) {
+    final key = _cacheKey(parentId);
+    return _childrenCache.putIfAbsent(
+      key,
+      () => widget.childrenProvider(parentId),
+    );
+  }
+
+  void _refreshConfirmState() {
+    if (_selectedIds.isEmpty) {
+      setState(() {
+        _canConfirm = false;
+        _confirmHint = null;
+      });
+      return;
+    }
+
+    final selectedDepth = _selectedIds.length;
+    final selectedId = _selectedIds.last;
+
+    if (selectedDepth >= widget.maxDepth) {
+      setState(() {
+        _canConfirm = true;
+        _confirmHint = null;
+      });
+      return;
+    }
+
+    final nextLabel = widget.labels[selectedDepth];
+    setState(() {
+      _canConfirm = false;
+      _confirmHint = '$nextLabel를 선택해주세요';
+    });
+
+    _childrenFor(selectedId).then((children) {
+      if (!mounted) return;
+      if (_selectedIds.length != selectedDepth ||
+          _selectedIds.last != selectedId) {
+        return;
+      }
+      setState(() {
+        _canConfirm = children.isEmpty;
+        _confirmHint = children.isEmpty ? null : '$nextLabel를 선택해주세요';
+      });
+    });
+  }
+
   Future<List<_PathChoice>> _loadAllPaths() async {
     final result = <_PathChoice>[];
 
@@ -85,7 +137,7 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
       required List<String> names,
     }) async {
       if (depth > widget.maxDepth) return;
-      final children = await widget.childrenProvider(parentId);
+      final children = await _childrenFor(parentId);
       for (final child in children) {
         final nextIds = [...ids, child.id];
         final nextNames = [...names, child.name];
@@ -108,12 +160,12 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
   }
 
   Future<List<PathNode>> _childrenForDepth(int depth) {
-    if (depth == 1) return widget.childrenProvider(null);
+    if (depth == 1) return _childrenFor(null);
     final parentIndex = depth - 2;
     if (_selectedIds.length <= parentIndex) {
       return Future.value(const <PathNode>[]);
     }
-    return widget.childrenProvider(_selectedIds[parentIndex]);
+    return _childrenFor(_selectedIds[parentIndex]);
   }
 
   void _pickNode(int depth, PathNode node) {
@@ -126,6 +178,7 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
       _selectedIds.add(node.id);
       _selectedNames.add(node.name);
     });
+    _refreshConfirmState();
   }
 
   void _pickPath(_PathChoice path) {
@@ -138,6 +191,7 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
         ..addAll(path.names);
       _searchC.clear();
     });
+    _refreshConfirmState();
   }
 
   bool _isSelectedAtDepth(int depth, String id) {
@@ -189,7 +243,8 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
                 ),
                 _PathConfirmBar(
                   selectedLabel: _selectedLabel,
-                  canConfirm: _selectedIds.isNotEmpty,
+                  helperText: _confirmHint,
+                  canConfirm: _canConfirm,
                   onCancel: () => Navigator.pop(context),
                   onConfirm: () => Navigator.pop(context, _selectedPath),
                 ),
@@ -506,12 +561,14 @@ class _PathSearchTile extends StatelessWidget {
 
 class _PathConfirmBar extends StatelessWidget {
   final String selectedLabel;
+  final String? helperText;
   final bool canConfirm;
   final VoidCallback onCancel;
   final VoidCallback onConfirm;
 
   const _PathConfirmBar({
     required this.selectedLabel,
+    this.helperText,
     required this.canConfirm,
     required this.onCancel,
     required this.onConfirm,
@@ -541,6 +598,16 @@ class _PathConfirmBar extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
+              if (helperText != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  helperText!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
               const SizedBox(height: 10),
               Row(
                 children: [
