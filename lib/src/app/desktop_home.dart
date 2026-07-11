@@ -14,11 +14,11 @@ class DesktopHome extends StatelessWidget {
         final wide = bc.maxWidth >= _breakpoint;
         if (!wide) return const MainTabScreen();
 
-        return Row(
+        return const Row(
           children: [
-            const _DesktopRail(),
-            const VerticalDivider(width: 1),
-            const Expanded(child: MainTabScreen()),
+            _DesktopRail(),
+            VerticalDivider(width: 1),
+            Expanded(child: MainTabScreen()),
           ],
         );
       },

@@ -81,10 +81,10 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
         .compute(finishedId: widget.finishedItemId, orderQty: widget.orderQty);
 
     // 필요/부족 수량 표시는 올림(ceil)
-    int _ceil(double v) => v == v.floorToDouble() ? v.toInt() : v.ceil();
+    int ceil(double v) => v == v.floorToDouble() ? v.toInt() : v.ceil();
 
     // ✅ 어떤 타입/널이 와도 안전하게 int로 변환
-    int _toInt(Object? v, {int fallback = 0}) {
+    int toInt(Object? v, {int fallback = 0}) {
       if (v is int) return v;
       if (v is num) return v.toInt();
       return fallback; // v == null 이면 0
@@ -95,12 +95,12 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
           .map((id) {
             final n = need[id] ?? 0.0;
             final s = short != null ? (short[id] ?? 0.0) : 0.0;
-            final stock = _toInt(items.stockOf(id)); // ✅ 널/타입 방어
+            final stock = toInt(items.stockOf(id)); // ✅ 널/타입 방어
 
             return RowVm(
               itemId: id,
-              need: _ceil(n),
-              shortage: _ceil(s),
+              need: ceil(n),
+              shortage: ceil(s),
               stock: stock,
             );
           })
@@ -114,7 +114,7 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
     final subRows = toRows(shortage.subNeed, short: shortage.subShortage);
 
     // finished 현재고 (num → int 안전 변환)
-    final finStock = _toInt(items.stockOf(widget.finishedItemId));
+    final finStock = toInt(items.stockOf(widget.finishedItemId));
 
     return _Vm(
       orderId: widget.orderId,
@@ -233,7 +233,7 @@ class _ShortageResultScreenState extends State<ShortageResultScreen> {
           return Padding(
             padding: const EdgeInsets.all(24.0),
             child:
-                Text('오류: ${snap.error}', style: TextStyle(color: Colors.red)),
+                Text('오류: ${snap.error}', style: const TextStyle(color: Colors.red)),
           );
         }
         if (!snap.hasData) {
@@ -447,8 +447,8 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = tone == BadgeTone.ok
-        ? Colors.teal.withOpacity(0.15)
-        : Colors.red.withOpacity(0.15);
+        ? Colors.teal.withValues(alpha: 0.15)
+        : Colors.red.withValues(alpha: 0.15);
     final fg =
         tone == BadgeTone.ok ? Colors.teal.shade800 : Colors.red.shade800;
     return Container(

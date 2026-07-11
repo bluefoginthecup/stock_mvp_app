@@ -146,7 +146,7 @@ class _WorkDetailScreenState extends State<WorkDetailScreen> {
 
                               // ✅ 추가: 진행(완료/남은) 표시
                               _kv('진행',
-                                  '${w.doneQty} / ${w.qty} (남은 ${remaining})'),
+                                  '${w.doneQty} / ${w.qty} (남은 $remaining)'),
                               const SizedBox(height: 12),
 
                               // ✅ 추가: 부분완료 버튼
@@ -193,14 +193,16 @@ class _WorkDetailScreenState extends State<WorkDetailScreen> {
                                               w.status == WorkStatus.planned,
                                           enabled: canChange,
                                           onTapConfirm: () async {
-                                            if (w.status == WorkStatus.planned)
+                                            if (w.status == WorkStatus.planned) {
                                               return;
+                                            }
                                             final ok = await _confirm(context);
                                             if (ok != true) return;
                                             await inv.setWorkStatus(
                                                 w.id, WorkStatus.planned);
-                                            if (context.mounted)
+                                            if (context.mounted) {
                                               Navigator.pop(context);
+                                            }
                                           },
                                         ),
                                         _statusButton(
@@ -212,13 +214,16 @@ class _WorkDetailScreenState extends State<WorkDetailScreen> {
                                           enabled: canChange,
                                           onTapConfirm: () async {
                                             if (w.status ==
-                                                WorkStatus.inProgress) return;
+                                                WorkStatus.inProgress) {
+                                              return;
+                                            }
                                             final ok = await _confirm(context);
                                             if (ok != true) return;
                                             await inv.setWorkStatus(
                                                 w.id, WorkStatus.inProgress);
-                                            if (context.mounted)
+                                            if (context.mounted) {
                                               Navigator.pop(context);
+                                            }
                                           },
                                         ),
                                         _statusButton(
@@ -228,14 +233,16 @@ class _WorkDetailScreenState extends State<WorkDetailScreen> {
                                           active: w.status == WorkStatus.done,
                                           enabled: canChange,
                                           onTapConfirm: () async {
-                                            if (w.status == WorkStatus.done)
+                                            if (w.status == WorkStatus.done) {
                                               return;
+                                            }
                                             final ok = await _confirm(context);
                                             if (ok != true) return;
                                             await inv.setWorkStatus(
                                                 w.id, WorkStatus.done);
-                                            if (context.mounted)
+                                            if (context.mounted) {
                                               Navigator.pop(context);
+                                            }
                                           },
                                         ),
                                       ],

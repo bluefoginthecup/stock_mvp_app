@@ -26,7 +26,7 @@ class _ShortageTestScreenState extends State<ShortageTestScreen> {
 
     final finishedId = _finishedIdC.text.trim();
     final qty = int.tryParse(_qtyC.text) ?? 1;
-    final result = await shortage.compute(finishedId: finishedId, orderQty: qty);
+    final result = shortage.compute(finishedId: finishedId, orderQty: qty);
 
     setState(() {
       _semi = result.semiShortage;

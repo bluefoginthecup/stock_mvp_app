@@ -10,19 +10,20 @@ class ItemMetaOverview extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     // attrs / stockHints 보기 좋게 문자열화
-    String _mapToPretty(Map? m) {
+    String mapToPretty(Map? m) {
       if (m == null || m.isEmpty) return '-';
       final entries = m.entries.map((e) => '• ${e.key}: ${e.value}').join('\n');
       return entries;
     }
 
-    String _stockHintsPretty(StockHints? h) {
+    String stockHintsPretty(StockHints? h) {
       if (h == null) return '-';
       final rows = <String>[];
       if (h.unitIn != null) rows.add('• unit_in: ${h.unitIn}');
       if (h.unitOut != null) rows.add('• unit_out: ${h.unitOut}');
-      if (h.conversionRate != null)
+      if (h.conversionRate != null) {
         rows.add('• conversion_rate: ${h.conversionRate}');
+      }
       if (h.qty != null) rows.add('• qty: ${h.qty}');
       if (h.usableQtyM != null) rows.add('• usable_qty_m: ${h.usableQtyM}');
       return rows.isEmpty ? '-' : rows.join('\n');
@@ -87,7 +88,7 @@ class ItemMetaOverview extends StatelessWidget {
               const SizedBox(height: 8),
               // 4) 분류/속성
               kv('kind', item.kind ?? '-'),
-              kv('attrs', _mapToPretty(item.attrs)),
+              kv('attrs', mapToPretty(item.attrs)),
 
               const SizedBox(height: 8),
               // 5) 하이브리드 환산
@@ -98,7 +99,7 @@ class ItemMetaOverview extends StatelessWidget {
 
               const SizedBox(height: 8),
               // 6) 레거시 폴백 메타
-              kv('stockHints', _stockHintsPretty(item.stockHints)),
+              kv('stockHints', stockHintsPretty(item.stockHints)),
             ],
           ),
         ],

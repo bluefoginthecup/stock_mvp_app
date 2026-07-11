@@ -1000,7 +1000,7 @@ class _StorageLocationEditorScreenState
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(labelText: '위치 유형'),
               items: StorageLocationType.values
                   .map(

@@ -75,7 +75,9 @@ abstract class _RepoCore extends ChangeNotifier {
   }
 
   void _cacheItems(Iterable<Item> list) {
-    for (final it in list) _cacheItem(it);
+    for (final it in list) {
+      _cacheItem(it);
+    }
   }
 
   // ─── BOM 캐시 ───
@@ -85,9 +87,9 @@ abstract class _RepoCore extends ChangeNotifier {
     final finished = <BomRow>[];
     final semi = <BomRow>[];
     for (final r in rows) {
-      if (r.root == BomRoot.finished)
+      if (r.root == BomRoot.finished) {
         finished.add(r);
-      else if (r.root == BomRoot.semi) semi.add(r);
+      } else if (r.root == BomRoot.semi) semi.add(r);
     }
     if (finished.isNotEmpty || _bomFinishedCache.containsKey(parentId)) {
       _bomFinishedCache[parentId] = finished;
@@ -161,7 +163,7 @@ class DriftUnifiedRepo extends _RepoCore
         StorageLocationRepo,
         FolderTreeRepo,
         TrashRepo {
-  DriftUnifiedRepo(AppDatabase db) : super(db);
+  DriftUnifiedRepo(super.db);
 
   Future<List<PurchaseOrder>> listPurchaseOrdersByOrderId(
       String orderId) async {

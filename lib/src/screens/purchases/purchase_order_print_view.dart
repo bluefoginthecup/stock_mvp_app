@@ -102,7 +102,7 @@ class PurchaseOrderPrintView extends StatelessWidget {
                   scale: scale,
                   alignment: Alignment.topLeft,
                   child: MediaQuery(
-                    data: MediaQuery.of(context).copyWith(textScaleFactor: 1.0),
+                    data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
                     child: RepaintBoundary(
                       key: captureKey,
                       child: Container(
@@ -144,7 +144,7 @@ class PurchaseOrderPrintView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('발   주   서', style: hTitle, textAlign: TextAlign.center),
+          const Text('발   주   서', style: hTitle, textAlign: TextAlign.center),
           const SizedBox(height: 4),
           Align(alignment: Alignment.centerRight, child: Text(dateStr)),
           const Divider(thickness: 2),
@@ -190,7 +190,7 @@ class PurchaseOrderPrintView extends StatelessWidget {
     const head = TextStyle(fontSize: 12, fontWeight: FontWeight.bold);
     const cell = TextStyle(fontSize: 11);
 
-    final header = TableRow(
+    const header = TableRow(
       decoration: const BoxDecoration(color: Color(0xFFF3F3F3)),
       children: const [
         _Th('No.', style: head),
@@ -524,13 +524,13 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
             border: Border.all(color: Colors.black87),
           ),
           padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-          child: Row(
+          child: const Row(
             children: [
               SizedBox(
                   width: 36, child: Center(child: Text('No', style: head))),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(child: Text('품명', style: head)),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               SizedBox(
                 width: 80,
                 child: Align(
@@ -546,7 +546,7 @@ class PurchaseOrderPrintViewMobile extends StatelessWidget {
         ...List.generate(lines.length, (i) {
           final l = lines[i];
           return Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               border: Border(
                 left: BorderSide(color: Colors.black87),
                 right: BorderSide(color: Colors.black87),

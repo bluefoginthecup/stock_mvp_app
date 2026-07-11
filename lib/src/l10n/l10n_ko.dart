@@ -361,7 +361,8 @@ class L10nKo extends L10n {
   }
 
   @override
-  String stock_row_sku_folder_subfolder(String sku, String folder, String subfolder) {
+  String stock_row_sku_folder_subfolder(
+      String sku, String folder, String subfolder) {
     return '$sku • $folder$subfolder';
   }
 

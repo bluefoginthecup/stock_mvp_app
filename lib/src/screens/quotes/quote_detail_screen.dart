@@ -379,7 +379,7 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<QuoteVatType>(
-            value: quote.vatType,
+            initialValue: quote.vatType,
             decoration: const InputDecoration(labelText: '부가세'),
             items: QuoteVatType.values
                 .map((type) => DropdownMenuItem(

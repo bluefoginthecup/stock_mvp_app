@@ -21,7 +21,7 @@ class BomDebug {
     for (final it in items) {
       // 1) Finished 레시피
       try {
-        final List<BomRow> fRows = await itemRepo.finishedBomOf(it.id);
+        final List<BomRow> fRows = itemRepo.finishedBomOf(it.id);
         if (fRows.isNotEmpty) {
           out.add({
             'root': 'finished',
@@ -36,7 +36,7 @@ class BomDebug {
 
       // 2) Semi 레시피
       try {
-        final List<BomRow> sRows = await itemRepo.semiBomOf(it.id);
+        final List<BomRow> sRows = itemRepo.semiBomOf(it.id);
         if (sRows.isNotEmpty) {
           out.add({
             'root': 'semi',
@@ -70,7 +70,7 @@ class BomDebug {
     final result = <Map<String, dynamic>>[];
 
     try {
-      final fRows = await itemRepo.finishedBomOf(itemId);
+      final fRows = itemRepo.finishedBomOf(itemId);
       if (fRows.isNotEmpty) {
         result.add({
           'root': 'finished',
@@ -81,7 +81,7 @@ class BomDebug {
       }
     } catch (_) {}
     try {
-      final sRows = await itemRepo.semiBomOf(itemId);
+      final sRows = itemRepo.semiBomOf(itemId);
       if (sRows.isNotEmpty) {
         result.add({
           'root': 'semi',

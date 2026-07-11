@@ -114,7 +114,7 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     final extraCount = lines.length - 1;
 
     if (extraCount <= 0) return name;
-    return '$name 외 ${extraCount}건';
+    return '$name 외 $extraCount건';
   }
 
   Future<String> _purchaseSupplierTitle(
@@ -386,6 +386,7 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     return count;
   }
 
+  @override
   Future<int> getRestoreImpactCount(String folderId) async {
     return await _countDescendants(folderId);
   }
@@ -413,6 +414,7 @@ mixin TrashRepoMixin on _RepoCore implements TrashRepo {
     return folder?.name;
   }
 
+  @override
   Future<({String? name, bool willRestore})> getParentFolderInfo(
       String itemId) async {
     final item = await (db.select(db.items)..where((t) => t.id.equals(itemId)))

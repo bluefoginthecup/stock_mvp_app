@@ -47,7 +47,7 @@ class _RollFabricOptimizerScreenState extends State<RollFabricOptimizerScreen> {
           id: '${now.microsecondsSinceEpoch}_roll',
           name: '1번 원단',
           colorName: '네이비',
-          colorValue: const Color(0xFF1F3F73).value,
+          colorValue: const Color(0xFF1F3F73).toARGB32(),
           widthCm: 140,
           totalLength: 10,
           unit: RollLengthUnit.yard,
@@ -94,7 +94,7 @@ class _RollFabricOptimizerScreenState extends State<RollFabricOptimizerScreen> {
             id: '${now}_roll',
             name: '${_planSet.rolls.length + 1}번 원단',
             colorName: '색상',
-            colorValue: const Color(0xFFDDDDDD).value,
+            colorValue: const Color(0xFFDDDDDD).toARGB32(),
             widthCm: 140,
             totalLength: 10,
             unit: RollLengthUnit.yard,
@@ -357,7 +357,7 @@ class _RollEditorCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<RollLengthUnit>(
-              value: roll.unit,
+              initialValue: roll.unit,
               decoration: const InputDecoration(
                 labelText: '보유 길이 단위',
                 border: OutlineInputBorder(),
@@ -458,7 +458,7 @@ class _RollEditorCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     onTap: () {
                       Navigator.pop(context);
-                      onChanged(roll.copyWith(colorValue: color.value));
+                      onChanged(roll.copyWith(colorValue: color.toARGB32()));
                     },
                     child: Container(
                       width: 44,
@@ -467,10 +467,10 @@ class _RollEditorCard extends StatelessWidget {
                         color: color,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: color.value == roll.colorValue
+                          color: color.toARGB32() == roll.colorValue
                               ? Theme.of(context).colorScheme.primary
                               : Colors.black26,
-                          width: color.value == roll.colorValue ? 3 : 1,
+                          width: color.toARGB32() == roll.colorValue ? 3 : 1,
                         ),
                       ),
                     ),
@@ -810,7 +810,7 @@ class _RollPreviewPainter extends CustomPainter {
       ..strokeWidth = 1;
     final base = Paint()..color = Colors.white;
     final remainPaint = Paint()
-      ..color = roll.color.withOpacity(0.14)
+      ..color = roll.color.withValues(alpha: 0.14)
       ..style = PaintingStyle.fill;
 
     final outer = Rect.fromLTWH(0, topOffset, rollWidth, rollHeight);
@@ -1011,7 +1011,7 @@ class _MiniStat extends StatelessWidget {
       width: 112,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.45),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -1044,7 +1044,7 @@ class _StatusPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

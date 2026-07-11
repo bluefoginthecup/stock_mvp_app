@@ -72,8 +72,9 @@ class BomService {
       final rows = repo.semiBomOf(semiId);
       for (final r in rows) {
         final need = r.needFor(lackQty);
-        if (r.kind == BomKind.raw) _sum(rawFromSemi, r.componentItemId, need);
-        else if (r.kind == BomKind.sub) _sum(subFromSemi, r.componentItemId, need);
+        if (r.kind == BomKind.raw) {
+          _sum(rawFromSemi, r.componentItemId, need);
+        } else if (r.kind == BomKind.sub) _sum(subFromSemi, r.componentItemId, need);
       }
     });
 

@@ -69,7 +69,7 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
           widthCm: 13,
           lengthCm: 55,
           seamAllowanceCm: 1.5,
-          colorValue: const Color(0xFF1F3F73).value,
+          colorValue: const Color(0xFF1F3F73).toARGB32(),
         ),
         FabricPiece(
           id: '${now.microsecondsSinceEpoch}_2',
@@ -77,7 +77,7 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
           widthCm: 35,
           lengthCm: 55,
           seamAllowanceCm: 3,
-          colorValue: const Color(0xFFF7F4EA).value,
+          colorValue: const Color(0xFFF7F4EA).toARGB32(),
         ),
         FabricPiece(
           id: '${now.microsecondsSinceEpoch}_3',
@@ -85,7 +85,7 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
           widthCm: 13,
           lengthCm: 55,
           seamAllowanceCm: 1.5,
-          colorValue: const Color(0xFF1F3F73).value,
+          colorValue: const Color(0xFF1F3F73).toARGB32(),
         ),
       ],
       createdAt: now,
@@ -236,7 +236,7 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
             widthCm: 10,
             lengthCm: 55,
             seamAllowanceCm: 1.5,
-            colorValue: const Color(0xFFDDDDDD).value,
+            colorValue: const Color(0xFFDDDDDD).toARGB32(),
           ),
         ],
       );
@@ -457,8 +457,8 @@ class _ProductCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Theme.of(context)
                       .colorScheme
-                      .surfaceVariant
-                      .withOpacity(0.45),
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Theme.of(context).dividerColor),
                 ),
