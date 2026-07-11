@@ -32,15 +32,15 @@ python3 tool/dr_mdb_to_chalstock_zip.py \
 
 ## Windows exe 빌드
 
-Windows에서 Python을 설치한 뒤 실행합니다.
+Windows에서 Python을 설치한 뒤 `tool` 폴더에 있는
+`build_dr_converter_windows.bat`을 실행하면 됩니다.
+
+명령 프롬프트에서 직접 실행하려면:
 
 ```powershell
-cd stock_mvp_app
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r tool\dr_converter_requirements.txt
 cd tool
-pyinstaller dr_converter_windows.spec
+py -m pip install -r dr_converter_requirements.txt
+py -m PyInstaller dr_converter_windows.spec
 ```
 
 결과:
