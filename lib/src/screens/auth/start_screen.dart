@@ -15,33 +15,34 @@ class StartScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset(
-            Platform.isMacOS ? macosAsset : asset,
+            isDesktop ? macosAsset : asset,
             fit: BoxFit.cover,
             alignment: Alignment.center,
           ),
           SafeArea(
             child: Align(
-              alignment: Platform.isMacOS
-                  ? const Alignment(0, 0.82)
-                  : Alignment.bottomCenter,
+              alignment:
+                  isDesktop ? const Alignment(0, 0.82) : Alignment.bottomCenter,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
-                  Platform.isMacOS ? 0 : 32,
+                  isDesktop ? 0 : 32,
                   0,
-                  Platform.isMacOS ? 0 : 32,
-                  Platform.isMacOS ? 0 : 42,
+                  isDesktop ? 0 : 32,
+                  isDesktop ? 0 : 42,
                 ),
                 child: Semantics(
                   button: true,
                   label: '시작하기',
                   child: SizedBox(
-                    width: Platform.isMacOS ? 520 : double.infinity,
-                    height: Platform.isMacOS ? 78 : 82,
+                    width: isDesktop ? 520 : double.infinity,
+                    height: isDesktop ? 78 : 82,
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(

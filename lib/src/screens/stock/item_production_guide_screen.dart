@@ -427,20 +427,22 @@ class _ProductionGuideEditorScreenState
     final itemId = _itemId;
     if (controller == null || itemId == null) return;
 
+    final isMobile = Platform.isAndroid || Platform.isIOS;
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('사진 촬영'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
+            if (isMobile)
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('사진 촬영'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('갤러리 선택'),
+              title: Text(isMobile ? '갤러리 선택' : '이미지 선택'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
           ],

@@ -28,6 +28,11 @@ class ReorderReminderService {
       android: android,
       iOS: darwin,
       macOS: darwin,
+      windows: WindowsInitializationSettings(
+        appName: 'ChalStock',
+        appUserModelId: 'Bluefog.ChalStock.StockApp',
+        guid: '9cf3e4e5-6d0f-4c6d-a5f5-4c3ed2a65b9b',
+      ),
     );
     try {
       await _notifications.initialize(settings);
@@ -82,6 +87,7 @@ class ReorderReminderService {
       ),
       iOS: DarwinNotificationDetails(),
       macOS: DarwinNotificationDetails(),
+      windows: WindowsNotificationDetails(),
     );
 
     final title = item.displayName?.trim().isNotEmpty == true

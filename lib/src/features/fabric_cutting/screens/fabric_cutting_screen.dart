@@ -131,6 +131,7 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
   void _showImageSheet() {
     final imagePath = _project.imagePath;
     final hasImage = imagePath != null && File(imagePath).existsSync();
+    final isMobile = Platform.isAndroid || Platform.isIOS;
 
     showModalBottomSheet(
       context: context,
@@ -150,20 +151,21 @@ class _FabricCuttingScreenState extends State<FabricCuttingScreen> {
                 ),
               ListTile(
                 leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('사진 보관함에서 선택'),
+                title: Text(isMobile ? '사진 보관함에서 선택' : '이미지 선택'),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.photo_camera_outlined),
-                title: const Text('카메라로 촬영'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
+              if (isMobile)
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: const Text('카메라로 촬영'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
               if (hasImage)
                 ListTile(
                   leading: const Icon(Icons.close),

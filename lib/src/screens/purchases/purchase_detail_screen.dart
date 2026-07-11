@@ -442,20 +442,22 @@ class _PurchaseDetailScreenState extends State<PurchaseDetailScreen> {
   Future<void> _pickReceipt() async {
     if (_addingReceipt) return;
 
+    final isMobile = Platform.isAndroid || Platform.isIOS;
     final action = await showModalBottomSheet<_ReceiptPickAction>(
       context: context,
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('사진 촬영'),
-              onTap: () => Navigator.pop(context, _ReceiptPickAction.camera),
-            ),
+            if (isMobile)
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('사진 촬영'),
+                onTap: () => Navigator.pop(context, _ReceiptPickAction.camera),
+              ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('사진 선택'),
+              title: Text(isMobile ? '사진 선택' : '이미지 선택'),
               onTap: () => Navigator.pop(context, _ReceiptPickAction.gallery),
             ),
             ListTile(
