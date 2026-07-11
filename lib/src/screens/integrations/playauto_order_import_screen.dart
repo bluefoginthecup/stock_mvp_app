@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class PlayAutoOrderImportScreen extends StatefulWidget {
@@ -12,6 +14,14 @@ class PlayAutoOrderImportScreen extends StatefulWidget {
 }
 
 class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
+  static const _storage = FlutterSecureStorage();
+  static const _baseUrlKey = 'playauto_openapi_base_url_v1';
+  static const _apiKeyKey = 'playauto_api_key_v1';
+  static const _authenticationKeyKey = 'playauto_authentication_key_v1';
+  static const _tokenKey = 'playauto_token_v1';
+  static const _tokenIssuedAtKey = 'playauto_token_issued_at_v1';
+  static const _tokenLifetime = Duration(hours: 24);
+
   final _baseUrlController = TextEditingController(
     text: 'https://openapi.playauto.io/api',
   );
@@ -25,9 +35,11 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   final _lengthController = TextEditingController(text: '100');
 
   var _loading = false;
+  var _credentialsLoaded = false;
   List<_PlayAutoOrderPreview> _orders = const [];
   String? _result;
   int? _statusCode;
+  DateTime? _tokenIssuedAt;
 
   @override
   void initState() {
@@ -36,6 +48,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     final weekAgo = now.subtract(const Duration(days: 7));
     _sdateController.text = _formatDate(weekAgo);
     _edateController.text = _formatDate(now);
+    _loadSavedCredentials();
   }
 
   @override
@@ -68,44 +81,160 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     }
 
     await _runRequest(() async {
-      final body = authenticationKey.isNotEmpty
-          ? <String, Object?>{'authentication_key': authenticationKey}
-          : <String, Object?>{'email': email, 'password': password};
-
-      final response = await http.post(
-        _endpoint('/auth'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-        },
-        body: jsonEncode(body),
+      final result = await _requestToken(
+        apiKey: apiKey,
+        authenticationKey: authenticationKey,
+        email: email,
+        password: password,
       );
-
-      final prettyBody = _prettyBody(response.body);
-      final token = _readToken(response.body);
+      final token = result.token;
       if (token != null) {
-        _tokenController.text = token;
+        await _storeIssuedToken(token);
       }
 
       return _PlayAutoResponse(
-        statusCode: response.statusCode,
+        statusCode: result.statusCode,
         body: token == null
-            ? prettyBody
-            : '토큰 발급 성공\n\nAuthorization: Token $token\n\n$prettyBody',
+            ? result.body
+            : '토큰 발급 성공\n\nAuthorization: Token $token\n\n${result.body}',
       );
     });
   }
 
-  Future<void> _fetchRecentOrders() async {
+  Future<_TokenIssueResult> _requestToken({
+    required String apiKey,
+    required String authenticationKey,
+    String email = '',
+    String password = '',
+  }) async {
+    final body = authenticationKey.isNotEmpty
+        ? <String, Object?>{'authentication_key': authenticationKey}
+        : <String, Object?>{'email': email, 'password': password};
+
+    final response = await http.post(
+      _endpoint('/auth'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+      },
+      body: jsonEncode(body),
+    );
+
+    return _TokenIssueResult(
+      statusCode: response.statusCode,
+      body: _prettyBody(response.body),
+      token: _readToken(response.body),
+    );
+  }
+
+  Future<void> _storeIssuedToken(String token) async {
+    _tokenController.text = token;
+    _tokenIssuedAt = DateTime.now();
+    await _saveCredentials(showMessage: false);
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final baseUrl = await _storage.read(key: _baseUrlKey);
+      final apiKey = await _storage.read(key: _apiKeyKey);
+      final authenticationKey = await _storage.read(
+        key: _authenticationKeyKey,
+      );
+      final token = await _storage.read(key: _tokenKey);
+      final tokenIssuedAtText = await _storage.read(key: _tokenIssuedAtKey);
+      final tokenIssuedAt = tokenIssuedAtText == null
+          ? null
+          : DateTime.tryParse(tokenIssuedAtText);
+      final tokenStillValid = tokenIssuedAt != null &&
+          DateTime.now().difference(tokenIssuedAt) < _tokenLifetime;
+
+      if (!mounted) return;
+      setState(() {
+        if (baseUrl != null && baseUrl.isNotEmpty) {
+          _baseUrlController.text = baseUrl;
+        }
+        if (apiKey != null) _apiKeyController.text = apiKey;
+        if (authenticationKey != null) {
+          _authenticationKeyController.text = authenticationKey;
+        }
+        if (tokenStillValid && token != null) {
+          _tokenController.text = token;
+          _tokenIssuedAt = tokenIssuedAt;
+        }
+        _credentialsLoaded = true;
+      });
+    } on MissingPluginException {
+      if (!mounted) return;
+      setState(() => _credentialsLoaded = true);
+      _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
+    }
+  }
+
+  Future<void> _saveCredentials({bool showMessage = true}) async {
+    final baseUrl = _baseUrlController.text.trim();
     final apiKey = _apiKeyController.text.trim();
+    final authenticationKey = _authenticationKeyController.text.trim();
     final token = _tokenController.text.trim();
-    if (apiKey.isEmpty) {
-      _showSnack('API Key를 입력해주세요.');
+
+    if (apiKey.isEmpty && authenticationKey.isEmpty && token.isEmpty) {
+      _showSnack('저장할 API Key, 인증키, 토큰이 없습니다.');
       return;
     }
-    if (token.isEmpty) {
-      _showSnack('먼저 토큰을 발급하거나 입력해주세요.');
+
+    try {
+      if (baseUrl.isNotEmpty) {
+        await _storage.write(key: _baseUrlKey, value: baseUrl);
+      }
+      if (apiKey.isNotEmpty) {
+        await _storage.write(key: _apiKeyKey, value: apiKey);
+      }
+      if (authenticationKey.isNotEmpty) {
+        await _storage.write(
+          key: _authenticationKeyKey,
+          value: authenticationKey,
+        );
+      }
+      if (token.isNotEmpty) {
+        final issuedAt = _tokenIssuedAt ?? DateTime.now();
+        await _storage.write(key: _tokenKey, value: token);
+        await _storage.write(
+          key: _tokenIssuedAtKey,
+          value: issuedAt.toIso8601String(),
+        );
+        _tokenIssuedAt = issuedAt;
+      }
+      if (showMessage) _showSnack('플토 인증 정보를 저장했습니다.');
+      if (mounted) setState(() {});
+    } on MissingPluginException {
+      _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
+    }
+  }
+
+  Future<void> _clearSavedCredentials() async {
+    try {
+      await _storage.delete(key: _baseUrlKey);
+      await _storage.delete(key: _apiKeyKey);
+      await _storage.delete(key: _authenticationKeyKey);
+      await _storage.delete(key: _tokenKey);
+      await _storage.delete(key: _tokenIssuedAtKey);
+      if (!mounted) return;
+      setState(() {
+        _apiKeyController.clear();
+        _authenticationKeyController.clear();
+        _tokenController.clear();
+        _tokenIssuedAt = null;
+      });
+      _showSnack('저장된 플토 인증 정보를 삭제했습니다.');
+    } on MissingPluginException {
+      _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
+    }
+  }
+
+  Future<void> _fetchRecentOrders() async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      _showSnack('API Key를 입력해주세요.');
       return;
     }
 
@@ -123,6 +252,10 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     }
 
     await _runRequest(() async {
+      final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+      if (tokenResult.response != null) return tokenResult.response!;
+      final token = tokenResult.token!;
+
       final requestBody = <String, Object?>{
         'start': 0,
         'length': length,
@@ -159,6 +292,40 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         ].join('\n'),
       );
     });
+  }
+
+  Future<_TokenReadyResult> _ensureTokenForOrderFetch(String apiKey) async {
+    final currentToken = _tokenController.text.trim();
+    if (currentToken.isNotEmpty && !_isSavedTokenExpired) {
+      return _TokenReadyResult(token: currentToken);
+    }
+
+    final authenticationKey = _authenticationKeyController.text.trim();
+    if (authenticationKey.isEmpty) {
+      return const _TokenReadyResult(
+        response: _PlayAutoResponse(
+          statusCode: null,
+          body: '토큰 자동 발급 불가\n\n솔루션 인증키를 저장하거나 입력해주세요.',
+        ),
+      );
+    }
+
+    final result = await _requestToken(
+      apiKey: apiKey,
+      authenticationKey: authenticationKey,
+    );
+    final token = result.token;
+    if (token == null) {
+      return _TokenReadyResult(
+        response: _PlayAutoResponse(
+          statusCode: result.statusCode,
+          body: '토큰 자동 발급 실패\n\n${result.body}',
+        ),
+      );
+    }
+
+    await _storeIssuedToken(token);
+    return _TokenReadyResult(token: token);
   }
 
   void _openOrderPreview() {
@@ -204,6 +371,27 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     final base =
         _baseUrlController.text.trim().replaceFirst(RegExp(r'/+$'), '');
     return Uri.parse('$base$path');
+  }
+
+  bool get _isSavedTokenExpired {
+    final issuedAt = _tokenIssuedAt;
+    if (issuedAt == null || _tokenController.text.trim().isEmpty) return false;
+    return DateTime.now().difference(issuedAt) >= _tokenLifetime;
+  }
+
+  String get _tokenHelperText {
+    final issuedAt = _tokenIssuedAt;
+    if (issuedAt == null) {
+      return '토큰은 24시간 유효하며, 주문 조회 시 필요하면 자동으로 다시 발급됩니다.';
+    }
+    final expiresAt = issuedAt.add(_tokenLifetime);
+    final remaining = expiresAt.difference(DateTime.now());
+    if (remaining.isNegative) {
+      return '저장된 토큰이 만료됐습니다. 다음 주문 조회 때 자동으로 다시 발급됩니다.';
+    }
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes.remainder(60);
+    return '저장된 토큰 사용 중 · 약 $hours시간 $minutes분 남음';
   }
 
   String? _readToken(String body) {
@@ -302,6 +490,10 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (!_credentialsLoaded) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 12),
+          ],
           Text(
             'PlayAuto 토큰 발급과 최근 주문 조회 응답 확인용 화면입니다. 아직 주문 저장은 하지 않습니다.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -367,10 +559,10 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           TextField(
             controller: _tokenController,
             obscureText: true,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: '발급 토큰',
-              helperText: '토큰 발급 성공 시 자동으로 채워집니다. 유효시간은 24시간입니다.',
-              border: OutlineInputBorder(),
+              helperText: _tokenHelperText,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
@@ -397,6 +589,16 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
                 onPressed: _orders.isEmpty ? null : _openOrderPreview,
                 icon: const Icon(Icons.view_agenda_outlined),
                 label: Text('주문 보기 ${_orders.length}건'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading ? null : () => _saveCredentials(),
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('인증 정보 저장'),
+              ),
+              TextButton.icon(
+                onPressed: _loading ? null : _clearSavedCredentials,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('저장 정보 삭제'),
               ),
             ],
           ),
@@ -959,6 +1161,28 @@ class _PlayAutoResponse {
     required this.body,
   });
 
+  final int? statusCode;
+  final String body;
+}
+
+class _TokenIssueResult {
+  const _TokenIssueResult({
+    required this.statusCode,
+    required this.body,
+    required this.token,
+  });
+
   final int statusCode;
   final String body;
+  final String? token;
+}
+
+class _TokenReadyResult {
+  const _TokenReadyResult({
+    this.token,
+    this.response,
+  });
+
+  final String? token;
+  final _PlayAutoResponse? response;
 }

@@ -225,7 +225,8 @@ class FolderService {
   }
 
   String _uniqueSku(String desiredSku, Set<String> usedSkus) {
-    final baseSku = desiredSku.trim().isEmpty ? _newId() : desiredSku.trim();
+    final baseSku = desiredSku.trim();
+    if (baseSku.isEmpty) return '';
     if (usedSkus.add(baseSku)) return baseSku;
 
     var index = 2;
@@ -489,5 +490,34 @@ class FolderService {
 
     // 현재 폴더 매핑 없음 → 그대로 복사
     await _copyItemWithMapping(item, {});
+  }
+
+  Future<String?> copySingleItemWithOptions(
+    String itemId,
+    FolderCloneOptions options,
+  ) async {
+    final ids = await copyItemsWithOptions([itemId], options);
+    return ids.isEmpty ? null : ids.first;
+  }
+
+  Future<List<String>> copyItemsWithOptions(
+    List<String> itemIds,
+    FolderCloneOptions options,
+  ) async {
+    final usedSkus = (await repo.listItems()).map((item) => item.sku).toSet();
+    final itemIdMap = <String, String>{};
+
+    for (final itemId in itemIds) {
+      final item = await repo.getItem(itemId);
+      if (item == null) continue;
+      final newId = await _cloneItemWithMapping(item, {}, options, usedSkus);
+      itemIdMap[item.id] = newId;
+    }
+
+    if (options.copyBom) {
+      await _cloneBomRows(itemIdMap);
+    }
+
+    return itemIdMap.values.toList();
   }
 }

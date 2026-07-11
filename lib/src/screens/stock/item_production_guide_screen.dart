@@ -32,41 +32,173 @@ class ItemProductionGuideScreen extends StatefulWidget {
 
 class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
   late final ProductionGuideService _service;
-  final Map<String, Timer> _saveTimers = {};
-  final Map<String, String> _drafts = {};
+  late final Future<_GuideDocument> _documentFuture;
+  quill.QuillController? _controller;
+  Timer? _saveTimer;
+  StreamSubscription<dynamic>? _changesSubscription;
+  String? _docBlockId;
+  int _imageRefresh = 0;
 
   @override
   void initState() {
     super.initState();
     _service = ProductionGuideService(context.read<AppDatabase>());
+    _documentFuture = _loadDocument();
   }
 
   @override
   void dispose() {
-    for (final timer in _saveTimers.values) {
-      timer.cancel();
-    }
+    _saveTimer?.cancel();
+    _changesSubscription?.cancel();
+    _controller?.dispose();
     super.dispose();
   }
 
-  Future<void> _addStep() async {
-    await _service.addTextBlock(
+  Future<_GuideDocument> _loadDocument() async {
+    final data = await _service.getOrCreateGuide(widget.itemId);
+    final blocks = data.blocks;
+    final docBlock = _findDocumentBlock(blocks);
+    if (docBlock != null) {
+      return _GuideDocument(
+        blockId: docBlock.id,
+        storedText: _QuillTextCodec.normalize(docBlock.text),
+      );
+    }
+
+    final storedText = _QuillTextCodec.encode(_legacyDocument(blocks));
+    final block = blocks
+        .where((block) => block.type == ProductionGuideBlockType.step)
+        .firstOrNull;
+    if (block != null) {
+      await _service.updateBlockText(block.id, storedText);
+      return _GuideDocument(blockId: block.id, storedText: storedText);
+    }
+
+    final created = await _service.addTextBlock(
       itemId: widget.itemId,
       type: ProductionGuideBlockType.step,
-      text: '',
+      text: storedText,
+    );
+    return _GuideDocument(blockId: created.id, storedText: storedText);
+  }
+
+  ProductionGuideBlock? _findDocumentBlock(List<ProductionGuideBlock> blocks) {
+    for (final block in blocks) {
+      if (block.type == ProductionGuideBlockType.step &&
+          (block.text?.startsWith(_QuillTextCodec.marker) ?? false)) {
+        return block;
+      }
+    }
+    return null;
+  }
+
+  quill.Document _legacyDocument(List<ProductionGuideBlock> blocks) {
+    final ops = <Map<String, dynamic>>[];
+    var stepNumber = 0;
+    var hasContent = false;
+
+    for (final block in blocks) {
+      switch (block.type) {
+        case ProductionGuideBlockType.step:
+          stepNumber += 1;
+          final text = _QuillTextCodec.plainTextFromStored(block.text).trim();
+          ops.add({
+            'insert': '$stepNumber. ${text.isEmpty ? '새 단계' : text}\n',
+            'attributes': {'bold': true, 'size': 'large'},
+          });
+          hasContent = true;
+        case ProductionGuideBlockType.note:
+          final text = (block.text ?? '').trim();
+          if (text.isNotEmpty) {
+            ops.add({'insert': '$text\n'});
+            hasContent = true;
+          }
+        case ProductionGuideBlockType.image:
+          final path = block.filePath;
+          if (path != null && path.trim().isNotEmpty) {
+            ops.add({
+              'insert': {'image': path},
+            });
+            ops.add({'insert': '\n'});
+            final caption = (block.text ?? '').trim();
+            if (caption.isNotEmpty) ops.add({'insert': '$caption\n'});
+            hasContent = true;
+          }
+      }
+      ops.add({'insert': '\n'});
+    }
+
+    if (!hasContent) {
+      ops.add({'insert': '1. \n'});
+    }
+    return quill.Document.fromJson(ops);
+  }
+
+  void _initController(_GuideDocument guideDocument) {
+    if (_controller != null) return;
+    _docBlockId = guideDocument.blockId;
+    _controller = quill.QuillController(
+      document: _QuillTextCodec.documentFromStored(guideDocument.storedText),
+      selection: const TextSelection.collapsed(offset: 0),
+    );
+    _changesSubscription = _controller!.document.changes.listen(
+      (_) => _scheduleSave(),
     );
   }
 
-  Future<void> _addNote(_GuideStep step) async {
-    await _service.addTextBlock(
-      itemId: widget.itemId,
-      type: ProductionGuideBlockType.note,
-      text: '',
-      afterBlockId: step.lastBlockId,
+  void _scheduleSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 700), _saveNow);
+  }
+
+  Future<void> _saveNow() async {
+    final controller = _controller;
+    final blockId = _docBlockId;
+    if (controller == null || blockId == null) return;
+    _saveTimer?.cancel();
+    await _service.updateBlockText(
+      blockId,
+      _QuillTextCodec.encode(controller.document),
     );
   }
 
-  Future<void> _addImage(_GuideStep step) async {
+  void _insertStep() {
+    final controller = _controller;
+    if (controller == null) return;
+    final stepNumber = _nextStepNumber(controller.document.toPlainText());
+    _insertText('\n$stepNumber. ');
+  }
+
+  int _nextStepNumber(String text) {
+    final matches = RegExp(r'^\s*(\d+)\.\s+', multiLine: true).allMatches(text);
+    var max = 0;
+    for (final match in matches) {
+      final value = int.tryParse(match.group(1) ?? '') ?? 0;
+      if (value > max) max = value;
+    }
+    return max + 1;
+  }
+
+  void _insertText(String text) {
+    final controller = _controller;
+    if (controller == null) return;
+    final selection = controller.selection;
+    final index = selection.baseOffset < 0
+        ? controller.document.length - 1
+        : selection.baseOffset;
+    final length = selection.isCollapsed ? 0 : selection.end - selection.start;
+    controller.replaceText(
+      index,
+      length,
+      text,
+      TextSelection.collapsed(offset: index + text.length),
+    );
+  }
+
+  Future<void> _addImage() async {
+    final controller = _controller;
+    if (controller == null) return;
+
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (_) => SafeArea(
@@ -92,9 +224,9 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
     try {
       final image = await ImagePicker().pickImage(
         source: source,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 75,
+        maxWidth: 2400,
+        maxHeight: 2400,
+        imageQuality: 85,
       );
       if (image == null) return;
 
@@ -104,19 +236,15 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
         originalFileName: image.name,
         destinationDirectory:
             await paths.productionGuideDirectory(widget.itemId),
+        maxLongSide: 2400,
+        jpgQuality: 85,
       );
       final storedName = p.basename(stored.filePath);
       final relativePath = paths.productionGuideRelativePath(
         widget.itemId,
         storedName,
       );
-      await _service.addImageBlock(
-        itemId: widget.itemId,
-        fileName: stored.fileName,
-        filePath: relativePath,
-        mimeType: stored.mimeType,
-        afterBlockId: step.lastBlockId,
-      );
+      _insertImage(relativePath);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -125,63 +253,29 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
     }
   }
 
-  Future<void> _deleteBlock(ProductionGuideBlock block) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('삭제'),
-        content: Text(
-          block.type == ProductionGuideBlockType.step
-              ? '이 단계와 연결된 항목을 삭제할까요?'
-              : '이 항목을 삭제할까요?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
+  void _insertImage(String relativePath) {
+    final controller = _controller;
+    if (controller == null) return;
+    final selection = controller.selection;
+    final index = selection.baseOffset < 0
+        ? controller.document.length - 1
+        : selection.baseOffset;
+    final length = selection.isCollapsed ? 0 : selection.end - selection.start;
+    controller.replaceText(
+      index,
+      length,
+      quill.BlockEmbed.image(relativePath),
+      TextSelection.collapsed(offset: index + 1),
     );
-    if (confirmed == true) {
-      await _service.deleteBlock(block.id);
-      _drafts.remove(block.id);
-    }
+    controller.replaceText(
+      index + 1,
+      0,
+      '\n',
+      TextSelection.collapsed(offset: index + 2),
+    );
   }
 
-  Future<void> _deleteStep(_GuideStep step) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('단계 삭제'),
-        content: const Text('이 단계와 연결된 사진/메모를 함께 삭제할까요?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    for (final block in step.blocks.reversed) {
-      await _service.deleteBlock(block.id);
-      _drafts.remove(block.id);
-    }
-  }
-
-  Future<void> _openImage(ProductionGuideBlock block) async {
-    final path = block.filePath;
-    if (path == null || path.isEmpty) return;
+  Future<void> _openImage(String path) async {
     final file = await const AppPathService().resolveAppFile(path);
     if (!await file.exists()) {
       if (!mounted) return;
@@ -199,11 +293,7 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             AppBar(
-              title: Text(
-                block.fileName ?? '사진',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              title: Text(p.basename(path)),
               automaticallyImplyLeading: false,
               actions: [
                 IconButton(
@@ -226,9 +316,7 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
     );
   }
 
-  Future<void> _rotateImage(ProductionGuideBlock block) async {
-    final path = block.filePath;
-    if (path == null || path.isEmpty) return;
+  Future<void> _rotateImage(String path) async {
     try {
       final file = await const AppPathService().resolveAppFile(path);
       final decoded = img.decodeImage(await file.readAsBytes());
@@ -236,9 +324,9 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
         throw const FormatException('Unsupported image format');
       }
       final rotated = img.copyRotate(decoded, angle: 90);
-      await file.writeAsBytes(img.encodeJpg(rotated, quality: 85), flush: true);
+      await file.writeAsBytes(img.encodeJpg(rotated, quality: 88), flush: true);
       if (!mounted) return;
-      setState(() {});
+      setState(() => _imageRefresh += 1);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -247,379 +335,219 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
     }
   }
 
-  void _updateDraft(
-    ProductionGuideBlock block,
-    String value, {
-    bool immediate = false,
-  }) {
-    _drafts[block.id] = value;
-    _saveTimers[block.id]?.cancel();
-    if (immediate) {
-      _saveBlock(block.id, value);
-      return;
-    }
-    _saveTimers[block.id] = Timer(const Duration(milliseconds: 650), () {
-      _saveBlock(block.id, value);
-    });
-  }
+  Widget _buildEditor(BuildContext context, _GuideDocument guideDocument) {
+    _initController(guideDocument);
+    final controller = _controller!;
+    final colorScheme = Theme.of(context).colorScheme;
 
-  Future<void> _saveBlock(String blockId, String value) async {
-    _saveTimers.remove(blockId)?.cancel();
-    await _service.updateBlockText(blockId, value);
-  }
-
-  String _valueFor(ProductionGuideBlock block) {
-    return _drafts[block.id] ?? _QuillTextCodec.normalize(block.text);
-  }
-
-  List<_GuideStep> _groupSteps(List<ProductionGuideBlock> blocks) {
-    final steps = <_GuideStep>[];
-    ProductionGuideBlock? currentStep;
-    var children = <ProductionGuideBlock>[];
-    var stepNumber = 0;
-
-    void flush() {
-      if (currentStep == null && children.isEmpty) return;
-      final step = currentStep;
-      steps.add(_GuideStep(
-        stepBlock: step,
-        blocks: [if (step != null) step, ...children],
-        stepNumber: step == null ? 0 : stepNumber,
-      ));
-      children = [];
-    }
-
-    for (final block in blocks) {
-      if (block.type == ProductionGuideBlockType.step) {
-        flush();
-        stepNumber += 1;
-        currentStep = block;
-      } else {
-        children.add(block);
-      }
-    }
-    flush();
-    return steps;
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.format_list_numbered, size: 48),
-            const SizedBox(height: 12),
-            Text(
-              '첫 제작 단계를 추가해 보세요.',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text('단계 추가'),
-              onPressed: _addStep,
-            ),
-          ],
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${widget.itemName} 제작 가이드'),
+        actions: [
+          IconButton(
+            tooltip: '저장',
+            icon: const Icon(Icons.save_outlined),
+            onPressed: _saveNow,
+          ),
+        ],
       ),
-    );
-  }
-
-  Widget _buildStepCard(
-    ProductionGuideData data,
-    _GuideStep step,
-    int index,
-    int stepCount,
-  ) {
-    final theme = Theme.of(context);
-    final stepBlock = step.stepBlock;
-    final media = step.mediaBlocks;
-    final notes = step.noteBlocks;
-    final canMoveUp = index > 0 && stepBlock != null;
-    final canMoveDown = index < stepCount - 1 && stepBlock != null;
-
-    return Card(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+      body: Column(
+        children: [
+          Material(
+            color: colorScheme.surface,
+            elevation: 1,
+            child: Column(
               children: [
-                CircleAvatar(
-                  radius: 17,
-                  child:
-                      Text(step.stepNumber == 0 ? '-' : '${step.stepNumber}'),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    step.stepNumber == 0 ? '미분류 항목' : '${step.stepNumber}단계',
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                IconButton(
-                  tooltip: '위로',
-                  onPressed: canMoveUp
-                      ? () => _service.moveStep(
-                            guideId: data.guide.id,
-                            stepBlockId: stepBlock.id,
-                            delta: -1,
-                          )
-                      : null,
-                  icon: const Icon(Icons.keyboard_arrow_up),
-                ),
-                IconButton(
-                  tooltip: '아래로',
-                  onPressed: canMoveDown
-                      ? () => _service.moveStep(
-                            guideId: data.guide.id,
-                            stepBlockId: stepBlock.id,
-                            delta: 1,
-                          )
-                      : null,
-                  icon: const Icon(Icons.keyboard_arrow_down),
-                ),
-                if (stepBlock != null)
-                  IconButton(
-                    tooltip: '단계 삭제',
-                    onPressed: () => _deleteStep(step),
-                    icon: const Icon(Icons.delete_outline),
-                  ),
-              ],
-            ),
-            if (stepBlock != null) ...[
-              const SizedBox(height: 8),
-              _QuillStepEditor(
-                key: ValueKey(stepBlock.id),
-                value: _valueFor(stepBlock),
-                hintText: '예: 고기를 손질한다',
-                onChanged: (value) => _updateDraft(stepBlock, value),
-              ),
-            ],
-            if (media.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 152,
-                child: ListView.separated(
+                SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  itemCount: media.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
-                  itemBuilder: (context, mediaIndex) => _GuideImageTile(
-                    block: media[mediaIndex],
-                    onTap: () => _openImage(media[mediaIndex]),
-                    onRotate: () => _rotateImage(media[mediaIndex]),
-                    onDelete: () => _deleteBlock(media[mediaIndex]),
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: Row(
+                    children: [
+                      FilledButton.icon(
+                        icon: const Icon(Icons.format_list_numbered),
+                        label: const Text('단계'),
+                        onPressed: _insertStep,
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.tonalIcon(
+                        icon: const Icon(Icons.add_photo_alternate_outlined),
+                        label: const Text('사진'),
+                        onPressed: _addImage,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-            for (final note in notes) ...[
-              const SizedBox(height: 10),
-              _NoteEditor(
-                key: ValueKey(note.id),
-                initialText: note.text ?? '',
-                onChanged: (text) => _updateDraft(
-                  note,
-                  text,
-                ),
-                onDelete: () => _deleteBlock(note),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.add_a_photo_outlined),
-                  label: const Text('사진'),
-                  onPressed: () => _addImage(step),
-                ),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.notes_outlined),
-                  label: const Text('메모'),
-                  onPressed: () => _addNote(step),
+                quill.QuillSimpleToolbar(
+                  controller: controller,
+                  config: const quill.QuillSimpleToolbarConfig(
+                    showAlignmentButtons: true,
+                    showBackgroundColorButton: true,
+                    showColorButton: true,
+                    showFontFamily: true,
+                    showFontSize: true,
+                    showHeaderStyle: true,
+                    showInlineCode: false,
+                    showCodeBlock: false,
+                    showQuote: false,
+                    showSearchButton: false,
+                    multiRowsDisplay: false,
+                  ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  border: Border.all(color: Theme.of(context).dividerColor),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: quill.QuillEditor.basic(
+                  controller: controller,
+                  config: quill.QuillEditorConfig(
+                    placeholder: '제육볶음 제작 가이드를 블로그처럼 작성하세요.',
+                    expands: true,
+                    padding: const EdgeInsets.all(16),
+                    embedBuilders: [
+                      _GuideImageEmbedBuilder(
+                        refresh: _imageRefresh,
+                        onOpen: _openImage,
+                        onRotate: _rotateImage,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<ProductionGuideData?>(
-      stream: _service.watchGuideData(widget.itemId),
+    return FutureBuilder<_GuideDocument>(
+      future: _documentFuture,
       builder: (context, snapshot) {
-        final data = snapshot.data;
-        final blocks = data?.blocks ?? const <ProductionGuideBlock>[];
-        final steps = _groupSteps(blocks);
-        final editableSteps =
-            steps.where((step) => step.stepBlock != null).toList();
-
-        return Scaffold(
-          appBar: AppBar(
-            title: Text('${widget.itemName} 제작 가이드'),
-            actions: [
-              IconButton(
-                tooltip: '단계 추가',
-                icon: const Icon(Icons.add),
-                onPressed: _addStep,
-              ),
-            ],
-          ),
-          body: blocks.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 88),
-                  itemCount: steps.length,
-                  itemBuilder: (context, index) => _buildStepCard(
-                    data!,
-                    steps[index],
-                    editableSteps.indexWhere(
-                      (step) =>
-                          step.stepBlock?.id == steps[index].stepBlock?.id,
-                    ),
-                    editableSteps.length,
-                  ),
-                ),
-          floatingActionButton: FloatingActionButton.extended(
-            icon: const Icon(Icons.add),
-            label: const Text('단계 추가'),
-            onPressed: _addStep,
-          ),
-        );
+        if (!snapshot.hasData) {
+          return Scaffold(
+            appBar: AppBar(title: Text('${widget.itemName} 제작 가이드')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        return _buildEditor(context, snapshot.data!);
       },
     );
   }
 }
 
-class _GuideStep {
-  final ProductionGuideBlock? stepBlock;
-  final List<ProductionGuideBlock> blocks;
-  final int stepNumber;
+class _GuideDocument {
+  final String blockId;
+  final String storedText;
 
-  const _GuideStep({
-    required this.stepBlock,
-    required this.blocks,
-    required this.stepNumber,
+  const _GuideDocument({
+    required this.blockId,
+    required this.storedText,
   });
-
-  String? get lastBlockId => blocks.isEmpty ? stepBlock?.id : blocks.last.id;
-
-  List<ProductionGuideBlock> get mediaBlocks => blocks
-      .where((block) => block.type == ProductionGuideBlockType.image)
-      .toList();
-
-  List<ProductionGuideBlock> get noteBlocks => blocks
-      .where((block) => block.type == ProductionGuideBlockType.note)
-      .toList();
 }
 
-class _QuillStepEditor extends StatefulWidget {
-  final String value;
-  final String hintText;
-  final ValueChanged<String> onChanged;
+class _GuideImageEmbedBuilder extends quill.EmbedBuilder {
+  final int refresh;
+  final ValueChanged<String> onOpen;
+  final ValueChanged<String> onRotate;
 
-  const _QuillStepEditor({
-    super.key,
-    required this.value,
-    required this.hintText,
-    required this.onChanged,
+  const _GuideImageEmbedBuilder({
+    required this.refresh,
+    required this.onOpen,
+    required this.onRotate,
   });
 
   @override
-  State<_QuillStepEditor> createState() => _QuillStepEditorState();
-}
-
-class _QuillStepEditorState extends State<_QuillStepEditor> {
-  late final quill.QuillController _controller;
-  StreamSubscription<dynamic>? _changesSubscription;
+  String get key => quill.BlockEmbed.imageType;
 
   @override
-  void initState() {
-    super.initState();
-    _controller = quill.QuillController(
-      document: _QuillTextCodec.documentFromStored(widget.value),
-      selection: const TextSelection.collapsed(offset: 0),
-    );
-    _changesSubscription = _controller.document.changes.listen((_) {
-      widget.onChanged(_QuillTextCodec.encode(_controller.document));
-    });
-  }
-
-  @override
-  void dispose() {
-    _changesSubscription?.cancel();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didUpdateWidget(covariant _QuillStepEditor oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.value != widget.value &&
-        _QuillTextCodec.encode(_controller.document) != widget.value) {
-      _controller.document = _QuillTextCodec.documentFromStored(widget.value);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = Theme.of(context).dividerColor;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border.all(color: borderColor),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: quill.QuillSimpleToolbar(
-            controller: _controller,
-            config: const quill.QuillSimpleToolbarConfig(
-              showAlignmentButtons: true,
-              showBackgroundColorButton: true,
-              showColorButton: true,
-              showFontFamily: true,
-              showFontSize: true,
-              showHeaderStyle: false,
-              showInlineCode: false,
-              showCodeBlock: false,
-              showQuote: false,
-              showSearchButton: false,
-              multiRowsDisplay: false,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 96),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border.all(color: borderColor),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: quill.QuillEditor.basic(
-                controller: _controller,
-                config: quill.QuillEditorConfig(
-                  placeholder: widget.hintText,
-                  expands: false,
-                  padding: EdgeInsets.zero,
+  Widget build(BuildContext context, quill.EmbedContext embedContext) {
+    final path = embedContext.node.value.data as String;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: FutureBuilder<File>(
+        future: const AppPathService().resolveAppFile(path),
+        builder: (context, snapshot) {
+          final file = snapshot.data;
+          if (file == null) {
+            return const SizedBox(
+              height: 260,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Material(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: Stack(
+                    children: [
+                      InkWell(
+                        onTap: () => onOpen(path),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: 260,
+                            maxHeight: 560,
+                          ),
+                          child: SizedBox(
+                            width: constraints.maxWidth,
+                            child: Image.file(
+                              file,
+                              key: ValueKey('$path-$refresh'),
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const SizedBox(
+                                height: 260,
+                                child: Center(child: Text('사진을 불러오지 못했습니다.')),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.46),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: '확대',
+                                color: Colors.white,
+                                icon: const Icon(Icons.open_in_full),
+                                onPressed: () => onOpen(path),
+                              ),
+                              IconButton(
+                                tooltip: '90도 회전',
+                                color: Colors.white,
+                                icon: const Icon(Icons.rotate_90_degrees_cw),
+                                onPressed: () => onRotate(path),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ),
-      ],
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
@@ -634,6 +562,14 @@ class _QuillTextCodec {
     }
     if (raw.startsWith(marker)) return raw;
     return encode(documentFromStored(raw));
+  }
+
+  static String plainTextFromStored(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    if (raw.startsWith(marker) || raw.startsWith(legacyMarker)) {
+      return documentFromStored(raw).toPlainText();
+    }
+    return raw;
   }
 
   static quill.Document documentFromStored(String? raw) {
@@ -669,141 +605,9 @@ class _QuillTextCodec {
   }
 }
 
-class _NoteEditor extends StatefulWidget {
-  final String initialText;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onDelete;
-
-  const _NoteEditor({
-    super.key,
-    required this.initialText,
-    required this.onChanged,
-    required this.onDelete,
-  });
-
-  @override
-  State<_NoteEditor> createState() => _NoteEditorState();
-}
-
-class _NoteEditorState extends State<_NoteEditor> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialText);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _controller,
-            minLines: 2,
-            maxLines: 5,
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.notes_outlined),
-              hintText: '주의사항이나 메모',
-              border: OutlineInputBorder(),
-            ),
-            onChanged: widget.onChanged,
-          ),
-        ),
-        IconButton(
-          tooltip: '메모 삭제',
-          onPressed: widget.onDelete,
-          icon: const Icon(Icons.close),
-        ),
-      ],
-    );
-  }
-}
-
-class _GuideImageTile extends StatelessWidget {
-  final ProductionGuideBlock block;
-  final VoidCallback onTap;
-  final VoidCallback onRotate;
-  final VoidCallback onDelete;
-
-  const _GuideImageTile({
-    required this.block,
-    required this.onTap,
-    required this.onRotate,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final path = block.filePath;
-    if (path == null || path.isEmpty) {
-      return const SizedBox(
-        width: 144,
-        child: Center(child: Text('사진 경로 없음')),
-      );
-    }
-    return FutureBuilder<File>(
-      future: const AppPathService().resolveAppFile(path),
-      builder: (context, snapshot) {
-        final file = snapshot.data;
-        return SizedBox(
-          width: 164,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Material(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: InkWell(
-                      onTap: onTap,
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: file == null
-                            ? const Center(child: CircularProgressIndicator())
-                            : Image.file(
-                                file,
-                                fit: BoxFit.contain,
-                                gaplessPlayback: false,
-                                errorBuilder: (_, __, ___) => const Center(
-                                  child: Text('사진 오류'),
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 4,
-                    top: 4,
-                    child: PopupMenuButton<String>(
-                      tooltip: '사진 메뉴',
-                      icon: const Icon(Icons.more_vert),
-                      onSelected: (value) {
-                        if (value == 'open') onTap();
-                        if (value == 'rotate') onRotate();
-                        if (value == 'delete') onDelete();
-                      },
-                      itemBuilder: (_) => const [
-                        PopupMenuItem(value: 'open', child: Text('확대')),
-                        PopupMenuItem(value: 'rotate', child: Text('90도 회전')),
-                        PopupMenuItem(value: 'delete', child: Text('삭제')),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    return iterator.moveNext() ? iterator.current : null;
   }
 }

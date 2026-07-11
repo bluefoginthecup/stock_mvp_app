@@ -9,6 +9,8 @@ List<Item> _applyFilters(
   required bool lowOnly,
   required bool showFavoriteOnly,
   required bool needsReviewOnly,
+  String? supplierId,
+  String? supplierName,
 }) {
   var filtered = items;
   if (lowOnly) {
@@ -20,6 +22,15 @@ List<Item> _applyFilters(
   }
   if (needsReviewOnly) {
     filtered = filtered.where(isNeedsRegistrationItem).toList();
+  }
+  if (supplierId != null && supplierId.trim().isNotEmpty) {
+    filtered = filtered.where((it) {
+      if (it.defaultSupplierId == supplierId) return true;
+      final itemSupplierName = it.supplierName?.trim();
+      return itemSupplierName != null &&
+          itemSupplierName.isNotEmpty &&
+          itemSupplierName == supplierName;
+    }).toList();
   }
   return filtered;
 }

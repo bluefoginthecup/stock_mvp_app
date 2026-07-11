@@ -366,6 +366,8 @@ class _ExistingSkuPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final previewSkus = skus.take(8).toList();
+    final moreCount = skus.length - previewSkus.length;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -383,13 +385,237 @@ class _ExistingSkuPreview extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           SelectableText(
-            skus.join('\n'),
+            [
+              ...previewSkus,
+              if (moreCount > 0) '외 $moreCount개',
+            ].join('\n'),
             style: theme.textTheme.bodySmall?.copyWith(
               fontFamily: 'monospace',
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ExistingTextPreview extends StatelessWidget {
+  final String label;
+  final List<String> values;
+
+  const _ExistingTextPreview({
+    required this.label,
+    required this.values,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final previewValues = values.take(8).toList();
+    final moreCount = values.length - previewValues.length;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: theme.textTheme.labelMedium),
+          const SizedBox(height: 6),
+          SelectableText(
+            [
+              ...previewValues,
+              if (moreCount > 0) '외 $moreCount개',
+            ].join('\n'),
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<FolderCloneOptions?> _showItemCopyDialog(
+  BuildContext context, {
+  required List<Item> items,
+}) {
+  return showDialog<FolderCloneOptions>(
+    context: context,
+    builder: (_) => _ItemCopyDialog(items: items),
+  );
+}
+
+class _ItemCopyDialog extends StatefulWidget {
+  final List<Item> items;
+
+  const _ItemCopyDialog({required this.items});
+
+  @override
+  State<_ItemCopyDialog> createState() => _ItemCopyDialogState();
+}
+
+class _ItemCopyDialogState extends State<_ItemCopyDialog> {
+  final nameReplaceFromController = TextEditingController();
+  final nameReplaceToController = TextEditingController();
+  final skuReplaceFromController = TextEditingController();
+  final skuReplaceToController = TextEditingController();
+  bool resetQty = true;
+  bool replaceSku = true;
+  bool copyBom = true;
+
+  @override
+  void dispose() {
+    nameReplaceFromController.dispose();
+    nameReplaceToController.dispose();
+    skuReplaceFromController.dispose();
+    skuReplaceToController.dispose();
+    super.dispose();
+  }
+
+  void submit() {
+    final replaceFrom = nameReplaceFromController.text.trim();
+    final replaceTo = nameReplaceToController.text.trim();
+    final skuReplaceFrom = skuReplaceFromController.text.trim();
+    final skuReplaceTo = skuReplaceToController.text.trim();
+    final hasSku = widget.items.any((item) => item.sku.trim().isNotEmpty);
+
+    if (replaceFrom.isEmpty || replaceTo.isEmpty) return;
+    if (replaceSku &&
+        hasSku &&
+        (skuReplaceFrom.isEmpty || skuReplaceTo.isEmpty)) {
+      return;
+    }
+
+    Navigator.pop(
+      context,
+      FolderCloneOptions(
+        replaceFrom: replaceFrom,
+        replaceTo: replaceTo,
+        skuReplaceFrom: skuReplaceFrom,
+        skuReplaceTo: skuReplaceTo,
+        resetQty: resetQty,
+        replaceSku: replaceSku,
+        copyBom: copyBom,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.items;
+    final names = items.map((item) => item.name).toList();
+    final displayNames = items
+        .map((item) => item.displayName?.trim())
+        .whereType<String>()
+        .where((name) => name.isNotEmpty)
+        .toList();
+    final skus = items
+        .map((item) => item.sku.trim())
+        .where((sku) => sku.isNotEmpty)
+        .toSet()
+        .toList();
+    return AlertDialog(
+      title: Text(items.length == 1 ? '아이템 복사' : '아이템 ${items.length}개 복사'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ExistingTextPreview(label: '기존 이름', values: names),
+            if (displayNames.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _ExistingTextPreview(label: '기존 표시명', values: displayNames),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameReplaceFromController,
+              decoration: const InputDecoration(
+                labelText: '이름에서 바꿀 부분',
+                hintText: '예: 도토리 커피',
+              ),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameReplaceToController,
+              decoration: const InputDecoration(
+                labelText: '이름 새 문자열',
+                hintText: '예: 제비나비',
+              ),
+              textInputAction: TextInputAction.next,
+            ),
+            const SizedBox(height: 16),
+            if (skus.isEmpty)
+              const Text('기존 SKU가 없는 아이템입니다.')
+            else ...[
+              _ExistingSkuPreview(skus: skus),
+              const SizedBox(height: 12),
+              TextField(
+                controller: skuReplaceFromController,
+                decoration: const InputDecoration(
+                  labelText: 'SKU에서 바꿀 부분',
+                  hintText: '예: dotori_white',
+                ),
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: skuReplaceToController,
+                decoration: const InputDecoration(
+                  labelText: 'SKU 새 문자열',
+                  hintText: '예: flora_pink',
+                ),
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => submit(),
+              ),
+            ],
+            const SizedBox(height: 16),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: resetQty,
+              title: const Text('현재고 0으로 시작'),
+              controlAffinity: ListTileControlAffinity.leading,
+              onChanged: (value) {
+                setState(() => resetQty = value ?? true);
+              },
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: replaceSku,
+              title: const Text('SKU 치환 적용'),
+              controlAffinity: ListTileControlAffinity.leading,
+              enabled: skus.isNotEmpty,
+              onChanged: (value) {
+                setState(() => replaceSku = value ?? true);
+              },
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              value: copyBom,
+              title: const Text('BOM/소요자재 구성 복사'),
+              controlAffinity: ListTileControlAffinity.leading,
+              onChanged: (value) {
+                setState(() => copyBom = value ?? true);
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: submit,
+          child: const Text('복사하기'),
+        ),
+      ],
     );
   }
 }

@@ -8,6 +8,7 @@ import '../../ui/common/ui.dart';
 import '../../models/folder_node.dart';
 import '../../models/item.dart';
 import '../../models/storage_location.dart';
+import '../../models/suppliers.dart';
 import 'sheet_new_folder.dart';
 import 'stock_new_item_sheet.dart';
 import '../../ui/common/search_field.dart';
@@ -66,6 +67,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   bool _lowOnly = false;
   bool _showFavoriteOnly = false;
   bool _needsReviewOnly = false;
+  String? _supplierFilterId;
+  String? _supplierFilterName;
   List<String> _locationSummaryItemIds = const [];
   Future<Map<String, ItemLocationSummary>>? _locationSummaryFuture;
 
@@ -252,6 +255,22 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   onSelected: (v) => setState(() => _needsReviewOnly = v),
                   avatar: const Icon(Icons.assignment_late_outlined, size: 18),
                 ),
+                FilterChip(
+                  label: Text(
+                    _supplierFilterName == null
+                        ? '거래처'
+                        : '거래처:${_supplierFilterName!}',
+                  ),
+                  selected: _supplierFilterId != null,
+                  avatar: const Icon(Icons.storefront_outlined, size: 18),
+                  onSelected: (_) => _pickSupplierFilter(context),
+                  onDeleted: _supplierFilterId == null
+                      ? null
+                      : () => setState(() {
+                            _supplierFilterId = null;
+                            _supplierFilterName = null;
+                          }),
+                ),
               ],
             ),
           ),
@@ -274,7 +293,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               recursive: _searchC.text.trim().isNotEmpty
                   ? true
                   : (_selectedDepth == 0 &&
-                      (_lowOnly || _showFavoriteOnly || _needsReviewOnly)),
+                      (_lowOnly ||
+                          _showFavoriteOnly ||
+                          _needsReviewOnly ||
+                          _supplierFilterId != null)),
               lowOnly: _lowOnly,
               favoritesOnly: _showFavoriteOnly,
             ),
@@ -292,6 +314,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                 lowOnly: _lowOnly,
                 showFavoriteOnly: _showFavoriteOnly,
                 needsReviewOnly: _needsReviewOnly,
+                supplierId: _supplierFilterId,
+                supplierName: _supplierFilterName,
               );
               final hasKeyword = _searchC.text.trim().isNotEmpty;
               final keyword = _searchC.text.trim();
@@ -367,7 +391,10 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   slivers.add(_sliverBreadcrumb(context, setState));
                   if (depth == 0 &&
                       !hasKeyword &&
-                      (_lowOnly || _showFavoriteOnly || _needsReviewOnly)) {
+                      (_lowOnly ||
+                          _showFavoriteOnly ||
+                          _needsReviewOnly ||
+                          _supplierFilterId != null)) {
                     if (items.isEmpty) {
                       return const Center(child: Text('조건에 맞는 아이템이 없습니다.'));
                     }
@@ -733,13 +760,33 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
 
             final folderService = context.read<FolderService>();
             final folderRepo = context.read<FolderTreeRepo>();
+            final itemRepo = context.read<ItemRepo>();
             final foldersToCopy = await _topLevelSelectedFolders(
               folderRepo,
               sel,
             );
 
-            for (final id in sel.selectedItems) {
-              await folderService.copySingleItem(id);
+            if (sel.selectedItems.isNotEmpty && foldersToCopy.isEmpty) {
+              final sourceItems = <Item>[];
+              for (final id in sel.selectedItems) {
+                final item = await itemRepo.getItem(id);
+                if (item != null) sourceItems.add(item);
+              }
+              if (sourceItems.isEmpty) return;
+              if (!context.mounted) return;
+              final options = await _showItemCopyDialog(
+                context,
+                items: sourceItems,
+              );
+              if (options == null) return;
+              await folderService.copyItemsWithOptions(
+                sourceItems.map((item) => item.id).toList(),
+                options,
+              );
+            } else {
+              for (final id in sel.selectedItems) {
+                await folderService.copySingleItem(id);
+              }
             }
             for (final id in foldersToCopy) {
               await folderService.copyFolderTree(id);
@@ -829,6 +876,41 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     }
 
     return result;
+  }
+
+  Future<void> _pickSupplierFilter(BuildContext context) async {
+    final supplierRepo = context.read<SupplierRepo>();
+    final suppliers = await supplierRepo.list();
+    if (!context.mounted) return;
+
+    final selected = await showModalBottomSheet<Supplier?>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.clear),
+              title: const Text('전체 거래처'),
+              onTap: () => Navigator.pop(sheetContext),
+            ),
+            for (final supplier in suppliers)
+              ListTile(
+                leading: const Icon(Icons.storefront_outlined),
+                title: Text(supplier.name),
+                selected: supplier.id == _supplierFilterId,
+                onTap: () => Navigator.pop(sheetContext, supplier),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _supplierFilterId = selected?.id;
+      _supplierFilterName = selected?.name;
+    });
   }
 
   //----검색결과 나온 폴더로 이동 ----//
