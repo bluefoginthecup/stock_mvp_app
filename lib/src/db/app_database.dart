@@ -681,7 +681,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 44; //
+  int get schemaVersion => 45; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -704,6 +704,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureQuoteLineAmountColumns();
           await _ensureStorageLocationMovementTable();
           await _ensureItemLocationQuantityColumn();
+          await _ensureProductionGuideTables();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -1015,6 +1016,9 @@ class AppDatabase extends _$AppDatabase {
                 'item_price_histories', 'source_ref_id', 'TEXT');
           }
           if (from < 44) {
+            await _ensureProductionGuideTables();
+          }
+          if (from < 45) {
             await _ensureProductionGuideTables();
           }
         },
@@ -1512,12 +1516,22 @@ class AppDatabase extends _$AppDatabase {
     await customStatement('''
       CREATE TABLE IF NOT EXISTS item_production_guides (
         id TEXT PRIMARY KEY NOT NULL,
-        item_id TEXT NOT NULL UNIQUE,
+        item_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '기본 제작 가이드',
+        is_primary INTEGER NOT NULL DEFAULT 1,
+        sort_order INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
       )
     ''');
+    await _addColumnIfMissing(
+        'item_production_guides', 'title', "TEXT NOT NULL DEFAULT '기본 제작 가이드'");
+    await _addColumnIfMissing(
+        'item_production_guides', 'is_primary', 'INTEGER NOT NULL DEFAULT 1');
+    await _addColumnIfMissing(
+        'item_production_guides', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+    await _removeProductionGuideItemUniqueIfNeeded();
     await customStatement('''
       CREATE TABLE IF NOT EXISTS item_production_guide_blocks (
         id TEXT PRIMARY KEY NOT NULL,
@@ -1541,6 +1555,45 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_item_production_guide_blocks_guide '
       'ON item_production_guide_blocks(guide_id, sort_order, created_at)',
     );
+  }
+
+  Future<void> _removeProductionGuideItemUniqueIfNeeded() async {
+    final indexes = await customSelect(
+      "PRAGMA index_list('item_production_guides')",
+    ).get();
+    final hasItemUnique = indexes.any((row) {
+      final data = row.data;
+      final unique = data['unique'];
+      final origin = data['origin'];
+      return (unique == 1 || unique == true) && origin == 'u';
+    });
+    if (!hasItemUnique) return;
+
+    await customStatement('PRAGMA foreign_keys = OFF');
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS item_production_guides_new (
+        id TEXT PRIMARY KEY NOT NULL,
+        item_id TEXT NOT NULL,
+        title TEXT NOT NULL DEFAULT '기본 제작 가이드',
+        is_primary INTEGER NOT NULL DEFAULT 1,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+      )
+    ''');
+    await customStatement('''
+      INSERT OR IGNORE INTO item_production_guides_new (
+        id, item_id, title, is_primary, sort_order, created_at, updated_at
+      )
+      SELECT id, item_id, title, is_primary, sort_order, created_at, updated_at
+      FROM item_production_guides
+    ''');
+    await customStatement('DROP TABLE item_production_guides');
+    await customStatement(
+      'ALTER TABLE item_production_guides_new RENAME TO item_production_guides',
+    );
+    await customStatement('PRAGMA foreign_keys = ON');
   }
 
   Future<void> resetDatabase() async {

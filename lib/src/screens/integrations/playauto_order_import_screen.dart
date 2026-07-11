@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 String _normalizeSearchText(String value) {
   return value.toLowerCase().replaceAll(RegExp(r'[\s\-\(\)\.]'), '').trim();
@@ -37,10 +38,16 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   final _sdateController = TextEditingController();
   final _edateController = TextEditingController();
   final _lengthController = TextEditingController(text: '100');
+  final _workShopCodeController = TextEditingController();
+  final _workShopIdsController = TextEditingController();
 
   var _loading = false;
   var _credentialsLoaded = false;
+  var _workAction = 'ScrapOrder';
   List<_PlayAutoOrderPreview> _orders = const [];
+  List<_PlayAutoShopAccount> _shopAccounts = const [];
+  Set<String> _selectedShopAccountKeys = const {};
+  List<String> _lastWorkNos = const [];
   String? _result;
   int? _statusCode;
   DateTime? _tokenIssuedAt;
@@ -66,6 +73,8 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     _sdateController.dispose();
     _edateController.dispose();
     _lengthController.dispose();
+    _workShopCodeController.dispose();
+    _workShopIdsController.dispose();
     super.dispose();
   }
 
@@ -102,7 +111,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
             ? result.body
             : '토큰 발급 성공\n\nAuthorization: Token $token\n\n${result.body}',
       );
-    });
+    }, clearOrders: false);
   }
 
   Future<_TokenIssueResult> _requestToken({
@@ -309,6 +318,173 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     });
   }
 
+  Future<void> _fetchShopAccounts() async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      _showSnack('API Key를 입력해주세요.');
+      return;
+    }
+
+    await _runRequest(() async {
+      final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+      if (tokenResult.response != null) return tokenResult.response!;
+      final token = tokenResult.token!;
+
+      final response = await http.get(
+        _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
+        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+      );
+      final shops = _readShopAccounts(response.body);
+      if (mounted) {
+        setState(() {
+          _shopAccounts = shops;
+          _selectedShopAccountKeys = {
+            for (final key in _selectedShopAccountKeys)
+              if (shops.any((shop) => shop.key == key)) key,
+          };
+          if (shops.length == 1) _toggleShopAccount(shops.first, true);
+        });
+      }
+
+      return _PlayAutoResponse(
+        statusCode: response.statusCode,
+        body: [
+          '불러온 쇼핑몰 ${shops.length}건',
+          if (shops.isEmpty) '응답 구조에서 쇼핑몰 코드를 찾지 못했습니다.',
+          '',
+          '요청',
+          'GET /shops?used=true',
+          '',
+          '응답',
+          _prettyBody(response.body),
+        ].join('\n'),
+      );
+    }, clearOrders: false);
+  }
+
+  Future<void> _registerOrderCollectionWork() async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      _showSnack('API Key를 입력해주세요.');
+      return;
+    }
+
+    final workTargets = _selectedWorkTargets;
+    if (workTargets.isEmpty) {
+      _showSnack('쇼핑몰 코드와 아이디를 입력하거나 쇼핑몰을 선택해주세요.');
+      return;
+    }
+    final missingIds =
+        workTargets.where((target) => target.id.trim().isEmpty).toList();
+    if (missingIds.isNotEmpty) {
+      _showSnack('선택한 쇼핑몰 중 아이디가 없는 항목이 있습니다. 쇼핑몰 아이디를 입력해주세요.');
+      return;
+    }
+
+    await _runRequest(() async {
+      final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+      if (tokenResult.response != null) return tokenResult.response!;
+      final token = tokenResult.token!;
+
+      final groupedTargets = _groupWorkTargetsByCode(workTargets);
+      final responses = <String>[];
+      final workNos = <String>{};
+      int? statusCode;
+
+      for (var index = 0; index < groupedTargets.length; index += 1) {
+        final entry = groupedTargets.entries.elementAt(index);
+        final requestBody = <String, Object?>{
+          'act': _workAction,
+          'params': {
+            'site_code': entry.key,
+            'site_id': entry.value.toList(),
+          },
+        };
+
+        final response = await http.post(
+          _endpoint('/work/addWork/v1.2'),
+          headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+          body: jsonEncode(requestBody),
+        );
+        statusCode ??= response.statusCode;
+        workNos.addAll(_readWorkNos(response.body));
+        responses.add(
+          [
+            '쇼핑몰 코드 ${entry.key}',
+            'HTTP ${response.statusCode}',
+            '요청 바디',
+            const JsonEncoder.withIndent('  ').convert(requestBody),
+            '',
+            '응답',
+            _prettyBody(response.body),
+          ].join('\n'),
+        );
+
+        if (index < groupedTargets.length - 1) {
+          await Future<void>.delayed(const Duration(seconds: 1));
+        }
+      }
+
+      if (mounted) {
+        setState(() => _lastWorkNos = workNos.toList());
+      }
+
+      return _PlayAutoResponse(
+        statusCode: statusCode,
+        body: [
+          if (workNos.isNotEmpty) ...[
+            '등록된 작업번호',
+            workNos.join(', '),
+            '',
+          ],
+          '등록 요청 ${groupedTargets.length}건',
+          '',
+          responses.join('\n\n'),
+        ].join('\n'),
+      );
+    }, clearOrders: false);
+  }
+
+  Future<void> _fetchLastWorkResult() async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      _showSnack('API Key를 입력해주세요.');
+      return;
+    }
+    if (_lastWorkNos.isEmpty) {
+      _showSnack('먼저 주문 수집 작업을 실행해주세요.');
+      return;
+    }
+
+    await _runRequest(() async {
+      final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+      if (tokenResult.response != null) return tokenResult.response!;
+      final token = tokenResult.token!;
+
+      final responses = <String>[];
+      int? statusCode;
+      for (final workNo in _lastWorkNos) {
+        final response = await http.get(
+          _endpoint('/work/$workNo'),
+          headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+        );
+        statusCode ??= response.statusCode;
+        responses.add(
+          [
+            '작업번호 $workNo',
+            'HTTP ${response.statusCode}',
+            _prettyBody(response.body),
+          ].join('\n'),
+        );
+      }
+
+      return _PlayAutoResponse(
+        statusCode: statusCode,
+        body: responses.join('\n\n'),
+      );
+    }, clearOrders: false);
+  }
+
   Future<_TokenReadyResult> _ensureTokenForOrderFetch(String apiKey) async {
     final currentToken = _tokenController.text.trim();
     if (currentToken.isNotEmpty && !_isSavedTokenExpired) {
@@ -343,6 +519,18 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     return _TokenReadyResult(token: token);
   }
 
+  Map<String, String> _authorizedJsonHeaders({
+    required String apiKey,
+    required String token,
+  }) {
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'Authorization': 'Token $token',
+    };
+  }
+
   void _openOrderPreview() {
     if (_orders.isEmpty) {
       _showSnack('먼저 최근 주문을 조회해주세요.');
@@ -355,14 +543,75 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     );
   }
 
+  void _toggleShopAccount(_PlayAutoShopAccount shop, bool selected) {
+    final keys = {..._selectedShopAccountKeys};
+    if (selected) {
+      keys.add(shop.key);
+    } else {
+      keys.remove(shop.key);
+    }
+    _selectedShopAccountKeys = keys;
+    _syncManualTargetFields();
+  }
+
+  void _selectAllShopAccounts(bool selected) {
+    _selectedShopAccountKeys =
+        selected ? _shopAccounts.map((shop) => shop.key).toSet() : const {};
+    _syncManualTargetFields();
+  }
+
+  void _syncManualTargetFields() {
+    final selected = _selectedShopAccounts;
+    if (selected.isEmpty) return;
+    final firstCode = selected.first.code;
+    _workShopCodeController.text = firstCode;
+    _workShopIdsController.text = selected
+        .where((shop) => shop.code == firstCode && shop.id.isNotEmpty)
+        .map((shop) => shop.id)
+        .join(', ');
+  }
+
+  List<_PlayAutoShopAccount> get _selectedShopAccounts {
+    return _shopAccounts
+        .where((shop) => _selectedShopAccountKeys.contains(shop.key))
+        .toList();
+  }
+
+  List<_PlayAutoWorkTarget> get _selectedWorkTargets {
+    final selectedTargets = _selectedShopAccounts
+        .map((shop) => _PlayAutoWorkTarget(code: shop.code, id: shop.id))
+        .toList();
+    if (selectedTargets.isNotEmpty) return selectedTargets;
+
+    final manualCode = _workShopCodeController.text.trim();
+    if (manualCode.isEmpty) return const [];
+    return _readDelimitedValues(_workShopIdsController.text)
+        .map((id) => _PlayAutoWorkTarget(code: manualCode, id: id))
+        .toList();
+  }
+
+  Map<String, Set<String>> _groupWorkTargetsByCode(
+    List<_PlayAutoWorkTarget> targets,
+  ) {
+    final grouped = <String, Set<String>>{};
+    for (final target in targets) {
+      final code = target.code.trim();
+      final id = target.id.trim();
+      if (code.isEmpty || id.isEmpty) continue;
+      grouped.putIfAbsent(code, () => <String>{}).add(id);
+    }
+    return grouped;
+  }
+
   Future<void> _runRequest(
-    Future<_PlayAutoResponse> Function() request,
-  ) async {
+    Future<_PlayAutoResponse> Function() request, {
+    bool clearOrders = true,
+  }) async {
     setState(() {
       _loading = true;
       _statusCode = null;
       _result = null;
-      _orders = const [];
+      if (clearOrders) _orders = const [];
     });
 
     try {
@@ -438,6 +687,167 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       }
     }
     return null;
+  }
+
+  List<String> _readWorkNos(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      final workNos = <String>{};
+      _collectWorkNos(decoded, workNos);
+      return workNos.toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<_PlayAutoShopAccount> _readShopAccounts(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      final accounts = <String, _PlayAutoShopAccount>{};
+      _collectShopAccounts(decoded, accounts);
+      final list = accounts.values.toList();
+      list.sort((a, b) => a.label.compareTo(b.label));
+      return list;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  void _collectShopAccounts(
+    Object? node,
+    Map<String, _PlayAutoShopAccount> accounts, {
+    String inheritedCode = '',
+    String inheritedName = '',
+  }) {
+    if (node is List) {
+      for (final child in node) {
+        _collectShopAccounts(
+          child,
+          accounts,
+          inheritedCode: inheritedCode,
+          inheritedName: inheritedName,
+        );
+      }
+      return;
+    }
+    if (node is! Map) return;
+
+    final map = _stringKeyedMap(node);
+    final code = _pickStringFromMap(
+        map,
+        const [
+          'site_code',
+          'shop_cd',
+          'shop_code',
+          'shopCode',
+          'mall_code',
+          'mall_cd',
+          'code',
+        ],
+        fallback: inheritedCode);
+    final name = _pickStringFromMap(
+        map,
+        const [
+          'site_name',
+          'shop_name',
+          'shopName',
+          'mall_name',
+          'mallName',
+          'name',
+          'seller_nick',
+          'sellerNick',
+          'nickname',
+          'nick_name',
+          'custom_shop_name',
+          'customShopName',
+        ],
+        fallback: inheritedName);
+    final id = _pickStringFromMap(map, const [
+      'site_id',
+      'shop_id',
+      'shopId',
+      'id',
+      'custom_shop_id',
+      'customShopId',
+      'mall_id',
+      'mallId',
+      'account_id',
+      'accountId',
+      'seller_id',
+      'sellerId',
+      'login_id',
+      'loginId',
+    ]);
+    if (code.isNotEmpty) {
+      final account = _PlayAutoShopAccount(
+        code: code,
+        id: id,
+        name: name,
+      );
+      accounts[account.key] = account;
+    }
+
+    for (final entry in map.entries) {
+      final childInheritedCode =
+          _looksLikeShopCode(entry.key) ? entry.key : code;
+      if (_looksLikeShopCode(entry.key) && entry.value is String) {
+        final account = _PlayAutoShopAccount(
+          code: entry.key,
+          id: '',
+          name: entry.value.toString().trim(),
+        );
+        accounts[account.key] = account;
+      }
+      _collectShopAccounts(
+        entry.value,
+        accounts,
+        inheritedCode: childInheritedCode,
+        inheritedName: name,
+      );
+    }
+  }
+
+  String _pickStringFromMap(
+    Map<String, Object?> map,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      final value = map[key];
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty && text != 'null') return text;
+    }
+    return fallback;
+  }
+
+  bool _looksLikeShopCode(String value) {
+    return RegExp(r'^[A-Z]\d{3}$').hasMatch(value.trim());
+  }
+
+  void _collectWorkNos(Object? node, Set<String> workNos) {
+    if (node is Map) {
+      final value = node['work_no'];
+      if (value != null && value.toString().trim().isNotEmpty) {
+        workNos.add(value.toString().trim());
+      }
+      for (final child in node.values) {
+        _collectWorkNos(child, workNos);
+      }
+    }
+    if (node is List) {
+      for (final child in node) {
+        _collectWorkNos(child, workNos);
+      }
+    }
+  }
+
+  List<String> _readDelimitedValues(String value) {
+    return value
+        .split(RegExp(r'[,\n\r]+'))
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
   }
 
   List<_PlayAutoOrderPreview> _readOrders(String body) {
@@ -680,6 +1090,195 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
                     labelText: '개수',
                     border: OutlineInputBorder(),
                   ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '주문 수집 작업',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '쇼핑몰에서 PlayAuto로 주문 수집을 실행합니다. 등록 후 작업이 완료되면 최근 주문 조회로 새 주문을 확인하세요.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _workAction,
+            decoration: const InputDecoration(
+              labelText: '수집 작업',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'ScrapOrder',
+                child: Text('발주확인된 주문 수집'),
+              ),
+              DropdownMenuItem(
+                value: 'ScrapOrderConfirmList',
+                child: Text('결제완료 주문 수집'),
+              ),
+              DropdownMenuItem(
+                value: 'ScrapOrderAndConfirmDoit',
+                child: Text('발주확인 후 주문 수집'),
+              ),
+              DropdownMenuItem(
+                value: 'SyncOrderState',
+                child: Text('주문동기화'),
+              ),
+            ],
+            onChanged: _loading
+                ? null
+                : (value) {
+                    if (value == null) return;
+                    setState(() => _workAction = value);
+                  },
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _loading ? null : _fetchShopAccounts,
+                icon: const Icon(Icons.storefront_outlined),
+                label: const Text('쇼핑몰 목록 불러오기'),
+              ),
+              if (_shopAccounts.isNotEmpty)
+                Text(
+                  '${_shopAccounts.length}개 쇼핑몰 불러옴',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+            ],
+          ),
+          if (_shopAccounts.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text(
+                  '선택 ${_selectedShopAccountKeys.length}개',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: _loading
+                      ? null
+                      : () {
+                          setState(() {
+                            _selectAllShopAccounts(
+                              _selectedShopAccountKeys.length !=
+                                  _shopAccounts.length,
+                            );
+                          });
+                        },
+                  icon: Icon(
+                    _selectedShopAccountKeys.length == _shopAccounts.length
+                        ? Icons.check_box_outlined
+                        : Icons.select_all_outlined,
+                  ),
+                  label: Text(
+                    _selectedShopAccountKeys.length == _shopAccounts.length
+                        ? '전체 해제'
+                        : '전체 선택',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 260),
+              decoration: BoxDecoration(
+                border: Border.all(color: scheme.outlineVariant),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _shopAccounts.length,
+                separatorBuilder: (_, __) =>
+                    Divider(height: 1, color: scheme.outlineVariant),
+                itemBuilder: (context, index) {
+                  final shop = _shopAccounts[index];
+                  final selected = _selectedShopAccountKeys.contains(shop.key);
+                  return CheckboxListTile(
+                    value: selected,
+                    enabled: !_loading,
+                    dense: true,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: Text(
+                      shop.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      shop.id.isEmpty
+                          ? '${shop.code} · 쇼핑몰 아이디 필요'
+                          : '${shop.code} · ${shop.id}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onChanged: (value) {
+                      setState(() => _toggleShopAccount(shop, value ?? false));
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              SizedBox(
+                width: 150,
+                child: TextField(
+                  controller: _workShopCodeController,
+                  decoration: const InputDecoration(
+                    labelText: '쇼핑몰 코드',
+                    hintText: '예: A001',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _workShopIdsController,
+                  minLines: 1,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: '쇼핑몰 아이디',
+                    hintText: '여러 개면 쉼표 또는 줄바꿈',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              FilledButton.icon(
+                onPressed: _loading ? null : _registerOrderCollectionWork,
+                icon: const Icon(Icons.play_arrow_outlined),
+                label: const Text('주문 수집 실행'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _loading || _lastWorkNos.isEmpty
+                    ? null
+                    : _fetchLastWorkResult,
+                icon: const Icon(Icons.fact_check_outlined),
+                label: Text(
+                  _lastWorkNos.isEmpty
+                      ? '작업 결과 확인'
+                      : '작업 결과 확인 ${_lastWorkNos.length}건',
                 ),
               ),
             ],
@@ -1043,6 +1642,10 @@ class _PlayAutoOrderCard extends StatelessWidget {
               const SizedBox(height: 6),
               _MutedLine(label: 'SKU', value: order.sku),
             ],
+            if (order.invoiceNo.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _DeliveryTrackingRow(order: order),
+            ],
             if (order.phone.isNotEmpty) ...[
               const SizedBox(height: 6),
               _MutedLine(label: '연락처', value: order.phone),
@@ -1055,6 +1658,152 @@ class _PlayAutoOrderCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _DeliveryTrackingRow extends StatelessWidget {
+  const _DeliveryTrackingRow({
+    required this.order,
+  });
+
+  final _PlayAutoOrderPreview order;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final carrier = order.carrierName.isEmpty ? '택배사 없음' : order.carrierName;
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.local_shipping_outlined, size: 18, color: scheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  carrier,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                SelectableText(
+                  order.invoiceNo,
+                  maxLines: 1,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          IconButton.filledTonal(
+            tooltip: '운송장 복사',
+            onPressed: () => _copyInvoice(context),
+            icon: const Icon(Icons.copy_outlined),
+          ),
+          const SizedBox(width: 6),
+          FilledButton.icon(
+            onPressed: () => _openTracking(context),
+            icon: const Icon(Icons.open_in_new, size: 18),
+            label: const Text('배송조회'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copyInvoice(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: order.invoiceNo));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('운송장 번호를 복사했습니다.')),
+    );
+  }
+
+  Future<void> _openTracking(BuildContext context) async {
+    final uri = _trackingUri(order.carrierName, order.invoiceNo);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (opened || !context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('배송조회 페이지를 열 수 없습니다.')),
+    );
+  }
+
+  Uri _trackingUri(String carrierName, String invoiceNo) {
+    final trackerCarrierId = _trackerDeliveryCarrierId(carrierName);
+    if (trackerCarrierId == null) {
+      return Uri.https('tracker.delivery', '/');
+    }
+    return Uri(
+      scheme: 'https',
+      host: 'tracker.delivery',
+      fragment: '/$trackerCarrierId/$invoiceNo',
+    );
+  }
+
+  String? _trackerDeliveryCarrierId(String carrierName) {
+    final normalized =
+        carrierName.toLowerCase().replaceAll(RegExp(r'[\s\-\_\(\)\[\]\.]'), '');
+
+    if (normalized.contains('cj') ||
+        normalized.contains('대한통운') ||
+        normalized.contains('씨제이')) {
+      return 'kr.cjlogistics';
+    }
+    if (normalized.contains('우체국') ||
+        normalized.contains('epost') ||
+        normalized.contains('postoffice')) {
+      return 'kr.epost';
+    }
+    if (normalized.contains('한진') || normalized.contains('hanjin')) {
+      return 'kr.hanjin';
+    }
+    if (normalized.contains('롯데') ||
+        normalized.contains('lotte') ||
+        normalized.contains('현대택배')) {
+      return 'kr.lotte';
+    }
+    if (normalized.contains('로젠') || normalized.contains('logen')) {
+      return 'kr.logen';
+    }
+    if (normalized.contains('편의점') ||
+        normalized.contains('cvsnet') ||
+        normalized.contains('gs25') ||
+        normalized.contains('gs네트웍스')) {
+      return 'kr.cvsnet';
+    }
+    if (normalized.contains('cupost') ||
+        normalized.contains('cu택배') ||
+        normalized.contains('cu편의점')) {
+      return 'kr.cupost';
+    }
+    if (normalized.contains('경동') || normalized.contains('kdexp')) {
+      return 'kr.kdexp';
+    }
+    if (normalized.contains('대신') || normalized.contains('daesin')) {
+      return 'kr.daesin';
+    }
+    if (normalized.contains('일양') || normalized.contains('ilyang')) {
+      return 'kr.ilyanglogis';
+    }
+    if (normalized.contains('건영') || normalized.contains('kunyoung')) {
+      return 'kr.kunyoung';
+    }
+    if (normalized.contains('천일') || normalized.contains('chunil')) {
+      return 'kr.chunilps';
+    }
+    return null;
   }
 }
 
@@ -1166,6 +1915,37 @@ class _MutedLine extends StatelessWidget {
   }
 }
 
+class _PlayAutoShopAccount {
+  const _PlayAutoShopAccount({
+    required this.code,
+    required this.id,
+    required this.name,
+  });
+
+  final String code;
+  final String id;
+  final String name;
+
+  String get key => '$code::$id';
+
+  String get title => name.isEmpty ? '쇼핑몰명 없음' : name;
+
+  String get label {
+    if (id.isEmpty) return '$title · $code';
+    return '$title · $code · $id';
+  }
+}
+
+class _PlayAutoWorkTarget {
+  const _PlayAutoWorkTarget({
+    required this.code,
+    required this.id,
+  });
+
+  final String code;
+  final String id;
+}
+
 class _PlayAutoOrderPreview {
   const _PlayAutoOrderPreview({
     required this.orderNo,
@@ -1177,6 +1957,8 @@ class _PlayAutoOrderPreview {
     required this.productName,
     required this.optionName,
     required this.sku,
+    required this.carrierName,
+    required this.invoiceNo,
     required this.quantity,
     required this.orderDate,
     required this.sortDate,
@@ -1191,6 +1973,8 @@ class _PlayAutoOrderPreview {
   final String productName;
   final String optionName;
   final String sku;
+  final String carrierName;
+  final String invoiceNo;
   final int quantity;
   final String orderDate;
   final DateTime? sortDate;
@@ -1312,6 +2096,28 @@ class _PlayAutoOrderPreview {
         'shop_prod_no',
         'opt_custom_cd',
       ]),
+      carrierName: _pickString(json, const [
+        'carr_name',
+        'carrier_name',
+        'delivery_company',
+        'delivery_company_name',
+        'shipping_company',
+        'ship_company',
+        'courier',
+        'courier_name',
+      ]),
+      invoiceNo: _pickString(json, const [
+        'invoice_no',
+        'invoiceNo',
+        'tracking_no',
+        'trackingNo',
+        'waybill_no',
+        'waybillNo',
+        'delivery_no',
+        'deliveryNo',
+        'ship_no',
+        'shipNo',
+      ]),
       quantity: _pickInt(json, const [
         'qty',
         'cnt',
@@ -1349,6 +2155,8 @@ class _PlayAutoOrderPreview {
           productName,
           optionName,
           sku,
+          carrierName,
+          invoiceNo,
         ].join(' '),
       );
 

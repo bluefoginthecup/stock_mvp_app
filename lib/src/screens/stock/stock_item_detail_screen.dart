@@ -1313,14 +1313,20 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
     final itemName = item.displayName?.trim().isNotEmpty == true
         ? item.displayName!.trim()
         : item.name;
-    return StreamBuilder<ProductionGuideData?>(
-      stream: service.watchGuideData(item.id),
+    return StreamBuilder<List<ProductionGuideData>>(
+      stream: service.watchGuideList(item.id),
       builder: (context, snapshot) {
-        final data = snapshot.data;
-        final hasGuide = data != null && data.blocks.isNotEmpty;
-        final summary = hasGuide
-            ? '단계 ${data.stepCount}개 · 사진 ${data.imageCount}장'
-            : '아직 제작 가이드가 없습니다';
+        final guides = snapshot.data ?? const <ProductionGuideData>[];
+        final primary =
+            guides.where((data) => data.guide.isPrimary).firstOrNull;
+        final guideCount = guides.length;
+        final imageCount = guides.fold<int>(
+          0,
+          (sum, data) => sum + data.imageCount,
+        );
+        final summary = guideCount == 0
+            ? '아직 제작 가이드가 없습니다'
+            : '$guideCount개 · 대표: ${(primary ?? guides.first).guide.title} · 사진 $imageCount장';
 
         return Card(
           child: InkWell(

@@ -12,6 +12,40 @@ class ProductionGuideService {
 
   static const _uuid = Uuid();
 
+  Future<List<ProductionGuideData>> listGuideData(String itemId) async {
+    final guides = await listGuides(itemId);
+    final result = <ProductionGuideData>[];
+    for (final guide in guides) {
+      result.add(ProductionGuideData(
+        guide: guide,
+        blocks: await listBlocks(guide.id),
+      ));
+    }
+    return result;
+  }
+
+  Stream<List<ProductionGuideData>> watchGuideList(String itemId) async* {
+    yield await listGuideData(itemId);
+    final updates =
+        db.tableUpdates(const TableUpdateQuery.any()).map((_) => null);
+    await for (final _ in updates) {
+      yield await listGuideData(itemId);
+    }
+  }
+
+  Future<List<ProductionGuide>> listGuides(String itemId) async {
+    final rows = await db.customSelect(
+      '''
+      SELECT id, item_id, title, is_primary, sort_order, created_at, updated_at
+      FROM item_production_guides
+      WHERE item_id = ?
+      ORDER BY is_primary DESC, sort_order ASC, updated_at DESC
+      ''',
+      variables: [Variable.withString(itemId)],
+    ).get();
+    return rows.map(_guideFromRow).toList();
+  }
+
   Future<ProductionGuideData> getOrCreateGuide(String itemId) async {
     final existing = await _getGuide(itemId);
     if (existing != null) {
@@ -25,17 +59,61 @@ class ProductionGuideService {
     final guide = ProductionGuide(
       id: _uuid.v4(),
       itemId: itemId,
+      title: '기본 제작 가이드',
+      isPrimary: true,
+      sortOrder: await _nextGuideSortOrder(itemId),
       createdAt: now,
       updatedAt: now,
     );
     await db.customStatement(
       '''
-      INSERT INTO item_production_guides (id, item_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO item_production_guides (
+        id, item_id, title, is_primary, sort_order, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ''',
       [
         guide.id,
         guide.itemId,
+        guide.title,
+        guide.isPrimary ? 1 : 0,
+        guide.sortOrder,
+        guide.createdAt.toIso8601String(),
+        guide.updatedAt.toIso8601String(),
+      ],
+    );
+    db.notifyUpdates({const TableUpdate('item_production_guides')});
+    return ProductionGuideData(guide: guide, blocks: const []);
+  }
+
+  Future<ProductionGuideData> createGuide({
+    required String itemId,
+    required String title,
+  }) async {
+    final existing = await listGuides(itemId);
+    final now = DateTime.now();
+    final guide = ProductionGuide(
+      id: _uuid.v4(),
+      itemId: itemId,
+      title: title.trim().isEmpty ? '새 제작 가이드' : title.trim(),
+      isPrimary: existing.isEmpty,
+      sortOrder: await _nextGuideSortOrder(itemId),
+      createdAt: now,
+      updatedAt: now,
+    );
+    await db.customStatement(
+      '''
+      INSERT INTO item_production_guides (
+        id, item_id, title, is_primary, sort_order, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ''',
+      [
+        guide.id,
+        guide.itemId,
+        guide.title,
+        guide.isPrimary ? 1 : 0,
+        guide.sortOrder,
         guide.createdAt.toIso8601String(),
         guide.updatedAt.toIso8601String(),
       ],
@@ -53,12 +131,30 @@ class ProductionGuideService {
     );
   }
 
+  Future<ProductionGuideData?> getGuideDataById(String guideId) async {
+    final guide = await _getGuideById(guideId);
+    if (guide == null) return null;
+    return ProductionGuideData(
+      guide: guide,
+      blocks: await listBlocks(guide.id),
+    );
+  }
+
   Stream<ProductionGuideData?> watchGuideData(String itemId) async* {
     yield await getGuideData(itemId);
     final updates =
         db.tableUpdates(const TableUpdateQuery.any()).map((_) => null);
     await for (final _ in updates) {
       yield await getGuideData(itemId);
+    }
+  }
+
+  Stream<ProductionGuideData?> watchGuideDataById(String guideId) async* {
+    yield await getGuideDataById(guideId);
+    final updates =
+        db.tableUpdates(const TableUpdateQuery.any()).map((_) => null);
+    await for (final _ in updates) {
+      yield await getGuideDataById(guideId);
     }
   }
 
@@ -81,13 +177,16 @@ class ProductionGuideService {
     required String itemId,
     required ProductionGuideBlockType type,
     required String text,
+    String? guideId,
     String? afterBlockId,
   }) async {
     if (type == ProductionGuideBlockType.image) {
       throw ArgumentError.value(
           type, 'type', 'image type requires addImageBlock');
     }
-    final data = await getOrCreateGuide(itemId);
+    final data = guideId == null
+        ? await getOrCreateGuide(itemId)
+        : (await getGuideDataById(guideId))!;
     final now = DateTime.now();
     final block = ProductionGuideBlock(
       id: _uuid.v4(),
@@ -112,9 +211,12 @@ class ProductionGuideService {
     required String filePath,
     required String mimeType,
     String? caption,
+    String? guideId,
     String? afterBlockId,
   }) async {
-    final data = await getOrCreateGuide(itemId);
+    final data = guideId == null
+        ? await getOrCreateGuide(itemId)
+        : (await getGuideDataById(guideId))!;
     final now = DateTime.now();
     final relativePath =
         await const AppPathService().normalizeToRelativePath(filePath);
@@ -136,6 +238,72 @@ class ProductionGuideService {
     await _insertBlock(block);
     await _touchGuide(data.guide.id);
     return block;
+  }
+
+  Future<void> updateGuideTitle(String guideId, String title) async {
+    await db.customStatement(
+      '''
+      UPDATE item_production_guides
+      SET title = ?, updated_at = ?
+      WHERE id = ?
+      ''',
+      [
+        title.trim().isEmpty ? '제작 가이드' : title.trim(),
+        DateTime.now().toIso8601String(),
+        guideId
+      ],
+    );
+    db.notifyUpdates({const TableUpdate('item_production_guides')});
+  }
+
+  Future<void> setPrimaryGuide({
+    required String itemId,
+    required String guideId,
+  }) async {
+    await db.transaction(() async {
+      await db.customStatement(
+        'UPDATE item_production_guides SET is_primary = 0 WHERE item_id = ?',
+        [itemId],
+      );
+      await db.customStatement(
+        '''
+        UPDATE item_production_guides
+        SET is_primary = 1, updated_at = ?
+        WHERE id = ?
+        ''',
+        [DateTime.now().toIso8601String(), guideId],
+      );
+    });
+    db.notifyUpdates({const TableUpdate('item_production_guides')});
+  }
+
+  Future<void> deleteGuide(String guideId) async {
+    final data = await getGuideDataById(guideId);
+    if (data == null) return;
+    for (final block in data.blocks) {
+      final filePath = block.filePath;
+      if (filePath != null && filePath.trim().isNotEmpty) {
+        try {
+          final file = await const AppPathService().resolveAppFile(filePath);
+          if (await file.exists()) await file.delete();
+        } catch (_) {}
+      }
+    }
+    await db.customStatement(
+      'DELETE FROM item_production_guides WHERE id = ?',
+      [guideId],
+    );
+    final remaining = await listGuides(data.guide.itemId);
+    if (data.guide.isPrimary && remaining.isNotEmpty) {
+      await setPrimaryGuide(
+        itemId: data.guide.itemId,
+        guideId: remaining.first.id,
+      );
+    }
+    db.notifyUpdates({
+      const TableUpdate('item_production_guides'),
+      const TableUpdate('item_production_guide_blocks'),
+    });
   }
 
   Future<void> updateBlockText(String blockId, String text) async {
@@ -268,14 +436,40 @@ class ProductionGuideService {
   Future<ProductionGuide?> _getGuide(String itemId) async {
     final row = await db.customSelect(
       '''
-      SELECT id, item_id, created_at, updated_at
+      SELECT id, item_id, title, is_primary, sort_order, created_at, updated_at
       FROM item_production_guides
       WHERE item_id = ?
+      ORDER BY is_primary DESC, sort_order ASC, updated_at DESC
       LIMIT 1
       ''',
       variables: [Variable.withString(itemId)],
     ).getSingleOrNull();
     return row == null ? null : _guideFromRow(row);
+  }
+
+  Future<ProductionGuide?> _getGuideById(String guideId) async {
+    final row = await db.customSelect(
+      '''
+      SELECT id, item_id, title, is_primary, sort_order, created_at, updated_at
+      FROM item_production_guides
+      WHERE id = ?
+      LIMIT 1
+      ''',
+      variables: [Variable.withString(guideId)],
+    ).getSingleOrNull();
+    return row == null ? null : _guideFromRow(row);
+  }
+
+  Future<int> _nextGuideSortOrder(String itemId) async {
+    final row = await db.customSelect(
+      '''
+      SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order
+      FROM item_production_guides
+      WHERE item_id = ?
+      ''',
+      variables: [Variable.withString(itemId)],
+    ).getSingle();
+    return (row.data['next_order'] as int?) ?? 0;
   }
 
   Future<int> _nextSortOrder(String guideId) async {
@@ -380,6 +574,9 @@ class ProductionGuideService {
     return ProductionGuide(
       id: data['id'] as String,
       itemId: data['item_id'] as String,
+      title: data['title'] as String? ?? '기본 제작 가이드',
+      isPrimary: ((data['is_primary'] as int?) ?? 0) == 1,
+      sortOrder: (data['sort_order'] as int?) ?? 0,
       createdAt: DateTime.parse(data['created_at'] as String),
       updatedAt: DateTime.parse(data['updated_at'] as String),
     );
