@@ -9,6 +9,7 @@ import 'package:stockapp_mvp/src/features/fabric_cutting/screens/fabric_cutting_
 import 'package:stockapp_mvp/src/screens/orders/order_detail_screen.dart';
 import 'package:stockapp_mvp/src/screens/orders/order_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/stock/stock_browser_screen.dart';
+import 'package:stockapp_mvp/src/screens/stock/stock_item_detail_screen.dart';
 import 'package:stockapp_mvp/src/screens/txns/txn_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/works/work_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/purchases/purchase_list_screen.dart';
@@ -372,6 +373,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
   late final List<_BottomTabSpec> _allTabs;
   late List<String> _tabOrder;
   Set<String> _visibleTabIds = {};
+  final Set<String> _builtTabIds = {MainTabController.dashboardTabId};
   late final Future<Object?> Function(
     String routeName, {
     Object? arguments,
@@ -553,6 +555,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
     int tabIndex = 0,
   }) async {
     final tabId = _tabIdForLegacyIndex(tabIndex);
+    _builtTabIds.add(tabId);
     context.read<MainTabController>().setTabId(tabId);
     final nav = _keyOfTab(tabId).currentState;
     if (nav == null) return null;
@@ -565,6 +568,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
 
   void _selectTab(String id) {
     final controller = context.read<MainTabController>();
+    setState(() => _builtTabIds.add(id));
     controller.setTabId(id);
     _keyOfTab(id).currentState?.popUntil((route) => route.isFirst);
   }
@@ -609,7 +613,10 @@ class _MainTabScreenState extends State<MainTabScreen> {
         tabs.add(selectedHiddenTab.first);
       }
     }
-    final stackTabs = _allTabs;
+    _builtTabIds.add(selectedId);
+    final stackTabs = _allTabs
+        .where((tab) => _builtTabIds.contains(tab.id))
+        .toList(growable: false);
     final selectedIndex = stackTabs.indexWhere((tab) => tab.id == selectedId);
 
     // ignore: deprecated_member_use
@@ -630,6 +637,7 @@ class _MainTabScreenState extends State<MainTabScreen> {
       },
       child: Scaffold(
         key: _scaffoldKey,
+        resizeToAvoidBottomInset: false,
         body: IndexedStack(
           index: selectedIndex < 0 ? 0 : selectedIndex,
           children: [
@@ -686,6 +694,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
       return StockBrowserScreen(
         initialPath: (settings.arguments as List).cast<String>(),
       );
+    }
+    if (tabId == 'stock' && settings.name == '/items/detail') {
+      return StockItemDetailScreen(itemId: settings.arguments as String);
     }
     if (tabId == 'orders' && settings.name == '/orders/detail') {
       return OrderDetailScreen(orderId: settings.arguments as String);

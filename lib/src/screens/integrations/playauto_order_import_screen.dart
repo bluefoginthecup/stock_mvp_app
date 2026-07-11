@@ -16,6 +16,8 @@ import '../../repos/repo_interfaces.dart';
 import '../../services/playauto_item_mapping_service.dart';
 import '../../services/playauto_order_link_service.dart';
 import '../../ui/common/item_picker_sheet.dart';
+import '../stock/stock_new_item_sheet.dart';
+import '../stock/widgets/new_item_result.dart';
 
 String _normalizeSearchText(String value) {
   return value.toLowerCase().replaceAll(RegExp(r'[\s\-\(\)\.]'), '').trim();
@@ -1634,6 +1636,11 @@ class _PlayAutoOrderPreviewScreenState
                     onClearMapping: () => _clearMapping(order),
                     onOpenOrCreateOrder: () =>
                         _openOrCreateChalstockOrder(order),
+                    onOpenMatchedItem: () {
+                      final itemId =
+                          _mappings[_playAutoMappingKey(order)]?.itemId;
+                      if (itemId != null) _openMatchedItem(itemId);
+                    },
                   ),
                 );
               },
@@ -1673,7 +1680,8 @@ class _PlayAutoOrderPreviewScreenState
 
   int _needsMappingCount(List<_PlayAutoOrderPreview> orders) {
     return orders
-        .where((order) => !_mappings.containsKey(_playAutoMappingKey(order)))
+        .where((order) =>
+            _mappings[_playAutoMappingKey(order)]?.isConfirmed != true)
         .length;
   }
 
@@ -1773,22 +1781,9 @@ class _PlayAutoOrderPreviewScreenState
     );
     if (selected == null || !mounted) return;
 
-    if (selected.ignore) {
-      await _mappingService.saveIgnored(
-        externalKey: mappingKey,
-        productName: order.productName,
-        optionName: order.optionName,
-        sku: order.sku,
-        shopName: order.shopName,
-      );
-      await _loadMappings();
-      _showSnack('이 플토 상품을 매칭 제외로 표시했습니다.');
-      return;
-    }
-
     var itemId = selected.itemId;
     if (selected.createNew) {
-      final item = await _createItemFromPlayAutoOrder(order);
+      final item = await _openNewItemSheetForMapping();
       if (item == null || !mounted) return;
       itemId = item.id;
     }
@@ -1814,48 +1809,42 @@ class _PlayAutoOrderPreviewScreenState
     _showSnack('플토 상품 매칭을 저장했습니다.');
   }
 
-  Future<Item?> _createItemFromPlayAutoOrder(_PlayAutoOrderPreview order) async {
+  Future<Item?> _openNewItemSheetForMapping() async {
     final itemRepo = context.read<ItemRepo>();
-    final itemName = [
-      order.productName.trim(),
-      if (order.optionName.trim().isNotEmpty) order.optionName.trim(),
-    ].join(' / ');
-    if (itemName.trim().isEmpty) {
-      _showSnack('새 아이템으로 추가할 상품명이 없습니다.');
+    final rootId = await _findUncategorizedRootId();
+    final initialPathIds = [
+      if (rootId != null) rootId,
+    ];
+    if (!mounted) return null;
+
+    final result = await showModalBottomSheet<dynamic>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => StockNewItemSheet(pathIds: initialPathIds),
+    );
+    if (result == null) return null;
+
+    final resolved = switch (result) {
+      NewItemResult() => result,
+      Item() => NewItemResult(result, initialPathIds),
+      _ => null,
+    };
+    if (resolved == null) {
+      _showSnack('아이템 생성 결과를 확인할 수 없습니다.');
       return null;
     }
 
-    final item = Item(
-      id: _uuid.v4(),
-      name: itemName,
-      displayName: null,
-      sku: order.sku.trim(),
-      unit: 'EA',
-      folder: 'uncategorized',
-      subfolder: null,
-      subsubfolder: null,
-      minQty: 0,
-      qty: 0,
-      attrs: {
-        'temporary': true,
-        'status': 'needsReview',
-        'source': 'playAutoOrderMapping',
-        'createdAt': DateTime.now().toIso8601String(),
-        if (order.shopName.trim().isNotEmpty) 'shopName': order.shopName.trim(),
-        if (order.orderNo.trim().isNotEmpty) 'playAutoOrderNo': order.orderNo.trim(),
-        if (order.optionName.trim().isNotEmpty) 'optionName': order.optionName.trim(),
-      },
-    );
-
-    final uncategorizedRootId = await _findUncategorizedRootId();
+    final l1 = resolved.pathIds.isNotEmpty ? resolved.pathIds[0] : null;
+    final l2 = resolved.pathIds.length > 1 ? resolved.pathIds[1] : null;
+    final l3 = resolved.pathIds.length > 2 ? resolved.pathIds[2] : null;
     final dyn = itemRepo as dynamic;
-    if (uncategorizedRootId != null && dyn.upsertItemWithPath is Function) {
-      await dyn.upsertItemWithPath(item, uncategorizedRootId, null, null);
+    if (l1 != null && dyn.upsertItemWithPath is Function) {
+      await dyn.upsertItemWithPath(resolved.item, l1, l2, l3);
     } else {
-      await itemRepo.upsertItem(item);
+      await itemRepo.upsertItem(resolved.item);
     }
     _showSnack('새 아이템으로 추가하고 매칭했습니다.');
-    return item;
+    return resolved.item;
   }
 
   Future<String?> _findUncategorizedRootId() async {
@@ -1953,6 +1942,14 @@ class _PlayAutoOrderPreviewScreenState
           '/orders/detail',
           arguments: orderId,
           tabIndex: 1,
+        );
+  }
+
+  void _openMatchedItem(String itemId) {
+    context.read<MainTabController>().openShellRoute(
+          '/items/detail',
+          arguments: itemId,
+          tabIndex: 2,
         );
   }
 
@@ -2332,6 +2329,7 @@ class _PlayAutoOrderCard extends StatelessWidget {
     required this.onTapProduct,
     required this.onClearMapping,
     required this.onOpenOrCreateOrder,
+    required this.onOpenMatchedItem,
   });
 
   final _PlayAutoOrderPreview order;
@@ -2343,6 +2341,7 @@ class _PlayAutoOrderCard extends StatelessWidget {
   final VoidCallback onTapProduct;
   final VoidCallback onClearMapping;
   final VoidCallback onOpenOrCreateOrder;
+  final VoidCallback onOpenMatchedItem;
 
   @override
   Widget build(BuildContext context) {
@@ -2432,9 +2431,6 @@ class _PlayAutoOrderCard extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                 ),
                       ),
-                    ] else if (mapping?.isIgnored == true) ...[
-                      const SizedBox(height: 6),
-                      _StatusPill(label: '매칭 제외', color: scheme.outline),
                     ],
                   ],
                 ),
@@ -2446,6 +2442,7 @@ class _PlayAutoOrderCard extends StatelessWidget {
                 itemId: mapping!.itemId!,
                 item: matchedItem,
                 stockStatus: stockStatus,
+                onTap: onOpenMatchedItem,
               ),
             ],
             const SizedBox(height: 12),
@@ -2528,11 +2525,13 @@ class _MatchedItemRow extends StatelessWidget {
     required this.itemId,
     required this.item,
     required this.stockStatus,
+    required this.onTap,
   });
 
   final String itemId;
   final Item? item;
   final _PlayAutoStockStatus? stockStatus;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -2557,47 +2556,59 @@ class _MatchedItemRow extends StatelessWidget {
     final hasShortage = stockStatus?.hasShortage == true;
     final accent = hasShortage ? scheme.error : Colors.green.shade700;
 
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
+    return Material(
+      color: accent.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: accent.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            hasShortage
-                ? Icons.warning_amber_outlined
-                : Icons.check_circle_outline,
-            color: accent,
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: accent.withValues(alpha: 0.2)),
           ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+          child: Row(
+            children: [
+              Icon(
+                hasShortage
+                    ? Icons.warning_amber_outlined
+                    : Icons.check_circle_outline,
+                color: accent,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
-              ],
-            ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -3040,13 +3051,13 @@ class _PlayAutoItemMappingSheet extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: TextButton.icon(
+                    child: FilledButton.tonalIcon(
                       onPressed: () => Navigator.pop(
                         context,
-                        const _PlayAutoMappingSheetResult.ignore(),
+                        const _PlayAutoMappingSheetResult.createNew(),
                       ),
-                      icon: const Icon(Icons.visibility_off_outlined),
-                      label: const Text('매칭 제외'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('새 아이템'),
                     ),
                   ),
                 ],
@@ -3141,21 +3152,21 @@ class _PlayAutoCandidateTile extends StatelessWidget {
 class _PlayAutoMappingSheetResult {
   const _PlayAutoMappingSheetResult.item(this.itemId)
       : openPicker = false,
-        ignore = false;
+        createNew = false;
 
   const _PlayAutoMappingSheetResult.openPicker()
       : itemId = null,
         openPicker = true,
-        ignore = false;
+        createNew = false;
 
-  const _PlayAutoMappingSheetResult.ignore()
+  const _PlayAutoMappingSheetResult.createNew()
       : itemId = null,
         openPicker = false,
-        ignore = true;
+        createNew = true;
 
   final String? itemId;
   final bool openPicker;
-  final bool ignore;
+  final bool createNew;
 }
 
 class _PlayAutoItemCandidate {

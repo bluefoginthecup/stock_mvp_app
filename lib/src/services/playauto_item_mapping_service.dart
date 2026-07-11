@@ -10,7 +10,6 @@ class PlayAutoItemMapping {
     required this.sku,
     required this.shopName,
     required this.itemId,
-    required this.status,
     required this.updatedAt,
   });
 
@@ -20,11 +19,9 @@ class PlayAutoItemMapping {
   final String sku;
   final String shopName;
   final String? itemId;
-  final String status;
   final DateTime updatedAt;
 
-  bool get isConfirmed => status == 'confirmed' && itemId != null;
-  bool get isIgnored => status == 'ignored';
+  bool get isConfirmed => itemId != null;
 }
 
 class PlayAutoItemMappingService {
@@ -50,6 +47,7 @@ class PlayAutoItemMappingService {
       SELECT *
       FROM playauto_item_mappings
       WHERE external_key IN ($placeholders)
+        AND item_id IS NOT NULL
       ''',
       variables: keys.map((key) => Variable<String>(key)).toList(),
     ).get();
@@ -74,25 +72,6 @@ class PlayAutoItemMappingService {
       sku: sku,
       shopName: shopName,
       itemId: itemId,
-      status: 'confirmed',
-    );
-  }
-
-  Future<void> saveIgnored({
-    required String externalKey,
-    required String productName,
-    required String optionName,
-    required String sku,
-    required String shopName,
-  }) async {
-    await _upsert(
-      externalKey: externalKey,
-      productName: productName,
-      optionName: optionName,
-      sku: sku,
-      shopName: shopName,
-      itemId: null,
-      status: 'ignored',
     );
   }
 
@@ -110,8 +89,7 @@ class PlayAutoItemMappingService {
     required String optionName,
     required String sku,
     required String shopName,
-    required String? itemId,
-    required String status,
+    required String itemId,
   }) async {
     await _ensureTable();
     final now = DateTime.now().toIso8601String();
@@ -137,7 +115,7 @@ class PlayAutoItemMappingService {
         sku,
         shopName,
         itemId,
-        status,
+        'confirmed',
         now,
         now,
       ],
@@ -175,7 +153,6 @@ class PlayAutoItemMappingService {
       sku: row.read<String>('sku'),
       shopName: row.read<String>('shop_name'),
       itemId: row.data['item_id'] as String?,
-      status: row.read<String>('status'),
       updatedAt: DateTime.tryParse(row.read<String>('updated_at')) ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
