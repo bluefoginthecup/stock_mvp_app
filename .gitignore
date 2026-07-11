@@ -3,6 +3,8 @@
 .packages
 .pub-cache/
 build/
+dist/
+functions/node_modules/
 .flutter-plugins
 .flutter-plugins-dependencies
 .melos_tool/
@@ -29,6 +31,12 @@ macos/Flutter/ephemeral/
 .vscode/
 .idea/
 oauth.local.json
+
+# Local DR converter build experiments
+/DrConverterLauncher.cs
+/dr_converter_gui.py
+/dr_converter_gui.spec
+/dr_converter_windows_fixed.spec
 
 # Misc
 *.iml

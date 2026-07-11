@@ -1077,6 +1077,7 @@ class _AccountSectionState extends State<_AccountSection> {
   Widget _buildEntitlementPanel(BuildContext context) {
     const limits = AttachmentLimitConfig.defaults;
     final service = _entitlementService;
+    final isWindowsDesktop = !kIsWeb && Platform.isWindows;
     final purchasesReady = service?.purchaseConfigured ?? false;
     final appTrialAvailable =
         _entitlement.appTrialEndsAt == null && !_entitlement.isPaidPlan;
@@ -1129,7 +1130,8 @@ class _AccountSectionState extends State<_AccountSection> {
           ),
         ],
         const SizedBox(height: 12),
-        Wrap(
+        if (!isWindowsDesktop)
+          Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
@@ -1201,7 +1203,20 @@ class _AccountSectionState extends State<_AccountSection> {
             ),
           ],
         ),
-        if (!purchasesReady) ...[
+        if (isWindowsDesktop) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Windows에서는 구독 상태를 서버에서 확인합니다. '
+            '구독 구매와 복원은 Android 또는 iPhone 앱에서 진행해 주세요.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.62),
+                ),
+          ),
+        ],
+        if (!isWindowsDesktop && !purchasesReady) ...[
           const SizedBox(height: 8),
           Text(
             'RevenueCat API key가 없어 구독 버튼은 비활성화되어 있습니다.',
