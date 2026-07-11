@@ -32,6 +32,7 @@ import 'package:stockapp_mvp/src/ui/common/draggable_fab.dart';
 import '../../services/stock_service.dart';
 import '../../services/folder_service.dart';
 import '../../utils/item_registration.dart';
+import 'bulk_item_info_edit_sheet.dart';
 
 part 'stock_browser_header.part.dart';
 part 'stock_browser_actions.part.dart';
@@ -588,6 +589,32 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   }) {
     final totalCount = folders.length + items.length;
     final secondaryActions = <MultiSelectAction>[
+      MultiSelectAction(
+        icon: Icons.edit_note,
+        tooltip: '정보 일괄 수정',
+        onPressed: () async {
+          final itemIds = sel.selectedItems.toList();
+          if (itemIds.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('정보 수정은 아이템을 선택해야 사용할 수 있어요.')),
+            );
+            return;
+          }
+
+          final changed = await showBulkItemInfoEditSheet(
+            context,
+            itemIds: itemIds,
+          );
+          if (changed != true) return;
+          if (!context.mounted) return;
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('선택한 ${itemIds.length}개 아이템 정보를 수정했어요.')),
+          );
+          sel.exit();
+          setState(() {});
+        },
+      ),
       MultiSelectAction(
         icon: Icons.location_on_outlined,
         tooltip: '보관 위치 지정',
