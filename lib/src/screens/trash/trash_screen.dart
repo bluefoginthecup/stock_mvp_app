@@ -17,6 +17,27 @@ class TrashScreen extends StatefulWidget {
 class _TrashScreenState extends State<TrashScreen> {
   String _q = '';
 
+  List<String> _trashKeys(List<TrashEntry> items) =>
+      items.map((e) => '${e.entityType}_${e.id}').toList();
+
+  bool _isAllTrashSelected(
+      ItemSelectionController sel, List<TrashEntry> items) {
+    final keys = _trashKeys(items);
+    return keys.isNotEmpty && keys.every(sel.selected.contains);
+  }
+
+  void _toggleTrashSelectAll(
+    ItemSelectionController sel,
+    List<TrashEntry> items,
+  ) {
+    final keys = _trashKeys(items);
+    if (_isAllTrashSelected(sel, items)) {
+      sel.clear();
+    } else {
+      sel.selectAll(keys);
+    }
+  }
+
   Future<List<TrashEntry>> _load(BuildContext context) async {
     final trash = context.read<TrashRepo>();
     final all = await trash.listTrash();
@@ -181,19 +202,18 @@ class _TrashScreenState extends State<TrashScreen> {
                   child: Row(
                     children: [
                       // ✅ 멀티 선택 버튼
-                      IconButton(
-                        icon: Icon(
-                          sel.selectionMode ? Icons.close : Icons.checklist,
+                      if (sel.selectionMode)
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          tooltip: '선택 모드 종료',
+                          onPressed: sel.exit,
+                        )
+                      else
+                        IconButton(
+                          icon: const Icon(Icons.checklist),
+                          tooltip: '멀티 선택',
+                          onPressed: sel.enter,
                         ),
-                        tooltip: sel.selectionMode ? '선택 해제' : '멀티 선택',
-                        onPressed: () {
-                          if (sel.selectionMode) {
-                            sel.exit();
-                          } else {
-                            sel.enter();
-                          }
-                        },
-                      ),
 
                       const SizedBox(width: 4),
 
@@ -228,7 +248,35 @@ class _TrashScreenState extends State<TrashScreen> {
 
                       return Stack(
                         children: [
+                          if (sel.selectionMode)
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: Material(
+                                color: Theme.of(context).colorScheme.surface,
+                                elevation: 1,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: IconButton(
+                                    icon: Icon(
+                                      _isAllTrashSelected(sel, items)
+                                          ? Icons.deselect
+                                          : Icons.select_all,
+                                    ),
+                                    tooltip: _isAllTrashSelected(sel, items)
+                                        ? '현재 목록 전체 해제'
+                                        : '현재 목록 전체 선택',
+                                    onPressed: () =>
+                                        _toggleTrashSelectAll(sel, items),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ListView.separated(
+                            padding: EdgeInsets.only(
+                              top: sel.selectionMode ? 44 : 0,
+                            ),
                             itemCount: items.length,
                             separatorBuilder: (_, __) =>
                                 const Divider(height: 1),
@@ -250,7 +298,6 @@ class _TrashScreenState extends State<TrashScreen> {
                                 onTap: () {
                                   if (sel.selectionMode) {
                                     sel.toggle(key);
-                                    print('현재 선택된 것: ${sel.selected}');
                                   }
                                 },
                                 leading: sel.selectionMode
@@ -258,9 +305,6 @@ class _TrashScreenState extends State<TrashScreen> {
                                         value: sel.selected.contains(key),
                                         onChanged: (_) {
                                           sel.toggle(key);
-
-                                          // 🔥 추가
-                                          print('현재 선택된 것: ${sel.selected}');
                                         },
                                       )
                                     : Icon(_iconFor(e.entityType)),
@@ -378,19 +422,6 @@ class _TrashScreenState extends State<TrashScreen> {
     return CommonMultiSelectBar(
       selectedCount: sel.selected.length,
       totalCount: keys.length,
-
-      /// ✅ 전체 선택 토글
-      onSelectAll: () {
-        final isAllSelected =
-            sel.selected.length == keys.length && keys.isNotEmpty;
-
-        if (isAllSelected) {
-          sel.clear(); // ✅ 선택만 해제 (모드 유지)
-        } else {
-          sel.selectAll(keys);
-        }
-      },
-
       actions: [
         /// 🔄 복구
         MultiSelectAction(
@@ -447,7 +478,6 @@ class _TrashScreenState extends State<TrashScreen> {
               final e = map[key];
               if (e == null) return Future.value();
 
-              print('삭제 시도: ${e.entityType} / ${e.id}');
               return repo.hardDelete(e.entityType, e.id);
             });
 
