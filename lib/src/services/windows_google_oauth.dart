@@ -23,12 +23,14 @@ class WindowsGoogleOAuth {
     defaultValue:
         '101861330698-s5r9c8rlm4jf99thqb0cth6co3v7854a.apps.googleusercontent.com',
   );
-  static const _clientSecret = String.fromEnvironment(
-    'GOOGLE_OAUTH_CLIENT_SECRET',
+  static const _tokenExchangeEndpoint = String.fromEnvironment(
+    'GOOGLE_OAUTH_TOKEN_EXCHANGE_URL',
+    defaultValue:
+        'https://asia-northeast3-chalstock.cloudfunctions.net/exchangeGoogleOAuthCode',
   );
 
   Future<WindowsGoogleOAuthResult> signIn() async {
-    if (_clientId.isEmpty || _clientSecret.isEmpty) {
+    if (_clientId.isEmpty || _tokenExchangeEndpoint.isEmpty) {
       throw const WindowsGoogleOAuthConfigurationException();
     }
 
@@ -85,16 +87,13 @@ class WindowsGoogleOAuth {
       }
 
       final tokenResponse = await http.post(
-        Uri.https('oauth2.googleapis.com', '/token'),
-        headers: const {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: {
-          'client_id': _clientId,
-          'client_secret': _clientSecret,
+        Uri.parse(_tokenExchangeEndpoint),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({
           'code': code,
-          'code_verifier': verifier,
-          'grant_type': 'authorization_code',
-          'redirect_uri': redirectUri,
-        },
+          'codeVerifier': verifier,
+          'redirectUri': redirectUri,
+        }),
       );
       final payload = jsonDecode(tokenResponse.body) as Map<String, dynamic>;
       if (tokenResponse.statusCode != 200) {

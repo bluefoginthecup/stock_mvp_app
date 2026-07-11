@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import '../models/app_entitlement.dart';
 import '../models/subscription_plan.dart';
@@ -19,6 +23,9 @@ class EntitlementService {
   final AuthService authService;
   final FirebaseFirestore? _firestore;
   final RevenueCatPurchaseService _purchaseService;
+  static const _serverSyncEndpoint =
+      'https://asia-northeast3-chalstock.cloudfunctions.net/'
+      'syncRevenueCatEntitlement';
 
   FirebaseFirestore get firestore => _firestore ?? FirebaseFirestore.instance;
 
@@ -27,6 +34,10 @@ class EntitlementService {
   Future<AppEntitlement> loadEntitlement() async {
     final uid = authService.uid;
     if (uid == null) return AppEntitlement.signedOut;
+
+    if (Platform.isWindows) {
+      await _syncWindowsEntitlement();
+    }
 
     final data = await _ensureEntitlementDoc(uid);
     final now = DateTime.now();
@@ -49,6 +60,23 @@ class EntitlementService {
         },
         SetOptions(merge: true),
       );
+    } else {
+      final serverProExpiresAt = _dateValue(data['serverRevenueCatProExpiresAt']);
+      final serverCloudExpiresAt =
+          _dateValue(data['serverRevenueCatCloudExpiresAt']);
+      final serverProActive = data['serverRevenueCatProActive'] == true &&
+          (serverProExpiresAt == null || now.isBefore(serverProExpiresAt));
+      final serverCloudActive =
+          data['serverRevenueCatCloudBackupActive'] == true &&
+              (serverCloudExpiresAt == null ||
+                  now.isBefore(serverCloudExpiresAt));
+      purchaseSnapshot = RevenueCatEntitlementSnapshot(
+        proActive: serverProActive,
+        cloudBackupActive: serverCloudActive,
+        activeProProductId: data['serverRevenueCatProProductId']?.toString(),
+        activeCloudBackupProductId:
+            data['serverRevenueCatCloudProductId']?.toString(),
+      );
     }
 
     final plan = purchaseSnapshot.proActive
@@ -69,6 +97,26 @@ class EntitlementService {
       appTrialEndsAt: appTrialEndsAt,
       cloudTrialEndsAt: cloudTrialEndsAt,
     );
+  }
+
+  Future<void> _syncWindowsEntitlement() async {
+    try {
+      final idToken = await authService.currentUser?.getIdToken();
+      if (idToken == null || idToken.isEmpty) return;
+      final response = await http
+          .post(
+            Uri.parse(_serverSyncEndpoint),
+            headers: {'Authorization': 'Bearer $idToken'},
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) {
+        throw StateError('subscription sync returned ${response.statusCode}');
+      }
+    } catch (error) {
+      // Keep the most recently cached webhook state if RevenueCat is
+      // temporarily unavailable.
+      debugPrint('Windows subscription sync failed: $error');
+    }
   }
 
   Future<AppEntitlement> startAppTrial() async {

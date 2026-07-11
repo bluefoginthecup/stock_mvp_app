@@ -11,7 +11,32 @@ service cloud.firestore {
     }
 
     match /users/{userId}/entitlements/{docId} {
-      allow read, write: if isOwner(userId) && docId == 'current';
+      allow read: if isOwner(userId) && docId == 'current';
+      allow create: if isOwner(userId) && docId == 'current'
+        && request.resource.data.keys().hasOnly([
+          'plan',
+          'manualAppTrialStartedAt',
+          'manualAppTrialEndsAt',
+          'cloudTrialStartedAt',
+          'cloudTrialEndsAt',
+          'createdAt',
+          'updatedAt'
+        ]);
+      allow update: if isOwner(userId) && docId == 'current'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'plan',
+          'manualAppTrialStartedAt',
+          'manualAppTrialEndsAt',
+          'cloudTrialStartedAt',
+          'cloudTrialEndsAt',
+          'revenueCatUserId',
+          'revenueCatProActive',
+          'revenueCatCloudBackupActive',
+          'revenueCatProProductId',
+          'revenueCatCloudBackupProductId',
+          'lastSyncedAt',
+          'updatedAt'
+        ]);
     }
 
     match /users/{userId}/backups/{backupId} {
