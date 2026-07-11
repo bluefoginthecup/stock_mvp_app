@@ -69,7 +69,11 @@ class _LaunchGateState extends State<LaunchGate> {
       stream: context.read<AuthService>().userStream,
       initialData: context.read<AuthService>().currentUser,
       builder: (context, snapshot) {
-        final user = snapshot.data;
+        // On Windows, older FlutterFire builds can occasionally deliver the
+        // auth-state event on the wrong platform thread. FirebaseAuth has
+        // already updated currentUser at this point, so prefer that value when
+        // rebuilding after a completed sign-in.
+        final user = context.read<AuthService>().currentUser ?? snapshot.data;
 
         // 로그인된 상태라면 메인으로 진입
         if (user != null) {
@@ -170,6 +174,9 @@ class _LaunchGateState extends State<LaunchGate> {
       await auth.signInWithGoogle();
       if (!mounted) return;
       if (auth.uid != null) {
+        // Force the gate to re-read FirebaseAuth.currentUser instead of
+        // waiting only for the Windows auth-state platform-channel event.
+        setState(() {});
         messenger.showSnackBar(
           const SnackBar(content: Text('Google 로그인 완료')),
         );

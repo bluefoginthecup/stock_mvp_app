@@ -83,7 +83,8 @@ class StockApp extends StatelessWidget {
             stream: context.read<AuthService>().userStream,
             initialData: context.read<AuthService>().currentUser,
             builder: (context, snapshot) {
-              final user = snapshot.data;
+              final user =
+                  context.read<AuthService>().currentUser ?? snapshot.data;
               final app = _StockMaterialApp(
                 rootNavKey: rootNavKey,
                 messengerKey: messengerKey,
