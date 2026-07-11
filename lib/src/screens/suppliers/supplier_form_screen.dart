@@ -36,6 +36,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
 
   String? _supplierId;
   bool _isActive = true;
+  bool _isPurchaseSupplier = false;
+  bool _isCustomer = false;
   bool _loading = true;
   bool _detailExpanded = false;
   List<ShippingDestination> _shippingDestinations = const [];
@@ -70,6 +72,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
         _businessTypeC.text = s.businessType ?? '';
         _businessItemC.text = s.businessItem ?? '';
         _isActive = s.isActive;
+        _isPurchaseSupplier = s.isPurchaseSupplier;
+        _isCustomer = s.isCustomer;
       }
 
       defaultDestination = await shippingRepo
@@ -133,6 +137,8 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
       businessType: _nullIfBlank(_businessTypeC.text),
       businessItem: _nullIfBlank(_businessItemC.text),
       isActive: _isActive,
+      isPurchaseSupplier: _isPurchaseSupplier,
+      isCustomer: _isCustomer,
       createdAt: now,
       updatedAt: now,
     );
@@ -554,6 +560,23 @@ class _SupplierFormScreenState extends State<SupplierFormScreen> {
                         subtitle: const Text('비활성 시 기본 선택 목록에서 제외'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('발주처'),
+                    value: _isPurchaseSupplier,
+                    onChanged: (value) => setState(
+                      () => _isPurchaseSupplier = value ?? false,
+                    ),
+                  ),
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('고객'),
+                    value: _isCustomer,
+                    onChanged: (value) => setState(
+                      () => _isCustomer = value ?? false,
+                    ),
                   ),
                   const SizedBox(height: 18),
                   _buildContactSection(),

@@ -8,6 +8,8 @@ class Supplier {
   final String? businessType;
   final String? businessItem;
   final bool isActive;
+  final bool isPurchaseSupplier;
+  final bool isCustomer;
   final DateTime createdAt, updatedAt;
   const Supplier({
     required this.id,
@@ -23,6 +25,8 @@ class Supplier {
     this.businessType,
     this.businessItem,
     this.isActive = true,
+    this.isPurchaseSupplier = false,
+    this.isCustomer = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -40,24 +44,29 @@ class Supplier {
     String? businessType,
     String? businessItem,
     bool? isActive,
+    bool? isPurchaseSupplier,
+    bool? isCustomer,
     DateTime? updatedAt,
-  }) => Supplier(
-    id: id,
-    name: name ?? this.name,
-    contactName: contactName ?? this.contactName,
-    phone: phone ?? this.phone,
-    email: email ?? this.email,
-    addr: addr ?? this.addr,
-    memo: memo ?? this.memo,
-    fax: fax ?? this.fax,
-    businessNumber: businessNumber ?? this.businessNumber,
-    representative: representative ?? this.representative,
-    businessType: businessType ?? this.businessType,
-    businessItem: businessItem ?? this.businessItem,
-    isActive: isActive ?? this.isActive,
-    createdAt: createdAt,
-    updatedAt: updatedAt ?? DateTime.now(),
-  );
+  }) =>
+      Supplier(
+        id: id,
+        name: name ?? this.name,
+        contactName: contactName ?? this.contactName,
+        phone: phone ?? this.phone,
+        email: email ?? this.email,
+        addr: addr ?? this.addr,
+        memo: memo ?? this.memo,
+        fax: fax ?? this.fax,
+        businessNumber: businessNumber ?? this.businessNumber,
+        representative: representative ?? this.representative,
+        businessType: businessType ?? this.businessType,
+        businessItem: businessItem ?? this.businessItem,
+        isActive: isActive ?? this.isActive,
+        isPurchaseSupplier: isPurchaseSupplier ?? this.isPurchaseSupplier,
+        isCustomer: isCustomer ?? this.isCustomer,
+        createdAt: createdAt,
+        updatedAt: updatedAt ?? DateTime.now(),
+      );
 }
 
 class SupplierContact {
@@ -108,7 +117,7 @@ class SupplierContact {
         address: address ?? this.address,
         isPrimary: isPrimary ?? this.isPrimary,
         sortOrder: sortOrder ?? this.sortOrder,
-  );
+      );
 }
 
 class SupplierAccount {

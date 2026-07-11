@@ -47,8 +47,8 @@ mixin SupplierRepoMixin on _RepoCore implements SupplierRepo {
       INSERT INTO suppliers (
         id, name, contact_name, phone, email, addr, memo, is_active,
         created_at, updated_at, fax, business_number, representative,
-        business_type, business_item
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        business_type, business_item, is_purchase_supplier, is_customer
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         contact_name = excluded.contact_name,
@@ -62,7 +62,9 @@ mixin SupplierRepoMixin on _RepoCore implements SupplierRepo {
         business_number = excluded.business_number,
         representative = excluded.representative,
         business_type = excluded.business_type,
-        business_item = excluded.business_item
+        business_item = excluded.business_item,
+        is_purchase_supplier = excluded.is_purchase_supplier,
+        is_customer = excluded.is_customer
       ''',
       [
         s.id,
@@ -80,6 +82,8 @@ mixin SupplierRepoMixin on _RepoCore implements SupplierRepo {
         s.representative,
         s.businessType,
         s.businessItem,
+        s.isPurchaseSupplier ? 1 : 0,
+        s.isCustomer ? 1 : 0,
       ],
     );
     return s.id;
@@ -98,6 +102,36 @@ mixin SupplierRepoMixin on _RepoCore implements SupplierRepo {
     await db.customStatement(
       'UPDATE suppliers SET is_active = ?, updated_at = ? WHERE id = ?',
       [isActive ? 1 : 0, DateTime.now().toIso8601String(), id],
+    );
+  }
+
+  @override
+  Future<void> setRoles(
+    Set<String> ids, {
+    bool? isPurchaseSupplier,
+    bool? isCustomer,
+  }) async {
+    if (ids.isEmpty || (isPurchaseSupplier == null && isCustomer == null)) {
+      return;
+    }
+    final assignments = <String>[];
+    final values = <Object?>[];
+    if (isPurchaseSupplier != null) {
+      assignments.add('is_purchase_supplier = ?');
+      values.add(isPurchaseSupplier ? 1 : 0);
+    }
+    if (isCustomer != null) {
+      assignments.add('is_customer = ?');
+      values.add(isCustomer ? 1 : 0);
+    }
+    assignments.add('updated_at = ?');
+    values.add(DateTime.now().toIso8601String());
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    values.addAll(ids);
+    await db.customStatement(
+      'UPDATE suppliers SET ${assignments.join(', ')} '
+      'WHERE id IN ($placeholders)',
+      values,
     );
   }
 
@@ -215,6 +249,8 @@ mixin SupplierRepoMixin on _RepoCore implements SupplierRepo {
       businessType: data['business_type'] as String?,
       businessItem: data['business_item'] as String?,
       isActive: (data['is_active'] as int? ?? 1) == 1,
+      isPurchaseSupplier: (data['is_purchase_supplier'] as int? ?? 0) == 1,
+      isCustomer: (data['is_customer'] as int? ?? 0) == 1,
       createdAt: DateTime.parse(data['created_at'] as String),
       updatedAt: DateTime.parse(data['updated_at'] as String),
     );
