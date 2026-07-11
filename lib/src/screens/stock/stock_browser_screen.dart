@@ -17,6 +17,7 @@ import '../../ui/common/entity_actions.dart';
 import 'stock_item_detail_screen.dart';
 import '../../services/export_service.dart';
 import '../../ui/common/qty_set_sheet.dart';
+import '../../ui/common/supplier_picker_sheet.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/selection/item_selection_controller.dart';
 import 'widgets/stock_item_select_tile.dart';
@@ -627,6 +628,44 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               SnackBar(
                 content: Text(
                   '선택한 ${itemIds.length}개 아이템의 기본 위치를 지정했어요.',
+                ),
+              ),
+            );
+
+            sel.exit();
+            setState(() {});
+          },
+        ),
+
+        // 🏢 거래처 지정
+        MultiSelectAction(
+          icon: Icons.storefront_outlined,
+          tooltip: '거래처 지정',
+          onPressed: () async {
+            final itemIds = sel.selectedItems.toList();
+            if (itemIds.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('아이템을 선택해야 거래처를 지정할 수 있어요.')),
+              );
+              return;
+            }
+
+            final supplier = await showSupplierPickerSheet(
+              context,
+              title: '선택 아이템 거래처 지정',
+            );
+            if (supplier == null) return;
+
+            await context.read<ItemRepo>().setDefaultSupplierBulk(
+                  ids: itemIds,
+                  supplier: supplier,
+                );
+
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '선택한 ${itemIds.length}개 아이템의 거래처를 ${supplier.name}(으)로 지정했어요.',
                 ),
               ),
             );

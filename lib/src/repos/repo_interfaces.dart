@@ -103,6 +103,11 @@ abstract class ItemRepo {
   Future<void> setFavoritesBulk(
       {required List<String> ids, required bool value});
 
+  Future<void> setDefaultSupplierBulk({
+    required List<String> ids,
+    required Supplier supplier,
+  });
+
   /// 실시간 목록(폴더/검색/필터/재귀)
   Stream<List<Item>> watchItems({
     String? l1,

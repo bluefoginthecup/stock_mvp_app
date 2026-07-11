@@ -610,6 +610,29 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     notifyListeners();
   }
 
+  @override
+  Future<void> setDefaultSupplierBulk({
+    required List<String> ids,
+    required Supplier supplier,
+  }) async {
+    if (ids.isEmpty) return;
+    await db.transaction(() async {
+      for (final id in ids) {
+        await (db.update(db.items)..where((t) => t.id.equals(id))).write(
+          ItemsCompanion(
+            supplierName: Value(supplier.name),
+            defaultSupplierUid: Value(supplier.id),
+          ),
+        );
+      }
+    });
+    for (final id in ids) {
+      final fresh = await getItem(id);
+      if (fresh != null) _cacheItem(fresh);
+    }
+    notifyListeners();
+  }
+
   Future<void> toggleFavorite(String itemId, bool value) =>
       setFavorite(itemId: itemId, value: value);
 
