@@ -5,6 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+String _normalizeSearchText(String value) {
+  return value.toLowerCase().replaceAll(RegExp(r'[\s\-\(\)\.]'), '').trim();
+}
+
 class PlayAutoOrderImportScreen extends StatefulWidget {
   const PlayAutoOrderImportScreen({super.key});
 
@@ -89,7 +93,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       );
       final token = result.token;
       if (token != null) {
-        await _storeIssuedToken(token);
+        await _storeIssuedToken(token, showMessage: true);
       }
 
       return _PlayAutoResponse(
@@ -128,10 +132,21 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     );
   }
 
-  Future<void> _storeIssuedToken(String token) async {
+  Future<void> _storeIssuedToken(
+    String token, {
+    bool showMessage = false,
+  }) async {
     _tokenController.text = token;
+    _tokenController.selection = TextSelection.collapsed(
+      offset: _tokenController.text.length,
+    );
     _tokenIssuedAt = DateTime.now();
     await _saveCredentials(showMessage: false);
+    if (!mounted) return;
+    setState(() {});
+    if (showMessage) {
+      _showSnack('토큰을 자동으로 입력하고 저장했습니다.');
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -397,20 +412,30 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   String? _readToken(String body) {
     try {
       final decoded = jsonDecode(body);
-      if (decoded is Map<String, Object?>) {
-        final token = decoded['token'];
-        if (token is String && token.isNotEmpty) return token;
-
-        final data = decoded['data'];
-        if (data is Map<String, Object?>) {
-          final nestedToken = data['token'];
-          if (nestedToken is String && nestedToken.isNotEmpty) {
-            return nestedToken;
-          }
-        }
-      }
+      return _findTokenValue(decoded);
     } catch (_) {
       return null;
+    }
+  }
+
+  String? _findTokenValue(Object? node) {
+    if (node is Map) {
+      for (final key in const ['token', 'access_token', 'auth_token']) {
+        final value = node[key];
+        if (value is String && value.trim().isNotEmpty) {
+          return value.trim();
+        }
+      }
+      for (final value in node.values) {
+        final token = _findTokenValue(value);
+        if (token != null) return token;
+      }
+    }
+    if (node is List) {
+      for (final value in node) {
+        final token = _findTokenValue(value);
+        if (token != null) return token;
+      }
     }
     return null;
   }
@@ -419,10 +444,24 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     try {
       final decoded = jsonDecode(body);
       final rows = _findOrderRows(decoded);
-      return rows.map(_PlayAutoOrderPreview.fromJson).toList();
+      final orders = rows.map(_PlayAutoOrderPreview.fromJson).toList();
+      orders.sort(_compareOrdersNewestFirst);
+      return orders;
     } catch (_) {
       return const [];
     }
+  }
+
+  int _compareOrdersNewestFirst(
+    _PlayAutoOrderPreview a,
+    _PlayAutoOrderPreview b,
+  ) {
+    final aDate = a.sortDate;
+    final bDate = b.sortDate;
+    if (aDate != null && bDate != null) return bDate.compareTo(aDate);
+    if (aDate != null) return -1;
+    if (bDate != null) return 1;
+    return b.orderNo.compareTo(a.orderNo);
   }
 
   List<Map<String, Object?>> _findOrderRows(Object? node) {
@@ -673,7 +712,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   }
 }
 
-class _PlayAutoOrderPreviewScreen extends StatelessWidget {
+class _PlayAutoOrderPreviewScreen extends StatefulWidget {
   const _PlayAutoOrderPreviewScreen({
     required this.orders,
   });
@@ -681,45 +720,153 @@ class _PlayAutoOrderPreviewScreen extends StatelessWidget {
   final List<_PlayAutoOrderPreview> orders;
 
   @override
+  State<_PlayAutoOrderPreviewScreen> createState() =>
+      _PlayAutoOrderPreviewScreenState();
+}
+
+class _PlayAutoOrderPreviewScreenState
+    extends State<_PlayAutoOrderPreviewScreen> {
+  final _searchController = TextEditingController();
+  var _query = '';
+  String? _selectedShopName;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final totalQty = orders.fold<int>(0, (sum, order) => sum + order.quantity);
+    final filteredOrders = _filteredOrders;
+    final totalQty =
+        filteredOrders.fold<int>(0, (sum, order) => sum + order.quantity);
+    final shopNames = _shopNames;
 
     return Scaffold(
-      appBar: AppBar(title: Text('플토 주문 ${orders.length}건')),
+      appBar: AppBar(title: Text('플토 주문 ${filteredOrders.length}건')),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: _PlayAutoSummaryBand(
-                orderCount: orders.length,
-                totalQty: totalQty,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PlayAutoSummaryBand(
+                    orderCount: filteredOrders.length,
+                    totalQty: totalQty,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: '검색 지우기',
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
+                              icon: const Icon(Icons.close),
+                            ),
+                      labelText: '주문자, 주소, 연락처 검색',
+                      border: const OutlineInputBorder(),
+                    ),
+                    onChanged: (value) => setState(() => _query = value),
+                  ),
+                  if (shopNames.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: const Text('전체'),
+                              selected: _selectedShopName == null,
+                              onSelected: (_) {
+                                setState(() => _selectedShopName = null);
+                              },
+                            ),
+                          ),
+                          for (final shopName in shopNames)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: FilterChip(
+                                label: Text(shopName),
+                                selected: _selectedShopName == shopName,
+                                onSelected: (_) {
+                                  setState(() {
+                                    _selectedShopName =
+                                        _selectedShopName == shopName
+                                            ? null
+                                            : shopName;
+                                  });
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
-          SliverList.separated(
-            itemCount: orders.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final order = orders[index];
-              return Padding(
-                padding: EdgeInsets.fromLTRB(
-                  16,
-                  index == 0 ? 4 : 0,
-                  16,
-                  index == orders.length - 1 ? 20 : 0,
-                ),
-                child: _PlayAutoOrderCard(
-                  order: order,
-                  statusColor: _statusColor(scheme, order.status),
-                ),
-              );
-            },
-          ),
+          if (filteredOrders.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: Text('조건에 맞는 주문이 없습니다.')),
+            )
+          else
+            SliverList.separated(
+              itemCount: filteredOrders.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final order = filteredOrders[index];
+                return Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    index == 0 ? 4 : 0,
+                    16,
+                    index == filteredOrders.length - 1 ? 20 : 0,
+                  ),
+                  child: _PlayAutoOrderCard(
+                    order: order,
+                    statusColor: _statusColor(scheme, order.status),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );
+  }
+
+  List<_PlayAutoOrderPreview> get _filteredOrders {
+    final normalizedQuery = _normalizeSearchText(_query);
+    return widget.orders.where((order) {
+      final shopMatches =
+          _selectedShopName == null || order.shopName == _selectedShopName;
+      if (!shopMatches) return false;
+      if (normalizedQuery.isEmpty) return true;
+      return order.searchText.contains(normalizedQuery);
+    }).toList();
+  }
+
+  List<String> get _shopNames {
+    final names = widget.orders
+        .map((order) => order.shopName.trim())
+        .where((name) => name.isNotEmpty && name != '판매처 없음')
+        .toSet()
+        .toList();
+    names.sort();
+    return names;
   }
 
   Color _statusColor(ColorScheme scheme, String status) {
@@ -896,6 +1043,14 @@ class _PlayAutoOrderCard extends StatelessWidget {
               const SizedBox(height: 6),
               _MutedLine(label: 'SKU', value: order.sku),
             ],
+            if (order.phone.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              _MutedLine(label: '연락처', value: order.phone),
+            ],
+            if (order.address.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              _MutedLine(label: '주소', value: order.address),
+            ],
           ],
         ),
       ),
@@ -1017,22 +1172,28 @@ class _PlayAutoOrderPreview {
     required this.status,
     required this.shopName,
     required this.customerName,
+    required this.address,
+    required this.phone,
     required this.productName,
     required this.optionName,
     required this.sku,
     required this.quantity,
     required this.orderDate,
+    required this.sortDate,
   });
 
   final String orderNo;
   final String status;
   final String shopName;
   final String customerName;
+  final String address;
+  final String phone;
   final String productName;
   final String optionName;
   final String sku;
   final int quantity;
   final String orderDate;
+  final DateTime? sortDate;
 
   factory _PlayAutoOrderPreview.fromJson(Map<String, Object?> json) {
     final productName = _pickString(json, const [
@@ -1050,6 +1211,18 @@ class _PlayAutoOrderPreview {
       'option_name',
       'attri',
     ]);
+
+    final dateValue = _pickString(
+      json,
+      const [
+        'ord_time',
+        'pay_time',
+        'wdate',
+        'mdate',
+        'order_date',
+      ],
+      fallback: '-',
+    );
 
     return _PlayAutoOrderPreview(
       orderNo: _pickString(
@@ -1090,6 +1263,46 @@ class _PlayAutoOrderPreview {
             'order_id',
           ],
           fallback: '주문자 없음'),
+      address: _joinNonEmpty([
+        _pickString(json, const [
+          'addr',
+          'address',
+          'to_addr',
+          'receiver_addr',
+          'recipient_addr',
+          'delivery_addr',
+          'ship_addr',
+        ]),
+        _pickString(json, const [
+          'addr_detail',
+          'address_detail',
+          'to_addr_detail',
+          'receiver_addr_detail',
+          'delivery_addr_detail',
+          'ship_addr_detail',
+        ]),
+      ]),
+      phone: _joinNonEmpty([
+        _pickString(json, const [
+          'tel',
+          'phone',
+          'mobile',
+          'hp',
+          'cellphone',
+          'to_tel',
+          'to_mobile',
+          'receiver_tel',
+          'receiver_mobile',
+          'buyer_tel',
+          'order_tel',
+        ]),
+        _pickString(json, const [
+          'tel2',
+          'phone2',
+          'to_tel2',
+          'receiver_tel2',
+        ]),
+      ]),
       productName: productName.isEmpty ? '상품명 없음' : productName,
       optionName: optionName,
       sku: _pickString(json, const [
@@ -1107,18 +1320,8 @@ class _PlayAutoOrderPreview {
         'ord_cnt',
         'ea',
       ]),
-      orderDate: _shortDate(
-        _pickString(
-            json,
-            const [
-              'ord_time',
-              'pay_time',
-              'wdate',
-              'mdate',
-              'order_date',
-            ],
-            fallback: '-'),
-      ),
+      orderDate: _shortDate(dateValue),
+      sortDate: _parseDate(dateValue),
     );
   }
 
@@ -1134,6 +1337,26 @@ class _PlayAutoOrderPreview {
       if (text.isNotEmpty && text != 'null') return text;
     }
     return fallback;
+  }
+
+  String get searchText => _normalizeSearchText(
+        [
+          customerName,
+          address,
+          phone,
+          shopName,
+          orderNo,
+          productName,
+          optionName,
+          sku,
+        ].join(' '),
+      );
+
+  static String _joinNonEmpty(List<String> values) {
+    return values
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .join(' ');
   }
 
   static int _pickInt(Map<String, Object?> json, List<String> keys) {
@@ -1152,6 +1375,16 @@ class _PlayAutoOrderPreview {
   static String _shortDate(String value) {
     if (value.length >= 10) return value.substring(0, 10);
     return value;
+  }
+
+  static DateTime? _parseDate(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty || normalized == '-') return null;
+    final isoLike =
+        normalized.replaceFirst(' ', 'T').replaceAll(RegExp(r'\.\d+$'), '');
+    return DateTime.tryParse(isoLike) ??
+        DateTime.tryParse(
+            normalized.substring(0, normalized.length.clamp(0, 10)));
   }
 }
 
