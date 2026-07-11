@@ -16,7 +16,6 @@ import 'src/utils/item_presentation.dart';
 
 // 탭/선택 컨트롤러
 import 'src/app/main_tab_controller.dart';
-import 'src/ui/common/selection/item_selection_controller.dart';
 
 // Auth (있으면)
 import 'src/services/auth_service.dart';
@@ -103,7 +102,6 @@ Future<void> main() async {
         // 컨트롤러들
         ChangeNotifierProvider(create: (_) => CartManager()),
         ChangeNotifierProvider(create: (_) => MainTabController()),
-        ChangeNotifierProvider(create: (_) => ItemSelectionController()),
 
         // 유틸/서비스
         Provider<ItemDetailOpener>(create: (_) => AppItemDetailOpener()),

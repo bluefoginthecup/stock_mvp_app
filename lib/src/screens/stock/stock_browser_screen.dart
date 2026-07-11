@@ -72,6 +72,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
   String? _supplierFilterName;
   List<String> _locationSummaryItemIds = const [];
   Future<Map<String, ItemLocationSummary>>? _locationSummaryFuture;
+  List<String> _visibleSelectionItemIds = const [];
+  List<String> _visibleSelectionFolderIds = const [];
 
   String? get _selectedId => _l3Id ?? _l2Id ?? _l1Id;
   int get _selectedDepth => _l3Id != null
@@ -136,6 +138,46 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       if (a[i] != b[i]) return false;
     }
     return true;
+  }
+
+  int get _visibleSelectionTotal =>
+      _visibleSelectionItemIds.length + _visibleSelectionFolderIds.length;
+
+  bool _isVisibleSelectionAllSelected(ItemSelectionController sel) {
+    return _visibleSelectionTotal > 0 &&
+        _visibleSelectionItemIds.every(sel.selectedItems.contains) &&
+        _visibleSelectionFolderIds.every(sel.selectedFolders.contains);
+  }
+
+  void _toggleVisibleSelection(ItemSelectionController sel) {
+    if (_isVisibleSelectionAllSelected(sel)) {
+      sel.clear();
+    } else {
+      sel.selectAllEntities(
+        itemIds: _visibleSelectionItemIds,
+        folderIds: _visibleSelectionFolderIds,
+      );
+    }
+  }
+
+  void _rememberVisibleSelectionScope(
+    List<FolderNode> folders,
+    List<Item> items,
+  ) {
+    final itemIds = items.map((e) => e.id).toList();
+    final folderIds = folders.map((e) => e.id).toList();
+    if (_sameStringList(_visibleSelectionItemIds, itemIds) &&
+        _sameStringList(_visibleSelectionFolderIds, folderIds)) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _visibleSelectionItemIds = itemIds;
+        _visibleSelectionFolderIds = folderIds;
+      });
+    });
   }
 
   @override
@@ -230,15 +272,43 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
               spacing: 2,
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                IconButton(
-                  tooltip: sel.selectionMode ? '선택 취소' : '멀티 선택',
-                  icon: Icon(sel.selectionMode ? Icons.close : Icons.checklist),
-                  onPressed: sel.selectionMode ? sel.exit : sel.enter,
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(40, 36),
-                    padding: const EdgeInsets.all(8),
+                if (sel.selectionMode) ...[
+                  IconButton(
+                    tooltip: '선택 모드 종료',
+                    icon: const Icon(Icons.close),
+                    onPressed: sel.exit,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(40, 36),
+                      padding: const EdgeInsets.all(8),
+                    ),
                   ),
-                ),
+                  IconButton(
+                    tooltip: _isVisibleSelectionAllSelected(sel)
+                        ? '현재 목록 전체 해제'
+                        : '현재 목록 전체 선택',
+                    icon: Icon(
+                      _isVisibleSelectionAllSelected(sel)
+                          ? Icons.deselect
+                          : Icons.select_all,
+                    ),
+                    onPressed: _visibleSelectionTotal == 0
+                        ? null
+                        : () => _toggleVisibleSelection(sel),
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(40, 36),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
+                ] else
+                  IconButton(
+                    tooltip: '멀티 선택',
+                    icon: const Icon(Icons.checklist),
+                    onPressed: sel.enter,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(40, 36),
+                      padding: const EdgeInsets.all(8),
+                    ),
+                  ),
                 FilterChip(
                   label: const Text('필터:임계치'),
                   selected: _lowOnly,
@@ -334,6 +404,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                     }
 
                     final folders = folderSnap.data ?? const <FolderNode>[];
+                    _rememberVisibleSelectionScope(folders, items);
 
                     final slivers = <Widget>[];
                     slivers.add(_sliverBreadcrumb(context, setState));
@@ -385,6 +456,7 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
                   }
 
                   final folders = folderSnap.data ?? const <FolderNode>[];
+                  _rememberVisibleSelectionScope(folders, items);
                   final hasKeyword = _searchC.text.trim().isNotEmpty;
                   final depth = _selectedDepth;
 
@@ -542,24 +614,244 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     required List<Item> items,
   }) {
     final totalCount = folders.length + items.length;
+    final secondaryActions = <MultiSelectAction>[
+      MultiSelectAction(
+        icon: Icons.location_on_outlined,
+        tooltip: '보관 위치 지정',
+        onPressed: () async {
+          final itemIds = sel.selectedItems.toList();
+          if (itemIds.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('아이템을 선택해야 위치를 지정할 수 있어요.')),
+            );
+            return;
+          }
+
+          final location = await showStorageLocationPickerSheet(context);
+          if (location == null) return;
+
+          await context.read<StorageLocationRepo>().setPrimaryLocationForItems(
+                itemIds: itemIds,
+                locationId: location.id,
+              );
+
+          if (!context.mounted) return;
+          _invalidateLocationSummaries();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '선택한 ${itemIds.length}개 아이템의 기본 위치를 지정했어요.',
+              ),
+            ),
+          );
+
+          sel.exit();
+          setState(() {});
+        },
+      ),
+      MultiSelectAction(
+        icon: Icons.storefront_outlined,
+        tooltip: '거래처 지정',
+        onPressed: () async {
+          final itemIds = sel.selectedItems.toList();
+          if (itemIds.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('아이템을 선택해야 거래처를 지정할 수 있어요.')),
+            );
+            return;
+          }
+
+          final supplier = await showSupplierPickerSheet(
+            context,
+            title: '선택 아이템 거래처 지정',
+          );
+          if (supplier == null) return;
+
+          await context.read<ItemRepo>().setDefaultSupplierBulk(
+                ids: itemIds,
+                supplier: supplier,
+              );
+
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '선택한 ${itemIds.length}개 아이템의 거래처를 ${supplier.name}(으)로 지정했어요.',
+              ),
+            ),
+          );
+
+          sel.exit();
+          setState(() {});
+        },
+      ),
+      MultiSelectAction(
+        icon: Icons.drive_file_move,
+        tooltip: '이동',
+        onPressed: () async {
+          if (sel.selectedCount == 0) return;
+
+          final repo = context.read<FolderTreeRepo>();
+          final itemRepo = context.read<ItemRepo>();
+          final selectedItemIds = sel.selectedItems.toList(growable: false);
+          final dest = await showPathPicker(
+            context,
+            childrenProvider: pathChildrenFromFolderRepo(repo),
+            title: sel.selectedFolders.isEmpty ? '아이템 이동..' : '선택 항목 이동..',
+            maxDepth: sel.selectedFolders.isEmpty ? 3 : 2,
+          );
+          if (dest == null || dest.isEmpty) return;
+
+          var movedItems = 0;
+          var movedFolders = 0;
+          var finalizedItems = 0;
+
+          try {
+            if (selectedItemIds.isNotEmpty) {
+              movedItems = await repo.moveItemsToPath(
+                itemIds: selectedItemIds,
+                pathIds: dest,
+              );
+              for (final itemId in selectedItemIds) {
+                if (await itemRepo.tryFinalizeRegistration(itemId)) {
+                  finalizedItems++;
+                }
+              }
+            }
+
+            final foldersToMove = await _topLevelSelectedFolders(repo, sel);
+            for (final folderId in foldersToMove) {
+              await repo.moveEntityToPath(
+                MoveRequest(
+                  kind: EntityKind.folder,
+                  id: folderId,
+                  pathIds: dest,
+                ),
+              );
+              movedFolders++;
+            }
+          } catch (e) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('이동 실패: $e')),
+            );
+            return;
+          }
+
+          if (!context.mounted) return;
+          final registrationSuffix =
+              finalizedItems > 0 ? ' · 정식등록 $finalizedItems개 완료' : '';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '아이템 $movedItems개, 폴더 $movedFolders개 이동$registrationSuffix',
+              ),
+            ),
+          );
+
+          sel.exit();
+        },
+      ),
+      MultiSelectAction(
+        icon: Icons.copy,
+        tooltip: '복사',
+        onPressed: () async {
+          if (sel.selectedCount == 0) return;
+
+          final folderService = context.read<FolderService>();
+          final folderRepo = context.read<FolderTreeRepo>();
+          final itemRepo = context.read<ItemRepo>();
+          final foldersToCopy = await _topLevelSelectedFolders(
+            folderRepo,
+            sel,
+          );
+
+          if (sel.selectedItems.isNotEmpty && foldersToCopy.isEmpty) {
+            final sourceItems = <Item>[];
+            for (final id in sel.selectedItems) {
+              final item = await itemRepo.getItem(id);
+              if (item != null) sourceItems.add(item);
+            }
+            if (sourceItems.isEmpty) return;
+            if (!context.mounted) return;
+            final options = await _showItemCopyDialog(
+              context,
+              items: sourceItems,
+            );
+            if (options == null) return;
+            await folderService.copyItemsWithOptions(
+              sourceItems.map((item) => item.id).toList(),
+              options,
+            );
+          } else {
+            for (final id in sel.selectedItems) {
+              await folderService.copySingleItem(id);
+            }
+          }
+          for (final id in foldersToCopy) {
+            await folderService.copyFolderTree(id);
+          }
+
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${sel.selectedCount}개 복사됨')),
+          );
+
+          sel.exit();
+        },
+      ),
+      MultiSelectAction(
+        icon: Icons.delete_outline,
+        tooltip: '휴지통',
+        color: Colors.redAccent,
+        onPressed: () async {
+          if (sel.selectedCount == 0) return;
+
+          final ok = await showDeleteConfirm(
+            context,
+            message: '선택한 ${sel.selectedCount}개를 휴지통으로 보낼까요?',
+          );
+          if (ok != true) return;
+
+          final itemRepo = context.read<ItemRepo>();
+          final folderRepo = context.read<FolderTreeRepo>();
+
+          try {
+            if (sel.selectedItems.isNotEmpty) {
+              await itemRepo.moveItemsToTrash(sel.selectedItems.toList());
+            }
+            final foldersToDelete = await _topLevelSelectedFolders(
+              folderRepo,
+              sel,
+            );
+            for (final folderId in foldersToDelete) {
+              await folderRepo.deleteFolderNode(folderId, force: true);
+            }
+          } catch (e) {
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(_friendlyDeleteError(e))),
+            );
+            return;
+          }
+
+          if (!context.mounted) return;
+          showGoSnack(
+            context,
+            message: '${sel.selectedCount}개 이동 완료',
+            actionText: '휴지통 열기',
+            onAction: (_) =>
+                context.read<MainTabController>().openShellRoute('/trash'),
+          );
+
+          sel.exit();
+        },
+      ),
+    ];
 
     return CommonMultiSelectBar(
       selectedCount: sel.selectedCount,
       totalCount: totalCount,
-
-      // ✅ 기존 기능 그대로 유지
-      onSelectAll: () {
-        final allItemIds = items.map((e) => e.id).toList();
-        final allFolderIds = folders.map((e) => e.id).toList();
-
-        final isAllSelected = sel.selectedCount == totalCount && totalCount > 0;
-
-        if (isAllSelected) {
-          sel.clear(); // ✅ 모드 유지
-        } else {
-          sel.selectAllEntities(itemIds: allItemIds, folderIds: allFolderIds);
-        }
-      },
       actions: [
         // ⭐ 즐겨찾기
         MultiSelectAction(
@@ -598,247 +890,6 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             );
           },
         ),
-
-        // 📍 보관 위치 지정
-        MultiSelectAction(
-          icon: Icons.location_on_outlined,
-          tooltip: '보관 위치 지정',
-          onPressed: () async {
-            final itemIds = sel.selectedItems.toList();
-            if (itemIds.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('아이템을 선택해야 위치를 지정할 수 있어요.')),
-              );
-              return;
-            }
-
-            final location = await showStorageLocationPickerSheet(context);
-            if (location == null) return;
-
-            await context
-                .read<StorageLocationRepo>()
-                .setPrimaryLocationForItems(
-                  itemIds: itemIds,
-                  locationId: location.id,
-                );
-
-            if (!context.mounted) return;
-            _invalidateLocationSummaries();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '선택한 ${itemIds.length}개 아이템의 기본 위치를 지정했어요.',
-                ),
-              ),
-            );
-
-            sel.exit();
-            setState(() {});
-          },
-        ),
-
-        // 🏢 거래처 지정
-        MultiSelectAction(
-          icon: Icons.storefront_outlined,
-          tooltip: '거래처 지정',
-          onPressed: () async {
-            final itemIds = sel.selectedItems.toList();
-            if (itemIds.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('아이템을 선택해야 거래처를 지정할 수 있어요.')),
-              );
-              return;
-            }
-
-            final supplier = await showSupplierPickerSheet(
-              context,
-              title: '선택 아이템 거래처 지정',
-            );
-            if (supplier == null) return;
-
-            await context.read<ItemRepo>().setDefaultSupplierBulk(
-                  ids: itemIds,
-                  supplier: supplier,
-                );
-
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '선택한 ${itemIds.length}개 아이템의 거래처를 ${supplier.name}(으)로 지정했어요.',
-                ),
-              ),
-            );
-
-            sel.exit();
-            setState(() {});
-          },
-        ),
-
-        // 🗑 휴지통
-        MultiSelectAction(
-          icon: Icons.delete_outline,
-          tooltip: '휴지통',
-          color: Colors.redAccent,
-          onPressed: () async {
-            if (sel.selectedCount == 0) return;
-
-            final ok = await showDeleteConfirm(
-              context,
-              message: '선택한 ${sel.selectedCount}개를 휴지통으로 보낼까요?',
-            );
-            if (ok != true) return;
-
-            final itemRepo = context.read<ItemRepo>();
-            final folderRepo = context.read<FolderTreeRepo>();
-
-            try {
-              if (sel.selectedItems.isNotEmpty) {
-                await itemRepo.moveItemsToTrash(sel.selectedItems.toList());
-              }
-              final foldersToDelete =
-                  await _topLevelSelectedFolders(folderRepo, sel);
-              for (final folderId in foldersToDelete) {
-                await folderRepo.deleteFolderNode(folderId, force: true);
-              }
-            } catch (e) {
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(_friendlyDeleteError(e))),
-              );
-              return;
-            }
-
-            if (!context.mounted) return;
-            showGoSnack(
-              context,
-              message: '${sel.selectedCount}개 이동 완료',
-              actionText: '휴지통 열기',
-              onAction: (_) =>
-                  context.read<MainTabController>().openShellRoute('/trash'),
-            );
-
-            sel.exit();
-          },
-        ),
-
-        // 이동
-        MultiSelectAction(
-          icon: Icons.drive_file_move,
-          tooltip: '이동',
-          onPressed: () async {
-            if (sel.selectedCount == 0) return;
-
-            final repo = context.read<FolderTreeRepo>();
-            final itemRepo = context.read<ItemRepo>();
-            final selectedItemIds = sel.selectedItems.toList(growable: false);
-            final dest = await showPathPicker(
-              context,
-              childrenProvider: pathChildrenFromFolderRepo(repo),
-              title: sel.selectedFolders.isEmpty ? '아이템 이동..' : '선택 항목 이동..',
-              maxDepth: sel.selectedFolders.isEmpty ? 3 : 2,
-            );
-            if (dest == null || dest.isEmpty) return;
-
-            var movedItems = 0;
-            var movedFolders = 0;
-            var finalizedItems = 0;
-
-            try {
-              if (selectedItemIds.isNotEmpty) {
-                movedItems = await repo.moveItemsToPath(
-                  itemIds: selectedItemIds,
-                  pathIds: dest,
-                );
-                for (final itemId in selectedItemIds) {
-                  if (await itemRepo.tryFinalizeRegistration(itemId)) {
-                    finalizedItems++;
-                  }
-                }
-              }
-
-              final foldersToMove = await _topLevelSelectedFolders(repo, sel);
-              for (final folderId in foldersToMove) {
-                await repo.moveEntityToPath(
-                  MoveRequest(
-                    kind: EntityKind.folder,
-                    id: folderId,
-                    pathIds: dest,
-                  ),
-                );
-                movedFolders++;
-              }
-            } catch (e) {
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('이동 실패: $e')),
-              );
-              return;
-            }
-
-            if (!context.mounted) return;
-            final registrationSuffix =
-                finalizedItems > 0 ? ' · 정식등록 $finalizedItems개 완료' : '';
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  '아이템 $movedItems개, 폴더 $movedFolders개 이동$registrationSuffix',
-                ),
-              ),
-            );
-
-            sel.exit();
-          },
-        ),
-// 📋 복사 🔥 추가
-        MultiSelectAction(
-          icon: Icons.copy,
-          tooltip: '복사',
-          onPressed: () async {
-            if (sel.selectedCount == 0) return;
-
-            final folderService = context.read<FolderService>();
-            final folderRepo = context.read<FolderTreeRepo>();
-            final itemRepo = context.read<ItemRepo>();
-            final foldersToCopy = await _topLevelSelectedFolders(
-              folderRepo,
-              sel,
-            );
-
-            if (sel.selectedItems.isNotEmpty && foldersToCopy.isEmpty) {
-              final sourceItems = <Item>[];
-              for (final id in sel.selectedItems) {
-                final item = await itemRepo.getItem(id);
-                if (item != null) sourceItems.add(item);
-              }
-              if (sourceItems.isEmpty) return;
-              if (!context.mounted) return;
-              final options = await _showItemCopyDialog(
-                context,
-                items: sourceItems,
-              );
-              if (options == null) return;
-              await folderService.copyItemsWithOptions(
-                sourceItems.map((item) => item.id).toList(),
-                options,
-              );
-            } else {
-              for (final id in sel.selectedItems) {
-                await folderService.copySingleItem(id);
-              }
-            }
-            for (final id in foldersToCopy) {
-              await folderService.copyFolderTree(id);
-            }
-
-            if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${sel.selectedCount}개 복사됨')),
-            );
-
-            sel.exit();
-          },
-        ),
         // 장바구니
         MultiSelectAction(
           icon: Icons.add_shopping_cart,
@@ -860,6 +911,32 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('${picked.length}개 담기 완료')),
             );
+          },
+        ),
+        MultiSelectAction(
+          icon: Icons.more_horiz,
+          tooltip: '더보기',
+          onPressed: () async {
+            final picked = await showModalBottomSheet<MultiSelectAction>(
+              context: context,
+              showDragHandle: true,
+              builder: (sheetContext) => SafeArea(
+                child: Wrap(
+                  children: [
+                    for (final action in secondaryActions)
+                      ListTile(
+                        leading: Icon(action.icon, color: action.color),
+                        title: Text(
+                          action.tooltip,
+                          style: TextStyle(color: action.color),
+                        ),
+                        onTap: () => Navigator.pop(sheetContext, action),
+                      ),
+                  ],
+                ),
+              ),
+            );
+            picked?.onPressed();
           },
         ),
       ],

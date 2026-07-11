@@ -18,7 +18,6 @@ class CommonMultiSelectBar extends StatelessWidget {
   final int selectedCount;
   final int totalCount;
 
-  final VoidCallback? onSelectAll;
   final VoidCallback? onClear;
 
   final List<MultiSelectAction> actions;
@@ -27,7 +26,6 @@ class CommonMultiSelectBar extends StatelessWidget {
     super.key,
     required this.selectedCount,
     required this.totalCount,
-    this.onSelectAll,
     this.onClear,
     required this.actions,
   });
@@ -47,23 +45,9 @@ class CommonMultiSelectBar extends StatelessWidget {
                 child: Text('선택됨 $selectedCount / $totalCount'),
               ),
 
-              ///전체선택
-
-              if (onSelectAll != null)
-                IconButton(
-                  icon: Icon(
-                    selectedCount == totalCount
-                        ? Icons.deselect
-                        : Icons.select_all,
-                  ),
-                  tooltip: selectedCount == totalCount
-                      ? '전체 해제'
-                      : '전체 선택',
-                  onPressed: onSelectAll,
-                ),
               // 나머지 액션
               ...actions.map(
-                    (a) => Tooltip(
+                (a) => Tooltip(
                   message: a.tooltip,
                   child: IconButton(
                     onPressed: selectedCount == 0 ? null : a.onPressed,

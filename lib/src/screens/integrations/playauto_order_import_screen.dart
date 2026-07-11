@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 String _normalizeSearchText(String value) {
@@ -11,7 +12,11 @@ String _normalizeSearchText(String value) {
 }
 
 class PlayAutoOrderImportScreen extends StatefulWidget {
-  const PlayAutoOrderImportScreen({super.key});
+  const PlayAutoOrderImportScreen({super.key}) : orderViewOnly = false;
+
+  const PlayAutoOrderImportScreen.orderView({super.key}) : orderViewOnly = true;
+
+  final bool orderViewOnly;
 
   @override
   State<PlayAutoOrderImportScreen> createState() =>
@@ -25,6 +30,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   static const _authenticationKeyKey = 'playauto_authentication_key_v1';
   static const _tokenKey = 'playauto_token_v1';
   static const _tokenIssuedAtKey = 'playauto_token_issued_at_v1';
+  static const _orderCachePrefix = 'playauto_order_cache_v1';
   static const _tokenLifetime = Duration(hours: 24);
 
   final _baseUrlController = TextEditingController(
@@ -255,67 +261,141 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     }
   }
 
-  Future<void> _fetchRecentOrders() async {
+  Future<_PlayAutoOrderFetchResult> _fetchOrdersFromPlayAuto({
+    required String sdate,
+    required String edate,
+    required int length,
+    bool forceRefresh = false,
+  }) async {
     final apiKey = _apiKeyController.text.trim();
     if (apiKey.isEmpty) {
-      _showSnack('API Key를 입력해주세요.');
-      return;
+      throw const _PlayAutoUserMessage('API Key를 입력해주세요.');
     }
 
-    final length = int.tryParse(_lengthController.text.trim());
-    if (length == null || length <= 0 || length > 3000) {
-      _showSnack('조회 개수는 1~3000 사이로 입력해주세요.');
-      return;
-    }
-
-    final sdate = _sdateController.text.trim();
-    final edate = _edateController.text.trim();
-    if (sdate.isEmpty || edate.isEmpty) {
-      _showSnack('조회 시작일과 종료일을 입력해주세요.');
-      return;
-    }
-
-    await _runRequest(() async {
-      final tokenResult = await _ensureTokenForOrderFetch(apiKey);
-      if (tokenResult.response != null) return tokenResult.response!;
-      final token = tokenResult.token!;
-
-      final requestBody = <String, Object?>{
-        'start': 0,
-        'length': length,
-        'date_type': 'wdate',
-        'sdate': sdate,
-        'edate': edate,
-        'status': ['ALL'],
-        'bundle_yn': false,
-      };
-
-      final response = await http.post(
-        _endpoint('/orders'),
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'Authorization': 'Token $token',
-        },
-        body: jsonEncode(requestBody),
+    if (!forceRefresh) {
+      final cached = await _readCachedOrderFetch(
+        sdate: sdate,
+        edate: edate,
+        length: length,
       );
-      final orders = _readOrders(response.body);
-      if (mounted) {
-        setState(() => _orders = orders);
-      }
+      if (cached != null) return cached;
+    }
 
-      return _PlayAutoResponse(
-        statusCode: response.statusCode,
+    final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+    if (tokenResult.response != null) {
+      return _PlayAutoOrderFetchResult(
+        orders: const [],
+        statusCode: tokenResult.response!.statusCode,
+        body: tokenResult.response!.body,
+        fromCache: false,
+        fetchedAt: DateTime.now(),
+      );
+    }
+    final token = tokenResult.token!;
+
+    final requestBody = <String, Object?>{
+      'start': 0,
+      'length': length,
+      'date_type': 'wdate',
+      'sdate': sdate,
+      'edate': edate,
+      'status': ['ALL'],
+      'bundle_yn': false,
+    };
+
+    final response = await http.post(
+      _endpoint('/orders'),
+      headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+      body: jsonEncode(requestBody),
+    );
+    final orders = _readOrders(response.body);
+    await _writeCachedOrderFetch(
+      sdate: sdate,
+      edate: edate,
+      length: length,
+      statusCode: response.statusCode,
+      responseBody: response.body,
+    );
+
+    return _PlayAutoOrderFetchResult(
+      orders: orders,
+      statusCode: response.statusCode,
+      body: [
+        '요청 바디',
+        const JsonEncoder.withIndent('  ').convert(requestBody),
+        '',
+        '응답',
+        _prettyBody(response.body),
+      ].join('\n'),
+      fromCache: false,
+      fetchedAt: DateTime.now(),
+    );
+  }
+
+  Future<_PlayAutoOrderFetchResult?> _readCachedOrderFetch({
+    required String sdate,
+    required String edate,
+    required int length,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedText = prefs.getString(
+      _orderCacheKey(sdate: sdate, edate: edate, length: length),
+    );
+    if (cachedText == null || cachedText.isEmpty) return null;
+
+    try {
+      final cached = jsonDecode(cachedText) as Map<String, Object?>;
+      final responseBody = cached['response_body']?.toString() ?? '';
+      final fetchedAt = DateTime.tryParse(
+        cached['fetched_at']?.toString() ?? '',
+      );
+      final statusCode = int.tryParse(cached['status_code']?.toString() ?? '');
+      final orders = _readOrders(responseBody);
+      return _PlayAutoOrderFetchResult(
+        orders: orders,
+        statusCode: statusCode,
         body: [
-          '요청 바디',
-          const JsonEncoder.withIndent('  ').convert(requestBody),
+          '캐시 사용',
+          if (fetchedAt != null) '저장 시각: ${_formatDateTime(fetchedAt)}',
           '',
           '응답',
-          _prettyBody(response.body),
+          _prettyBody(responseBody),
         ].join('\n'),
+        fromCache: true,
+        fetchedAt: fetchedAt,
       );
-    });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeCachedOrderFetch({
+    required String sdate,
+    required String edate,
+    required int length,
+    required int statusCode,
+    required String responseBody,
+  }) async {
+    if (statusCode < 200 || statusCode >= 300) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _orderCacheKey(sdate: sdate, edate: edate, length: length),
+      jsonEncode({
+        'fetched_at': DateTime.now().toIso8601String(),
+        'status_code': statusCode,
+        'response_body': responseBody,
+      }),
+    );
+  }
+
+  String _orderCacheKey({
+    required String sdate,
+    required String edate,
+    required int length,
+  }) {
+    final baseUrl =
+        _baseUrlController.text.trim().replaceFirst(RegExp(r'/+$'), '');
+    return '$_orderCachePrefix::$baseUrl::wdate::$sdate::$edate::$length';
   }
 
   Future<void> _fetchShopAccounts() async {
@@ -532,15 +612,42 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   }
 
   void _openOrderPreview() {
-    if (_orders.isEmpty) {
-      _showSnack('먼저 최근 주문을 조회해주세요.');
-      return;
-    }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _PlayAutoOrderPreviewScreen(orders: _orders),
+        builder: (_) => _PlayAutoOrderPreviewScreen(
+          orders: _orders,
+          startDate: _sdateController.text.trim(),
+          endDate: _edateController.text.trim(),
+          length: int.tryParse(_lengthController.text.trim()) ?? 100,
+          onFetchOrders: _fetchOrdersForPreview,
+        ),
       ),
     );
+  }
+
+  Future<_PlayAutoOrderFetchResult> _fetchOrdersForPreview({
+    required String sdate,
+    required String edate,
+    required int length,
+    bool forceRefresh = false,
+  }) async {
+    final result = await _fetchOrdersFromPlayAuto(
+      sdate: sdate,
+      edate: edate,
+      length: length,
+      forceRefresh: forceRefresh,
+    );
+    if (mounted) {
+      setState(() {
+        _orders = result.orders;
+        _sdateController.text = sdate;
+        _edateController.text = edate;
+        _lengthController.text = length.toString();
+        _statusCode = result.statusCode;
+        _result = result.body;
+      });
+    }
+    return result;
   }
 
   void _toggleShopAccount(_PlayAutoShopAccount shop, bool selected) {
@@ -924,6 +1031,15 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     return '$year-$month-$day';
   }
 
+  String _formatDateTime(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$year-$month-$day $hour:$minute';
+  }
+
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -933,6 +1049,21 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
+    if (widget.orderViewOnly) {
+      if (!_credentialsLoaded) {
+        return const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        );
+      }
+      return _PlayAutoOrderPreviewScreen(
+        orders: _orders,
+        startDate: _sdateController.text.trim(),
+        endDate: _edateController.text.trim(),
+        length: int.tryParse(_lengthController.text.trim()) ?? 100,
+        onFetchOrders: _fetchOrdersForPreview,
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('플토 테스트')),
@@ -1030,14 +1161,11 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
                 label: const Text('토큰 발급 테스트'),
               ),
               OutlinedButton.icon(
-                onPressed: _loading ? null : _fetchRecentOrders,
-                icon: const Icon(Icons.cloud_download_outlined),
-                label: const Text('최근 주문 조회'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _orders.isEmpty ? null : _openOrderPreview,
+                onPressed: _loading ? null : _openOrderPreview,
                 icon: const Icon(Icons.view_agenda_outlined),
-                label: Text('주문 보기 ${_orders.length}건'),
+                label: Text(
+                  _orders.isEmpty ? '주문 보기' : '주문 보기 ${_orders.length}건',
+                ),
               ),
               OutlinedButton.icon(
                 onPressed: _loading ? null : () => _saveCredentials(),
@@ -1048,49 +1176,6 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
                 onPressed: _loading ? null : _clearSavedCredentials,
                 icon: const Icon(Icons.delete_outline),
                 label: const Text('저장 정보 삭제'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            '주문 조회 조건',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _sdateController,
-                  decoration: const InputDecoration(
-                    labelText: '시작일',
-                    hintText: 'YYYY-MM-DD',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _edateController,
-                  decoration: const InputDecoration(
-                    labelText: '종료일',
-                    hintText: 'YYYY-MM-DD',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 120,
-                child: TextField(
-                  controller: _lengthController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: '개수',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
               ),
             ],
           ),
@@ -1314,9 +1399,22 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
 class _PlayAutoOrderPreviewScreen extends StatefulWidget {
   const _PlayAutoOrderPreviewScreen({
     required this.orders,
+    required this.startDate,
+    required this.endDate,
+    required this.length,
+    required this.onFetchOrders,
   });
 
   final List<_PlayAutoOrderPreview> orders;
+  final String startDate;
+  final String endDate;
+  final int length;
+  final Future<_PlayAutoOrderFetchResult> Function({
+    required String sdate,
+    required String edate,
+    required int length,
+    bool forceRefresh,
+  }) onFetchOrders;
 
   @override
   State<_PlayAutoOrderPreviewScreen> createState() =>
@@ -1326,12 +1424,30 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
 class _PlayAutoOrderPreviewScreenState
     extends State<_PlayAutoOrderPreviewScreen> {
   final _searchController = TextEditingController();
+  late final TextEditingController _startDateController;
+  late final TextEditingController _endDateController;
+  late final TextEditingController _lengthController;
+  late List<_PlayAutoOrderPreview> _orders;
   var _query = '';
+  var _loadingOrders = false;
+  var _cacheNotice = '조회 버튼을 누르면 저장된 주문을 먼저 확인합니다.';
   String? _selectedShopName;
+
+  @override
+  void initState() {
+    super.initState();
+    _orders = widget.orders;
+    _startDateController = TextEditingController(text: widget.startDate);
+    _endDateController = TextEditingController(text: widget.endDate);
+    _lengthController = TextEditingController(text: widget.length.toString());
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    _lengthController.dispose();
     super.dispose();
   }
 
@@ -1344,7 +1460,20 @@ class _PlayAutoOrderPreviewScreenState
     final shopNames = _shopNames;
 
     return Scaffold(
-      appBar: AppBar(title: Text('플토 주문 ${filteredOrders.length}건')),
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('플토 주문 ${filteredOrders.length}건'),
+            Text(
+              '${_startDateController.text} ~ ${_endDateController.text}',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+      ),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -1353,6 +1482,24 @@ class _PlayAutoOrderPreviewScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _OrderQueryPanel(
+                    startDateController: _startDateController,
+                    endDateController: _endDateController,
+                    lengthController: _lengthController,
+                    loading: _loadingOrders,
+                    onPickStartDate: () => _pickDate(_startDateController),
+                    onPickEndDate: () => _pickDate(_endDateController),
+                    onFetch: () => _fetchOrders(forceRefresh: false),
+                    onRefresh: () => _fetchOrders(forceRefresh: true),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _cacheNotice,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
                   _PlayAutoSummaryBand(
                     orderCount: filteredOrders.length,
                     totalQty: totalQty,
@@ -1449,7 +1596,7 @@ class _PlayAutoOrderPreviewScreenState
 
   List<_PlayAutoOrderPreview> get _filteredOrders {
     final normalizedQuery = _normalizeSearchText(_query);
-    return widget.orders.where((order) {
+    return _orders.where((order) {
       final shopMatches =
           _selectedShopName == null || order.shopName == _selectedShopName;
       if (!shopMatches) return false;
@@ -1459,7 +1606,7 @@ class _PlayAutoOrderPreviewScreenState
   }
 
   List<String> get _shopNames {
-    final names = widget.orders
+    final names = _orders
         .map((order) => order.shopName.trim())
         .where((name) => name.isNotEmpty && name != '판매처 없음')
         .toSet()
@@ -1479,6 +1626,78 @@ class _PlayAutoOrderPreviewScreenState
       return Colors.blue.shade700;
     }
     return scheme.primary;
+  }
+
+  Future<void> _pickDate(TextEditingController controller) async {
+    final initialDate = DateTime.tryParse(controller.text.trim()) ??
+        DateTime.tryParse(_endDateController.text.trim()) ??
+        DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+      helpText: '주문 조회 날짜 선택',
+    );
+    if (picked == null) return;
+    setState(() => controller.text = _formatDate(picked));
+  }
+
+  Future<void> _fetchOrders({required bool forceRefresh}) async {
+    final sdate = _startDateController.text.trim();
+    final edate = _endDateController.text.trim();
+    final length = int.tryParse(_lengthController.text.trim());
+    if (length == null || length <= 0 || length > 3000) {
+      _showSnack('조회 개수는 1~3000 사이로 입력해주세요.');
+      return;
+    }
+    final startDate = DateTime.tryParse(sdate);
+    final endDate = DateTime.tryParse(edate);
+    if (startDate == null || endDate == null) {
+      _showSnack('조회 날짜는 YYYY-MM-DD 형식으로 선택해주세요.');
+      return;
+    }
+    if (startDate.isAfter(endDate)) {
+      _showSnack('시작일은 종료일보다 늦을 수 없습니다.');
+      return;
+    }
+
+    setState(() => _loadingOrders = true);
+    try {
+      final result = await widget.onFetchOrders(
+        sdate: sdate,
+        edate: edate,
+        length: length,
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted) return;
+      setState(() {
+        _orders = result.orders;
+        _selectedShopName = null;
+        _cacheNotice = result.notice;
+      });
+    } on _PlayAutoUserMessage catch (e) {
+      if (!mounted) return;
+      _showSnack(e.message);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('주문 조회 실패: $e');
+    } finally {
+      if (mounted) setState(() => _loadingOrders = false);
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$year-$month-$day';
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 }
 
@@ -1543,6 +1762,114 @@ class _SummaryValue extends StatelessWidget {
               ),
         ),
       ],
+    );
+  }
+}
+
+class _OrderQueryPanel extends StatelessWidget {
+  const _OrderQueryPanel({
+    required this.startDateController,
+    required this.endDateController,
+    required this.lengthController,
+    required this.loading,
+    required this.onPickStartDate,
+    required this.onPickEndDate,
+    required this.onFetch,
+    required this.onRefresh,
+  });
+
+  final TextEditingController startDateController;
+  final TextEditingController endDateController;
+  final TextEditingController lengthController;
+  final bool loading;
+  final VoidCallback onPickStartDate;
+  final VoidCallback onPickEndDate;
+  final VoidCallback onFetch;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          SizedBox(
+            width: 160,
+            child: TextField(
+              controller: startDateController,
+              readOnly: true,
+              onTap: onPickStartDate,
+              decoration: InputDecoration(
+                labelText: '시작일',
+                suffixIcon: IconButton(
+                  tooltip: '시작일 선택',
+                  onPressed: onPickStartDate,
+                  icon: const Icon(Icons.calendar_month_outlined),
+                ),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 160,
+            child: TextField(
+              controller: endDateController,
+              readOnly: true,
+              onTap: onPickEndDate,
+              decoration: InputDecoration(
+                labelText: '종료일',
+                suffixIcon: IconButton(
+                  tooltip: '종료일 선택',
+                  onPressed: onPickEndDate,
+                  icon: const Icon(Icons.calendar_month_outlined),
+                ),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 98,
+            child: TextField(
+              controller: lengthController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: '개수',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: loading ? null : onFetch,
+            icon: loading
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.folder_open_outlined),
+            label: const Text('조회'),
+          ),
+          OutlinedButton.icon(
+            onPressed: loading ? null : onRefresh,
+            icon: const Icon(Icons.sync_outlined),
+            label: const Text('새로고침'),
+          ),
+          const Chip(
+            avatar: Icon(Icons.event_available_outlined, size: 18),
+            label: Text('수집일 기준'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2204,6 +2531,44 @@ class _PlayAutoResponse {
 
   final int? statusCode;
   final String body;
+}
+
+class _PlayAutoOrderFetchResult {
+  const _PlayAutoOrderFetchResult({
+    required this.orders,
+    required this.statusCode,
+    required this.body,
+    required this.fromCache,
+    this.fetchedAt,
+  });
+
+  final List<_PlayAutoOrderPreview> orders;
+  final int? statusCode;
+  final String body;
+  final bool fromCache;
+  final DateTime? fetchedAt;
+
+  String get notice {
+    final time = fetchedAt == null ? '' : ' · ${_formatNoticeTime(fetchedAt!)}';
+    return fromCache ? '캐시 사용$time' : 'PlayAuto API 호출$time';
+  }
+
+  static String _formatNoticeTime(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$month-$day $hour:$minute';
+  }
+}
+
+class _PlayAutoUserMessage implements Exception {
+  const _PlayAutoUserMessage(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 class _TokenIssueResult {

@@ -56,7 +56,6 @@ import 'services/schedule_widget_bridge.dart';
 import 'services/system_seed_service.dart';
 import 'db/app_database.dart';
 import 'repos/timeline_repo.dart';
-import 'ui/common/selection/item_selection_controller.dart';
 import 'ui/intro_loading_screen.dart';
 import 'ui/intro_timing.dart';
 import 'ui/nav/item_detail_opener.dart';
@@ -330,7 +329,6 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
             ),
             ChangeNotifierProvider(create: (_) => CartManager()),
             ChangeNotifierProvider(create: (_) => MainTabController()),
-            ChangeNotifierProvider(create: (_) => ItemSelectionController()),
             Provider<ItemDetailOpener>(create: (_) => AppItemDetailOpener()),
             Provider<ItemPathProvider>(
               create: (ctx) => RepoItemPathFacade(ctx.read<ItemRepo>()),
