@@ -28,6 +28,7 @@ macos/Flutter/ephemeral/
 # VSCode/IntelliJ
 .vscode/
 .idea/
+oauth.local.json
 
 # Misc
 *.iml
