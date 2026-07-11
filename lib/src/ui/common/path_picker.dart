@@ -55,13 +55,13 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
   final _selectedIds = <String>[];
   final _selectedNames = <String>[];
   final _childrenCache = <String, Future<List<PathNode>>>{};
+  late final List<GlobalKey> _levelKeys;
   late Future<List<_PathChoice>> _allPathsFuture;
-  bool _canConfirm = false;
-  String? _confirmHint;
 
   @override
   void initState() {
     super.initState();
+    _levelKeys = List.generate(widget.maxDepth, (_) => GlobalKey());
     _allPathsFuture = _loadAllPaths();
   }
 
@@ -86,45 +86,6 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
       key,
       () => widget.childrenProvider(parentId),
     );
-  }
-
-  void _refreshConfirmState() {
-    if (_selectedIds.isEmpty) {
-      setState(() {
-        _canConfirm = false;
-        _confirmHint = null;
-      });
-      return;
-    }
-
-    final selectedDepth = _selectedIds.length;
-    final selectedId = _selectedIds.last;
-
-    if (selectedDepth >= widget.maxDepth) {
-      setState(() {
-        _canConfirm = true;
-        _confirmHint = null;
-      });
-      return;
-    }
-
-    final nextLabel = widget.labels[selectedDepth];
-    setState(() {
-      _canConfirm = false;
-      _confirmHint = '$nextLabel를 선택해주세요';
-    });
-
-    _childrenFor(selectedId).then((children) {
-      if (!mounted) return;
-      if (_selectedIds.length != selectedDepth ||
-          _selectedIds.last != selectedId) {
-        return;
-      }
-      setState(() {
-        _canConfirm = children.isEmpty;
-        _confirmHint = children.isEmpty ? null : '$nextLabel를 선택해주세요';
-      });
-    });
   }
 
   Future<List<_PathChoice>> _loadAllPaths() async {
@@ -168,6 +129,27 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
     return _childrenFor(_selectedIds[parentIndex]);
   }
 
+  void _scrollToNextDepth(int depth) {
+    if (depth >= widget.maxDepth) return;
+    final selectedId = _selectedIds.isEmpty ? null : _selectedIds.last;
+    if (selectedId == null) return;
+
+    _childrenFor(selectedId).then((children) {
+      if (!mounted || children.isEmpty) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final nextContext = _levelKeys[depth].currentContext;
+        if (nextContext == null) return;
+        Scrollable.ensureVisible(
+          nextContext,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          alignment: 0.08,
+        );
+      });
+    });
+  }
+
   void _pickNode(int depth, PathNode node) {
     setState(() {
       final index = depth - 1;
@@ -178,7 +160,7 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
       _selectedIds.add(node.id);
       _selectedNames.add(node.name);
     });
-    _refreshConfirmState();
+    _scrollToNextDepth(depth);
   }
 
   void _pickPath(_PathChoice path) {
@@ -189,9 +171,7 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
       _selectedNames
         ..clear()
         ..addAll(path.names);
-      _searchC.clear();
     });
-    _refreshConfirmState();
   }
 
   bool _isSelectedAtDepth(int depth, String id) {
@@ -243,8 +223,7 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
                 ),
                 _PathConfirmBar(
                   selectedLabel: _selectedLabel,
-                  helperText: _confirmHint,
-                  canConfirm: _canConfirm,
+                  canConfirm: _selectedIds.isNotEmpty,
                   onCancel: () => Navigator.pop(context),
                   onConfirm: () => Navigator.pop(context, _selectedPath),
                 ),
@@ -262,7 +241,10 @@ class _PathPickerSheetState extends State<_PathPickerSheet> {
       children: [
         for (var depth = 1; depth <= widget.maxDepth; depth++)
           if (depth == 1 || _selectedIds.length >= depth - 1)
-            _buildLevel(depth),
+            KeyedSubtree(
+              key: _levelKeys[depth - 1],
+              child: _buildLevel(depth),
+            ),
       ],
     );
   }
@@ -406,23 +388,23 @@ class _PathDepthStyle {
     switch (depth) {
       case 1:
         return _PathDepthStyle(
-          background: const Color(0xFFEAF6FF),
-          selectedBackground: const Color(0xFFD3ECFF),
-          accent: const Color(0xFF4BA3E3),
+          background: const Color(0xFFF3F7FA),
+          selectedBackground: const Color(0xFFE5EEF5),
+          accent: const Color(0xFF6F9CB8),
           foreground: scheme.onSurface,
         );
       case 2:
         return _PathDepthStyle(
-          background: const Color(0xFFE1F0FF),
-          selectedBackground: const Color(0xFFC2E1FF),
-          accent: const Color(0xFF1976D2),
+          background: const Color(0xFFEFF5F8),
+          selectedBackground: const Color(0xFFDDE9F0),
+          accent: const Color(0xFF4F82A4),
           foreground: scheme.onSurface,
         );
       default:
         return _PathDepthStyle(
-          background: const Color(0xFFD9E8FF),
-          selectedBackground: const Color(0xFFB8D4FF),
-          accent: const Color(0xFF0D47A1),
+          background: const Color(0xFFEBF1F5),
+          selectedBackground: const Color(0xFFD4E2EB),
+          accent: const Color(0xFF356C91),
           foreground: scheme.onSurface,
         );
     }
@@ -561,14 +543,12 @@ class _PathSearchTile extends StatelessWidget {
 
 class _PathConfirmBar extends StatelessWidget {
   final String selectedLabel;
-  final String? helperText;
   final bool canConfirm;
   final VoidCallback onCancel;
   final VoidCallback onConfirm;
 
   const _PathConfirmBar({
     required this.selectedLabel,
-    this.helperText,
     required this.canConfirm,
     required this.onCancel,
     required this.onConfirm,
@@ -598,16 +578,6 @@ class _PathConfirmBar extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
-              if (helperText != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  helperText!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-              ],
               const SizedBox(height: 10),
               Row(
                 children: [
