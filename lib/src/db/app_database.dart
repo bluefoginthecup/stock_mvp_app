@@ -681,13 +681,14 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 45; //
+  int get schemaVersion => 46; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _ensureSupplierBusinessColumns();
+          await _ensureSupplierRoleColumns();
           await _ensureSupplierContactsTable();
           await _ensureSupplierAccountsTable();
           await _ensurePurchaseReceiptsTable();
@@ -700,6 +701,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureProductionGuideTables();
         },
         beforeOpen: (details) async {
+          await _ensureSupplierRoleColumns();
           await _ensurePurchaseLineAmountColumns();
           await _ensureQuoteLineAmountColumns();
           await _ensureStorageLocationMovementTable();
@@ -1021,6 +1023,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 45) {
             await _ensureProductionGuideTables();
           }
+          if (from < 46) {
+            await _ensureSupplierRoleColumns();
+          }
         },
       );
   Future<void> _backfillItemSearchKeys() async {
@@ -1216,6 +1221,19 @@ class AppDatabase extends _$AppDatabase {
     await _addColumnIfMissing('suppliers', 'representative', 'TEXT');
     await _addColumnIfMissing('suppliers', 'business_type', 'TEXT');
     await _addColumnIfMissing('suppliers', 'business_item', 'TEXT');
+  }
+
+  Future<void> _ensureSupplierRoleColumns() async {
+    await _addColumnIfMissing(
+      'suppliers',
+      'is_purchase_supplier',
+      'INTEGER NOT NULL DEFAULT 0',
+    );
+    await _addColumnIfMissing(
+      'suppliers',
+      'is_customer',
+      'INTEGER NOT NULL DEFAULT 0',
+    );
   }
 
   Future<void> _ensureSupplierContactsTable() async {

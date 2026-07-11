@@ -22,6 +22,7 @@ import '/src/services/entitlement_service.dart';
 import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
 import '/src/services/full_restore_service.dart';
+import '/src/services/dr_mdb_zip_import_service.dart';
 import '/src/services/purchase_price_backfill_service.dart';
 import '/src/services/restore_rollback_service.dart';
 import '/src/services/revenuecat_purchase_service.dart';
@@ -196,6 +197,91 @@ class SettingsScreen extends StatelessWidget {
               });
             },
           ),
+          if (Platform.isWindows ||
+              Platform.isMacOS ||
+              Platform.isLinux ||
+              Platform.isIOS)
+            ListTile(
+              leading: const Icon(Icons.move_to_inbox_outlined),
+              title: const Text('경영박사 데이터 가져오기'),
+              subtitle: const Text('변환기로 만든 ZIP에서 품목·거래처·발주 내역을 가져옵니다.'),
+              onTap: () async {
+                final picked = await FilePicker.platform.pickFiles(
+                  type: FileType.custom,
+                  allowedExtensions: const ['zip'],
+                );
+                final path = picked?.files.single.path;
+                if (path == null || !context.mounted) return;
+
+                final service =
+                    DrMdbZipImportService(context.read<AppDatabase>());
+                DrMdbImportPreview preview;
+                try {
+                  preview = await service.preview(File(path));
+                } catch (error) {
+                  if (!context.mounted) return;
+                  await _showSimpleErrorDialog(
+                    context,
+                    title: '경영박사 ZIP 확인 실패',
+                    message: '$error',
+                  );
+                  return;
+                }
+                if (!context.mounted) return;
+
+                final duplicateCandidates =
+                    await service.duplicateSupplierCandidates(File(path));
+                if (!context.mounted) return;
+                final supplierMappings = duplicateCandidates.isEmpty
+                    ? <String, String>{}
+                    : await _showDrSupplierMappingDialog(
+                        context,
+                        duplicateCandidates,
+                      );
+                if (supplierMappings == null || !context.mounted) return;
+
+                final warnings =
+                    preview.missingItemJoins + preview.missingSupplierJoins;
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogContext) => AlertDialog(
+                    title: const Text('경영박사 데이터 가져오기'),
+                    content: Text(
+                      '품목 ${preview.items}개\n'
+                      '거래처 ${preview.suppliers}개\n'
+                      '발주 ${preview.purchaseOrders}건\n'
+                      '발주 품목 ${preview.purchaseLines}건\n\n'
+                      '${warnings > 0 ? '연결되지 않은 데이터가 $warnings건 있습니다.\n\n' : ''}'
+                      '${supplierMappings.isNotEmpty ? '기존 거래처에 ${supplierMappings.length}개를 연결합니다.\n\n' : ''}'
+                      '같은 경영박사 ID가 이미 있으면 최신 내용으로 갱신합니다. '
+                      '가져오기 전에 찰스톡 전체 백업을 자동 생성합니다.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(false),
+                        child: const Text('취소'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(true),
+                        child: const Text('백업 후 가져오기'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true || !context.mounted) return;
+
+                await runWithSpinnerMessage(() async {
+                  final backup = await fullBackupService.createBackup();
+                  final imported = await service.import(
+                    File(path),
+                    supplierMappings: supplierMappings,
+                  );
+                  return '가져오기 완료: 품목 ${imported.items}개, 거래처 ${imported.suppliers}개, '
+                      '발주 ${imported.purchaseOrders}건, 발주 품목 ${imported.purchaseLines}건\n'
+                      '백업: ${backup.zipFile.path}';
+                });
+              },
+            ),
           if (showDeveloperSeedImport) ...[
             const _SectionHeader('개발자 도구'),
             ListTile(
@@ -510,6 +596,83 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<Map<String, String>?> _showDrSupplierMappingDialog(
+  BuildContext context,
+  List<DrSupplierDuplicateCandidate> candidates,
+) {
+  final selections = <String, String?>{
+    for (final candidate in candidates) candidate.importedId: null,
+  };
+  return showDialog<Map<String, String>>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('동일 이름 거래처 연결'),
+        content: SizedBox(
+          width: 620,
+          height: 420,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '같은 이름의 기존 거래처가 ${candidates.length}개 발견되었습니다. '
+                '연결하지 않은 항목은 경영박사 거래처로 별도 생성됩니다.',
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: candidates.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final candidate = candidates[index];
+                    return DropdownButtonFormField<String?>(
+                      initialValue: selections[candidate.importedId],
+                      decoration: InputDecoration(
+                        labelText: '경영박사: ${candidate.importedName}',
+                        border: const OutlineInputBorder(),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('별도 거래처로 유지'),
+                        ),
+                        ...candidate.matches.map(
+                          (match) => DropdownMenuItem<String?>(
+                            value: match.id,
+                            child: Text('기존 거래처에 연결: ${match.name}'),
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) => setState(
+                        () => selections[candidate.importedId] = value,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('가져오기 취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(
+              <String, String>{
+                for (final entry in selections.entries)
+                  if (entry.value != null) entry.key: entry.value!,
+              },
+            ),
+            child: const Text('연결 선택 완료'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 Future<void> _showRestoreErrorDialog(
