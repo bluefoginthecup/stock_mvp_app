@@ -12,8 +12,7 @@ class L10nEs extends L10n {
   String get adjust_set_quantity_title => 'establecer cant.';
 
   @override
-  String get hint_longpress_to_edit_qty =>
-      'mantén presionado para editar la cantidad';
+  String get hint_longpress_to_edit_qty => 'mantén presionado para editar la cantidad';
 
   @override
   String adjust_current_qty(int qty, int minQty) {
@@ -48,12 +47,10 @@ class L10nEs extends L10n {
   String get common_delete_title => '¿Deseas eliminar este pedido?';
 
   @override
-  String get confirm_delete_forever_body =>
-      '¿Seguro que quieres eliminarlo permanentemente? Esta acción no se puede deshacer.';
+  String get confirm_delete_forever_body => '¿Seguro que quieres eliminarlo permanentemente? Esta acción no se puede deshacer.';
 
   @override
-  String get confirm_delete_soft_body =>
-      'El pedido será ocultado y no aparecerá en la lista.';
+  String get confirm_delete_soft_body => 'El pedido será ocultado y no aparecerá en la lista.';
 
   @override
   String get menu_delete_hide => 'Ocultar (eliminación suave)';
@@ -118,8 +115,7 @@ class L10nEs extends L10n {
   String get dashboard_works => 'Planificación de trabajos';
 
   @override
-  String get empty_finished_items =>
-      'No hay productos terminados. Agrega artículos primero.';
+  String get empty_finished_items => 'No hay productos terminados. Agrega artículos primero.';
 
   @override
   String get field_created_at => 'Fecha de creación';
@@ -200,8 +196,7 @@ class L10nEs extends L10n {
   }
 
   @override
-  String get order_saved_and_planned =>
-      'Guardado y se planificaron faltantes automáticamente.';
+  String get order_saved_and_planned => 'Guardado y se planificaron faltantes automáticamente.';
 
   @override
   String get purchase_action_order => 'Order';
@@ -366,8 +361,7 @@ class L10nEs extends L10n {
   }
 
   @override
-  String stock_row_sku_folder_subfolder(
-      String sku, String folder, String subfolder) {
+  String stock_row_sku_folder_subfolder(String sku, String folder, String subfolder) {
     return '$sku • $folder$subfolder';
   }
 
@@ -501,6 +495,5 @@ class L10nEs extends L10n {
   String get bom_edit_semi => 'Editar BOM de semielaborado!';
 
   @override
-  String get bom_edit_unknown_type_hint =>
-      'El tipo de artículo no está claro, por lo que se muestran ambos botones.';
+  String get bom_edit_unknown_type_hint => 'El tipo de artículo no está claro, por lo que se muestran ambos botones.';
 }

@@ -18,12 +18,12 @@ import '/src/services/attachment_limit_config.dart';
 import '/src/services/buyer_profile_service.dart';
 import '/src/services/cloud_auto_backup_service.dart';
 import '/src/services/cloud_backup_service.dart';
-import '/src/services/dr_mdb_import_service.dart';
+import '/src/services/dr_mdb_import_service.dart' as legacy_dr;
 import '/src/services/entitlement_service.dart';
 import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
 import '/src/services/full_restore_service.dart';
-import '/src/services/dr_mdb_zip_import_service.dart';
+import '/src/services/dr_mdb_zip_import_service.dart' as dr_zip;
 import '/src/services/purchase_price_backfill_service.dart';
 import '/src/services/restore_rollback_service.dart';
 import '/src/services/revenuecat_purchase_service.dart';
@@ -177,8 +177,8 @@ class SettingsScreen extends StatelessWidget {
               if (path == null) return;
 
               final file = File(path);
-              final service = DrMdbImportService(appDatabase);
-              late final DrMdbImportPreview preview;
+              final service = legacy_dr.DrMdbImportService(appDatabase);
+              late final legacy_dr.DrMdbImportPreview preview;
               try {
                 preview = await service.previewZip(file);
               } catch (e) {
@@ -277,8 +277,8 @@ class SettingsScreen extends StatelessWidget {
                 if (path == null || !context.mounted) return;
 
                 final service =
-                    DrMdbZipImportService(context.read<AppDatabase>());
-                DrMdbImportPreview preview;
+                    dr_zip.DrMdbZipImportService(context.read<AppDatabase>());
+                dr_zip.DrMdbImportPreview preview;
                 try {
                   preview = await service.preview(File(path));
                 } catch (error) {
@@ -663,7 +663,7 @@ class SettingsScreen extends StatelessWidget {
 
 Future<Map<String, String>?> _showDrSupplierMappingDialog(
   BuildContext context,
-  List<DrSupplierDuplicateCandidate> candidates,
+  List<dr_zip.DrSupplierDuplicateCandidate> candidates,
 ) {
   final selections = <String, String?>{
     for (final candidate in candidates) candidate.importedId: null,
@@ -691,7 +691,7 @@ Future<Map<String, String>?> _showDrSupplierMappingDialog(
                   itemBuilder: (context, index) {
                     final candidate = candidates[index];
                     return DropdownButtonFormField<String?>(
-                      initialValue: selections[candidate.importedId],
+                      value: selections[candidate.importedId],
                       decoration: InputDecoration(
                         labelText: '경영박사: ${candidate.importedName}',
                         border: const OutlineInputBorder(),
@@ -1132,77 +1132,79 @@ class _AccountSectionState extends State<_AccountSection> {
         const SizedBox(height: 12),
         if (!isWindowsDesktop)
           Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            if (showAppTrialButton)
-              FilledButton.icon(
-                onPressed: _workingEntitlement || _loadingEntitlement
-                    ? null
-                    : () => _runEntitlementAction(
-                          (service) => service.startAppTrial(),
-                          '7일 무료체험을 시작했습니다.',
-                        ),
-                icon: const Icon(Icons.play_circle_outline),
-                label: const Text('7일 무료체험 시작'),
-              ),
-            if (showProButton)
-              FilledButton.icon(
-                onPressed: _workingEntitlement ||
-                        _loadingEntitlement ||
-                        !purchasesReady
-                    ? null
-                    : () => _runPurchaseOptionAction(
-                          title: 'Pro 구독 선택',
-                          loadOptions: (service) => service.proPackageOptions(),
-                          purchase: (service, productId) =>
-                              service.purchaseProProduct(productId),
-                          successMessage: 'Pro 구독 상태를 확인했습니다.',
-                        ),
-                icon: const Icon(Icons.workspace_premium_outlined),
-                label: const Text('Pro 구독'),
-              ),
-            if (showCloudTrialButton)
-              OutlinedButton.icon(
-                onPressed: _workingEntitlement || _loadingEntitlement
-                    ? null
-                    : () => _runEntitlementAction(
-                          (service) => service.startCloudTrial(),
-                          'Cloud Backup 체험을 시작했습니다.',
-                        ),
-                icon: const Icon(Icons.cloud_outlined),
-                label: const Text('Cloud Backup 체험 시작'),
-              ),
-            if (showCloudBackupButton)
-              OutlinedButton.icon(
-                onPressed: _workingEntitlement ||
-                        _loadingEntitlement ||
-                        !purchasesReady
-                    ? null
-                    : () => _runPurchaseOptionAction(
-                          title: 'Cloud Backup 구독 선택',
-                          loadOptions: (service) =>
-                              service.cloudBackupPackageOptions(),
-                          purchase: (service, productId) =>
-                              service.purchaseCloudBackupProduct(productId),
-                          successMessage: 'Cloud Backup 구독 상태를 확인했습니다.',
-                        ),
-                icon: const Icon(Icons.cloud_upload_outlined),
-                label: const Text('Cloud Backup 구독'),
-              ),
-            OutlinedButton.icon(
-              onPressed:
-                  _workingEntitlement || _loadingEntitlement || !purchasesReady
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (showAppTrialButton)
+                FilledButton.icon(
+                  onPressed: _workingEntitlement || _loadingEntitlement
                       ? null
                       : () => _runEntitlementAction(
-                            (service) => service.restorePurchases(),
-                            '구매 복원을 완료했습니다.',
+                            (service) => service.startAppTrial(),
+                            '7일 무료체험을 시작했습니다.',
                           ),
-              icon: const Icon(Icons.restore_outlined),
-              label: const Text('구매 복원'),
-            ),
-          ],
-        ),
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('7일 무료체험 시작'),
+                ),
+              if (showProButton)
+                FilledButton.icon(
+                  onPressed: _workingEntitlement ||
+                          _loadingEntitlement ||
+                          !purchasesReady
+                      ? null
+                      : () => _runPurchaseOptionAction(
+                            title: 'Pro 구독 선택',
+                            loadOptions: (service) =>
+                                service.proPackageOptions(),
+                            purchase: (service, productId) =>
+                                service.purchaseProProduct(productId),
+                            successMessage: 'Pro 구독 상태를 확인했습니다.',
+                          ),
+                  icon: const Icon(Icons.workspace_premium_outlined),
+                  label: const Text('Pro 구독'),
+                ),
+              if (showCloudTrialButton)
+                OutlinedButton.icon(
+                  onPressed: _workingEntitlement || _loadingEntitlement
+                      ? null
+                      : () => _runEntitlementAction(
+                            (service) => service.startCloudTrial(),
+                            'Cloud Backup 체험을 시작했습니다.',
+                          ),
+                  icon: const Icon(Icons.cloud_outlined),
+                  label: const Text('Cloud Backup 체험 시작'),
+                ),
+              if (showCloudBackupButton)
+                OutlinedButton.icon(
+                  onPressed: _workingEntitlement ||
+                          _loadingEntitlement ||
+                          !purchasesReady
+                      ? null
+                      : () => _runPurchaseOptionAction(
+                            title: 'Cloud Backup 구독 선택',
+                            loadOptions: (service) =>
+                                service.cloudBackupPackageOptions(),
+                            purchase: (service, productId) =>
+                                service.purchaseCloudBackupProduct(productId),
+                            successMessage: 'Cloud Backup 구독 상태를 확인했습니다.',
+                          ),
+                  icon: const Icon(Icons.cloud_upload_outlined),
+                  label: const Text('Cloud Backup 구독'),
+                ),
+              OutlinedButton.icon(
+                onPressed: _workingEntitlement ||
+                        _loadingEntitlement ||
+                        !purchasesReady
+                    ? null
+                    : () => _runEntitlementAction(
+                          (service) => service.restorePurchases(),
+                          '구매 복원을 완료했습니다.',
+                        ),
+                icon: const Icon(Icons.restore_outlined),
+                label: const Text('구매 복원'),
+              ),
+            ],
+          ),
         if (isWindowsDesktop) ...[
           const SizedBox(height: 8),
           Text(
@@ -2677,7 +2679,7 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
               ),
               const SizedBox(height: 4),
               DropdownButtonFormField<CloudAutoBackupFrequency>(
-                initialValue: _autoSettings.frequency,
+                value: _autoSettings.frequency,
                 decoration: const InputDecoration(
                   labelText: '자동 백업 주기',
                   border: OutlineInputBorder(),

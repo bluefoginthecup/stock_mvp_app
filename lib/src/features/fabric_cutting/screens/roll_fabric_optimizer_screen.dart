@@ -357,7 +357,7 @@ class _RollEditorCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<RollLengthUnit>(
-              initialValue: roll.unit,
+              value: roll.unit,
               decoration: const InputDecoration(
                 labelText: '보유 길이 단위',
                 border: OutlineInputBorder(),
@@ -1011,7 +1011,10 @@ class _MiniStat extends StatelessWidget {
       width: 112,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

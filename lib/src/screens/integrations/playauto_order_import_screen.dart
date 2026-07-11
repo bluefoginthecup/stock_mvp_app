@@ -1193,7 +1193,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            initialValue: _workAction,
+            value: _workAction,
             decoration: const InputDecoration(
               labelText: '수집 작업',
               border: OutlineInputBorder(),
@@ -2007,45 +2007,78 @@ class _DeliveryTrackingRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.18)),
       ),
-      child: Row(
-        children: [
-          Icon(Icons.local_shipping_outlined, size: 18, color: scheme.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  carrier,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 330;
+          return Row(
+            children: [
+              Icon(
+                Icons.local_shipping_outlined,
+                size: 18,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      carrier,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    SelectableText(
+                      order.invoiceNo,
+                      maxLines: 2,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                SelectableText(
-                  order.invoiceNo,
-                  maxLines: 1,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+              ),
+              const SizedBox(width: 6),
+              SizedBox.square(
+                dimension: 38,
+                child: IconButton.filledTonal(
+                  tooltip: '운송장 복사',
+                  onPressed: () => _copyInvoice(context),
+                  icon: const Icon(Icons.copy_outlined, size: 20),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
                 ),
-              ],
-            ),
-          ),
-          IconButton.filledTonal(
-            tooltip: '운송장 복사',
-            onPressed: () => _copyInvoice(context),
-            icon: const Icon(Icons.copy_outlined),
-          ),
-          const SizedBox(width: 6),
-          FilledButton.icon(
-            onPressed: () => _openTracking(context),
-            icon: const Icon(Icons.open_in_new, size: 18),
-            label: const Text('배송조회'),
-          ),
-        ],
+              ),
+              const SizedBox(width: 6),
+              if (compact)
+                SizedBox.square(
+                  dimension: 38,
+                  child: IconButton.filled(
+                    tooltip: '배송조회',
+                    onPressed: () => _openTracking(context),
+                    icon: const Icon(Icons.open_in_new, size: 19),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: () => _openTracking(context),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('배송조회'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(104, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    textStyle: Theme.of(context).textTheme.labelMedium,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

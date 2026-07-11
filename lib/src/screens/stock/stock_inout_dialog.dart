@@ -105,7 +105,7 @@ Future<StockInOutResult?> showStockInOutDialog(
 
                   // 단위 선택 (입력단위)
                   DropdownButtonFormField<String>(
-                    initialValue: enteredUnit,
+                    value: enteredUnit,
                     items: <String>{
                       enteredUnit, // 현재값 보존
                       unitInHint ?? '',

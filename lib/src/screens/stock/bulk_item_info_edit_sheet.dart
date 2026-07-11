@@ -481,7 +481,7 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
                   },
                 ),
                 DropdownButtonFormField<String>(
-                  initialValue: _conversionMode,
+                  value: _conversionMode,
                   decoration: const InputDecoration(labelText: '환산 방식'),
                   items: const [
                     DropdownMenuItem(value: 'fixed', child: Text('fixed')),
