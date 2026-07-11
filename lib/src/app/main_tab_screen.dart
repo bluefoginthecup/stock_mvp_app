@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:stockapp_mvp/src/screens/dashboard_screen.dart';
 import 'package:stockapp_mvp/src/features/fabric_cutting/screens/fabric_cutting_home_screen.dart';
+import 'package:stockapp_mvp/src/screens/orders/order_detail_screen.dart';
 import 'package:stockapp_mvp/src/screens/orders/order_list_screen.dart';
 import 'package:stockapp_mvp/src/screens/stock/stock_browser_screen.dart';
 import 'package:stockapp_mvp/src/screens/txns/txn_list_screen.dart';
@@ -685,6 +686,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
       return StockBrowserScreen(
         initialPath: (settings.arguments as List).cast<String>(),
       );
+    }
+    if (tabId == 'orders' && settings.name == '/orders/detail') {
+      return OrderDetailScreen(orderId: settings.arguments as String);
     }
     if (tabId == 'purchases' && settings.name == '/detail') {
       final orderId = settings.arguments as String;

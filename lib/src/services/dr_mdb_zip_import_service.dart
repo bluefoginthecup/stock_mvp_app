@@ -22,16 +22,24 @@ class DrMdbImportPreview {
     required this.suppliers,
     required this.purchaseOrders,
     required this.purchaseLines,
+    required this.quotes,
+    required this.quoteLines,
     required this.missingItemJoins,
     required this.missingSupplierJoins,
+    required this.missingQuoteItemJoins,
+    required this.missingQuoteCustomerJoins,
   });
 
   final int items;
   final int suppliers;
   final int purchaseOrders;
   final int purchaseLines;
+  final int quotes;
+  final int quoteLines;
   final int missingItemJoins;
   final int missingSupplierJoins;
+  final int missingQuoteItemJoins;
+  final int missingQuoteCustomerJoins;
 }
 
 class DrMdbImportResult {
@@ -40,12 +48,16 @@ class DrMdbImportResult {
     required this.suppliers,
     required this.purchaseOrders,
     required this.purchaseLines,
+    required this.quotes,
+    required this.quoteLines,
   });
 
   final int items;
   final int suppliers;
   final int purchaseOrders;
   final int purchaseLines;
+  final int quotes;
+  final int quoteLines;
 }
 
 class DrExistingSupplierMatch {
@@ -320,6 +332,57 @@ class DrMdbZipImportService {
               ),
             );
       }
+
+      for (final row in package.quotes) {
+        final id = _required(row, 'quote_id');
+        final sourceCustomerId = _nullable(row['customer_id']);
+        final targetCustomerId = sourceCustomerId == null
+            ? null
+            : supplierMappings[sourceCustomerId] ?? sourceCustomerId;
+        final targetCustomerName = targetCustomerId == null
+            ? _fallback(row['customer_name'], '경영박사 거래처')
+            : mappedSupplierNames[targetCustomerId] ??
+                _fallback(row['customer_name'], '경영박사 거래처');
+        await db.into(db.quotes).insertOnConflictUpdate(
+              QuotesCompanion.insert(
+                id: id,
+                customerName: targetCustomerName,
+                customerId: Value(targetCustomerId),
+                quoteDate: _isoDate(row['quote_date'], now),
+                validUntil: Value(_nullableIsoDate(row['valid_until'])),
+                status: _fallback(row['status'], 'sent'),
+                memo: Value(_nullable(row['memo'])),
+                vatType: Value(_asInt(row['vat_type'])),
+                createdAt: _isoDate(row['quote_date'], now),
+                updatedAt: now,
+                isDeleted: const Value(false),
+                deletedAt: const Value(null),
+              ),
+            );
+      }
+
+      for (final row in package.quoteLines) {
+        final id = _required(row, 'quote_line_id');
+        await db.into(db.quoteLines).insertOnConflictUpdate(
+              QuoteLinesCompanion.insert(
+                id: id,
+                quoteId: _required(row, 'quote_id'),
+                itemId: _required(row, 'item_id'),
+                name: _fallback(row['name'], '경영박사 품목'),
+                unit: _fallback(row['unit'], 'EA'),
+                qty: _asDouble(row['qty']),
+                unitPrice: Value(_asDouble(row['unit_price'])),
+                vatType: Value(_asInt(row['vat_type'])),
+                supplyAmount: Value(_asDouble(row['supply_amount'])),
+                vatAmount: Value(_asDouble(row['vat_amount'])),
+                totalAmount: Value(_asDouble(row['total_amount'])),
+                amountEdited: const Value(true),
+                memo: Value(_nullable(row['memo'])),
+                isDeleted: const Value(false),
+                deletedAt: const Value(null),
+              ),
+            );
+      }
     });
 
     return DrMdbImportResult(
@@ -327,6 +390,8 @@ class DrMdbZipImportService {
       suppliers: package.suppliers.length,
       purchaseOrders: package.purchaseOrders.length,
       purchaseLines: package.purchaseLines.length,
+      quotes: package.quotes.length,
+      quoteLines: package.quoteLines.length,
     );
   }
 
@@ -358,12 +423,16 @@ class DrMdbZipImportService {
     final suppliers = _csv(entries, 'suppliers.csv');
     final orders = _csv(entries, 'purchase_orders.csv');
     final lines = _csv(entries, 'purchase_lines.csv');
+    final quotes = _csvOptional(entries, 'quotes.csv');
+    final quoteLines = _csvOptional(entries, 'quote_lines.csv');
     final counts =
         manifest['counts'] is Map ? manifest['counts'] as Map : const {};
     if (_manifestCount(counts, 'items') != items.length ||
         _manifestCount(counts, 'suppliers') != suppliers.length ||
         _manifestCount(counts, 'purchaseOrders') != orders.length ||
-        _manifestCount(counts, 'purchaseLines') != lines.length) {
+        _manifestCount(counts, 'purchaseLines') != lines.length ||
+        _manifestCount(counts, 'quotes') != quotes.length ||
+        _manifestCount(counts, 'quoteLines') != quoteLines.length) {
       throw const DrMdbImportException('manifest의 건수와 CSV 데이터 건수가 일치하지 않습니다.');
     }
     final validation = manifest['validation'] is Map
@@ -374,14 +443,22 @@ class DrMdbZipImportService {
       suppliers: suppliers,
       purchaseOrders: orders,
       purchaseLines: lines,
+      quotes: quotes,
+      quoteLines: quoteLines,
       preview: DrMdbImportPreview(
         items: items.length,
         suppliers: suppliers.length,
         purchaseOrders: orders.length,
         purchaseLines: lines.length,
+        quotes: quotes.length,
+        quoteLines: quoteLines.length,
         missingItemJoins: _manifestCount(validation, 'missingItemJoins'),
         missingSupplierJoins:
             _manifestCount(validation, 'missingSupplierJoins'),
+        missingQuoteItemJoins:
+            _manifestCount(validation, 'missingQuoteItemJoins'),
+        missingQuoteCustomerJoins:
+            _manifestCount(validation, 'missingQuoteCustomerJoins'),
       ),
     );
   }
@@ -407,6 +484,12 @@ class DrMdbZipImportService {
     }).toList();
   }
 
+  static List<Map<String, dynamic>> _csvOptional(
+      Map<String, ArchiveFile> entries, String name) {
+    if (!entries.containsKey(name)) return const [];
+    return _csv(entries, name);
+  }
+
   static String _entryText(ArchiveFile entry) =>
       utf8.decode(entry.content as List<int>);
   static int _manifestCount(Map values, String key) =>
@@ -423,6 +506,8 @@ class DrMdbZipImportService {
   static String? _nullable(Object? value) =>
       _text(value).isEmpty ? null : _text(value);
   static double _asDouble(Object? value) => double.tryParse(_text(value)) ?? 0;
+  static int _asInt(Object? value) =>
+      (double.tryParse(_text(value)) ?? 0).round();
   static double? _doubleOrNull(Object? value) =>
       _text(value).isEmpty ? null : double.tryParse(_text(value));
   static String _isoDate(Object? value, String fallback) =>
@@ -443,10 +528,14 @@ class _DrPackage {
       required this.suppliers,
       required this.purchaseOrders,
       required this.purchaseLines,
+      required this.quotes,
+      required this.quoteLines,
       required this.preview});
   final List<Map<String, dynamic>> items;
   final List<Map<String, dynamic>> suppliers;
   final List<Map<String, dynamic>> purchaseOrders;
   final List<Map<String, dynamic>> purchaseLines;
+  final List<Map<String, dynamic>> quotes;
+  final List<Map<String, dynamic>> quoteLines;
   final DrMdbImportPreview preview;
 }

@@ -4,11 +4,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../app/main_tab_controller.dart';
+import '../../models/item.dart';
+import '../../models/order.dart';
+import '../../repos/repo_interfaces.dart';
+import '../../services/playauto_item_mapping_service.dart';
+import '../../services/playauto_order_link_service.dart';
+import '../../ui/common/item_picker_sheet.dart';
 
 String _normalizeSearchText(String value) {
   return value.toLowerCase().replaceAll(RegExp(r'[\s\-\(\)\.]'), '').trim();
+}
+
+String _playAutoMappingKey(_PlayAutoOrderPreview order) {
+  final sku = order.sku.trim();
+  final shop = _normalizeSearchText(order.shopName);
+  final product = _normalizeSearchText(order.productName);
+  final option = _normalizeSearchText(order.optionName);
+  final skuPart = sku.isEmpty ? 'nosku' : 'sku::${_normalizeSearchText(sku)}';
+  return 'playauto::$shop::$skuPart::product::$product::option::$option';
+}
+
+String _playAutoOrderGroupKey(_PlayAutoOrderPreview order) {
+  final date = order.orderDate.trim().isEmpty ? '-' : order.orderDate.trim();
+  final customer = _normalizeSearchText(order.customerName);
+  return 'playauto::date::$date::customer::$customer';
 }
 
 class PlayAutoOrderImportScreen extends StatefulWidget {
@@ -1423,13 +1448,20 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
 
 class _PlayAutoOrderPreviewScreenState
     extends State<_PlayAutoOrderPreviewScreen> {
+  static const _uuid = Uuid();
   final _searchController = TextEditingController();
+  final _mappingService = PlayAutoItemMappingService();
+  final _orderLinkService = PlayAutoOrderLinkService();
   late final TextEditingController _startDateController;
   late final TextEditingController _endDateController;
   late final TextEditingController _lengthController;
   late List<_PlayAutoOrderPreview> _orders;
+  Map<String, PlayAutoItemMapping> _mappings = const {};
+  Map<String, Item> _mappedItems = const {};
+  Map<String, PlayAutoOrderLink> _orderLinks = const {};
   var _query = '';
   var _loadingOrders = false;
+  var _loadingMappings = false;
   var _cacheNotice = '조회 버튼을 누르면 저장된 주문을 먼저 확인합니다.';
   String? _selectedShopName;
 
@@ -1440,6 +1472,7 @@ class _PlayAutoOrderPreviewScreenState
     _startDateController = TextEditingController(text: widget.startDate);
     _endDateController = TextEditingController(text: widget.endDate);
     _lengthController = TextEditingController(text: widget.length.toString());
+    _loadMappings();
   }
 
   @override
@@ -1503,7 +1536,15 @@ class _PlayAutoOrderPreviewScreenState
                   _PlayAutoSummaryBand(
                     orderCount: filteredOrders.length,
                     totalQty: totalQty,
+                    matchedCount: _matchedCount(filteredOrders),
+                    needsMappingCount: _needsMappingCount(filteredOrders),
+                    availableCount: _availableCount(filteredOrders),
+                    shortageCount: _shortageCount(filteredOrders),
                   ),
+                  if (_loadingMappings) ...[
+                    const SizedBox(height: 8),
+                    const LinearProgressIndicator(),
+                  ],
                   const SizedBox(height: 12),
                   TextField(
                     controller: _searchController,
@@ -1585,6 +1626,14 @@ class _PlayAutoOrderPreviewScreenState
                   child: _PlayAutoOrderCard(
                     order: order,
                     statusColor: _statusColor(scheme, order.status),
+                    mapping: _mappings[_playAutoMappingKey(order)],
+                    matchedItem: _matchedItemFor(order),
+                    stockStatus: _stockStatusFor(order),
+                    orderLink: _orderLinks[_playAutoOrderGroupKey(order)],
+                    onTapProduct: () => _openMappingSheet(order),
+                    onClearMapping: () => _clearMapping(order),
+                    onOpenOrCreateOrder: () =>
+                        _openOrCreateChalstockOrder(order),
                   ),
                 );
               },
@@ -1613,6 +1662,350 @@ class _PlayAutoOrderPreviewScreenState
         .toList();
     names.sort();
     return names;
+  }
+
+  int _matchedCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) =>
+            _mappings[_playAutoMappingKey(order)]?.isConfirmed == true)
+        .length;
+  }
+
+  int _needsMappingCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) => !_mappings.containsKey(_playAutoMappingKey(order)))
+        .length;
+  }
+
+  int _availableCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) => _stockStatusFor(order)?.isAvailable == true)
+        .length;
+  }
+
+  int _shortageCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) => _stockStatusFor(order)?.hasShortage == true)
+        .length;
+  }
+
+  Item? _matchedItemFor(_PlayAutoOrderPreview order) {
+    final mapping = _mappings[_playAutoMappingKey(order)];
+    final itemId = mapping?.itemId;
+    if (itemId == null) return null;
+    return _mappedItems[itemId];
+  }
+
+  _PlayAutoStockStatus? _stockStatusFor(_PlayAutoOrderPreview order) {
+    final mapping = _mappings[_playAutoMappingKey(order)];
+    if (mapping?.isConfirmed != true) return null;
+    final item = _matchedItemFor(order);
+    if (item == null) return null;
+    final shortage =
+        (order.quantity - item.qty).clamp(0, order.quantity).toInt();
+    return _PlayAutoStockStatus(
+      item: item,
+      orderQty: order.quantity,
+      stockQty: item.qty,
+      shortageQty: shortage,
+    );
+  }
+
+  Future<void> _loadMappings() async {
+    if (_orders.isEmpty) {
+      setState(() {
+        _mappings = const {};
+        _mappedItems = const {};
+        _orderLinks = const {};
+      });
+      return;
+    }
+    setState(() => _loadingMappings = true);
+    try {
+      final itemRepo = context.read<ItemRepo>();
+      final mappings = await _mappingService.listByKeys(
+        _orders.map(_playAutoMappingKey),
+      );
+      final orderLinks = await _orderLinkService.listByOrderNos(
+        _orders.map(_playAutoOrderGroupKey),
+      );
+      final itemIds = mappings.values
+          .where((mapping) => mapping.isConfirmed)
+          .map((mapping) => mapping.itemId)
+          .whereType<String>()
+          .toSet();
+      final itemEntries = await Future.wait(
+        itemIds.map((itemId) async {
+          final item = await itemRepo.getItemById(itemId);
+          return MapEntry(itemId, item);
+        }),
+      );
+      final itemsById = <String, Item>{
+        for (final entry in itemEntries)
+          if (entry.value != null) entry.key: entry.value!,
+      };
+      if (!mounted) return;
+      setState(() {
+        _mappings = mappings;
+        _mappedItems = itemsById;
+        _orderLinks = orderLinks;
+      });
+    } finally {
+      if (mounted) setState(() => _loadingMappings = false);
+    }
+  }
+
+  Future<void> _openMappingSheet(_PlayAutoOrderPreview order) async {
+    final itemRepo = context.read<ItemRepo>();
+    final mappingKey = _playAutoMappingKey(order);
+    final current = _mappings[mappingKey];
+    final items = await itemRepo.listItems();
+    if (!mounted) return;
+    final selected = await showModalBottomSheet<_PlayAutoMappingSheetResult>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _PlayAutoItemMappingSheet(
+        order: order,
+        currentMapping: current,
+        candidates: _rankCandidates(order, items),
+      ),
+    );
+    if (selected == null || !mounted) return;
+
+    if (selected.ignore) {
+      await _mappingService.saveIgnored(
+        externalKey: mappingKey,
+        productName: order.productName,
+        optionName: order.optionName,
+        sku: order.sku,
+        shopName: order.shopName,
+      );
+      await _loadMappings();
+      _showSnack('이 플토 상품을 매칭 제외로 표시했습니다.');
+      return;
+    }
+
+    var itemId = selected.itemId;
+    if (selected.createNew) {
+      final item = await _createItemFromPlayAutoOrder(order);
+      if (item == null || !mounted) return;
+      itemId = item.id;
+    }
+    if (selected.openPicker) {
+      itemId = await showItemPickerSheet(
+        context,
+        initialItemId: current?.itemId,
+        title: '매칭할 찰스톡 아이템 검색',
+      );
+      if (itemId == null || !mounted) return;
+    }
+    if (itemId == null) return;
+
+    await _mappingService.saveConfirmed(
+      externalKey: mappingKey,
+      productName: order.productName,
+      optionName: order.optionName,
+      sku: order.sku,
+      shopName: order.shopName,
+      itemId: itemId,
+    );
+    await _loadMappings();
+    _showSnack('플토 상품 매칭을 저장했습니다.');
+  }
+
+  Future<Item?> _createItemFromPlayAutoOrder(_PlayAutoOrderPreview order) async {
+    final itemRepo = context.read<ItemRepo>();
+    final itemName = [
+      order.productName.trim(),
+      if (order.optionName.trim().isNotEmpty) order.optionName.trim(),
+    ].join(' / ');
+    if (itemName.trim().isEmpty) {
+      _showSnack('새 아이템으로 추가할 상품명이 없습니다.');
+      return null;
+    }
+
+    final item = Item(
+      id: _uuid.v4(),
+      name: itemName,
+      displayName: null,
+      sku: order.sku.trim(),
+      unit: 'EA',
+      folder: 'uncategorized',
+      subfolder: null,
+      subsubfolder: null,
+      minQty: 0,
+      qty: 0,
+      attrs: {
+        'temporary': true,
+        'status': 'needsReview',
+        'source': 'playAutoOrderMapping',
+        'createdAt': DateTime.now().toIso8601String(),
+        if (order.shopName.trim().isNotEmpty) 'shopName': order.shopName.trim(),
+        if (order.orderNo.trim().isNotEmpty) 'playAutoOrderNo': order.orderNo.trim(),
+        if (order.optionName.trim().isNotEmpty) 'optionName': order.optionName.trim(),
+      },
+    );
+
+    final uncategorizedRootId = await _findUncategorizedRootId();
+    final dyn = itemRepo as dynamic;
+    if (uncategorizedRootId != null && dyn.upsertItemWithPath is Function) {
+      await dyn.upsertItemWithPath(item, uncategorizedRootId, null, null);
+    } else {
+      await itemRepo.upsertItem(item);
+    }
+    _showSnack('새 아이템으로 추가하고 매칭했습니다.');
+    return item;
+  }
+
+  Future<String?> _findUncategorizedRootId() async {
+    final folderRepo = context.read<FolderTreeRepo>();
+    final roots = await folderRepo.listFolderChildren(null);
+    for (final root in roots) {
+      final id = root.id.trim().toLowerCase();
+      final name = root.name.trim().toLowerCase();
+      if (id == 'uncategorized' || name == 'uncategorized') {
+        return root.id;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _clearMapping(_PlayAutoOrderPreview order) async {
+    await _mappingService.delete(_playAutoMappingKey(order));
+    await _loadMappings();
+    _showSnack('매칭을 해제했습니다.');
+  }
+
+  Future<void> _openOrCreateChalstockOrder(
+    _PlayAutoOrderPreview order,
+  ) async {
+    final groupKey = _playAutoOrderGroupKey(order);
+    final existing = _orderLinks[groupKey];
+    if (existing != null) {
+      _openChalstockOrder(existing.orderId);
+      return;
+    }
+
+    final grouped = _orders
+        .where((candidate) => _playAutoOrderGroupKey(candidate) == groupKey)
+        .toList();
+    if (grouped.isEmpty) return;
+
+    final missing = grouped.where((line) {
+      final mapping = _mappings[_playAutoMappingKey(line)];
+      return mapping?.isConfirmed != true || mapping?.itemId == null;
+    }).toList();
+    if (missing.isNotEmpty) {
+      _showSnack('같은 플토 주문번호 안에 매칭 안 된 상품이 있습니다.');
+      return;
+    }
+
+    final orderId = 'ord_${_uuid.v4()}';
+    final lines = grouped.map((line) {
+      final mapping = _mappings[_playAutoMappingKey(line)]!;
+      return OrderLine(
+        id: _uuid.v4(),
+        itemId: mapping.itemId!,
+        qty: line.quantity,
+      );
+    }).toList();
+    final first = grouped.first;
+    final orderNos = grouped
+        .map((line) => line.orderNo.trim())
+        .where((orderNo) => orderNo.isNotEmpty && orderNo != '-')
+        .toSet()
+        .toList();
+    final memo = [
+      '플토 주문묶음: ${first.orderDate} / ${first.customerName}',
+      if (orderNos.isNotEmpty) '플토 주문번호: ${orderNos.join(', ')}',
+      '판매처: ${first.shopName}',
+      if (first.phone.isNotEmpty) '연락처: ${first.phone}',
+      if (first.address.isNotEmpty) '주소: ${first.address}',
+      '',
+      '플토 주문상품',
+      for (final line in grouped)
+        '- ${line.productName}'
+            '${line.optionName.isEmpty ? '' : ' / ${line.optionName}'}'
+            ' x ${line.quantity}',
+    ].join('\n');
+    final chalstockOrder = Order(
+      id: orderId,
+      date: first.sortDate ?? DateTime.now(),
+      customer: first.customerName,
+      memo: memo,
+      status: OrderStatus.planned,
+      lines: lines,
+    );
+
+    await context.read<OrderRepo>().upsertOrder(chalstockOrder);
+    await _orderLinkService.save(
+      externalOrderNo: groupKey,
+      orderId: orderId,
+      shopName: first.shopName,
+    );
+    await _loadMappings();
+    _openChalstockOrder(orderId);
+  }
+
+  void _openChalstockOrder(String orderId) {
+    context.read<MainTabController>().openShellRoute(
+          '/orders/detail',
+          arguments: orderId,
+          tabIndex: 1,
+        );
+  }
+
+  List<_PlayAutoItemCandidate> _rankCandidates(
+    _PlayAutoOrderPreview order,
+    List<Item> items,
+  ) {
+    final orderText = _normalizeSearchText(
+      '${order.productName} ${order.optionName} ${order.sku}',
+    );
+    final productOnly = _normalizeSearchText(order.productName);
+    final optionOnly = _normalizeSearchText(order.optionName);
+    final scored = <_PlayAutoItemCandidate>[];
+
+    for (final item in items) {
+      final itemText = _normalizeSearchText(
+        '${item.name} ${item.displayName ?? ''} ${item.sku} '
+        '${item.folder} ${item.subfolder ?? ''} ${item.subsubfolder ?? ''}',
+      );
+      var score = 0;
+      if (order.sku.isNotEmpty &&
+          _normalizeSearchText(item.sku) == _normalizeSearchText(order.sku)) {
+        score += 120;
+      }
+      if (orderText.isNotEmpty && itemText.contains(orderText)) score += 90;
+      if (productOnly.isNotEmpty && itemText.contains(productOnly)) score += 50;
+      if (optionOnly.isNotEmpty && itemText.contains(optionOnly)) score += 25;
+      for (final token in _candidateTokens(order)) {
+        if (itemText.contains(token)) score += token.length >= 3 ? 12 : 6;
+      }
+      if (item.kind == 'Finished') score += 5;
+      if (score > 0) {
+        scored.add(_PlayAutoItemCandidate(item: item, score: score));
+      }
+    }
+
+    scored.sort((a, b) {
+      final byScore = b.score.compareTo(a.score);
+      if (byScore != 0) return byScore;
+      return a.item.name.compareTo(b.item.name);
+    });
+    return scored.take(5).toList();
+  }
+
+  List<String> _candidateTokens(_PlayAutoOrderPreview order) {
+    final raw = '${order.productName} ${order.optionName}'
+        .replaceAll(RegExp(r'[\[\]\(\),/|]+'), ' ');
+    return raw
+        .split(RegExp(r'\s+'))
+        .map(_normalizeSearchText)
+        .where((token) => token.length >= 2)
+        .toSet()
+        .toList();
   }
 
   Color _statusColor(ColorScheme scheme, String status) {
@@ -1676,6 +2069,7 @@ class _PlayAutoOrderPreviewScreenState
         _selectedShopName = null;
         _cacheNotice = result.notice;
       });
+      await _loadMappings();
     } on _PlayAutoUserMessage catch (e) {
       if (!mounted) return;
       _showSnack(e.message);
@@ -1705,10 +2099,18 @@ class _PlayAutoSummaryBand extends StatelessWidget {
   const _PlayAutoSummaryBand({
     required this.orderCount,
     required this.totalQty,
+    required this.matchedCount,
+    required this.needsMappingCount,
+    required this.availableCount,
+    required this.shortageCount,
   });
 
   final int orderCount;
   final int totalQty;
+  final int matchedCount;
+  final int needsMappingCount;
+  final int availableCount;
+  final int shortageCount;
 
   @override
   Widget build(BuildContext context) {
@@ -1721,12 +2123,48 @@ class _PlayAutoSummaryBand extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.outlineVariant),
       ),
-      child: Row(
-        children: [
-          Expanded(child: _SummaryValue(label: '주문', value: '$orderCount건')),
-          Container(width: 1, height: 36, color: scheme.outlineVariant),
-          Expanded(child: _SummaryValue(label: '수량', value: '$totalQty개')),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tileWidth = constraints.maxWidth < 420
+              ? (constraints.maxWidth - 10) / 2
+              : (constraints.maxWidth - 20) / 3;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _SummaryValue(
+                label: '주문',
+                value: '$orderCount건',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '수량',
+                value: '$totalQty개',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '매칭 완료',
+                value: '$matchedCount건',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '매칭 필요',
+                value: '$needsMappingCount건',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '출고 가능',
+                value: '$availableCount건',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '재고 부족',
+                value: '$shortageCount건',
+                width: tileWidth,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1736,32 +2174,41 @@ class _SummaryValue extends StatelessWidget {
   const _SummaryValue({
     required this.label,
     required this.value,
+    this.width,
   });
 
   final String label;
   final String value;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-      ],
+    return SizedBox(
+      width: width,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1878,14 +2325,29 @@ class _PlayAutoOrderCard extends StatelessWidget {
   const _PlayAutoOrderCard({
     required this.order,
     required this.statusColor,
+    required this.mapping,
+    required this.matchedItem,
+    required this.stockStatus,
+    required this.orderLink,
+    required this.onTapProduct,
+    required this.onClearMapping,
+    required this.onOpenOrCreateOrder,
   });
 
   final _PlayAutoOrderPreview order;
   final Color statusColor;
+  final PlayAutoItemMapping? mapping;
+  final Item? matchedItem;
+  final _PlayAutoStockStatus? stockStatus;
+  final PlayAutoOrderLink? orderLink;
+  final VoidCallback onTapProduct;
+  final VoidCallback onClearMapping;
+  final VoidCallback onOpenOrCreateOrder;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final linked = mapping?.isConfirmed == true;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -1903,34 +2365,89 @@ class _PlayAutoOrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.productName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium,
+                  child: InkWell(
+                    onTap: onTapProduct,
+                    onLongPress: linked ? onClearMapping : null,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 2,
                       ),
-                      if (order.optionName.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          order.optionName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                        ),
-                      ],
-                    ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            order.productName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: scheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          if (order.optionName.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              order.optionName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                _StatusPill(label: order.status, color: statusColor),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _StatusPill(label: order.status, color: statusColor),
+                    if (mapping?.isConfirmed == true) ...[
+                      const SizedBox(height: 6),
+                      _StockStatusPill(status: stockStatus),
+                      const SizedBox(height: 6),
+                      ActionChip(
+                        label: const Text('찰스톡 주문'),
+                        onPressed: onOpenOrCreateOrder,
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                        side: BorderSide(
+                          color: scheme.primary.withValues(alpha: 0.35),
+                        ),
+                        backgroundColor:
+                            scheme.primaryContainer.withValues(alpha: 0.18),
+                        labelStyle:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: scheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                      ),
+                    ] else if (mapping?.isIgnored == true) ...[
+                      const SizedBox(height: 6),
+                      _StatusPill(label: '매칭 제외', color: scheme.outline),
+                    ],
+                  ],
+                ),
               ],
             ),
+            if (mapping?.isConfirmed == true) ...[
+              const SizedBox(height: 10),
+              _MatchedItemRow(
+                itemId: mapping!.itemId!,
+                item: matchedItem,
+                stockStatus: stockStatus,
+              ),
+            ],
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -1983,6 +2500,104 @@ class _PlayAutoOrderCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StockStatusPill extends StatelessWidget {
+  const _StockStatusPill({required this.status});
+
+  final _PlayAutoStockStatus? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (status == null) {
+      return _StatusPill(label: '재고 확인중', color: scheme.outline);
+    }
+    if (status!.isAvailable) {
+      return _StatusPill(label: '출고 가능', color: Colors.blue.shade700);
+    }
+    return _StatusPill(label: '재고 부족', color: scheme.error);
+  }
+}
+
+class _MatchedItemRow extends StatelessWidget {
+  const _MatchedItemRow({
+    required this.itemId,
+    required this.item,
+    required this.stockStatus,
+  });
+
+  final String itemId;
+  final Item? item;
+  final _PlayAutoStockStatus? stockStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final resolvedItem = stockStatus?.item ?? item;
+    final title = resolvedItem == null
+        ? '찰스톡 아이템 불러오는 중'
+        : resolvedItem.displayName ?? resolvedItem.name;
+    final subtitle = resolvedItem == null
+        ? itemId
+        : [
+            if (resolvedItem.sku.isNotEmpty) resolvedItem.sku,
+            if (stockStatus == null)
+              '재고 ${resolvedItem.qty}${resolvedItem.unit}'
+            else
+              '주문 ${stockStatus!.orderQty}개',
+            if (stockStatus != null)
+              '현재고 ${stockStatus!.stockQty}${resolvedItem.unit}',
+            if (stockStatus != null)
+              '부족 ${stockStatus!.shortageQty}${resolvedItem.unit}',
+          ].join(' · ');
+    final hasShortage = stockStatus?.hasShortage == true;
+    final accent = hasShortage ? scheme.error : Colors.green.shade700;
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasShortage
+                ? Icons.warning_amber_outlined
+                : Icons.check_circle_outline,
+            color: accent,
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2273,6 +2888,301 @@ class _MutedLine extends StatelessWidget {
       ],
     );
   }
+}
+
+class _PlayAutoItemMappingSheet extends StatelessWidget {
+  const _PlayAutoItemMappingSheet({
+    required this.order,
+    required this.currentMapping,
+    required this.candidates,
+  });
+
+  final _PlayAutoOrderPreview order;
+  final PlayAutoItemMapping? currentMapping;
+  final List<_PlayAutoItemCandidate> candidates;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.86;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 4,
+          bottom: 16 + viewInsets.bottom,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '찰스톡 아이템 매칭',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '닫기',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: scheme.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.productName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    if (order.optionName.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        order.optionName,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _InfoChip(
+                          icon: Icons.inventory_2_outlined,
+                          text: '${order.quantity}개',
+                        ),
+                        if (order.sku.isNotEmpty)
+                          _InfoChip(icon: Icons.qr_code_2, text: order.sku),
+                        _InfoChip(
+                          icon: Icons.storefront_outlined,
+                          text: order.shopName,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '추천 후보',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              if (candidates.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: scheme.outlineVariant),
+                  ),
+                  child: Text(
+                    '추천 후보가 없습니다. 직접 검색으로 연결해주세요.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: candidates.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final candidate = candidates[index];
+                      final item = candidate.item;
+                      final selected = currentMapping?.itemId == item.id;
+                      return _PlayAutoCandidateTile(
+                        candidate: candidate,
+                        selected: selected,
+                        onMatch: () => Navigator.pop(
+                          context,
+                          _PlayAutoMappingSheetResult.item(item.id),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.pop(
+                        context,
+                        const _PlayAutoMappingSheetResult.openPicker(),
+                      ),
+                      icon: const Icon(Icons.search),
+                      label: const Text('직접 검색'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextButton.icon(
+                      onPressed: () => Navigator.pop(
+                        context,
+                        const _PlayAutoMappingSheetResult.ignore(),
+                      ),
+                      icon: const Icon(Icons.visibility_off_outlined),
+                      label: const Text('매칭 제외'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayAutoCandidateTile extends StatelessWidget {
+  const _PlayAutoCandidateTile({
+    required this.candidate,
+    required this.selected,
+    required this.onMatch,
+  });
+
+  final _PlayAutoItemCandidate candidate;
+  final bool selected;
+  final VoidCallback onMatch;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = candidate.item;
+    final scheme = Theme.of(context).colorScheme;
+    final title = item.displayName ?? item.name;
+    final path = [
+      item.folder,
+      if ((item.subfolder ?? '').isNotEmpty) item.subfolder!,
+      if ((item.subsubfolder ?? '').isNotEmpty) item.subsubfolder!,
+    ].where((part) => part.trim().isNotEmpty).join(' / ');
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: selected
+            ? scheme.primaryContainer.withValues(alpha: 0.35)
+            : scheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: selected ? scheme.primary : scheme.outlineVariant,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            selected ? Icons.check_circle : Icons.inventory_2_outlined,
+            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  [
+                    if (item.sku.isNotEmpty) item.sku,
+                    if (path.isNotEmpty) path,
+                    '재고 ${item.qty}${item.unit}',
+                  ].join(' · '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: onMatch,
+            child: Text(selected ? '선택됨' : '매칭'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayAutoMappingSheetResult {
+  const _PlayAutoMappingSheetResult.item(this.itemId)
+      : openPicker = false,
+        ignore = false;
+
+  const _PlayAutoMappingSheetResult.openPicker()
+      : itemId = null,
+        openPicker = true,
+        ignore = false;
+
+  const _PlayAutoMappingSheetResult.ignore()
+      : itemId = null,
+        openPicker = false,
+        ignore = true;
+
+  final String? itemId;
+  final bool openPicker;
+  final bool ignore;
+}
+
+class _PlayAutoItemCandidate {
+  const _PlayAutoItemCandidate({
+    required this.item,
+    required this.score,
+  });
+
+  final Item item;
+  final int score;
+}
+
+class _PlayAutoStockStatus {
+  const _PlayAutoStockStatus({
+    required this.item,
+    required this.orderQty,
+    required this.stockQty,
+    required this.shortageQty,
+  });
+
+  final Item item;
+  final int orderQty;
+  final int stockQty;
+  final int shortageQty;
+
+  bool get isAvailable => shortageQty == 0;
+  bool get hasShortage => shortageQty > 0;
 }
 
 class _PlayAutoShopAccount {

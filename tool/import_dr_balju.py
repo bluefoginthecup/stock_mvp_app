@@ -425,8 +425,14 @@ def parse_legacy_date(value: str) -> dt.datetime | None:
     parts = value.split(".")
     if len(parts) != 3 or not all(part.isdigit() for part in parts):
         return None
-    yy, month, day = (int(part) for part in parts)
-    year = 1900 + yy if yy >= 70 else 2000 + yy
+    year_part, month, day = (int(part) for part in parts)
+    year = (
+        year_part
+        if year_part >= 1000
+        else 1900 + year_part
+        if year_part >= 70
+        else 2000 + year_part
+    )
     return dt.datetime(year, month, day)
 
 

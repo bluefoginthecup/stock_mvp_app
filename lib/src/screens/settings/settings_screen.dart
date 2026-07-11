@@ -18,7 +18,6 @@ import '/src/services/attachment_limit_config.dart';
 import '/src/services/buyer_profile_service.dart';
 import '/src/services/cloud_auto_backup_service.dart';
 import '/src/services/cloud_backup_service.dart';
-import '/src/services/dr_mdb_import_service.dart' as legacy_dr;
 import '/src/services/entitlement_service.dart';
 import '/src/services/export_service.dart';
 import '/src/services/full_backup_service.dart';
@@ -164,67 +163,6 @@ class SettingsScreen extends StatelessWidget {
           const _CloudBackupSection(),
           const _SectionHeader('데이터'),
           ListTile(
-            leading: const Icon(Icons.archive_outlined),
-            title: const Text('경영박사 ZIP 가져오기'),
-            subtitle:
-                const Text('변환기로 만든 chalstock_dr_import.zip을 발주 기록으로 가져옵니다'),
-            onTap: () async {
-              final result = await FilePicker.platform.pickFiles(
-                type: FileType.custom,
-                allowedExtensions: const ['zip'],
-              );
-              final path = result?.files.single.path;
-              if (path == null) return;
-
-              final file = File(path);
-              final service = legacy_dr.DrMdbImportService(appDatabase);
-              late final legacy_dr.DrMdbImportPreview preview;
-              try {
-                preview = await service.previewZip(file);
-              } catch (e) {
-                if (!context.mounted) return;
-                await _showSimpleErrorDialog(
-                  context,
-                  title: '경영박사 ZIP 확인 실패',
-                  message: '$e',
-                );
-                return;
-              }
-
-              if (!context.mounted) return;
-              final ok = await showDialog<bool>(
-                context: context,
-                builder: (dialogContext) => AlertDialog(
-                  title: const Text('경영박사 데이터 가져오기'),
-                  content: Text(
-                    '품목 ${preview.itemCount}개\n'
-                    '거래처 ${preview.supplierCount}개\n'
-                    '발주 ${preview.purchaseOrderCount}건\n'
-                    '발주 라인 ${preview.purchaseLineCount}개\n\n'
-                    '재고 입출고 내역은 만들지 않고, 품목 재고는 0으로 가져옵니다.\n'
-                    '가져오기 전에 현재 DB 백업을 자동으로 만듭니다.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(false),
-                      child: const Text('취소'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.of(dialogContext).pop(true),
-                      child: const Text('가져오기'),
-                    ),
-                  ],
-                ),
-              );
-              if (ok != true) return;
-
-              await runWithSpinnerMessage(() async {
-                final importResult = await service.importZip(file);
-                return '${importResult.message}\n백업: ${importResult.backupPath}';
-              });
-            },
-          ),
-          ListTile(
             leading: const Icon(Icons.trending_up),
             title: const Text('발주 단가로 입고가 이력 백필'),
             subtitle: const Text('입고완료된 과거 발주의 단가를 아이템 입고가/가격 추이에 반영합니다'),
@@ -267,7 +205,7 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.move_to_inbox_outlined),
               title: const Text('경영박사 데이터 가져오기'),
-              subtitle: const Text('변환기로 만든 ZIP에서 품목·거래처·발주 내역을 가져옵니다.'),
+              subtitle: const Text('변환기로 만든 ZIP에서 품목·거래처·발주·견적을 가져옵니다.'),
               onTap: () async {
                 final picked = await FilePicker.platform.pickFiles(
                   type: FileType.custom,
@@ -313,7 +251,9 @@ class SettingsScreen extends StatelessWidget {
                       '품목 ${preview.items}개\n'
                       '거래처 ${preview.suppliers}개\n'
                       '발주 ${preview.purchaseOrders}건\n'
-                      '발주 품목 ${preview.purchaseLines}건\n\n'
+                      '발주 품목 ${preview.purchaseLines}건\n'
+                      '견적 ${preview.quotes}건\n'
+                      '견적 품목 ${preview.quoteLines}건\n\n'
                       '${warnings > 0 ? '연결되지 않은 데이터가 $warnings건 있습니다.\n\n' : ''}'
                       '${supplierMappings.isNotEmpty ? '기존 거래처에 ${supplierMappings.length}개를 연결합니다.\n\n' : ''}'
                       '같은 경영박사 ID가 이미 있으면 최신 내용으로 갱신합니다. '
@@ -340,7 +280,8 @@ class SettingsScreen extends StatelessWidget {
                     supplierMappings: supplierMappings,
                   );
                   return '가져오기 완료: 품목 ${imported.items}개, 거래처 ${imported.suppliers}개, '
-                      '발주 ${imported.purchaseOrders}건, 발주 품목 ${imported.purchaseLines}건\n'
+                      '발주 ${imported.purchaseOrders}건, 발주 품목 ${imported.purchaseLines}건, '
+                      '견적 ${imported.quotes}건, 견적 품목 ${imported.quoteLines}건\n'
                       '백업: ${backup.zipFile.path}';
                 });
               },
