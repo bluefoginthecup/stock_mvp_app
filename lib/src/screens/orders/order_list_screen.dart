@@ -150,7 +150,7 @@ class _OrdersListViewState extends State<_OrdersListView> {
       decoration: BoxDecoration(
         color: const Color(0xFFEEF2F6),
         border: Border(
-          bottom: BorderSide(color: Colors.grey.withOpacity(0.2)),
+          bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -192,7 +192,7 @@ class _OrdersListViewState extends State<_OrdersListView> {
           child: ListView.separated(
             itemCount: widget.orders.length,
             separatorBuilder: (_, __) =>
-                Divider(height: 1, color: Colors.grey.withOpacity(0.2)),
+                Divider(height: 1, color: Colors.grey.withValues(alpha: 0.2)),
             itemBuilder: (_, i) {
               final o = widget.orders[i];
               return _OrderAccordionTile(
@@ -232,7 +232,7 @@ class _OrderAccordionTile extends StatelessWidget {
     final headerBg = (o.status == OrderStatus.done)
         ? const Color(0xFFF0F8FF) // 완료: 아주 연한 블루
         : const Color(0xFFF7F7F7); // 진행중: 아주 연한 그레이
-    final bodyBg = Colors.blueGrey.withOpacity(0.04); // 펼침 영역 배경
+    final bodyBg = Colors.blueGrey.withValues(alpha: 0.04); // 펼침 영역 배경
 
     return Material(
       color: Colors.transparent,
@@ -258,7 +258,7 @@ class _OrderAccordionTile extends StatelessWidget {
                         children: [
                           // "김철수 (총 N개)"
                           Text(
-                            '${o.customer} (${totalQty}개)',
+                            '${o.customer} ($totalQty개)',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

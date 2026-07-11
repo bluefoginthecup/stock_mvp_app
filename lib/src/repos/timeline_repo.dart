@@ -97,7 +97,7 @@ class TimelineRepo {
         start: start,
         end: end,
         markers: const [],
-        meta: {'type':'po'},
+        meta: const {'type':'po'},
       ));
     }
 

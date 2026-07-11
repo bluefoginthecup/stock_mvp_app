@@ -761,8 +761,8 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
       final all = await txnRepo.listTxns();
       final List<Txn> filtered =
           all.cast<Txn>().where((t) => t.itemId == widget.itemId).toList();
-      DateTime _ts(Txn x) => x.ts;
-      filtered.sort((a, b) => _ts(b).compareTo(_ts(a)));
+      DateTime ts(Txn x) => x.ts;
+      filtered.sort((a, b) => ts(b).compareTo(ts(a)));
 
       if (!mounted) return;
       showModalBottomSheet(
@@ -1083,7 +1083,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
           FilledButton(
             onPressed: () {
               final parsed = int.tryParse(controller.text.trim());
-              Navigator.of(dialogContext).pop(parsed == null ? null : parsed);
+              Navigator.of(dialogContext).pop(parsed);
             },
             child: const Text('저장'),
           ),
@@ -1569,7 +1569,7 @@ class _StockItemDetailScreenState extends State<StockItemDetailScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('1개를 장바구니에 담았습니다.'),
+        content: const Text('1개를 장바구니에 담았습니다.'),
         action: SnackBarAction(
           label: '보기',
           onPressed: () {

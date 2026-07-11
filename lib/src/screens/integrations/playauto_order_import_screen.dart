@@ -1193,7 +1193,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _workAction,
+            initialValue: _workAction,
             decoration: const InputDecoration(
               labelText: '수집 작업',
               border: OutlineInputBorder(),

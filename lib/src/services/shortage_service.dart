@@ -158,17 +158,17 @@ class ShortageService {
 
     // 🔍 3) BOM explode 결과 요약
 
-    Map<String, double> _merge(Map<String, double> a, Map<String, double> b) {
+    Map<String, double> merge(Map<String, double> a, Map<String, double> b) {
       final r = <String, double>{}..addAll(a);
       b.forEach((k, v) => r.update(k, (x) => x + v, ifAbsent: () => v));
       return r;
     }
 
-    final rawNeed = _merge(ex.finishedRaw, ex.rawFromSemi);
-    final subNeed = _merge(ex.finishedSub, ex.subFromSemi);
+    final rawNeed = merge(ex.finishedRaw, ex.rawFromSemi);
+    final subNeed = merge(ex.finishedSub, ex.subFromSemi);
 
     // 아이템별 단위에 따라 자동 판정하여 부족 계산
-    Map<String, double> _lackByItemUnit(Map<String, double> need) {
+    Map<String, double> lackByItemUnit(Map<String, double> need) {
       final m = <String, double>{};
       need.forEach((id, n) {
         final st = _availableByItemUnit(id);
@@ -191,9 +191,9 @@ class ShortageService {
       semiNeed: ex.semiNeed,
       semiShortage: semiShort,
       rawNeed: rawNeed,
-      rawShortage: _lackByItemUnit(rawNeed),
+      rawShortage: lackByItemUnit(rawNeed),
       subNeed: subNeed,
-      subShortage: _lackByItemUnit(subNeed),
+      subShortage: lackByItemUnit(subNeed),
     );
 
     return result;
@@ -222,16 +222,16 @@ class ShortageService {
       finishedShortage: make,
     );
 
-    Map<String, double> _merge(Map<String, double> a, Map<String, double> b) {
+    Map<String, double> merge(Map<String, double> a, Map<String, double> b) {
       final r = <String, double>{}..addAll(a);
       b.forEach((k, v) => r.update(k, (x) => x + v, ifAbsent: () => v));
       return r;
     }
 
-    final rawNeed = _merge(ex.finishedRaw, ex.rawFromSemi);
-    final subNeed = _merge(ex.finishedSub, ex.subFromSemi);
+    final rawNeed = merge(ex.finishedRaw, ex.rawFromSemi);
+    final subNeed = merge(ex.finishedSub, ex.subFromSemi);
 
-    Map<String, double> _lackByItemUnit(Map<String, double> need) {
+    Map<String, double> lackByItemUnit(Map<String, double> need) {
       final m = <String, double>{};
       need.forEach((id, n) {
         final st = _availableByItemUnit(id);
@@ -255,9 +255,9 @@ class ShortageService {
       semiNeed: ex.semiNeed,
       semiShortage: semiShort,
       rawNeed: rawNeed,
-      rawShortage: _lackByItemUnit(rawNeed),
+      rawShortage: lackByItemUnit(rawNeed),
       subNeed: subNeed,
-      subShortage: _lackByItemUnit(subNeed),
+      subShortage: lackByItemUnit(subNeed),
     );
 
     return result;

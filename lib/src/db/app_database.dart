@@ -667,9 +667,7 @@ class AppDatabase extends _$AppDatabase {
 
   // 🔥 이것 추가
   static AppDatabase get instance {
-    if (_instance == null) {
-      _instance = AppDatabase();
-    }
+    _instance ??= AppDatabase();
     return _instance!;
   }
 

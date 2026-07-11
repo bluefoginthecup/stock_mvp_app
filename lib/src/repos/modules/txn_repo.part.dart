@@ -3,14 +3,12 @@ part of '../drift_unified_repo.dart';
 mixin TxnRepoMixin on _RepoCore implements TxnRepo {
   @override
   Future<List<Txn>> listTxns() async {
-    if (_txnSub == null) {
-      _txnSub = (db.select(db.txns)..orderBy([(t) => OrderingTerm.desc(t.ts)]))
+    _txnSub ??= (db.select(db.txns)..orderBy([(t) => OrderingTerm.desc(t.ts)]))
           .watch()
           .listen((rows) {
         _txnSnapshot = rows.map((r) => r.toDomain()).toList();
         notifyListeners();
       });
-    }
     return _txnSnapshot;
   }
 

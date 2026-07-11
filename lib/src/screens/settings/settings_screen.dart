@@ -2614,7 +2614,7 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
               ),
               const SizedBox(height: 4),
               DropdownButtonFormField<CloudAutoBackupFrequency>(
-                value: _autoSettings.frequency,
+                initialValue: _autoSettings.frequency,
                 decoration: const InputDecoration(
                   labelText: '자동 백업 주기',
                   border: OutlineInputBorder(),

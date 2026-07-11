@@ -20,7 +20,7 @@ mixin BomRepoMixin on _RepoCore implements BomRepo {
 
     // 🔧 캐시도 함께 갱신 (finished/semi만)
     final parent = row.parentItemId;
-    List<BomRow> _up(List<BomRow> curr) {
+    List<BomRow> up(List<BomRow> curr) {
       final i = curr.indexWhere(
         (e) => e.componentItemId == row.componentItemId && e.kind == row.kind,
       );
@@ -34,10 +34,10 @@ mixin BomRepoMixin on _RepoCore implements BomRepo {
 
     if (row.root == BomRoot.finished) {
       final curr = _bomFinishedCache[parent] ?? const <BomRow>[];
-      _bomFinishedCache[parent] = _up(curr);
+      _bomFinishedCache[parent] = up(curr);
     } else if (row.root == BomRoot.semi) {
       final curr = _bomSemiCache[parent] ?? const <BomRow>[];
-      _bomSemiCache[parent] = _up(curr);
+      _bomSemiCache[parent] = up(curr);
     }
   }
 
@@ -57,7 +57,7 @@ mixin BomRepoMixin on _RepoCore implements BomRepo {
     final parent = parts[1];
     final comp = parts[2];
     final kindStr = parts[3]; // e.g. BomKind.raw.name
-    void _remove(List<BomRow>? list) {
+    void remove(List<BomRow>? list) {
       if (list == null) return;
       list.removeWhere(
         (r) => r.componentItemId == comp && r.kind.name == kindStr,
@@ -65,9 +65,9 @@ mixin BomRepoMixin on _RepoCore implements BomRepo {
     }
 
     if (rootStr == BomRoot.finished.name) {
-      _remove(_bomFinishedCache[parent]);
+      remove(_bomFinishedCache[parent]);
     } else if (rootStr == BomRoot.semi.name) {
-      _remove(_bomSemiCache[parent]);
+      remove(_bomSemiCache[parent]);
     }
   }
 

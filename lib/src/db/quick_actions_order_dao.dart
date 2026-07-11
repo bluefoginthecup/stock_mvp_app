@@ -6,7 +6,7 @@ part 'quick_actions_order_dao.g.dart';
 @DriftAccessor(tables: [QuickActionOrders])
 class QuickActionsOrderDao extends DatabaseAccessor<AppDatabase>
     with _$QuickActionsOrderDaoMixin {
-  QuickActionsOrderDao(AppDatabase db) : super(db);
+  QuickActionsOrderDao(super.db);
 
   /// 저장된 순서를 액션ID 리스트로 로드 (없으면 빈 리스트)
   Future<List<String>> loadOrder() async {

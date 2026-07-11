@@ -12,9 +12,9 @@ Widget badge(String text, Color color, {IconData? icon}) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      color: color.withOpacity(0.12),
+      color: color.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(999),
-      border: Border.all(color: color.withOpacity(0.30)),
+      border: Border.all(color: color.withValues(alpha: 0.30)),
     ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       if (icon != null) ...[

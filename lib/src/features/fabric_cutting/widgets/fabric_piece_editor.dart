@@ -141,7 +141,7 @@ class FabricPieceEditor extends StatelessWidget {
                         borderRadius: BorderRadius.circular(24),
                         onTap: () {
                           Navigator.pop(context);
-                          onChanged(piece.copyWith(colorValue: color.value));
+                          onChanged(piece.copyWith(colorValue: color.toARGB32()));
                         },
                         child: Container(
                           width: 44,
@@ -150,10 +150,10 @@ class FabricPieceEditor extends StatelessWidget {
                             color: color,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: color.value == piece.colorValue
+                              color: color.toARGB32() == piece.colorValue
                                   ? Theme.of(context).colorScheme.primary
                                   : Colors.black26,
-                              width: color.value == piece.colorValue ? 3 : 1,
+                              width: color.toARGB32() == piece.colorValue ? 3 : 1,
                             ),
                           ),
                         ),

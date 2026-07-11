@@ -70,8 +70,8 @@ Future<bool> runStockInOutFlow(
   // ✅ 입·출고 완료 스낵바
   final absDelta = deltaRounded.abs();
   final doneMsg = isIn
-      ? '입고 완료: $absDelta ${item.unit} (현재 재고 ${nextQty}${item.unit})'
-      : '출고 완료: -$absDelta ${item.unit} (현재 재고 ${nextQty}${item.unit})';
+      ? '입고 완료: $absDelta ${item.unit} (현재 재고 $nextQty${item.unit})'
+      : '출고 완료: -$absDelta ${item.unit} (현재 재고 $nextQty${item.unit})';
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(

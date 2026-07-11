@@ -155,9 +155,10 @@ class UnifiedSeedImporter {
 
     _log(
         'Parsed -> items:${items.length}, folders:${folders.length}, bomRows:${bomRows.length}, lotsItems:${lotsMap.length}');
-    if (items.isEmpty)
+    if (items.isEmpty) {
       _log(
           '⚠️ items가 0개입니다. payload type=${itemsPayload.runtimeType}, top-level=${_topKeys(itemsPayload)}');
+    }
     if (bomRows.isEmpty) _log('ℹ️ bomRows가 0개입니다. (정상일 수도 있음)');
     if (lotsMap.isEmpty) _log('ℹ️ lots가 비어있습니다. (정상일 수도 있음)');
 
@@ -571,25 +572,25 @@ class UnifiedSeedImporter {
 
   // flat 컬럼들을 stockHints 맵으로 추출 (임포트 친화 정규화)
   Map<String, dynamic>? _extractStockHints(Map<String, dynamic> m) {
-    num? _numOrNull(dynamic v) {
+    num? numOrNull(dynamic v) {
       if (v == null || (v is String && v.trim().isEmpty)) return null;
       return _toNum(v);
     }
 
-    String? _strOrNull(dynamic v) {
+    String? strOrNull(dynamic v) {
       final s = (v ?? '').toString().trim();
       return s.isEmpty ? null : s;
     }
 
-    final qty = _numOrNull(m['stockHints_qty'] ??
+    final qty = numOrNull(m['stockHints_qty'] ??
         m['h_qty'] ??
         m['qty']); // qty는 seed 초기재고 정책과도 겹치므로 우선 보관
-    final usableQtyM = _numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
-    final unitIn = _strOrNull(m['unit_in'] ?? m['unitIn']);
-    final unitOut = _strOrNull(
+    final usableQtyM = numOrNull(m['usable_qty_m'] ?? m['usableQtyM']);
+    final unitIn = strOrNull(m['unit_in'] ?? m['unitIn']);
+    final unitOut = strOrNull(
         m['unit_out'] ?? m['unitOut'] ?? m['unit']); // unitOut 없으면 unit 참고
     final conversionRate =
-        _numOrNull(m['conversion_rate'] ?? m['conversionRate']);
+        numOrNull(m['conversion_rate'] ?? m['conversionRate']);
 
     final hasAny = qty != null ||
         usableQtyM != null ||
@@ -714,7 +715,7 @@ class UnifiedSeedImporter {
     // 1) depth=0, parentId=null, name=l1Name
     final l1 = folders.firstWhere(
       (f) => f.depth == 0 && f.parentId == null && _normName(f.name) == l1Norm,
-      orElse: () => FolderNode(
+      orElse: () => const FolderNode(
         id: '',
         name: '',
         depth: 0,
@@ -732,7 +733,7 @@ class UnifiedSeedImporter {
       final l2 = folders.firstWhere(
         (f) =>
             f.depth == 1 && f.parentId == l1.id && _normName(f.name) == l2Norm,
-        orElse: () => FolderNode(
+        orElse: () => const FolderNode(
           id: '',
           name: '',
           depth: 0,
@@ -750,7 +751,7 @@ class UnifiedSeedImporter {
       final l3 = folders.firstWhere(
         (f) =>
             f.depth == 2 && f.parentId == l2Id && _normName(f.name) == l3Norm,
-        orElse: () => FolderNode(
+        orElse: () => const FolderNode(
           id: '',
           name: '',
           depth: 0,

@@ -22,14 +22,14 @@ mixin LotRepoMixin on _RepoCore{
       );
     }).toList();
 
-    String _lotId(Lot lot) => '${lot.itemId}__${lot.lotNo}';
+    String lotId(Lot lot) => '${lot.itemId}__${lot.lotNo}';
 
     await db.batch((batch) {
       batch.insertAllOnConflictUpdate(
         db.lots,
         normalized.map((lot) {
           return LotsCompanion(
-            id: Value(_lotId(lot)),
+            id: Value(lotId(lot)),
             itemId: Value(lot.itemId),
             lotNo: Value(lot.lotNo),
             receivedQtyRoll: Value(lot.receivedQtyRoll),

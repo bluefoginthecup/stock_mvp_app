@@ -58,7 +58,7 @@ class FabricPiece {
       lengthCm: (json['lengthCm'] as num?)?.toDouble() ?? 55,
       seamAllowanceCm: (json['seamAllowanceCm'] as num?)?.toDouble() ?? 0,
       colorValue: (json['colorValue'] as num?)?.toInt() ??
-          const Color(0xFFDDDDDD).value,
+          const Color(0xFFDDDDDD).toARGB32(),
     );
   }
 }

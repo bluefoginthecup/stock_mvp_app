@@ -155,16 +155,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return  Scaffold(
-        appBar: AppBar(title: Text('주문 상세')),
-        body: Center(child: CircularProgressIndicator()),
+        appBar: AppBar(title: const Text('주문 상세')),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     final o = _order;
     if (o == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('주문 상세')),
-        body: Center(child: Text('주문을 찾을 수 없어요.')),
+        appBar: AppBar(title: const Text('주문 상세')),
+        body: const Center(child: Text('주문을 찾을 수 없어요.')),
       );
     }
 
@@ -216,9 +216,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               child: GestureDetector(
                 onLongPress: _busy ? null : _openStatusSheet,
                 child: Chip(
-                  backgroundColor: _overallColor(o).withOpacity(.08),
+                  backgroundColor: _overallColor(o).withValues(alpha: .08),
                   shape: StadiumBorder(
-                    side: BorderSide(color: _overallColor(o).withOpacity(.35)),
+                    side: BorderSide(color: _overallColor(o).withValues(alpha: .35)),
                   ),
                   label: Text(
                     _overallLabel(o),
@@ -381,7 +381,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   padding: const EdgeInsets.only(top: 6, bottom: 6),
                   child: ActionChip(
                     backgroundColor: bg,
-                    shape: StadiumBorder(side: BorderSide(color: fg.withOpacity(0.4))),
+                    shape: StadiumBorder(side: BorderSide(color: fg.withValues(alpha: 0.4))),
                     label: Text(label, style: TextStyle(color: fg, fontWeight: FontWeight.w600)),
                     onPressed: () async {
                       final workId = await ShortageResultScreen.show(
@@ -709,9 +709,9 @@ class _WorkTxnList extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(.08),
+                        color: color.withValues(alpha: .08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: color.withOpacity(.3)),
+                        border: Border.all(color: color.withValues(alpha: .3)),
                       ),
                       child: Text(
                         '${t.type == TxnType.in_ ? '입고' : '출고'}/$status',
@@ -798,9 +798,9 @@ class _ItemTxnListByOrder extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(.08),
+                        color: color.withValues(alpha: .08),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: color.withOpacity(.3)),
+                        border: Border.all(color: color.withValues(alpha: .3)),
                       ),
                       child: Text(
                         '${isIn ? '입고' : '출고'}/$status',

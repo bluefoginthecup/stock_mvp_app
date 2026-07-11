@@ -4,6 +4,8 @@
 /// - Semi 레시피:     semi(parent)     → [raw | sub]   (⚠️ semi 아래 semi 금지)
 ///
 /// 이 파일은 순수 데이터 모델만 담습니다.
+library;
+
 
 /// 레시피의 루트(부모) 타입
 enum BomRoot { finished, semi }
@@ -63,7 +65,7 @@ class BomRow {
 
   @override
   String toString() =>
-      'BomRow(root=$root, parent=$parentItemId <- ${kind.name}:${componentItemId}, qtyPer=$qtyPer, waste=$wastePct)';
+      'BomRow(root=$root, parent=$parentItemId <- ${kind.name}:$componentItemId, qtyPer=$qtyPer, waste=$wastePct)';
 }
 
 

@@ -441,10 +441,10 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
   Future<Map<String, ItemLocationSummary>> getLocationSummariesForItems(
     List<String> itemIds,
   ) async {
-    final uniqueItemIds = <String>[
+    final uniqueItemIds = <String>{
       for (final id in itemIds)
         if (id.trim().isNotEmpty) id.trim(),
-    ].toSet().toList();
+    }.toList();
     if (uniqueItemIds.isEmpty) return const {};
 
     final placeholders = List.filled(uniqueItemIds.length, '?').join(', ');
@@ -505,10 +505,10 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
     required List<String> itemIds,
     required String locationId,
   }) async {
-    final uniqueItemIds = <String>[
+    final uniqueItemIds = <String>{
       for (final id in itemIds)
         if (id.trim().isNotEmpty) id.trim(),
-    ].toSet().toList();
+    }.toList();
     if (uniqueItemIds.isEmpty || locationId.trim().isEmpty) return;
 
     final now = DateTime.now().toIso8601String();
@@ -545,10 +545,10 @@ mixin _StorageLocationRepoMixin on _RepoCore implements StorageLocationRepo {
     required List<String> locationIds,
     String? primaryLocationId,
   }) async {
-    final uniqueIds = <String>[
+    final uniqueIds = <String>{
       for (final id in locationIds)
         if (id.trim().isNotEmpty) id.trim(),
-    ].toSet().toList();
+    }.toList();
     final primaryId = uniqueIds.contains(primaryLocationId)
         ? primaryLocationId
         : (uniqueIds.isEmpty ? null : uniqueIds.first);

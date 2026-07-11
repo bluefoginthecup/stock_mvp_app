@@ -94,8 +94,9 @@ Future<StockInOutResult?> showStockInOutDialog(
                     ),
                     validator: (v) {
                       final d = double.tryParse((v ?? '').trim());
-                      if (d == null || d <= 0)
+                      if (d == null || d <= 0) {
                         return ctx.t.validate_positive_number;
+                      }
                       return null;
                     },
                     onChanged: (_) => (ctx as Element).markNeedsBuild(),
@@ -104,7 +105,7 @@ Future<StockInOutResult?> showStockInOutDialog(
 
                   // 단위 선택 (입력단위)
                   DropdownButtonFormField<String>(
-                    value: enteredUnit,
+                    initialValue: enteredUnit,
                     items: <String>{
                       enteredUnit, // 현재값 보존
                       unitInHint ?? '',
@@ -138,8 +139,9 @@ Future<StockInOutResult?> showStockInOutDialog(
                     ),
                     validator: (v) {
                       final d = double.tryParse((v ?? '').trim());
-                      if (d == null || d <= 0)
+                      if (d == null || d <= 0) {
                         return ctx.t.validate_positive_number;
+                      }
                       return null;
                     },
                     onChanged: (_) => (ctx as Element).markNeedsBuild(),

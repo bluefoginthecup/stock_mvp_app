@@ -30,7 +30,7 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
     final items = context.read<ItemRepo>();
     final bom = BomService(items); // BomService는 ItemRepo 기반
 
-    int _ceil(double v) => v == v.floorToDouble() ? v.toInt() : v.ceil();
+    int ceil(double v) => v == v.floorToDouble() ? v.toInt() : v.ceil();
 
     List<_LineVm> lines = [];
     for (var i = 0; i < widget.order.lines.length; i++) {
@@ -46,8 +46,9 @@ class _OrderShortageResultScreenState extends State<OrderShortageResultScreen> {
         for (final id in need.keys) {
           final n = need[id] ?? 0.0;
           final sh = short[id] ?? 0.0;
-          if (n > 0)
-            out.add(_RowVm(itemId: id, need: _ceil(n), shortage: _ceil(sh)));
+          if (n > 0) {
+            out.add(_RowVm(itemId: id, need: ceil(n), shortage: ceil(sh)));
+          }
         }
         out.sort((a, b) => a.itemId.compareTo(b.itemId));
         return out;
@@ -249,8 +250,8 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bg = tone == BadgeTone.ok
-        ? Colors.teal.withOpacity(0.15)
-        : Colors.red.withOpacity(0.15);
+        ? Colors.teal.withValues(alpha: 0.15)
+        : Colors.red.withValues(alpha: 0.15);
     final fg =
         tone == BadgeTone.ok ? Colors.teal.shade800 : Colors.red.shade800;
     return Container(

@@ -47,10 +47,12 @@ class L10nEn extends L10n {
   String get common_delete_title => 'Delete this order?';
 
   @override
-  String get confirm_delete_forever_body => 'This will permanently delete it. This action cannot be undone.';
+  String get confirm_delete_forever_body =>
+      'This will permanently delete it. This action cannot be undone.';
 
   @override
-  String get confirm_delete_soft_body => 'This will hide the order. It won\'t appear in the list.';
+  String get confirm_delete_soft_body =>
+      'This will hide the order. It won\'t appear in the list.';
 
   @override
   String get menu_delete_hide => 'Hide (soft delete)';
@@ -115,7 +117,8 @@ class L10nEn extends L10n {
   String get dashboard_works => 'Work Planning';
 
   @override
-  String get empty_finished_items => 'No finished products. Please add items first.';
+  String get empty_finished_items =>
+      'No finished products. Please add items first.';
 
   @override
   String get field_created_at => 'Created At';
@@ -361,7 +364,8 @@ class L10nEn extends L10n {
   }
 
   @override
-  String stock_row_sku_folder_subfolder(String sku, String folder, String subfolder) {
+  String stock_row_sku_folder_subfolder(
+      String sku, String folder, String subfolder) {
     return '$sku • $folder$subfolder';
   }
 
@@ -495,5 +499,6 @@ class L10nEn extends L10n {
   String get bom_edit_semi => 'Edit Semi BOM';
 
   @override
-  String get bom_edit_unknown_type_hint => 'Item type is unclear, so both buttons are shown.';
+  String get bom_edit_unknown_type_hint =>
+      'Item type is unclear, so both buttons are shown.';
 }

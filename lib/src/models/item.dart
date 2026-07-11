@@ -149,7 +149,7 @@ class Item {
     final hints = StockHints.fromJson(json['stockHints']);
 
     // top-level + snake/camel + hints 순서로 폴백
-    String _pickStr(dynamic a, dynamic b, dynamic c, {String? or}) {
+    String pickStr(dynamic a, dynamic b, dynamic c, {String? or}) {
       return (a is String && a.isNotEmpty)
           ? a
           : (b is String && b.isNotEmpty)
@@ -159,12 +159,12 @@ class Item {
                   : (or ?? '');
     }
 
-    double _pickNumAsDouble(dynamic a, dynamic b, dynamic c,
+    double pickNumAsDouble(dynamic a, dynamic b, dynamic c,
         {double or = 1.0}) {
       num? n;
-      if (a is num)
+      if (a is num) {
         n = a;
-      else if (b is num)
+      } else if (b is num)
         n = b;
       else if (c is num) n = c;
       return (n ?? or).toDouble();
@@ -173,16 +173,16 @@ class Item {
     final unit = (json['unit'] ?? 'EA') as String;
 
     final unitIn =
-        _pickStr(json['unit_in'], json['unitIn'], hints.unitIn, or: unit);
+        pickStr(json['unit_in'], json['unitIn'], hints.unitIn, or: unit);
     final unitOut =
-        _pickStr(json['unit_out'], json['unitOut'], hints.unitOut, or: unit);
-    final convRate = _pickNumAsDouble(
+        pickStr(json['unit_out'], json['unitOut'], hints.unitOut, or: unit);
+    final convRate = pickNumAsDouble(
         json['conversion_rate'], json['conversionRate'], hints.conversionRate,
         or: 1.0);
-    final convMode = _pickStr(
+    final convMode = pickStr(
         json['conversion_mode'], json['conversionMode'], null,
         or: 'fixed');
-    DateTime? _date(dynamic value) =>
+    DateTime? date(dynamic value) =>
         value is String ? DateTime.tryParse(value) : null;
 
     return Item(
@@ -211,8 +211,8 @@ class Item {
       defaultPurchasePrice: (json['defaultPurchasePrice'] as num?)?.toDouble(),
       defaultSalePrice: (json['defaultSalePrice'] as num?)?.toDouble(),
       reorderIntervalDays: (json['reorderIntervalDays'] as num?)?.toInt(),
-      lastOrderedAt: _date(json['lastOrderedAt']),
-      nextReorderDate: _date(json['nextReorderDate']),
+      lastOrderedAt: date(json['lastOrderedAt']),
+      nextReorderDate: date(json['nextReorderDate']),
       reorderReminderEnabled: json['reorderReminderEnabled'] == true,
       reorderReminderDaysBefore:
           (json['reorderReminderDaysBefore'] as num?)?.toInt() ?? 0,

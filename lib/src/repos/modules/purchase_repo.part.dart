@@ -179,6 +179,7 @@ mixin PurchaseRepoMixin on _RepoCore implements PurchaseOrderRepo {
     return rows.map((r) => r.toDomain()).toList();
   }
 
+  @override
   Future<Map<String, List<PurchaseLine>>> getLinesMap() async {
     final rows = await db.select(db.purchaseLines).get();
 

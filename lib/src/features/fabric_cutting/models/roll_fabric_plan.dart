@@ -111,7 +111,7 @@ class RollFabricPlan {
       name: json['name'] as String? ?? '보유 원단',
       colorName: json['colorName'] as String? ?? '색상',
       colorValue: (json['colorValue'] as num?)?.toInt() ??
-          const Color(0xFFDDDDDD).value,
+          const Color(0xFFDDDDDD).toARGB32(),
       widthCm: (json['widthCm'] as num?)?.toDouble() ?? 140,
       totalLength: (json['totalLength'] as num?)?.toDouble() ?? 10,
       unit: RollLengthUnitX.fromName(json['unit'] as String?),

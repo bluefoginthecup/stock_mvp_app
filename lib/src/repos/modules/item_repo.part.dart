@@ -215,6 +215,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return it;
   }
 
+  @override
   Item? getCachedItem(String id) {
     return _itemsById[id];
   }
@@ -783,6 +784,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     return v ?? 0;
   }
 
+  @override
   Future<void> moveItemToTrash(String id, {String? reason}) async {
     final path = await (db.select(db.itemPaths)
           ..where((t) => t.itemId.equals(id)))
@@ -825,6 +827,7 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
   //   notifyListeners();
   // }
 
+  @override
   Future<void> moveItemsToTrash(List<String> ids, {String? reason}) async {
     final now = DateTime.now().toIso8601String();
 

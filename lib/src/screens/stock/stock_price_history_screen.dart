@@ -395,7 +395,7 @@ String _formatDateTime(String iso) {
 
 String _formatMoney(num value) {
   final formatted = NumberFormat('#,##0').format(value.round());
-  return '${formatted}원';
+  return '$formatted원';
 }
 
 String _sourceLabel(String source) {

@@ -265,7 +265,7 @@ class _FabricLayoutPainter extends CustomPainter {
       ..color = piece.color
       ..style = PaintingStyle.fill;
     final empty = Paint()
-      ..color = piece.color.withOpacity(0.18)
+      ..color = piece.color.withValues(alpha: 0.18)
       ..style = PaintingStyle.fill;
 
     final rollWidth = pieceResult.requiredLengthCm * scale;
@@ -318,7 +318,7 @@ class _FabricLayoutPainter extends CustomPainter {
 
     _drawAxisText(
       canvas,
-      Offset(sideLabelWidth, 0),
+      const Offset(sideLabelWidth, 0),
       '길이 ${_fmt(piece.lengthCm)}cm / ${pieceResult.columnsNeeded}개씩',
       maxWidth: rollWidth,
     );
