@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -32,7 +33,7 @@ class ItemProductionGuideScreen extends StatefulWidget {
 class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
   late final ProductionGuideService _service;
   final Map<String, Timer> _saveTimers = {};
-  final Map<String, _RichTextValue> _drafts = {};
+  final Map<String, String> _drafts = {};
 
   @override
   void initState() {
@@ -248,7 +249,7 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
 
   void _updateDraft(
     ProductionGuideBlock block,
-    _RichTextValue value, {
+    String value, {
     bool immediate = false,
   }) {
     _drafts[block.id] = value;
@@ -262,13 +263,13 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
     });
   }
 
-  Future<void> _saveBlock(String blockId, _RichTextValue value) async {
+  Future<void> _saveBlock(String blockId, String value) async {
     _saveTimers.remove(blockId)?.cancel();
-    await _service.updateBlockText(blockId, value.encode());
+    await _service.updateBlockText(blockId, value);
   }
 
-  _RichTextValue _valueFor(ProductionGuideBlock block) {
-    return _drafts[block.id] ?? _RichTextValue.decode(block.text);
+  String _valueFor(ProductionGuideBlock block) {
+    return _drafts[block.id] ?? _QuillTextCodec.normalize(block.text);
   }
 
   List<_GuideStep> _groupSteps(List<ProductionGuideBlock> blocks) {
@@ -392,15 +393,11 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
             ),
             if (stepBlock != null) ...[
               const SizedBox(height: 8),
-              _RichStepEditor(
+              _QuillStepEditor(
                 key: ValueKey(stepBlock.id),
                 value: _valueFor(stepBlock),
                 hintText: '예: 고기를 손질한다',
                 onChanged: (value) => _updateDraft(stepBlock, value),
-                onStyleChanged: (value) {
-                  setState(() => _drafts[stepBlock.id] = value);
-                  _updateDraft(stepBlock, value, immediate: true);
-                },
               ),
             ],
             if (media.isNotEmpty) ...[
@@ -427,7 +424,7 @@ class _ItemProductionGuideScreenState extends State<ItemProductionGuideScreen> {
                 initialText: note.text ?? '',
                 onChanged: (text) => _updateDraft(
                   note,
-                  _RichTextValue(text: text),
+                  text,
                 ),
                 onDelete: () => _deleteBlock(note),
               ),
@@ -525,138 +522,150 @@ class _GuideStep {
       .toList();
 }
 
-class _RichStepEditor extends StatefulWidget {
-  final _RichTextValue value;
+class _QuillStepEditor extends StatefulWidget {
+  final String value;
   final String hintText;
-  final ValueChanged<_RichTextValue> onChanged;
-  final ValueChanged<_RichTextValue> onStyleChanged;
+  final ValueChanged<String> onChanged;
 
-  const _RichStepEditor({
+  const _QuillStepEditor({
     super.key,
     required this.value,
     required this.hintText,
     required this.onChanged,
-    required this.onStyleChanged,
   });
 
   @override
-  State<_RichStepEditor> createState() => _RichStepEditorState();
+  State<_QuillStepEditor> createState() => _QuillStepEditorState();
 }
 
-class _RichStepEditorState extends State<_RichStepEditor> {
-  late final TextEditingController _controller;
-  late _RichTextValue _value;
+class _QuillStepEditorState extends State<_QuillStepEditor> {
+  late final quill.QuillController _controller;
+  StreamSubscription<dynamic>? _changesSubscription;
 
   @override
   void initState() {
     super.initState();
-    _value = widget.value;
-    _controller = TextEditingController(text: _value.text);
+    _controller = quill.QuillController(
+      document: _QuillTextCodec.documentFromStored(widget.value),
+      selection: const TextSelection.collapsed(offset: 0),
+    );
+    _changesSubscription = _controller.document.changes.listen((_) {
+      widget.onChanged(_QuillTextCodec.encode(_controller.document));
+    });
   }
 
   @override
   void dispose() {
+    _changesSubscription?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
   @override
-  void didUpdateWidget(covariant _RichStepEditor oldWidget) {
+  void didUpdateWidget(covariant _QuillStepEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.value != widget.value && _controller.text.isEmpty) {
-      _value = widget.value;
-      _controller.text = widget.value.text;
+    if (oldWidget.value != widget.value &&
+        _QuillTextCodec.encode(_controller.document) != widget.value) {
+      _controller.document = _QuillTextCodec.documentFromStored(widget.value);
     }
-  }
-
-  void _changeStyle(_RichTextValue value) {
-    setState(() => _value = value.copyWith(text: _controller.text));
-    widget.onStyleChanged(_value);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = <Color>[
-      Colors.black87,
-      Colors.red.shade700,
-      Colors.blue.shade700,
-      Colors.green.shade700,
-      Colors.orange.shade800,
-    ];
+    final borderColor = Theme.of(context).dividerColor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            IconButton.filledTonal(
-              tooltip: '굵게',
-              isSelected: _value.bold,
-              onPressed: () =>
-                  _changeStyle(_value.copyWith(bold: !_value.bold)),
-              icon: const Icon(Icons.format_bold),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: quill.QuillSimpleToolbar(
+            controller: _controller,
+            config: const quill.QuillSimpleToolbarConfig(
+              showAlignmentButtons: true,
+              showBackgroundColorButton: true,
+              showColorButton: true,
+              showFontFamily: true,
+              showFontSize: true,
+              showHeaderStyle: false,
+              showInlineCode: false,
+              showCodeBlock: false,
+              showQuote: false,
+              showSearchButton: false,
+              multiRowsDisplay: false,
             ),
-            DropdownButton<double>(
-              value: _value.fontSize,
-              items: const [16, 18, 20, 24, 28]
-                  .map(
-                    (size) => DropdownMenuItem<double>(
-                      value: size.toDouble(),
-                      child: Text('${size}pt'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (size) {
-                if (size != null) {
-                  _changeStyle(_value.copyWith(fontSize: size));
-                }
-              },
-            ),
-            DropdownButton<String>(
-              value: _value.fontFamily,
-              items: const ['System', 'Serif', 'Mono']
-                  .map(
-                    (font) => DropdownMenuItem<String>(
-                      value: font,
-                      child: Text(font),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (font) {
-                if (font != null) {
-                  _changeStyle(_value.copyWith(fontFamily: font));
-                }
-              },
-            ),
-            for (final color in colors)
-              _ColorDot(
-                color: color,
-                selected: _value.colorValue == color.toARGB32(),
-                onTap: () =>
-                    _changeStyle(_value.copyWith(colorValue: color.toARGB32())),
-              ),
-          ],
+          ),
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: _controller,
-          minLines: 2,
-          maxLines: 6,
-          style: _value.textStyle(),
-          decoration: InputDecoration(
-            hintText: widget.hintText,
-            border: const OutlineInputBorder(),
-            contentPadding: const EdgeInsets.all(12),
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 96),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: borderColor),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: quill.QuillEditor.basic(
+                controller: _controller,
+                config: quill.QuillEditorConfig(
+                  placeholder: widget.hintText,
+                  expands: false,
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ),
           ),
-          onChanged: (text) {
-            _value = _value.copyWith(text: text);
-            widget.onChanged(_value);
-          },
         ),
       ],
     );
+  }
+}
+
+class _QuillTextCodec {
+  static const marker = '__guide_quill_delta_v1__';
+  static const legacyMarker = '__guide_rich_text_v1__';
+
+  static String normalize(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return encode(_plainDocument(''));
+    }
+    if (raw.startsWith(marker)) return raw;
+    return encode(documentFromStored(raw));
+  }
+
+  static quill.Document documentFromStored(String? raw) {
+    if (raw == null || raw.isEmpty) return _plainDocument('');
+    if (raw.startsWith(marker)) {
+      try {
+        final decoded = jsonDecode(raw.substring(marker.length));
+        if (decoded is List) {
+          return quill.Document.fromJson(decoded.cast<Map<String, dynamic>>());
+        }
+      } catch (_) {}
+    }
+    if (raw.startsWith(legacyMarker)) {
+      try {
+        final decoded = jsonDecode(raw.substring(legacyMarker.length));
+        if (decoded is Map<String, dynamic>) {
+          return _plainDocument(decoded['text'] as String? ?? '');
+        }
+      } catch (_) {}
+    }
+    return _plainDocument(raw);
+  }
+
+  static String encode(quill.Document document) {
+    return '$marker${jsonEncode(document.toDelta().toJson())}';
+  }
+
+  static quill.Document _plainDocument(String text) {
+    final normalized = text.endsWith('\n') ? text : '$text\n';
+    return quill.Document.fromJson([
+      {'insert': normalized},
+    ]);
   }
 }
 
@@ -797,134 +806,4 @@ class _GuideImageTile extends StatelessWidget {
       },
     );
   }
-}
-
-class _ColorDot extends StatelessWidget {
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ColorDot({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkResponse(
-      onTap: onTap,
-      radius: 18,
-      child: Container(
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: selected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).dividerColor,
-            width: selected ? 3 : 1,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RichTextValue {
-  static const _marker = '__guide_rich_text_v1__';
-
-  final String text;
-  final bool bold;
-  final double fontSize;
-  final int colorValue;
-  final String fontFamily;
-
-  const _RichTextValue({
-    required this.text,
-    this.bold = false,
-    this.fontSize = 18,
-    this.colorValue = 0xDD000000,
-    this.fontFamily = 'System',
-  });
-
-  factory _RichTextValue.decode(String? raw) {
-    if (raw == null || !raw.startsWith(_marker)) {
-      return _RichTextValue(text: raw ?? '');
-    }
-    try {
-      final json = jsonDecode(raw.substring(_marker.length));
-      if (json is! Map<String, dynamic>) {
-        return _RichTextValue(text: raw);
-      }
-      return _RichTextValue(
-        text: json['text'] as String? ?? '',
-        bold: json['bold'] as bool? ?? false,
-        fontSize: (json['fontSize'] as num?)?.toDouble() ?? 18,
-        colorValue: json['colorValue'] as int? ?? 0xDD000000,
-        fontFamily: json['fontFamily'] as String? ?? 'System',
-      );
-    } catch (_) {
-      return _RichTextValue(text: raw);
-    }
-  }
-
-  String encode() {
-    final isPlain = !bold &&
-        fontSize == 18 &&
-        colorValue == 0xDD000000 &&
-        fontFamily == 'System';
-    if (isPlain) return text.trim();
-    return '$_marker${jsonEncode({
-          'text': text.trim(),
-          'bold': bold,
-          'fontSize': fontSize,
-          'colorValue': colorValue,
-          'fontFamily': fontFamily,
-        })}';
-  }
-
-  TextStyle textStyle() {
-    return TextStyle(
-      color: Color(colorValue),
-      fontSize: fontSize,
-      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-      fontFamily: switch (fontFamily) {
-        'Serif' => 'Times',
-        'Mono' => 'Courier',
-        _ => null,
-      },
-    );
-  }
-
-  _RichTextValue copyWith({
-    String? text,
-    bool? bold,
-    double? fontSize,
-    int? colorValue,
-    String? fontFamily,
-  }) {
-    return _RichTextValue(
-      text: text ?? this.text,
-      bold: bold ?? this.bold,
-      fontSize: fontSize ?? this.fontSize,
-      colorValue: colorValue ?? this.colorValue,
-      fontFamily: fontFamily ?? this.fontFamily,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is _RichTextValue &&
-        other.text == text &&
-        other.bold == bold &&
-        other.fontSize == fontSize &&
-        other.colorValue == colorValue &&
-        other.fontFamily == fontFamily;
-  }
-
-  @override
-  int get hashCode => Object.hash(text, bold, fontSize, colorValue, fontFamily);
 }

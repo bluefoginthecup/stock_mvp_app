@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:provider/provider.dart';
 
 import 'package:stockapp_mvp/src/app/main_tab_screen.dart';
@@ -136,7 +137,10 @@ class _StockMaterialAppState extends State<_StockMaterialApp> {
       scaffoldMessengerKey: widget.messengerKey,
       locale: widget.locale,
       onGenerateTitle: (ctx) => L10n.of(ctx).app_title,
-      localizationsDelegates: L10n.localizationsDelegates,
+      localizationsDelegates: const [
+        ...L10n.localizationsDelegates,
+        FlutterQuillLocalizations.delegate,
+      ],
       supportedLocales: const [
         Locale('ko'),
         Locale('en'),
