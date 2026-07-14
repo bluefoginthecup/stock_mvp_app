@@ -421,6 +421,11 @@ class _MainTabScreenState extends State<MainTabScreen> {
         label: '주문보기',
         icon: Icons.fact_check_outlined,
       ),
+      _BottomTabSpec(
+        id: 'playautoFulfillment',
+        label: '출고',
+        icon: Icons.local_shipping,
+      ),
       _BottomTabSpec(id: 'stock', label: '재고', icon: Icons.inventory_2),
       _BottomTabSpec(id: 'txns', label: '입출고기록', icon: Icons.swap_vert),
       _BottomTabSpec(id: 'works', label: '작업', icon: Icons.handyman),
@@ -720,6 +725,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
         return const OrderListScreen();
       case 'playautoOrders':
         return const PlayAutoOrderImportScreen.orderView();
+      case 'playautoFulfillment':
+        return const PlayAutoOrderImportScreen.fulfillment();
       case 'stock':
         return const StockBrowserScreen();
       case 'txns':
