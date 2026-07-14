@@ -679,7 +679,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 46; //
+  int get schemaVersion => 48; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -697,6 +697,8 @@ class AppDatabase extends _$AppDatabase {
           await _ensureScheduleAttachmentsTable();
           await _ensureItemImagesTable();
           await _ensureProductionGuideTables();
+          await _ensureStampSettingsTable();
+          await _ensureBusinessProfileDocumentsTable();
         },
         beforeOpen: (details) async {
           await _ensureSupplierRoleColumns();
@@ -705,6 +707,8 @@ class AppDatabase extends _$AppDatabase {
           await _ensureStorageLocationMovementTable();
           await _ensureItemLocationQuantityColumn();
           await _ensureProductionGuideTables();
+          await _ensureStampSettingsTable();
+          await _ensureBusinessProfileDocumentsTable();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -1024,6 +1028,19 @@ class AppDatabase extends _$AppDatabase {
           if (from < 46) {
             await _ensureSupplierRoleColumns();
           }
+          if (from < 47) {
+            await _ensureStampSettingsTable();
+          }
+          if (from < 48) {
+            await _ensureBusinessProfileDocumentsTable();
+            await customStatement('''
+              INSERT OR IGNORE INTO business_profile_documents (
+                profile_id, kind, file_name, mime_type, file_bytes, updated_at
+              )
+              SELECT 1, 'stamp', 'stamp.png', 'image/png', image_bytes, updated_at
+              FROM stamp_settings WHERE id = 1
+            ''');
+          }
         },
       );
   Future<void> _backfillItemSearchKeys() async {
@@ -1270,6 +1287,30 @@ class AppDatabase extends _$AppDatabase {
         phone_fax TEXT NOT NULL DEFAULT '',
         is_default INTEGER NOT NULL DEFAULT 0,
         updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _ensureStampSettingsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS stamp_settings (
+        id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+        image_bytes BLOB NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _ensureBusinessProfileDocumentsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS business_profile_documents (
+        profile_id INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        file_bytes BLOB NOT NULL,
+        updated_at TEXT NOT NULL,
+        PRIMARY KEY (profile_id, kind)
       )
     ''');
   }

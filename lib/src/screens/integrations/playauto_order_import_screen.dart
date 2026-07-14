@@ -1,14 +1,211 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' show Value, Variable;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
+
+import '../../db/app_database.dart';
+import '../../models/order.dart';
 
 String _normalizeSearchText(String value) {
   return value.toLowerCase().replaceAll(RegExp(r'[\s\-\(\)\.]'), '').trim();
+}
+
+/// Persists PlayAuto orders in the local CharlesTalk order list.
+///
+/// The same routine is used by the automatic collection flow and the order
+/// preview so that both paths have identical duplicate protection.
+Future<({int imported, int skipped})> _savePlayAutoOrders(
+  AppDatabase db,
+  Uuid uuid,
+  Iterable<_PlayAutoOrderPreview> previews,
+) async {
+  final grouped = <String, List<_PlayAutoOrderPreview>>{};
+  for (final preview in previews) {
+    grouped.putIfAbsent(_playAutoExternalOrderKey(preview), () => []).add(preview);
+  }
+
+  var imported = 0;
+  var skipped = 0;
+  await db.transaction(() async {
+    await _ensurePlayAutoImportTables(db);
+    for (final entry in grouped.entries) {
+      final groupedPreviews = entry.value;
+      final first = groupedPreviews.first;
+      final existing = await _findPlayAutoOrderLink(
+        db,
+        _playAutoExternalOrderKeys(first),
+      );
+      if (existing != null) {
+        skipped++;
+        continue;
+      }
+
+      final now = DateTime.now();
+      final lines = <OrderLine>[];
+      final unmatched = <String>[];
+      for (final preview in groupedPreviews) {
+        final itemId = await _findPlayAutoMappedItemId(db, preview);
+        if (itemId == null) {
+          unmatched.add(_playAutoProductSummary(preview));
+          continue;
+        }
+        lines.add(OrderLine(
+          id: uuid.v4(),
+          itemId: itemId,
+          qty: preview.quantity <= 0 ? 1 : preview.quantity,
+        ));
+      }
+
+      final orderId = 'ord_${uuid.v4()}';
+      await db.into(db.orders).insert(
+            OrdersCompanion(
+              id: Value(orderId),
+              date: Value((first.sortDate ?? now).toIso8601String()),
+              customer: Value(first.customerName),
+              memo: Value(_playAutoImportMemo(first, groupedPreviews, unmatched)),
+              status: Value(OrderStatus.planned.name),
+              isDeleted: const Value(false),
+              updatedAt: Value(now.toIso8601String()),
+            ),
+          );
+      for (final line in lines) {
+        await db.into(db.orderLines).insert(line.toCompanion(orderId));
+      }
+      await db.customStatement(
+        'INSERT INTO playauto_order_links '
+        '(external_order_no, provider, order_id, shop_name, created_at, updated_at) '
+        'VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          entry.key,
+          'playauto',
+          orderId,
+          first.shopName,
+          now.toIso8601String(),
+          now.toIso8601String(),
+        ],
+      );
+      imported++;
+    }
+  });
+  return (imported: imported, skipped: skipped);
+}
+
+Future<void> _ensurePlayAutoImportTables(AppDatabase db) async {
+  await db.customStatement('''
+    CREATE TABLE IF NOT EXISTS playauto_order_links (
+      external_order_no TEXT PRIMARY KEY,
+      provider TEXT NOT NULL DEFAULT 'playauto',
+      order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      shop_name TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  ''');
+  await db.customStatement('''
+    CREATE TABLE IF NOT EXISTS playauto_item_mappings (
+      external_key TEXT PRIMARY KEY,
+      provider TEXT NOT NULL DEFAULT 'playauto',
+      product_name TEXT NOT NULL,
+      option_name TEXT NOT NULL DEFAULT '',
+      sku TEXT NOT NULL DEFAULT '',
+      shop_name TEXT NOT NULL DEFAULT '',
+      item_id TEXT NULL REFERENCES items(id) ON DELETE SET NULL,
+      status TEXT NOT NULL DEFAULT 'confirmed',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  ''');
+}
+
+Future<String?> _findPlayAutoMappedItemId(
+  AppDatabase db,
+  _PlayAutoOrderPreview preview,
+) async {
+  for (final key in _playAutoMappingKeys(preview)) {
+    final row = await db.customSelect(
+      'SELECT m.item_id FROM playauto_item_mappings m '
+      'JOIN items i ON i.id = m.item_id '
+      'WHERE m.external_key = ? AND m.item_id IS NOT NULL LIMIT 1',
+      variables: [Variable.withString(key)],
+    ).getSingleOrNull();
+    final itemId = row?.data['item_id'] as String?;
+    if (itemId != null && itemId.isNotEmpty) return itemId;
+  }
+  return null;
+}
+
+Future<Object?> _findPlayAutoOrderLink(
+  AppDatabase db,
+  List<String> externalKeys,
+) async {
+  for (final key in externalKeys) {
+    final row = await db.customSelect(
+      'SELECT order_id FROM playauto_order_links '
+      'WHERE external_order_no = ? LIMIT 1',
+      variables: [Variable.withString(key)],
+    ).getSingleOrNull();
+    if (row != null) return row;
+  }
+  return null;
+}
+
+List<String> _playAutoMappingKeys(_PlayAutoOrderPreview preview) {
+  final shop = _normalizeSearchText(preview.shopName);
+  final sku = _normalizeSearchText(preview.sku);
+  final product = _normalizeSearchText(preview.productName);
+  final option = _normalizeSearchText(preview.optionName);
+  final prefix = 'playauto::$shop';
+  if (sku.isEmpty) return const [];
+  return [
+    '$prefix::sku::$sku::product::$product::option::$option',
+    '$prefix::sku::$sku',
+  ];
+}
+
+String _playAutoExternalOrderKey(_PlayAutoOrderPreview preview) =>
+    _playAutoExternalOrderKeys(preview).first;
+
+List<String> _playAutoExternalOrderKeys(_PlayAutoOrderPreview preview) {
+  final orderNo = preview.orderNo.trim();
+  final fallback = 'playauto::date::${preview.orderDate}::customer::'
+      '${_normalizeSearchText(preview.customerName)}';
+  if (orderNo.isEmpty || orderNo == '-') return [fallback];
+  return [orderNo, fallback];
+}
+
+String _playAutoProductSummary(_PlayAutoOrderPreview preview) =>
+    '${preview.productName}'
+    '${preview.optionName.isEmpty ? '' : ' / ${preview.optionName}'} '
+    'x ${preview.quantity <= 0 ? 1 : preview.quantity}';
+
+String _playAutoImportMemo(
+  _PlayAutoOrderPreview first,
+  List<_PlayAutoOrderPreview> previews,
+  List<String> unmatched,
+) {
+  final allProducts = previews.map(_playAutoProductSummary).join('\n- ');
+  final buffer = StringBuffer()
+    ..writeln('플토 주문번호: ${first.orderNo}')
+    ..writeln('판매처: ${first.shopName}')
+    ..writeln('연락처: ${first.phone}')
+    ..writeln('주소: ${first.address}')
+    ..writeln()
+    ..writeln('플토 주문 상품')
+    ..writeln('- $allProducts');
+  if (unmatched.isNotEmpty) {
+    buffer
+      ..writeln()
+      ..writeln('품목 연결이 없어 주문 품목으로 추가하지 않은 항목')
+      ..writeln('- ${unmatched.join('\n- ')}');
+  }
+  return buffer.toString().trim();
 }
 
 class PlayAutoOrderImportScreen extends StatefulWidget {
@@ -509,6 +706,14 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         setState(() => _lastWorkNos = workNos.toList());
       }
 
+      final autoSync = workNos.isEmpty
+          ? null
+          : await _waitForWorkAndAutoSync(
+              workNos: workNos,
+              apiKey: apiKey,
+              token: token,
+            );
+
       return _PlayAutoResponse(
         statusCode: statusCode,
         body: [
@@ -520,6 +725,11 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           '등록 요청 ${groupedTargets.length}건',
           '',
           responses.join('\n\n'),
+          if (autoSync != null) ...[
+            '',
+            '찰스톡 주문 자동 반영',
+            autoSync.message,
+          ],
         ].join('\n'),
       );
     }, clearOrders: false);
@@ -543,12 +753,18 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
 
       final responses = <String>[];
       int? statusCode;
+      var allCompleted = true;
       for (final workNo in _lastWorkNos) {
         final response = await http.get(
           _endpoint('/work/$workNo'),
           headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
         );
         statusCode ??= response.statusCode;
+        if (response.statusCode < 200 ||
+            response.statusCode >= 300 ||
+            !_isWorkCompleted(response.body)) {
+          allCompleted = false;
+        }
         responses.add(
           [
             '작업번호 $workNo',
@@ -558,11 +774,112 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         );
       }
 
+      final autoSync = allCompleted
+          ? await _syncLatestCollectedOrders()
+          : const _PlayAutoAutoSyncResult(
+              message: '플토 수집 작업이 아직 완료되지 않아 자동 반영을 기다립니다.',
+            );
+
       return _PlayAutoResponse(
         statusCode: statusCode,
-        body: responses.join('\n\n'),
+        body: [
+          responses.join('\n\n'),
+          '',
+          '찰스톡 주문 자동 반영',
+          autoSync.message,
+        ].join('\n'),
       );
     }, clearOrders: false);
+  }
+
+  Future<_PlayAutoAutoSyncResult> _waitForWorkAndAutoSync({
+    required Set<String> workNos,
+    required String apiKey,
+    required String token,
+  }) async {
+    const retryCount = 6;
+    for (var attempt = 0; attempt < retryCount; attempt += 1) {
+      var allCompleted = true;
+      for (final workNo in workNos) {
+        final response = await http.get(
+          _endpoint('/work/$workNo'),
+          headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+        );
+        if (response.statusCode < 200 ||
+            response.statusCode >= 300 ||
+            !_isWorkCompleted(response.body)) {
+          allCompleted = false;
+          break;
+        }
+      }
+      if (allCompleted) return _syncLatestCollectedOrders();
+      if (attempt < retryCount - 1) {
+        await Future<void>.delayed(const Duration(seconds: 3));
+      }
+    }
+    return const _PlayAutoAutoSyncResult(
+      message: '플토 수집 작업이 아직 완료되지 않았습니다. 완료되면 작업 결과 확인을 누르면 자동 반영됩니다.',
+    );
+  }
+
+  bool _isWorkCompleted(String body) {
+    final value = body.toLowerCase();
+    const pending = [
+      'pending',
+      'waiting',
+      'queued',
+      'processing',
+      'progress',
+      'running',
+      '대기',
+      '진행',
+      '처리중',
+    ];
+    if (pending.any(value.contains)) return false;
+    const completed = [
+      'complete',
+      'completed',
+      'success',
+      'finished',
+      'done',
+      '완료',
+      '성공',
+    ];
+    return completed.any(value.contains);
+  }
+
+  Future<_PlayAutoAutoSyncResult> _syncLatestCollectedOrders() async {
+    final result = await _fetchOrdersFromPlayAuto(
+      sdate: _sdateController.text.trim(),
+      edate: _edateController.text.trim(),
+      length: int.tryParse(_lengthController.text.trim()) ?? 100,
+      forceRefresh: true,
+    );
+    if (result.statusCode == null ||
+        result.statusCode! < 200 ||
+        result.statusCode! >= 300) {
+      return const _PlayAutoAutoSyncResult(
+        message: '최신 플토 주문 조회에 실패하여 찰스톡 주문으로 반영하지 못했습니다.',
+      );
+    }
+    if (!mounted) {
+      return const _PlayAutoAutoSyncResult(message: '화면이 닫혀 자동 반영을 중단했습니다.');
+    }
+    final saved = await _savePlayAutoOrders(
+      context.read<AppDatabase>(),
+      context.read<Uuid>(),
+      result.orders,
+    );
+    if (!mounted) {
+      return const _PlayAutoAutoSyncResult(message: '화면이 닫혀 자동 반영을 중단했습니다.');
+    }
+    setState(() => _orders = result.orders);
+    return _PlayAutoAutoSyncResult(
+      message: saved.imported == 0
+          ? '새 주문이 없습니다. 이미 반영된 주문은 중복 저장하지 않았습니다.'
+          : '새 주문 ${saved.imported}건을 찰스톡 주문에 자동 반영했습니다'
+              '${saved.skipped > 0 ? ' (중복 ${saved.skipped}건 제외)' : ''}.',
+    );
   }
 
   Future<_TokenReadyResult> _ensureTokenForOrderFetch(String apiKey) async {
@@ -1430,6 +1747,7 @@ class _PlayAutoOrderPreviewScreenState
   late List<_PlayAutoOrderPreview> _orders;
   var _query = '';
   var _loadingOrders = false;
+  var _importingOrders = false;
   var _cacheNotice = '조회 버튼을 누르면 저장된 주문을 먼저 확인합니다.';
   String? _selectedShopName;
 
@@ -1503,6 +1821,19 @@ class _PlayAutoOrderPreviewScreenState
                   _PlayAutoSummaryBand(
                     orderCount: filteredOrders.length,
                     totalQty: totalQty,
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: _importingOrders || filteredOrders.isEmpty
+                        ? null
+                        : () => _importOrders(filteredOrders),
+                    icon: _importingOrders
+                        ? const SizedBox.square(
+                            dimension: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.download_for_offline_outlined),
+                    label: Text('주문보기로 가져오기 (${filteredOrders.length}건)'),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -1685,6 +2016,176 @@ class _PlayAutoOrderPreviewScreenState
     } finally {
       if (mounted) setState(() => _loadingOrders = false);
     }
+  }
+
+  Future<void> _importOrders(List<_PlayAutoOrderPreview> previews) async {
+    final grouped = <String, List<_PlayAutoOrderPreview>>{};
+    for (final preview in previews) {
+      grouped.putIfAbsent(_externalOrderKey(preview), () => []).add(preview);
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('주문보기로 가져오기'),
+        content: Text(
+          '${grouped.length}건의 주문을 일반 주문 목록에 추가합니다.\n'
+          '이미 가져온 플토 주문은 자동으로 건너뜁니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('가져오기'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _importingOrders = true);
+    try {
+      final result = await _saveOrders(grouped);
+      if (!mounted) return;
+      _showSnack(
+        result.imported == 0
+            ? '새로 가져올 주문이 없습니다. 이미 등록된 주문입니다.'
+            : '${result.imported}건을 주문보기에 추가했습니다'
+                '${result.skipped > 0 ? ' (중복 ${result.skipped}건 제외)' : ''}.',
+      );
+    } catch (e) {
+      if (mounted) _showSnack('주문 가져오기에 실패했습니다: $e');
+    } finally {
+      if (mounted) setState(() => _importingOrders = false);
+    }
+  }
+
+  Future<({int imported, int skipped})> _saveOrders(
+    Map<String, List<_PlayAutoOrderPreview>> grouped,
+  ) async {
+    final db = context.read<AppDatabase>();
+    final uuid = context.read<Uuid>();
+    return _savePlayAutoOrders(
+      db,
+      uuid,
+      grouped.values.expand((previews) => previews),
+    );
+  }
+
+  Future<void> _ensureImportTables(AppDatabase db) async {
+    await db.customStatement('''
+      CREATE TABLE IF NOT EXISTS playauto_order_links (
+        external_order_no TEXT PRIMARY KEY,
+        provider TEXT NOT NULL DEFAULT 'playauto',
+        order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        shop_name TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.customStatement('''
+      CREATE TABLE IF NOT EXISTS playauto_item_mappings (
+        external_key TEXT PRIMARY KEY,
+        provider TEXT NOT NULL DEFAULT 'playauto',
+        product_name TEXT NOT NULL,
+        option_name TEXT NOT NULL DEFAULT '',
+        sku TEXT NOT NULL DEFAULT '',
+        shop_name TEXT NOT NULL DEFAULT '',
+        item_id TEXT NULL REFERENCES items(id) ON DELETE SET NULL,
+        status TEXT NOT NULL DEFAULT 'confirmed',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<String?> _findMappedItemId(
+    AppDatabase db,
+    _PlayAutoOrderPreview preview,
+  ) async {
+    for (final key in _mappingKeys(preview)) {
+      final row = await db.customSelect(
+        'SELECT m.item_id FROM playauto_item_mappings m '
+        'JOIN items i ON i.id = m.item_id '
+        'WHERE m.external_key = ? AND m.item_id IS NOT NULL LIMIT 1',
+        variables: [Variable.withString(key)],
+      ).getSingleOrNull();
+      final itemId = row?.data['item_id'] as String?;
+      if (itemId != null && itemId.isNotEmpty) return itemId;
+    }
+    return null;
+  }
+
+  Future<Object?> _findExistingOrderLink(
+    AppDatabase db,
+    List<String> externalKeys,
+  ) async {
+    for (final key in externalKeys) {
+      final row = await db.customSelect(
+        'SELECT order_id FROM playauto_order_links '
+        'WHERE external_order_no = ? LIMIT 1',
+        variables: [Variable.withString(key)],
+      ).getSingleOrNull();
+      if (row != null) return row;
+    }
+    return null;
+  }
+
+  List<String> _mappingKeys(_PlayAutoOrderPreview preview) {
+    final shop = _normalizeSearchText(preview.shopName);
+    final sku = _normalizeSearchText(preview.sku);
+    final product = _normalizeSearchText(preview.productName);
+    final option = _normalizeSearchText(preview.optionName);
+    final prefix = 'playauto::$shop';
+    final keys = <String>[];
+    if (sku.isNotEmpty) {
+      keys.add('$prefix::sku::$sku::product::$product::option::$option');
+      keys.add('$prefix::sku::$sku');
+    }
+    return keys;
+  }
+
+  String _externalOrderKey(_PlayAutoOrderPreview preview) {
+    return _externalOrderKeys(preview).first;
+  }
+
+  List<String> _externalOrderKeys(_PlayAutoOrderPreview preview) {
+    final orderNo = preview.orderNo.trim();
+    final fallback = 'playauto::date::${preview.orderDate}::customer::'
+        '${_normalizeSearchText(preview.customerName)}';
+    if (orderNo.isEmpty || orderNo == '-') return [fallback];
+    return [orderNo, fallback];
+  }
+
+  String _productSummary(_PlayAutoOrderPreview preview) =>
+      '${preview.productName}'
+      '${preview.optionName.isEmpty ? '' : ' / ${preview.optionName}'} '
+      'x ${preview.quantity <= 0 ? 1 : preview.quantity}';
+
+  String _importMemo(
+    _PlayAutoOrderPreview first,
+    List<_PlayAutoOrderPreview> previews,
+    List<String> unmatched,
+  ) {
+    final allProducts = previews.map(_productSummary).join('\n- ');
+    final buffer = StringBuffer()
+      ..writeln('플토 주문번호: ${first.orderNo}')
+      ..writeln('판매처: ${first.shopName}')
+      ..writeln('연락처: ${first.phone}')
+      ..writeln('주소: ${first.address}')
+      ..writeln()
+      ..writeln('플토 주문 상품')
+      ..writeln('- $allProducts');
+    if (unmatched.isNotEmpty) {
+      buffer
+        ..writeln()
+        ..writeln('품목 연결이 없어 주문 품목에 추가되지 않은 항목')
+        ..writeln('- ${unmatched.join('\n- ')}');
+    }
+    return buffer.toString().trim();
   }
 
   String _formatDate(DateTime date) {
@@ -2531,6 +3032,12 @@ class _PlayAutoResponse {
 
   final int? statusCode;
   final String body;
+}
+
+class _PlayAutoAutoSyncResult {
+  const _PlayAutoAutoSyncResult({required this.message});
+
+  final String message;
 }
 
 class _PlayAutoOrderFetchResult {

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -6,11 +7,14 @@ import 'package:flutter/rendering.dart';
 import 'package:image/image.dart' as image_lib;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../models/buyer_profile.dart';
 import '../../models/quote.dart';
 import '../../models/quote_line.dart';
+import '../../db/app_database.dart';
+import '../../services/business_document_service.dart';
 
 class QuotePrintView extends StatelessWidget {
   final Quote quote;
@@ -47,7 +51,15 @@ class QuotePrintView extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: RepaintBoundary(
               key: captureKey,
-              child: _QuotePage(quote: quote, lines: lines),
+              child: _BusinessDocumentsLoadedPage(
+                profileId: quote.supplierProfileId ?? 1,
+                builder: (documents) => _QuotePage(
+                  quote: quote,
+                  lines: lines,
+                  stampBytes:
+                      documents[BusinessDocumentKind.stamp]?.bytes,
+                ),
+              ),
             ),
           ),
         ),
@@ -59,10 +71,12 @@ class QuotePrintView extends StatelessWidget {
 class _QuotePage extends StatelessWidget {
   final Quote quote;
   final List<QuoteLine> lines;
+  final Uint8List? stampBytes;
 
   const _QuotePage({
     required this.quote,
     required this.lines,
+    required this.stampBytes,
   });
 
   @override
@@ -113,7 +127,7 @@ class _QuotePage extends StatelessWidget {
             Text('[공급자] ${supplier.companyName}',
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            _profileInfoTable(supplier),
+            _profileInfoTable(supplier, stampBytes: stampBytes),
             const SizedBox(height: 24),
             const Text('아래와 같이 견적합니다.'),
             const SizedBox(height: 16),
@@ -221,7 +235,15 @@ class QuotePrintViewMobile extends StatelessWidget {
           child: Center(
             child: RepaintBoundary(
               key: captureKey,
-              child: _QuoteMobilePage(quote: quote, lines: lines),
+              child: _BusinessDocumentsLoadedPage(
+                profileId: quote.supplierProfileId ?? 1,
+                builder: (documents) => _QuoteMobilePage(
+                  quote: quote,
+                  lines: lines,
+                  stampBytes:
+                      documents[BusinessDocumentKind.stamp]?.bytes,
+                ),
+              ),
             ),
           ),
         ),
@@ -233,10 +255,12 @@ class QuotePrintViewMobile extends StatelessWidget {
 class _QuoteMobilePage extends StatelessWidget {
   final Quote quote;
   final List<QuoteLine> lines;
+  final Uint8List? stampBytes;
 
   const _QuoteMobilePage({
     required this.quote,
     required this.lines,
+    required this.stampBytes,
   });
 
   @override
@@ -274,7 +298,10 @@ class _QuoteMobilePage extends StatelessWidget {
             const Text('공급자', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             _mobileInfoLine('상호', supplier.companyName),
-            _mobileInfoLine('대표', supplier.representative),
+            _mobileRepresentativeLine(
+              supplier.representative,
+              stampBytes: stampBytes,
+            ),
             _mobileInfoLine('사업자번호', supplier.businessNumber),
             if (supplier.address.trim().isNotEmpty)
               _mobileInfoLine('주소', supplier.address),
@@ -328,6 +355,36 @@ class _QuoteMobilePage extends StatelessWidget {
   }
 }
 
+class _BusinessDocumentsLoadedPage extends StatelessWidget {
+  final int profileId;
+  final Widget Function(
+          Map<BusinessDocumentKind, BusinessDocument> documents)
+      builder;
+
+  const _BusinessDocumentsLoadedPage({
+    required this.profileId,
+    required this.builder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<BusinessDocumentKind, BusinessDocument>>(
+      future: BusinessDocumentService(context.read<AppDatabase>())
+          .loadForProfile(profileId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const SizedBox(
+            width: 120,
+            height: 120,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return builder(snapshot.data ?? const {});
+      },
+    );
+  }
+}
+
 Widget _infoLine(String label, String value) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 8),
@@ -343,7 +400,37 @@ Widget _infoLine(String label, String value) {
   );
 }
 
-Widget _profileInfoTable(BuyerProfile profile) {
+Widget _mobileRepresentativeLine(
+  String representative, {
+  required Uint8List? stampBytes,
+}) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const SizedBox(
+          width: 72,
+          child: Text('대표', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        Expanded(child: Text(representative)),
+        if (stampBytes != null) ...[
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 58,
+            height: 58,
+            child: Image.memory(stampBytes, fit: BoxFit.contain),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+Widget _profileInfoTable(
+  BuyerProfile profile, {
+  required Uint8List? stampBytes,
+}) {
   final business = [
     profile.businessType.trim(),
     profile.businessItem.trim(),
@@ -359,7 +446,33 @@ Widget _profileInfoTable(BuyerProfile profile) {
     },
     children: [
       _profileRow('사업자번호', profile.businessNumber, '상호', profile.companyName),
-      _profileRow('대표자', profile.representative, '업태/종목', business),
+      TableRow(
+        children: [
+          _profileCell('대표자', bold: true, height: 64),
+          SizedBox(
+            height: 64,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(child: Text(profile.representative)),
+                  if (stampBytes != null) ...[
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 52,
+                      height: 52,
+                      child: Image.memory(stampBytes, fit: BoxFit.contain),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          _profileCell('업태/종목', bold: true, height: 64),
+          _profileCell(business, height: 64),
+        ],
+      ),
       TableRow(
         children: [
           _profileCell('주소', bold: true),
@@ -388,12 +501,19 @@ TableRow _profileRow(
   );
 }
 
-Widget _profileCell(String text, {bool bold = false}) {
-  return Padding(
-    padding: const EdgeInsets.all(7),
-    child: Text(
-      text.trim().isEmpty ? '-' : text.trim(),
-      style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal),
+Widget _profileCell(String text, {bool bold = false, double? height}) {
+  return SizedBox(
+    height: height,
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.all(7),
+        child: Text(
+          text.trim().isEmpty ? '-' : text.trim(),
+          style:
+              TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal),
+        ),
+      ),
     ),
   );
 }
@@ -402,7 +522,7 @@ Widget _mobileInfoLine(String label, String value) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 7),
     child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
           width: 72,
@@ -534,6 +654,12 @@ Future<void> _shareQuoteJpg(
 }) async {
   final box = context.findRenderObject() as RenderBox?;
   try {
+    final documents = await BusinessDocumentService(context.read<AppDatabase>())
+        .loadForProfile(quote.supplierProfileId ?? 1);
+    if (!context.mounted) return;
+    final selectedKinds = await _selectShareDocuments(context, documents);
+    if (selectedKinds == null || !context.mounted) return;
+
     final boundary =
         captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) throw StateError('견적서 이미지를 만들 수 없습니다.');
@@ -549,8 +675,23 @@ Future<void> _shareQuoteJpg(
         '견적서_${_safeFileName(quote.customerName)}_${DateFormat('yyyyMMdd').format(quote.quoteDate)}';
     final outFile = File('${tempDir.path}/$subject.jpg');
     await outFile.writeAsBytes(jpgBytes, flush: true);
+    final shareFiles = <XFile>[
+      XFile(outFile.path, mimeType: 'image/jpeg', name: '$subject.jpg'),
+    ];
+    for (final kind in selectedKinds) {
+      final document = documents[kind];
+      if (document == null) continue;
+      final fileName = _safeFileName(document.fileName);
+      final attachment = File('${tempDir.path}/$fileName');
+      await attachment.writeAsBytes(document.bytes, flush: true);
+      shareFiles.add(XFile(
+        attachment.path,
+        mimeType: document.mimeType,
+        name: fileName,
+      ));
+    }
     await Share.shareXFiles(
-      [XFile(outFile.path, mimeType: 'image/jpeg', name: '$subject.jpg')],
+      shareFiles,
       subject: subject,
       sharePositionOrigin:
           box == null ? null : box.localToGlobal(Offset.zero) & box.size,
@@ -561,6 +702,60 @@ Future<void> _shareQuoteJpg(
       SnackBar(content: Text('견적서 JPG 내보내기에 실패했습니다: $e')),
     );
   }
+}
+
+Future<Set<BusinessDocumentKind>?> _selectShareDocuments(
+  BuildContext context,
+  Map<BusinessDocumentKind, BusinessDocument> documents,
+) async {
+  final available = [
+    BusinessDocumentKind.registration,
+    BusinessDocumentKind.bankAccount,
+  ].where(documents.containsKey).toList();
+  if (available.isEmpty) return <BusinessDocumentKind>{};
+
+  final selected = <BusinessDocumentKind>{};
+  return showDialog<Set<BusinessDocumentKind>>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('함께 보낼 파일'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('견적서와 함께 전송할 첨부 파일을 선택하세요.'),
+            const SizedBox(height: 8),
+            for (final kind in available)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(kind.label),
+                subtitle: Text(documents[kind]!.fileName),
+                value: selected.contains(kind),
+                onChanged: (checked) {
+                  setState(() {
+                    if (checked == true) {
+                      selected.add(kind);
+                    } else {
+                      selected.remove(kind);
+                    }
+                  });
+                },
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop({...selected}),
+            child: const Text('공유'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 String _safeFileName(String value) {

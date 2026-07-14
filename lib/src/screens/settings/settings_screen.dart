@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,7 @@ import '/src/models/app_entitlement.dart';
 import '/src/models/buyer_profile.dart';
 import '/src/models/subscription_plan.dart';
 import '/src/services/backup_file_delivery_service.dart';
+import '/src/services/business_document_service.dart';
 import '/src/services/backup_encryption_settings_service.dart';
 import '/src/services/backup_encryption_key_store.dart';
 import '/src/services/auth_service.dart';
@@ -27,11 +29,127 @@ import '/src/services/purchase_price_backfill_service.dart';
 import '/src/services/restore_rollback_service.dart';
 import '/src/services/revenuecat_purchase_service.dart';
 import '/src/services/storage_usage_service.dart';
+import '/src/services/stamp_image_service.dart';
 import 'cloud_backup_list_screen.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('설정')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _SettingsMenuCard(
+            icon: Icons.person_outline,
+            title: '계정',
+            subtitle: '로그인, 이용권 및 언어 설정',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const _AccountSettingsScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _SettingsMenuCard(
+            icon: Icons.business_outlined,
+            title: '사업자 정보',
+            subtitle: '견적서 사업자등록정보 및 직인 설정',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const _BusinessSettingsScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _SettingsMenuCard(
+            icon: Icons.storage_outlined,
+            title: '데이터',
+            subtitle: '저장 공간, 백업, 복원 및 데이터 가져오기',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const _DataSettingsScreen()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsMenuCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _SettingsMenuCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        minVerticalPadding: 18,
+        leading: CircleAvatar(child: Icon(icon)),
+        title: Text(title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(subtitle),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+class _AccountSettingsScreen extends StatelessWidget {
+  const _AccountSettingsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('계정')),
+      body: ListView(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.language),
+            title: const Text('언어 설정'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).pushNamed('/settings/language'),
+          ),
+          const _AccountSection(),
+        ],
+      ),
+    );
+  }
+}
+
+class _BusinessSettingsScreen extends StatelessWidget {
+  const _BusinessSettingsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('사업자 정보')),
+      body: ListView(
+        children: const [
+          _BuyerProfileSection(),
+          _BusinessDocumentsSection(),
+        ],
+      ),
+    );
+  }
+}
+
+class _DataSettingsScreen extends StatelessWidget {
+  const _DataSettingsScreen();
 
   @override
   Widget build(BuildContext context) {
@@ -145,18 +263,9 @@ class SettingsScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('설정')), // TODO: i18n 키가 있으면 교체
+      appBar: AppBar(title: const Text('데이터')),
       body: ListView(
         children: [
-          const _SectionHeader('일반'),
-          ListTile(
-            leading: const Icon(Icons.language),
-            title: const Text('언어 설정'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).pushNamed('/settings/language'),
-          ),
-          const _AccountSection(),
-          const _BuyerProfileSection(),
           const _StorageUsageSection(),
           const _BackupEncryptionSection(),
           const _CloudBackupSection(),
@@ -1322,6 +1431,325 @@ class _BuyerProfileSection extends StatefulWidget {
 
   @override
   State<_BuyerProfileSection> createState() => _BuyerProfileSectionState();
+}
+
+class _BusinessDocumentsSection extends StatefulWidget {
+  const _BusinessDocumentsSection();
+
+  @override
+  State<_BusinessDocumentsSection> createState() =>
+      _BusinessDocumentsSectionState();
+}
+
+class _BusinessDocumentsSectionState extends State<_BusinessDocumentsSection> {
+  late final BusinessDocumentService _service;
+  late final BuyerProfileService _profileService;
+  Map<int, Map<BusinessDocumentKind, BusinessDocument>> _documents = const {};
+  Map<int, BuyerProfile> _profiles = const {};
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final db = context.read<AppDatabase>();
+    _service = BusinessDocumentService(db);
+    _profileService = BuyerProfileService(db);
+    _load();
+  }
+
+  Future<void> _load() async {
+    final profiles = await _profileService.listProfiles();
+    final documents = <int, Map<BusinessDocumentKind, BusinessDocument>>{};
+    for (final id in const [1, 2]) {
+      documents[id] = await _service.loadForProfile(id);
+    }
+    if (!mounted) return;
+    setState(() {
+      _profiles = {for (final profile in profiles) profile.id: profile};
+      _documents = documents;
+      _loading = false;
+    });
+  }
+
+  Future<void> _pick(int profileId, BusinessDocumentKind kind) async {
+    final isStamp = kind == BusinessDocumentKind.stamp;
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions:
+          isStamp ? const ['png'] : const ['png', 'jpg', 'jpeg', 'pdf'],
+      withData: true,
+    );
+    if (result == null) return;
+    final file = result.files.single;
+    final bytes = file.bytes;
+    if (bytes == null) return;
+    if (bytes.length > 10 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('파일은 10MB 이하만 저장할 수 있습니다.')),
+        );
+      }
+      return;
+    }
+    if (isStamp &&
+        (bytes.length < 4 ||
+            bytes[0] != 0x89 ||
+            bytes[1] != 0x50 ||
+            bytes[2] != 0x4e ||
+            bytes[3] != 0x47)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('직인은 올바른 PNG 파일을 선택해 주세요.')),
+        );
+      }
+      return;
+    }
+    final extension = (file.extension ?? '').toLowerCase();
+    final mimeType = switch (extension) {
+      'pdf' => 'application/pdf',
+      'jpg' || 'jpeg' => 'image/jpeg',
+      _ => 'image/png',
+    };
+    await _service.save(BusinessDocument(
+      profileId: profileId,
+      kind: kind,
+      fileName: file.name,
+      mimeType: mimeType,
+      bytes: bytes,
+    ));
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${kind.label}을 저장했습니다.')),
+    );
+  }
+
+  Future<void> _delete(int profileId, BusinessDocumentKind kind) async {
+    await _service.delete(profileId, kind);
+    await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Column(
+        children: [
+          for (final profileId in const [1, 2]) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      '${_profiles[profileId]?.displayName ?? '사업자 $profileId'} 첨부 파일',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    for (final kind in BusinessDocumentKind.values)
+                      _BusinessDocumentTile(
+                        kind: kind,
+                        document: _documents[profileId]?[kind],
+                        onPick: () => _pick(profileId, kind),
+                        onDelete: () => _delete(profileId, kind),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            if (profileId == 1) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BusinessDocumentTile extends StatelessWidget {
+  final BusinessDocumentKind kind;
+  final BusinessDocument? document;
+  final VoidCallback onPick;
+  final VoidCallback onDelete;
+
+  const _BusinessDocumentTile({
+    required this.kind,
+    required this.document,
+    required this.onPick,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final document = this.document;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: kind == BusinessDocumentKind.stamp && document != null
+          ? SizedBox(
+              width: 48,
+              height: 48,
+              child: Image.memory(document.bytes, fit: BoxFit.contain),
+            )
+          : Icon(document == null
+              ? Icons.upload_file_outlined
+              : Icons.check_circle_outline),
+      title: Text(kind.label),
+      subtitle: Text(document?.fileName ?? '등록되지 않음'),
+      trailing: Wrap(
+        spacing: 4,
+        children: [
+          IconButton(
+            tooltip: document == null ? '등록' : '교체',
+            onPressed: onPick,
+            icon: const Icon(Icons.upload_file),
+          ),
+          if (document != null)
+            IconButton(
+              tooltip: '삭제',
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StampImageSection extends StatefulWidget {
+  const _StampImageSection();
+
+  @override
+  State<_StampImageSection> createState() => _StampImageSectionState();
+}
+
+class _StampImageSectionState extends State<_StampImageSection> {
+  late final StampImageService _service;
+  Uint8List? _bytes;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = StampImageService(context.read<AppDatabase>());
+    _load();
+  }
+
+  Future<void> _load() async {
+    final bytes = await _service.load();
+    if (!mounted) return;
+    setState(() {
+      _bytes = bytes;
+      _loading = false;
+    });
+  }
+
+  Future<void> _pick() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['png'],
+      withData: true,
+    );
+    if (result == null) return;
+    final bytes = result.files.single.bytes;
+    if (bytes == null || bytes.length < 8 ||
+        bytes[0] != 0x89 || bytes[1] != 0x50 || bytes[2] != 0x4e ||
+        bytes[3] != 0x47) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('올바른 PNG 파일을 선택해 주세요.')),
+        );
+      }
+      return;
+    }
+    if (bytes.length > 5 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('도장 이미지는 5MB 이하만 사용할 수 있습니다.')),
+        );
+      }
+      return;
+    }
+    await _service.save(bytes);
+    if (!mounted) return;
+    setState(() => _bytes = bytes);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('도장 이미지를 저장했습니다.')),
+    );
+  }
+
+  Future<void> _delete() async {
+    await _service.delete();
+    if (!mounted) return;
+    setState(() => _bytes = null);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('도장 이미지를 삭제했습니다.')),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('견적서 도장',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text('PNG 도장을 한 번 등록하면 견적서에 자동으로 표시됩니다.',
+                  style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 12),
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else
+                Row(
+                  children: [
+                    Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: _bytes == null
+                          ? const Icon(Icons.approval_outlined, size: 36)
+                          : Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: Image.memory(_bytes!, fit: BoxFit.contain),
+                            ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton.icon(
+                            onPressed: _pick,
+                            icon: const Icon(Icons.upload_file),
+                            label: Text(_bytes == null ? 'PNG 등록' : 'PNG 교체'),
+                          ),
+                          if (_bytes != null)
+                            TextButton.icon(
+                              onPressed: _delete,
+                              icon: const Icon(Icons.delete_outline),
+                              label: const Text('삭제'),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _BuyerProfileSectionState extends State<_BuyerProfileSection> {
