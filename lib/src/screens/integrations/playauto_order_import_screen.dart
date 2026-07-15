@@ -101,7 +101,6 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   var _loading = false;
   var _credentialsLoaded = false;
   var _autoFetchedOrderView = false;
-  var _ordersNeedSync = false;
   var _workAction = 'ScrapOrder';
   List<_PlayAutoOrderPreview> _orders = const [];
   List<_PlayAutoShopAccount> _shopAccounts = const [];
@@ -383,6 +382,13 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         length: length,
       );
       if (cached != null) return cached;
+      return const _PlayAutoOrderFetchResult(
+        orders: [],
+        statusCode: null,
+        body: '저장된 캐시가 없습니다. PlayAuto API를 호출하려면 동기화를 눌러주세요.',
+        fromCache: true,
+        noticeOverride: '캐시 없음 · API 호출 안 함',
+      );
     }
 
     final tokenResult = await _ensureTokenForOrderFetch(apiKey);
@@ -612,7 +618,6 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       if (mounted) {
         setState(() {
           _lastWorkNos = workNos.toList();
-          _ordersNeedSync = workNos.isNotEmpty;
         });
       }
 
@@ -693,7 +698,6 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       if (!mounted) return;
       setState(() {
         _orders = result.orders;
-        _ordersNeedSync = false;
         _statusCode = result.statusCode;
         _result = [
           if (previousResult != null && previousResult.isNotEmpty)
@@ -1029,12 +1033,11 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       sdate: sdate,
       edate: edate,
       length: length,
-      forceRefresh: forceRefresh || _ordersNeedSync,
+      forceRefresh: forceRefresh,
     );
     if (mounted) {
       setState(() {
         _orders = result.orders;
-        _ordersNeedSync = false;
         _sdateController.text = sdate;
         _edateController.text = edate;
         _lengthController.text = length.toString();
@@ -1471,415 +1474,430 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('플토'),
-          bottom: const TabBar(
-            tabs: [
+          bottom: TabBar(
+            onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+            tabs: const [
               Tab(icon: Icon(Icons.manage_accounts_outlined), text: '계정'),
               Tab(icon: Icon(Icons.fact_check_outlined), text: '주문'),
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (!_credentialsLoaded) ...[
-                  const LinearProgressIndicator(),
+        body: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: TabBarView(
+            children: [
+              ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (!_credentialsLoaded) ...[
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: 12),
+                  ],
+                  Text(
+                    'PlayAuto 토큰 발급, 주문 수집, 견적 주문 전송 로그를 확인합니다.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _baseUrlController,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'OpenAPI Base URL',
+                      helperText:
+                          '문서와 계정 설정에 따라 /api 포함 여부가 다를 수 있어 수정 가능하게 둡니다.',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                ],
-                Text(
-                  'PlayAuto 토큰 발급, 주문 수집, 견적 주문 전송 로그를 확인합니다.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _baseUrlController,
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    labelText: 'OpenAPI Base URL',
-                    helperText:
-                        '문서와 계정 설정에 따라 /api 포함 여부가 다를 수 있어 수정 가능하게 둡니다.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _apiKeyController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'API Key',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _authenticationKeyController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: '솔루션 인증키',
-                    helperText: '이 값을 입력하면 이메일/비밀번호 없이 토큰 발급을 시도합니다.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: '이메일',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: '비밀번호',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _tokenController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: '발급 토큰',
-                    helperText: _tokenHelperText,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: _loading ? null : _issueToken,
-                      icon: _loading
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.vpn_key_outlined),
-                      label: const Text('토큰 발급 테스트'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _loading ? null : _openOrderPreview,
-                      icon: const Icon(Icons.view_agenda_outlined),
-                      label: Text(
-                        _orders.isEmpty ? '주문 보기' : '주문 보기 ${_orders.length}건',
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _loading ? null : () => _saveCredentials(),
-                      icon: const Icon(Icons.save_outlined),
-                      label: const Text('인증 정보 저장'),
-                    ),
-                    TextButton.icon(
-                      onPressed: _loading ? null : _clearSavedCredentials,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('저장 정보 삭제'),
-                    ),
-                  ],
-                ),
-                if (_quoteOrderAddLogs.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                '최근 견적 주문 전송',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const Spacer(),
-                              TextButton.icon(
-                                onPressed: _clearQuoteOrderAddLogs,
-                                icon: const Icon(Icons.delete_outline),
-                                label: const Text('지우기'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          for (final log in _quoteOrderAddLogs.take(5))
-                            ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              leading: Icon(
-                                log.success
-                                    ? Icons.check_circle_outline
-                                    : Icons.error_outline,
-                                color: log.success ? Colors.green : Colors.red,
-                              ),
-                              title: Text(
-                                log.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                [
-                                  _formatDateTime(log.sentAt),
-                                  if (log.statusCode != null)
-                                    'HTTP ${log.statusCode}',
-                                  log.message,
-                                ].join(' · '),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      ),
+                  TextField(
+                    controller: _apiKeyController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'API Key',
+                      border: OutlineInputBorder(),
                     ),
                   ),
-                ],
-                const SizedBox(height: 24),
-                Text(
-                  '주문 수집 작업',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '쇼핑몰에서 PlayAuto로 주문 수집 또는 상태 동기화를 실행합니다. 수집 후 다음 주문 조회는 PlayAuto에서 새로 받아 캐시에 반영합니다.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: _workAction,
-                  decoration: const InputDecoration(
-                    labelText: '수집 작업',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _authenticationKeyController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: '솔루션 인증키',
+                      helperText: '이 값을 입력하면 이메일/비밀번호 없이 토큰 발급을 시도합니다.',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'ScrapOrder',
-                      child: Text('발주확인된 주문 수집'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'ScrapOrderConfirmList',
-                      child: Text('결제완료 주문 수집'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'ScrapOrderAndConfirmDoit',
-                      child: Text('발주확인 후 주문 수집'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'SyncOrderState',
-                      child: Text('주문동기화'),
-                    ),
-                  ],
-                  onChanged: _loading
-                      ? null
-                      : (value) {
-                          if (value == null) return;
-                          setState(() => _workAction = value);
-                        },
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _loading ? null : _fetchShopAccounts,
-                      icon: const Icon(Icons.storefront_outlined),
-                      label: const Text('쇼핑몰 목록 불러오기'),
-                    ),
-                    if (_shopAccounts.isNotEmpty)
-                      Text(
-                        '${_shopAccounts.length}개 쇼핑몰 불러옴',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                      ),
-                  ],
-                ),
-                if (_shopAccounts.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Text(
-                        '선택 ${_selectedShopAccountKeys.length}개',
-                        style: Theme.of(context).textTheme.labelLarge,
-                      ),
-                      const Spacer(),
-                      TextButton.icon(
-                        onPressed: _loading
-                            ? null
-                            : () {
-                                setState(() {
-                                  _selectAllShopAccounts(
-                                    _selectedShopAccountKeys.length !=
-                                        _shopAccounts.length,
-                                  );
-                                });
-                              },
-                        icon: Icon(
-                          _selectedShopAccountKeys.length ==
-                                  _shopAccounts.length
-                              ? Icons.check_box_outlined
-                              : Icons.select_all_outlined,
+                      Expanded(
+                        child: TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                            labelText: '이메일',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
-                        label: Text(
-                          _selectedShopAccountKeys.length ==
-                                  _shopAccounts.length
-                              ? '전체 해제'
-                              : '전체 선택',
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: '비밀번호',
+                            border: OutlineInputBorder(),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 260),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: scheme.outlineVariant),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: _shopAccounts.length,
-                      separatorBuilder: (_, __) =>
-                          Divider(height: 1, color: scheme.outlineVariant),
-                      itemBuilder: (context, index) {
-                        final shop = _shopAccounts[index];
-                        final selected =
-                            _selectedShopAccountKeys.contains(shop.key);
-                        return CheckboxListTile(
-                          value: selected,
-                          enabled: !_loading,
-                          dense: true,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          title: Text(
-                            shop.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            shop.id.isEmpty
-                                ? '${shop.code} · 쇼핑몰 아이디 필요'
-                                : '${shop.code} · ${shop.id}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onChanged: (value) {
-                            setState(
-                                () => _toggleShopAccount(shop, value ?? false));
-                          },
-                        );
-                      },
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _tokenController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: '발급 토큰',
+                      helperText: _tokenHelperText,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
-                ],
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 150,
-                      child: TextField(
-                        controller: _workShopCodeController,
-                        decoration: const InputDecoration(
-                          labelText: '쇼핑몰 코드',
-                          hintText: '예: A001',
-                          border: OutlineInputBorder(),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _loading ? null : _issueToken,
+                        icon: _loading
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.vpn_key_outlined),
+                        label: const Text('토큰 발급 테스트'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _loading ? null : _openOrderPreview,
+                        icon: const Icon(Icons.view_agenda_outlined),
+                        label: Text(
+                          _orders.isEmpty
+                              ? '주문 보기'
+                              : '주문 보기 ${_orders.length}건',
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _workShopIdsController,
-                        minLines: 1,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: '쇼핑몰 아이디',
-                          hintText: '여러 개면 쉼표 또는 줄바꿈',
-                          border: OutlineInputBorder(),
+                      OutlinedButton.icon(
+                        onPressed: _loading ? null : () => _saveCredentials(),
+                        icon: const Icon(Icons.save_outlined),
+                        label: const Text('인증 정보 저장'),
+                      ),
+                      TextButton.icon(
+                        onPressed: _loading ? null : _clearSavedCredentials,
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('저장 정보 삭제'),
+                      ),
+                    ],
+                  ),
+                  if (_quoteOrderAddLogs.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  '최근 견적 주문 전송',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium,
+                                ),
+                                const Spacer(),
+                                TextButton.icon(
+                                  onPressed: _clearQuoteOrderAddLogs,
+                                  icon: const Icon(Icons.delete_outline),
+                                  label: const Text('지우기'),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            for (final log in _quoteOrderAddLogs.take(5))
+                              ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(
+                                  log.success
+                                      ? Icons.check_circle_outline
+                                      : Icons.error_outline,
+                                  color:
+                                      log.success ? Colors.green : Colors.red,
+                                ),
+                                title: Text(
+                                  log.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  [
+                                    _formatDateTime(log.sentAt),
+                                    if (log.statusCode != null)
+                                      'HTTP ${log.statusCode}',
+                                    log.message,
+                                  ].join(' · '),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: _loading ? null : _registerOrderCollectionWork,
-                      icon: const Icon(Icons.play_arrow_outlined),
-                      label: const Text('쇼핑몰 주문 수집'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _loading || _lastWorkNos.isEmpty
-                          ? null
-                          : _fetchLastWorkResult,
-                      icon: const Icon(Icons.fact_check_outlined),
-                      label: Text(
-                        _lastWorkNos.isEmpty
-                            ? '결과 확인'
-                            : '결과 확인 ${_lastWorkNos.length}건',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (_statusCode != null)
+                  const SizedBox(height: 24),
                   Text(
-                    'HTTP $_statusCode',
-                    style: Theme.of(context).textTheme.titleSmall,
+                    '주문 수집 작업',
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                if (_result != null) ...[
                   const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                      borderRadius: BorderRadius.circular(8),
-                      color: scheme.surfaceContainerHighest
-                          .withValues(alpha: 0.35),
-                    ),
-                    child: SelectableText(
-                      _result!,
-                      style: const TextStyle(
-                          fontFamily: 'monospace', fontSize: 12),
-                    ),
+                  Text(
+                    '쇼핑몰에서 PlayAuto로 주문 수집 또는 상태 동기화를 실행합니다. 수집 후 다음 주문 조회는 PlayAuto에서 새로 받아 캐시에 반영합니다.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
                   ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _workAction,
+                    decoration: const InputDecoration(
+                      labelText: '수집 작업',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'ScrapOrder',
+                        child: Text('발주확인된 주문 수집'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ScrapOrderConfirmList',
+                        child: Text('결제완료 주문 수집'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'ScrapOrderAndConfirmDoit',
+                        child: Text('발주확인 후 주문 수집'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'SyncOrderState',
+                        child: Text('주문동기화'),
+                      ),
+                    ],
+                    onChanged: _loading
+                        ? null
+                        : (value) {
+                            if (value == null) return;
+                            setState(() => _workAction = value);
+                          },
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _loading ? null : _fetchShopAccounts,
+                        icon: const Icon(Icons.storefront_outlined),
+                        label: const Text('쇼핑몰 목록 불러오기'),
+                      ),
+                      if (_shopAccounts.isNotEmpty)
+                        Text(
+                          '${_shopAccounts.length}개 쇼핑몰 불러옴',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                        ),
+                    ],
+                  ),
+                  if (_shopAccounts.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Text(
+                          '선택 ${_selectedShopAccountKeys.length}개',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: _loading
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _selectAllShopAccounts(
+                                      _selectedShopAccountKeys.length !=
+                                          _shopAccounts.length,
+                                    );
+                                  });
+                                },
+                          icon: Icon(
+                            _selectedShopAccountKeys.length ==
+                                    _shopAccounts.length
+                                ? Icons.check_box_outlined
+                                : Icons.select_all_outlined,
+                          ),
+                          label: Text(
+                            _selectedShopAccountKeys.length ==
+                                    _shopAccounts.length
+                                ? '전체 해제'
+                                : '전체 선택',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 260),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: scheme.outlineVariant),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: _shopAccounts.length,
+                        separatorBuilder: (_, __) =>
+                            Divider(height: 1, color: scheme.outlineVariant),
+                        itemBuilder: (context, index) {
+                          final shop = _shopAccounts[index];
+                          final selected =
+                              _selectedShopAccountKeys.contains(shop.key);
+                          return CheckboxListTile(
+                            value: selected,
+                            enabled: !_loading,
+                            dense: true,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            title: Text(
+                              shop.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              shop.id.isEmpty
+                                  ? '${shop.code} · 쇼핑몰 아이디 필요'
+                                  : '${shop.code} · ${shop.id}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onChanged: (value) {
+                              setState(() =>
+                                  _toggleShopAccount(shop, value ?? false));
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 150,
+                        child: TextField(
+                          controller: _workShopCodeController,
+                          decoration: const InputDecoration(
+                            labelText: '쇼핑몰 코드',
+                            hintText: '예: A001',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _workShopIdsController,
+                          minLines: 1,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: '쇼핑몰 아이디',
+                            hintText: '여러 개면 쉼표 또는 줄바꿈',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      FilledButton.icon(
+                        onPressed:
+                            _loading ? null : _registerOrderCollectionWork,
+                        icon: const Icon(Icons.play_arrow_outlined),
+                        label: const Text('쇼핑몰 주문 수집'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _loading || _lastWorkNos.isEmpty
+                            ? null
+                            : _fetchLastWorkResult,
+                        icon: const Icon(Icons.fact_check_outlined),
+                        label: Text(
+                          _lastWorkNos.isEmpty
+                              ? '결과 확인'
+                              : '결과 확인 ${_lastWorkNos.length}건',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (_statusCode != null)
+                    Text(
+                      'HTTP $_statusCode',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  if (_result != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border:
+                            Border.all(color: Theme.of(context).dividerColor),
+                        borderRadius: BorderRadius.circular(8),
+                        color: scheme.surfaceContainerHighest
+                            .withValues(alpha: 0.35),
+                      ),
+                      child: SelectableText(
+                        _result!,
+                        style: const TextStyle(
+                            fontFamily: 'monospace', fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            _PlayAutoOrderPreviewScreen(
-              orders: _orders,
-              startDate: _sdateController.text.trim(),
-              endDate: _edateController.text.trim(),
-              length: int.tryParse(_lengthController.text.trim()) ?? 100,
-              onFetchOrders: _fetchOrdersForPreview,
-              fulfillmentMode: true,
-              embedded: true,
-              onInstruction: _requestShipmentInstruction,
-              onSetInvoice: _requestSetInvoice,
-              onCompleteInvoice: _requestCompleteInvoice,
-              onSendInvoice: _requestSendInvoice,
-            ),
-          ],
+              ),
+              _PlayAutoOrderPreviewScreen(
+                orders: _orders,
+                startDate: _sdateController.text.trim(),
+                endDate: _edateController.text.trim(),
+                length: int.tryParse(_lengthController.text.trim()) ?? 100,
+                onFetchOrders: _fetchOrdersForPreview,
+                fulfillmentMode: true,
+                embedded: true,
+                onInstruction: _requestShipmentInstruction,
+                onSetInvoice: _requestSetInvoice,
+                onCompleteInvoice: _requestCompleteInvoice,
+                onSendInvoice: _requestSendInvoice,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -4158,6 +4176,7 @@ class _PlayAutoOrderPreviewScreenState
     final shopNames = _shopNames;
 
     final body = CustomScrollView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
@@ -7088,6 +7107,7 @@ class _PlayAutoOrderFetchResult {
     required this.body,
     required this.fromCache,
     this.fetchedAt,
+    this.noticeOverride,
   });
 
   final List<_PlayAutoOrderPreview> orders;
@@ -7095,8 +7115,10 @@ class _PlayAutoOrderFetchResult {
   final String body;
   final bool fromCache;
   final DateTime? fetchedAt;
+  final String? noticeOverride;
 
   String get notice {
+    if (noticeOverride != null) return noticeOverride!;
     final time = fetchedAt == null ? '' : ' · ${_formatNoticeTime(fetchedAt!)}';
     return fromCache ? '캐시 사용$time' : 'PlayAuto API 호출$time';
   }
