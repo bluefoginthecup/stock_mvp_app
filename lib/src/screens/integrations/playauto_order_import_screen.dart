@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value, Variable;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,210 +9,51 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../db/app_database.dart';
+import '../../app/main_tab_controller.dart';
+import '../../models/item.dart';
 import '../../models/order.dart';
+import '../../repos/repo_interfaces.dart';
+import '../../services/order_planning_service.dart';
+import '../../services/playauto_item_mapping_service.dart';
+import '../../services/playauto_order_link_service.dart';
+import '../../ui/common/item_picker_sheet.dart';
+import '../stock/stock_new_item_sheet.dart';
+import '../stock/widgets/new_item_result.dart';
 
 String _normalizeSearchText(String value) {
   return value.toLowerCase().replaceAll(RegExp(r'[\s\-\(\)\.]'), '').trim();
 }
 
-/// Persists PlayAuto orders in the local CharlesTalk order list.
-///
-/// The same routine is used by the automatic collection flow and the order
-/// preview so that both paths have identical duplicate protection.
-Future<({int imported, int skipped})> _savePlayAutoOrders(
-  AppDatabase db,
-  Uuid uuid,
-  Iterable<_PlayAutoOrderPreview> previews,
-) async {
-  final grouped = <String, List<_PlayAutoOrderPreview>>{};
-  for (final preview in previews) {
-    grouped.putIfAbsent(_playAutoExternalOrderKey(preview), () => []).add(preview);
-  }
-
-  var imported = 0;
-  var skipped = 0;
-  await db.transaction(() async {
-    await _ensurePlayAutoImportTables(db);
-    for (final entry in grouped.entries) {
-      final groupedPreviews = entry.value;
-      final first = groupedPreviews.first;
-      final existing = await _findPlayAutoOrderLink(
-        db,
-        _playAutoExternalOrderKeys(first),
-      );
-      if (existing != null) {
-        skipped++;
-        continue;
-      }
-
-      final now = DateTime.now();
-      final lines = <OrderLine>[];
-      final unmatched = <String>[];
-      for (final preview in groupedPreviews) {
-        final itemId = await _findPlayAutoMappedItemId(db, preview);
-        if (itemId == null) {
-          unmatched.add(_playAutoProductSummary(preview));
-          continue;
-        }
-        lines.add(OrderLine(
-          id: uuid.v4(),
-          itemId: itemId,
-          qty: preview.quantity <= 0 ? 1 : preview.quantity,
-        ));
-      }
-
-      final orderId = 'ord_${uuid.v4()}';
-      await db.into(db.orders).insert(
-            OrdersCompanion(
-              id: Value(orderId),
-              date: Value((first.sortDate ?? now).toIso8601String()),
-              customer: Value(first.customerName),
-              memo: Value(_playAutoImportMemo(first, groupedPreviews, unmatched)),
-              status: Value(OrderStatus.planned.name),
-              isDeleted: const Value(false),
-              updatedAt: Value(now.toIso8601String()),
-            ),
-          );
-      for (final line in lines) {
-        await db.into(db.orderLines).insert(line.toCompanion(orderId));
-      }
-      await db.customStatement(
-        'INSERT INTO playauto_order_links '
-        '(external_order_no, provider, order_id, shop_name, created_at, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          entry.key,
-          'playauto',
-          orderId,
-          first.shopName,
-          now.toIso8601String(),
-          now.toIso8601String(),
-        ],
-      );
-      imported++;
-    }
-  });
-  return (imported: imported, skipped: skipped);
+String _playAutoMappingKey(_PlayAutoOrderPreview order) {
+  final sku = order.sku.trim();
+  final shop = _normalizeSearchText(order.shopName);
+  final product = _normalizeSearchText(order.productName);
+  final option = _normalizeSearchText(order.optionName);
+  final skuPart = sku.isEmpty ? 'nosku' : 'sku::${_normalizeSearchText(sku)}';
+  return 'playauto::$shop::$skuPart::product::$product::option::$option';
 }
 
-Future<void> _ensurePlayAutoImportTables(AppDatabase db) async {
-  await db.customStatement('''
-    CREATE TABLE IF NOT EXISTS playauto_order_links (
-      external_order_no TEXT PRIMARY KEY,
-      provider TEXT NOT NULL DEFAULT 'playauto',
-      order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-      shop_name TEXT NOT NULL DEFAULT '',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  ''');
-  await db.customStatement('''
-    CREATE TABLE IF NOT EXISTS playauto_item_mappings (
-      external_key TEXT PRIMARY KEY,
-      provider TEXT NOT NULL DEFAULT 'playauto',
-      product_name TEXT NOT NULL,
-      option_name TEXT NOT NULL DEFAULT '',
-      sku TEXT NOT NULL DEFAULT '',
-      shop_name TEXT NOT NULL DEFAULT '',
-      item_id TEXT NULL REFERENCES items(id) ON DELETE SET NULL,
-      status TEXT NOT NULL DEFAULT 'confirmed',
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )
-  ''');
-}
-
-Future<String?> _findPlayAutoMappedItemId(
-  AppDatabase db,
-  _PlayAutoOrderPreview preview,
-) async {
-  for (final key in _playAutoMappingKeys(preview)) {
-    final row = await db.customSelect(
-      'SELECT m.item_id FROM playauto_item_mappings m '
-      'JOIN items i ON i.id = m.item_id '
-      'WHERE m.external_key = ? AND m.item_id IS NOT NULL LIMIT 1',
-      variables: [Variable.withString(key)],
-    ).getSingleOrNull();
-    final itemId = row?.data['item_id'] as String?;
-    if (itemId != null && itemId.isNotEmpty) return itemId;
-  }
-  return null;
-}
-
-Future<Object?> _findPlayAutoOrderLink(
-  AppDatabase db,
-  List<String> externalKeys,
-) async {
-  for (final key in externalKeys) {
-    final row = await db.customSelect(
-      'SELECT order_id FROM playauto_order_links '
-      'WHERE external_order_no = ? LIMIT 1',
-      variables: [Variable.withString(key)],
-    ).getSingleOrNull();
-    if (row != null) return row;
-  }
-  return null;
-}
-
-List<String> _playAutoMappingKeys(_PlayAutoOrderPreview preview) {
-  final shop = _normalizeSearchText(preview.shopName);
-  final sku = _normalizeSearchText(preview.sku);
-  final product = _normalizeSearchText(preview.productName);
-  final option = _normalizeSearchText(preview.optionName);
-  final prefix = 'playauto::$shop';
-  if (sku.isEmpty) return const [];
-  return [
-    '$prefix::sku::$sku::product::$product::option::$option',
-    '$prefix::sku::$sku',
-  ];
-}
-
-String _playAutoExternalOrderKey(_PlayAutoOrderPreview preview) =>
-    _playAutoExternalOrderKeys(preview).first;
-
-List<String> _playAutoExternalOrderKeys(_PlayAutoOrderPreview preview) {
-  final orderNo = preview.orderNo.trim();
-  final fallback = 'playauto::date::${preview.orderDate}::customer::'
-      '${_normalizeSearchText(preview.customerName)}';
-  if (orderNo.isEmpty || orderNo == '-') return [fallback];
-  return [orderNo, fallback];
-}
-
-String _playAutoProductSummary(_PlayAutoOrderPreview preview) =>
-    '${preview.productName}'
-    '${preview.optionName.isEmpty ? '' : ' / ${preview.optionName}'} '
-    'x ${preview.quantity <= 0 ? 1 : preview.quantity}';
-
-String _playAutoImportMemo(
-  _PlayAutoOrderPreview first,
-  List<_PlayAutoOrderPreview> previews,
-  List<String> unmatched,
-) {
-  final allProducts = previews.map(_playAutoProductSummary).join('\n- ');
-  final buffer = StringBuffer()
-    ..writeln('플토 주문번호: ${first.orderNo}')
-    ..writeln('판매처: ${first.shopName}')
-    ..writeln('연락처: ${first.phone}')
-    ..writeln('주소: ${first.address}')
-    ..writeln()
-    ..writeln('플토 주문 상품')
-    ..writeln('- $allProducts');
-  if (unmatched.isNotEmpty) {
-    buffer
-      ..writeln()
-      ..writeln('품목 연결이 없어 주문 품목으로 추가하지 않은 항목')
-      ..writeln('- ${unmatched.join('\n- ')}');
-  }
-  return buffer.toString().trim();
+String _playAutoOrderGroupKey(_PlayAutoOrderPreview order) {
+  final date = order.orderDate.trim().isEmpty ? '-' : order.orderDate.trim();
+  final customer = _normalizeSearchText(order.customerName);
+  return 'playauto::date::$date::customer::$customer';
 }
 
 class PlayAutoOrderImportScreen extends StatefulWidget {
-  const PlayAutoOrderImportScreen({super.key}) : orderViewOnly = false;
+  const PlayAutoOrderImportScreen({super.key})
+      : orderViewOnly = false,
+        fulfillmentMode = false;
 
-  const PlayAutoOrderImportScreen.orderView({super.key}) : orderViewOnly = true;
+  const PlayAutoOrderImportScreen.orderView({super.key})
+      : orderViewOnly = true,
+        fulfillmentMode = false;
+
+  const PlayAutoOrderImportScreen.fulfillment({super.key})
+      : orderViewOnly = true,
+        fulfillmentMode = true;
 
   final bool orderViewOnly;
+  final bool fulfillmentMode;
 
   @override
   State<PlayAutoOrderImportScreen> createState() =>
@@ -246,6 +86,8 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
 
   var _loading = false;
   var _credentialsLoaded = false;
+  var _autoFetchedOrderView = false;
+  var _ordersNeedSync = false;
   var _workAction = 'ScrapOrder';
   List<_PlayAutoOrderPreview> _orders = const [];
   List<_PlayAutoShopAccount> _shopAccounts = const [];
@@ -391,11 +233,32 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         }
         _credentialsLoaded = true;
       });
+      _scheduleOrderViewAutoFetch();
     } on MissingPluginException {
       if (!mounted) return;
       setState(() => _credentialsLoaded = true);
+      _scheduleOrderViewAutoFetch();
       _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
     }
+  }
+
+  void _scheduleOrderViewAutoFetch() {
+    if (!widget.orderViewOnly || _autoFetchedOrderView) return;
+    if (_apiKeyController.text.trim().isEmpty) return;
+    _autoFetchedOrderView = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _orders.isNotEmpty) return;
+      try {
+        await _fetchOrdersForPreview(
+          sdate: _sdateController.text.trim(),
+          edate: _edateController.text.trim(),
+          length: int.tryParse(_lengthController.text.trim()) ?? 100,
+          forceRefresh: false,
+        );
+      } catch (_) {
+        // 주문보기 탭 최초 진입 자동조회 실패는 수동 조회로 다시 시도할 수 있다.
+      }
+    });
   }
 
   Future<void> _saveCredentials({bool showMessage = true}) async {
@@ -703,16 +566,11 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       }
 
       if (mounted) {
-        setState(() => _lastWorkNos = workNos.toList());
+        setState(() {
+          _lastWorkNos = workNos.toList();
+          _ordersNeedSync = workNos.isNotEmpty;
+        });
       }
-
-      final autoSync = workNos.isEmpty
-          ? null
-          : await _waitForWorkAndAutoSync(
-              workNos: workNos,
-              apiKey: apiKey,
-              token: token,
-            );
 
       return _PlayAutoResponse(
         statusCode: statusCode,
@@ -725,11 +583,6 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           '등록 요청 ${groupedTargets.length}건',
           '',
           responses.join('\n\n'),
-          if (autoSync != null) ...[
-            '',
-            '찰스톡 주문 자동 반영',
-            autoSync.message,
-          ],
         ].join('\n'),
       );
     }, clearOrders: false);
@@ -753,18 +606,12 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
 
       final responses = <String>[];
       int? statusCode;
-      var allCompleted = true;
       for (final workNo in _lastWorkNos) {
         final response = await http.get(
           _endpoint('/work/$workNo'),
           headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
         );
         statusCode ??= response.statusCode;
-        if (response.statusCode < 200 ||
-            response.statusCode >= 300 ||
-            !_isWorkCompleted(response.body)) {
-          allCompleted = false;
-        }
         responses.add(
           [
             '작업번호 $workNo',
@@ -774,112 +621,56 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         );
       }
 
-      final autoSync = allCompleted
-          ? await _syncLatestCollectedOrders()
-          : const _PlayAutoAutoSyncResult(
-              message: '플토 수집 작업이 아직 완료되지 않아 자동 반영을 기다립니다.',
-            );
-
       return _PlayAutoResponse(
         statusCode: statusCode,
-        body: [
-          responses.join('\n\n'),
-          '',
-          '찰스톡 주문 자동 반영',
-          autoSync.message,
-        ].join('\n'),
+        body: responses.join('\n\n'),
       );
     }, clearOrders: false);
-  }
-
-  Future<_PlayAutoAutoSyncResult> _waitForWorkAndAutoSync({
-    required Set<String> workNos,
-    required String apiKey,
-    required String token,
-  }) async {
-    const retryCount = 6;
-    for (var attempt = 0; attempt < retryCount; attempt += 1) {
-      var allCompleted = true;
-      for (final workNo in workNos) {
-        final response = await http.get(
-          _endpoint('/work/$workNo'),
-          headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
-        );
-        if (response.statusCode < 200 ||
-            response.statusCode >= 300 ||
-            !_isWorkCompleted(response.body)) {
-          allCompleted = false;
-          break;
-        }
-      }
-      if (allCompleted) return _syncLatestCollectedOrders();
-      if (attempt < retryCount - 1) {
-        await Future<void>.delayed(const Duration(seconds: 3));
-      }
+    if (mounted) {
+      await _refreshOrdersAfterCollection();
     }
-    return const _PlayAutoAutoSyncResult(
-      message: '플토 수집 작업이 아직 완료되지 않았습니다. 완료되면 작업 결과 확인을 누르면 자동 반영됩니다.',
-    );
   }
 
-  bool _isWorkCompleted(String body) {
-    final value = body.toLowerCase();
-    const pending = [
-      'pending',
-      'waiting',
-      'queued',
-      'processing',
-      'progress',
-      'running',
-      '대기',
-      '진행',
-      '처리중',
-    ];
-    if (pending.any(value.contains)) return false;
-    const completed = [
-      'complete',
-      'completed',
-      'success',
-      'finished',
-      'done',
-      '완료',
-      '성공',
-    ];
-    return completed.any(value.contains);
-  }
+  Future<void> _refreshOrdersAfterCollection() async {
+    final sdate = _sdateController.text.trim();
+    final edate = _edateController.text.trim();
+    final length = int.tryParse(_lengthController.text.trim()) ?? 100;
+    if (sdate.isEmpty || edate.isEmpty || length <= 0) return;
 
-  Future<_PlayAutoAutoSyncResult> _syncLatestCollectedOrders() async {
-    final result = await _fetchOrdersFromPlayAuto(
-      sdate: _sdateController.text.trim(),
-      edate: _edateController.text.trim(),
-      length: int.tryParse(_lengthController.text.trim()) ?? 100,
-      forceRefresh: true,
-    );
-    if (result.statusCode == null ||
-        result.statusCode! < 200 ||
-        result.statusCode! >= 300) {
-      return const _PlayAutoAutoSyncResult(
-        message: '최신 플토 주문 조회에 실패하여 찰스톡 주문으로 반영하지 못했습니다.',
+    setState(() => _loading = true);
+    try {
+      final previousResult = _result;
+      final result = await _fetchOrdersFromPlayAuto(
+        sdate: sdate,
+        edate: edate,
+        length: length,
+        forceRefresh: true,
       );
+      if (!mounted) return;
+      setState(() {
+        _orders = result.orders;
+        _ordersNeedSync = false;
+        _statusCode = result.statusCode;
+        _result = [
+          if (previousResult != null && previousResult.isNotEmpty)
+            previousResult,
+          if (previousResult != null && previousResult.isNotEmpty) '',
+          '주문 동기화',
+          '반영된 주문 ${result.orders.length}건',
+          '',
+          result.body,
+        ].join('\n');
+      });
+      _showSnack('플토 주문 ${result.orders.length}건을 새로 반영했습니다.');
+    } on _PlayAutoUserMessage catch (e) {
+      if (!mounted) return;
+      _showSnack(e.message);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('주문 동기화 실패: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
-    if (!mounted) {
-      return const _PlayAutoAutoSyncResult(message: '화면이 닫혀 자동 반영을 중단했습니다.');
-    }
-    final saved = await _savePlayAutoOrders(
-      context.read<AppDatabase>(),
-      context.read<Uuid>(),
-      result.orders,
-    );
-    if (!mounted) {
-      return const _PlayAutoAutoSyncResult(message: '화면이 닫혀 자동 반영을 중단했습니다.');
-    }
-    setState(() => _orders = result.orders);
-    return _PlayAutoAutoSyncResult(
-      message: saved.imported == 0
-          ? '새 주문이 없습니다. 이미 반영된 주문은 중복 저장하지 않았습니다.'
-          : '새 주문 ${saved.imported}건을 찰스톡 주문에 자동 반영했습니다'
-              '${saved.skipped > 0 ? ' (중복 ${saved.skipped}건 제외)' : ''}.',
-    );
   }
 
   Future<_TokenReadyResult> _ensureTokenForOrderFetch(String apiKey) async {
@@ -937,8 +728,141 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           endDate: _edateController.text.trim(),
           length: int.tryParse(_lengthController.text.trim()) ?? 100,
           onFetchOrders: _fetchOrdersForPreview,
+          fulfillmentMode: widget.fulfillmentMode,
+          onInstruction: _requestShipmentInstruction,
+          onSetInvoice: _requestSetInvoice,
+          onSendInvoice: _requestSendInvoice,
         ),
       ),
+    );
+  }
+
+  Future<_PlayAutoResponse> _requestShipmentInstruction(
+    _PlayAutoOrderPreview order,
+  ) async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      throw const _PlayAutoUserMessage('API Key를 입력해주세요.');
+    }
+    final bundleNo = order.playAutoBundleNo;
+    if (bundleNo.isEmpty) {
+      throw const _PlayAutoUserMessage('출고지시할 묶음번호를 찾지 못했습니다.');
+    }
+
+    final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+    if (tokenResult.response != null) return tokenResult.response!;
+    final token = tokenResult.token!;
+    final requestBody = <String, Object?>{
+      'bundle_codes': [bundleNo],
+      'auto_bundle': true,
+    };
+    final response = await http.put(
+      _endpoint('/order/instruction'),
+      headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+      body: jsonEncode(requestBody),
+    );
+    return _PlayAutoResponse(
+      statusCode: response.statusCode,
+      body: [
+        '출고지시',
+        '묶음번호 $bundleNo',
+        '',
+        '요청 바디',
+        const JsonEncoder.withIndent('  ').convert(requestBody),
+        '',
+        '응답',
+        _prettyBody(response.body),
+      ].join('\n'),
+    );
+  }
+
+  Future<_PlayAutoResponse> _requestSetInvoice(
+    _PlayAutoOrderPreview order,
+    String carrierCode,
+    String invoiceNo,
+  ) async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      throw const _PlayAutoUserMessage('API Key를 입력해주세요.');
+    }
+    final bundleNo = order.playAutoBundleNo;
+    if (bundleNo.isEmpty) {
+      throw const _PlayAutoUserMessage('송장번호를 입력할 묶음번호를 찾지 못했습니다.');
+    }
+    if (carrierCode.trim().isEmpty || invoiceNo.trim().isEmpty) {
+      throw const _PlayAutoUserMessage('택배사 코드와 송장번호를 입력해주세요.');
+    }
+
+    final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+    if (tokenResult.response != null) return tokenResult.response!;
+    final token = tokenResult.token!;
+    final requestBody = <String, Object?>{
+      'orders': [
+        {
+          'bundle_no': bundleNo,
+          'carr_no': carrierCode.trim(),
+          'invoice_no': invoiceNo.trim(),
+        }
+      ],
+      'overwrite': true,
+      'change_complete': false,
+    };
+    final response = await http.put(
+      _endpoint('/order/setInvoice'),
+      headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+      body: jsonEncode(requestBody),
+    );
+    return _PlayAutoResponse(
+      statusCode: response.statusCode,
+      body: [
+        '송장번호 입력',
+        '묶음번호 $bundleNo',
+        '',
+        '요청 바디',
+        const JsonEncoder.withIndent('  ').convert(requestBody),
+        '',
+        '응답',
+        _prettyBody(response.body),
+      ].join('\n'),
+    );
+  }
+
+  Future<_PlayAutoResponse> _requestSendInvoice(
+    _PlayAutoOrderPreview order,
+  ) async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      throw const _PlayAutoUserMessage('API Key를 입력해주세요.');
+    }
+    final targetNo = order.playAutoWorkTargetNo;
+    if (targetNo.isEmpty) {
+      throw const _PlayAutoUserMessage('송장전송할 주문/묶음번호를 찾지 못했습니다.');
+    }
+
+    final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+    if (tokenResult.response != null) return tokenResult.response!;
+    final token = tokenResult.token!;
+    final requestBody = <String, Object?>{
+      'work_type': 'SEND_INVOICE',
+      'list': [targetNo],
+    };
+    final response = await http.post(
+      _endpoint('/work/addWorkSelect/v1.1'),
+      headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+      body: jsonEncode(requestBody),
+    );
+    return _PlayAutoResponse(
+      statusCode: response.statusCode,
+      body: [
+        '송장전송 작업 등록',
+        '대상 $targetNo',
+        '',
+        '요청 바디',
+        const JsonEncoder.withIndent('  ').convert(requestBody),
+        '',
+        '응답',
+        _prettyBody(response.body),
+      ].join('\n'),
     );
   }
 
@@ -952,11 +876,12 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       sdate: sdate,
       edate: edate,
       length: length,
-      forceRefresh: forceRefresh,
+      forceRefresh: forceRefresh || _ordersNeedSync,
     );
     if (mounted) {
       setState(() {
         _orders = result.orders;
+        _ordersNeedSync = false;
         _sdateController.text = sdate;
         _edateController.text = edate;
         _lengthController.text = length.toString();
@@ -1379,6 +1304,10 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         endDate: _edateController.text.trim(),
         length: int.tryParse(_lengthController.text.trim()) ?? 100,
         onFetchOrders: _fetchOrdersForPreview,
+        fulfillmentMode: widget.fulfillmentMode,
+        onInstruction: _requestShipmentInstruction,
+        onSetInvoice: _requestSetInvoice,
+        onSendInvoice: _requestSendInvoice,
       );
     }
 
@@ -1503,14 +1432,14 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            '쇼핑몰에서 PlayAuto로 주문 수집을 실행합니다. 등록 후 작업이 완료되면 최근 주문 조회로 새 주문을 확인하세요.',
+            '쇼핑몰에서 PlayAuto로 주문 수집 또는 상태 동기화를 실행합니다. 수집 후 다음 주문 조회는 PlayAuto에서 새로 받아 캐시에 반영합니다.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            initialValue: _workAction,
+            value: _workAction,
             decoration: const InputDecoration(
               labelText: '수집 작업',
               border: OutlineInputBorder(),
@@ -1670,7 +1599,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
               FilledButton.icon(
                 onPressed: _loading ? null : _registerOrderCollectionWork,
                 icon: const Icon(Icons.play_arrow_outlined),
-                label: const Text('주문 수집 실행'),
+                label: const Text('쇼핑몰 주문 수집'),
               ),
               OutlinedButton.icon(
                 onPressed: _loading || _lastWorkNos.isEmpty
@@ -1679,8 +1608,8 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
                 icon: const Icon(Icons.fact_check_outlined),
                 label: Text(
                   _lastWorkNos.isEmpty
-                      ? '작업 결과 확인'
-                      : '작업 결과 확인 ${_lastWorkNos.length}건',
+                      ? '결과 확인'
+                      : '결과 확인 ${_lastWorkNos.length}건',
                 ),
               ),
             ],
@@ -1720,6 +1649,10 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     required this.endDate,
     required this.length,
     required this.onFetchOrders,
+    required this.fulfillmentMode,
+    required this.onInstruction,
+    required this.onSetInvoice,
+    required this.onSendInvoice,
   });
 
   final List<_PlayAutoOrderPreview> orders;
@@ -1732,6 +1665,16 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     required int length,
     bool forceRefresh,
   }) onFetchOrders;
+  final bool fulfillmentMode;
+  final Future<_PlayAutoResponse> Function(_PlayAutoOrderPreview order)
+      onInstruction;
+  final Future<_PlayAutoResponse> Function(
+    _PlayAutoOrderPreview order,
+    String carrierCode,
+    String invoiceNo,
+  ) onSetInvoice;
+  final Future<_PlayAutoResponse> Function(_PlayAutoOrderPreview order)
+      onSendInvoice;
 
   @override
   State<_PlayAutoOrderPreviewScreen> createState() =>
@@ -1740,16 +1683,24 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
 
 class _PlayAutoOrderPreviewScreenState
     extends State<_PlayAutoOrderPreviewScreen> {
+  static const _uuid = Uuid();
   final _searchController = TextEditingController();
+  final _mappingService = PlayAutoItemMappingService();
+  final _orderLinkService = PlayAutoOrderLinkService();
   late final TextEditingController _startDateController;
   late final TextEditingController _endDateController;
   late final TextEditingController _lengthController;
   late List<_PlayAutoOrderPreview> _orders;
+  Map<String, PlayAutoItemMapping> _mappings = const {};
+  Map<String, Item> _mappedItems = const {};
+  Map<String, PlayAutoOrderLink> _orderLinks = const {};
   var _query = '';
   var _loadingOrders = false;
-  var _importingOrders = false;
-  var _cacheNotice = '조회 버튼을 누르면 저장된 주문을 먼저 확인합니다.';
+  var _loadingMappings = false;
+  var _runningAction = false;
+  var _cacheNotice = '캐시 조회는 저장된 주문을 먼저 보여주고, 동기화는 PlayAuto에서 새로 가져옵니다.';
   String? _selectedShopName;
+  _PlayAutoFulfillmentStage _stage = _PlayAutoFulfillmentStage.all;
 
   @override
   void initState() {
@@ -1758,6 +1709,7 @@ class _PlayAutoOrderPreviewScreenState
     _startDateController = TextEditingController(text: widget.startDate);
     _endDateController = TextEditingController(text: widget.endDate);
     _lengthController = TextEditingController(text: widget.length.toString());
+    _loadMappings();
   }
 
   @override
@@ -1821,20 +1773,28 @@ class _PlayAutoOrderPreviewScreenState
                   _PlayAutoSummaryBand(
                     orderCount: filteredOrders.length,
                     totalQty: totalQty,
+                    matchedCount: _matchedCount(filteredOrders),
+                    needsMappingCount: _needsMappingCount(filteredOrders),
+                    availableCount: _availableCount(filteredOrders),
+                    shortageCount: _shortageCount(filteredOrders),
                   ),
-                  const SizedBox(height: 8),
-                  FilledButton.icon(
-                    onPressed: _importingOrders || filteredOrders.isEmpty
-                        ? null
-                        : () => _importOrders(filteredOrders),
-                    icon: _importingOrders
-                        ? const SizedBox.square(
-                            dimension: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.download_for_offline_outlined),
-                    label: Text('주문보기로 가져오기 (${filteredOrders.length}건)'),
-                  ),
+                  if (widget.fulfillmentMode) ...[
+                    const SizedBox(height: 12),
+                    _FulfillmentStageChips(
+                      selected: _stage,
+                      orders: _orders,
+                      orderLinks: _orderLinks,
+                      onSelected: (stage) => setState(() => _stage = stage),
+                    ),
+                    if (_runningAction) ...[
+                      const SizedBox(height: 8),
+                      const LinearProgressIndicator(),
+                    ],
+                  ],
+                  if (_loadingMappings) ...[
+                    const SizedBox(height: 8),
+                    const LinearProgressIndicator(),
+                  ],
                   const SizedBox(height: 12),
                   TextField(
                     controller: _searchController,
@@ -1916,6 +1876,33 @@ class _PlayAutoOrderPreviewScreenState
                   child: _PlayAutoOrderCard(
                     order: order,
                     statusColor: _statusColor(scheme, order.status),
+                    mapping: _mappings[_playAutoMappingKey(order)],
+                    matchedItem: _matchedItemFor(order),
+                    stockStatus: _stockStatusFor(order),
+                    orderLink: _orderLinks[_playAutoOrderGroupKey(order)],
+                    onTapProduct: () => _openMappingSheet(order),
+                    onClearMapping: () => _clearMapping(order),
+                    onOpenOrCreateOrder: () =>
+                        _openOrCreateChalstockOrder(order),
+                    onOpenMatchedItem: () {
+                      final itemId =
+                          _mappings[_playAutoMappingKey(order)]?.itemId;
+                      if (itemId != null) _openMatchedItem(itemId);
+                    },
+                    fulfillmentMode: widget.fulfillmentMode,
+                    actionRunning: _runningAction,
+                    onInstruction: () => _runFulfillmentAction(
+                      label: '출고지시',
+                      request: () => widget.onInstruction(order),
+                    ),
+                    onOpenPrintPreview: () => _openPrintPreview(order),
+                    onRegisterInvoice: () => _openInvoiceDialog(order),
+                    onSendInvoice: () => _runFulfillmentAction(
+                      label: '송장전송',
+                      request: () => widget.onSendInvoice(order),
+                      refreshAfter: true,
+                    ),
+                    onSyncOrder: () => _fetchOrders(forceRefresh: true),
                   ),
                 );
               },
@@ -1931,9 +1918,72 @@ class _PlayAutoOrderPreviewScreenState
       final shopMatches =
           _selectedShopName == null || order.shopName == _selectedShopName;
       if (!shopMatches) return false;
+      if (widget.fulfillmentMode &&
+          !_stage.matches(order, _orderLinks[_playAutoOrderGroupKey(order)])) {
+        return false;
+      }
       if (normalizedQuery.isEmpty) return true;
       return order.searchText.contains(normalizedQuery);
     }).toList();
+  }
+
+  Future<void> _runFulfillmentAction({
+    required String label,
+    required Future<_PlayAutoResponse> Function() request,
+    bool refreshAfter = false,
+  }) async {
+    setState(() => _runningAction = true);
+    try {
+      final response = await request();
+      if (!mounted) return;
+      final ok = response.statusCode != null &&
+          response.statusCode! >= 200 &&
+          response.statusCode! < 300;
+      _showSnack(ok ? '$label 요청을 보냈습니다.' : '$label 응답을 확인해주세요.');
+      if (refreshAfter) {
+        await _fetchOrders(forceRefresh: true);
+      }
+    } on _PlayAutoUserMessage catch (e) {
+      if (!mounted) return;
+      _showSnack(e.message);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('$label 실패: $e');
+    } finally {
+      if (mounted) setState(() => _runningAction = false);
+    }
+  }
+
+  Future<void> _openInvoiceDialog(_PlayAutoOrderPreview order) async {
+    final input = await showDialog<_InvoiceRegistrationInput>(
+      context: context,
+      builder: (_) => _InvoiceRegistrationDialog(order: order),
+    );
+    if (input == null) return;
+    await _runFulfillmentAction(
+      label: '송장번호 입력',
+      request: () => widget.onSetInvoice(
+        order,
+        input.carrierCode,
+        input.invoiceNo,
+      ),
+      refreshAfter: true,
+    );
+  }
+
+  void _openPrintPreview(_PlayAutoOrderPreview order) {
+    final groupKey = _playAutoOrderGroupKey(order);
+    final lines = _orders
+        .where((candidate) => _playAutoOrderGroupKey(candidate) == groupKey)
+        .toList();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _PlayAutoOrderPrintPreviewScreen(
+          order: order,
+          lines: lines.isEmpty ? [order] : lines,
+        ),
+      ),
+    );
   }
 
   List<String> get _shopNames {
@@ -1944,6 +1994,351 @@ class _PlayAutoOrderPreviewScreenState
         .toList();
     names.sort();
     return names;
+  }
+
+  int _matchedCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) =>
+            _mappings[_playAutoMappingKey(order)]?.isConfirmed == true)
+        .length;
+  }
+
+  int _needsMappingCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) =>
+            _mappings[_playAutoMappingKey(order)]?.isConfirmed != true)
+        .length;
+  }
+
+  int _availableCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) => _stockStatusFor(order)?.isAvailable == true)
+        .length;
+  }
+
+  int _shortageCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) => _stockStatusFor(order)?.hasShortage == true)
+        .length;
+  }
+
+  Item? _matchedItemFor(_PlayAutoOrderPreview order) {
+    final mapping = _mappings[_playAutoMappingKey(order)];
+    final itemId = mapping?.itemId;
+    if (itemId == null) return null;
+    return _mappedItems[itemId];
+  }
+
+  _PlayAutoStockStatus? _stockStatusFor(_PlayAutoOrderPreview order) {
+    final mapping = _mappings[_playAutoMappingKey(order)];
+    if (mapping?.isConfirmed != true) return null;
+    final item = _matchedItemFor(order);
+    if (item == null) return null;
+    final shortage =
+        (order.quantity - item.qty).clamp(0, order.quantity).toInt();
+    return _PlayAutoStockStatus(
+      item: item,
+      orderQty: order.quantity,
+      stockQty: item.qty,
+      shortageQty: shortage,
+    );
+  }
+
+  Future<void> _loadMappings() async {
+    if (_orders.isEmpty) {
+      setState(() {
+        _mappings = const {};
+        _mappedItems = const {};
+        _orderLinks = const {};
+      });
+      return;
+    }
+    setState(() => _loadingMappings = true);
+    try {
+      final itemRepo = context.read<ItemRepo>();
+      final mappings = await _mappingService.listByKeys(
+        _orders.map(_playAutoMappingKey),
+      );
+      final orderLinks = await _orderLinkService.listByOrderNos(
+        _orders.map(_playAutoOrderGroupKey),
+      );
+      final itemIds = mappings.values
+          .where((mapping) => mapping.isConfirmed)
+          .map((mapping) => mapping.itemId)
+          .whereType<String>()
+          .toSet();
+      final itemEntries = await Future.wait(
+        itemIds.map((itemId) async {
+          final item = await itemRepo.getItemById(itemId);
+          return MapEntry(itemId, item);
+        }),
+      );
+      final itemsById = <String, Item>{
+        for (final entry in itemEntries)
+          if (entry.value != null) entry.key: entry.value!,
+      };
+      if (!mounted) return;
+      setState(() {
+        _mappings = mappings;
+        _mappedItems = itemsById;
+        _orderLinks = orderLinks;
+      });
+    } finally {
+      if (mounted) setState(() => _loadingMappings = false);
+    }
+  }
+
+  Future<void> _openMappingSheet(_PlayAutoOrderPreview order) async {
+    final itemRepo = context.read<ItemRepo>();
+    final mappingKey = _playAutoMappingKey(order);
+    final current = _mappings[mappingKey];
+    final items = await itemRepo.listItems();
+    if (!mounted) return;
+    final selected = await showModalBottomSheet<_PlayAutoMappingSheetResult>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _PlayAutoItemMappingSheet(
+        order: order,
+        currentMapping: current,
+        candidates: _rankCandidates(order, items),
+      ),
+    );
+    if (selected == null || !mounted) return;
+
+    var itemId = selected.itemId;
+    if (selected.createNew) {
+      final item = await _openNewItemSheetForMapping();
+      if (item == null || !mounted) return;
+      itemId = item.id;
+    }
+    if (selected.openPicker) {
+      itemId = await showItemPickerSheet(
+        context,
+        initialItemId: current?.itemId,
+        title: '매칭할 찰스톡 아이템 검색',
+      );
+      if (itemId == null || !mounted) return;
+    }
+    if (itemId == null) return;
+
+    await _mappingService.saveConfirmed(
+      externalKey: mappingKey,
+      productName: order.productName,
+      optionName: order.optionName,
+      sku: order.sku,
+      shopName: order.shopName,
+      itemId: itemId,
+    );
+    await _loadMappings();
+    _showSnack('플토 상품 매칭을 저장했습니다.');
+  }
+
+  Future<Item?> _openNewItemSheetForMapping() async {
+    final itemRepo = context.read<ItemRepo>();
+    final rootId = await _findUncategorizedRootId();
+    final initialPathIds = [
+      if (rootId != null) rootId,
+    ];
+    if (!mounted) return null;
+
+    final result = await showModalBottomSheet<dynamic>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => StockNewItemSheet(pathIds: initialPathIds),
+    );
+    if (result == null) return null;
+
+    final resolved = switch (result) {
+      NewItemResult() => result,
+      Item() => NewItemResult(result, initialPathIds),
+      _ => null,
+    };
+    if (resolved == null) {
+      _showSnack('아이템 생성 결과를 확인할 수 없습니다.');
+      return null;
+    }
+
+    final l1 = resolved.pathIds.isNotEmpty ? resolved.pathIds[0] : null;
+    final l2 = resolved.pathIds.length > 1 ? resolved.pathIds[1] : null;
+    final l3 = resolved.pathIds.length > 2 ? resolved.pathIds[2] : null;
+    final dyn = itemRepo as dynamic;
+    if (l1 != null && dyn.upsertItemWithPath is Function) {
+      await dyn.upsertItemWithPath(resolved.item, l1, l2, l3);
+    } else {
+      await itemRepo.upsertItem(resolved.item);
+    }
+    _showSnack('새 아이템으로 추가하고 매칭했습니다.');
+    return resolved.item;
+  }
+
+  Future<String?> _findUncategorizedRootId() async {
+    final folderRepo = context.read<FolderTreeRepo>();
+    final roots = await folderRepo.listFolderChildren(null);
+    for (final root in roots) {
+      final id = root.id.trim().toLowerCase();
+      final name = root.name.trim().toLowerCase();
+      if (id == 'uncategorized' || name == 'uncategorized') {
+        return root.id;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _clearMapping(_PlayAutoOrderPreview order) async {
+    await _mappingService.delete(_playAutoMappingKey(order));
+    await _loadMappings();
+    _showSnack('매칭을 해제했습니다.');
+  }
+
+  Future<void> _openOrCreateChalstockOrder(
+    _PlayAutoOrderPreview order,
+  ) async {
+    final groupKey = _playAutoOrderGroupKey(order);
+    final existing = _orderLinks[groupKey];
+    if (existing != null) {
+      _openChalstockOrder(existing.orderId);
+      return;
+    }
+
+    final grouped = _orders
+        .where((candidate) => _playAutoOrderGroupKey(candidate) == groupKey)
+        .toList();
+    if (grouped.isEmpty) return;
+
+    final missing = grouped.where((line) {
+      final mapping = _mappings[_playAutoMappingKey(line)];
+      return mapping?.isConfirmed != true || mapping?.itemId == null;
+    }).toList();
+    if (missing.isNotEmpty) {
+      _showSnack('같은 플토 주문번호 안에 매칭 안 된 상품이 있습니다.');
+      return;
+    }
+
+    final orderId = 'ord_${_uuid.v4()}';
+    final lines = grouped.map((line) {
+      final mapping = _mappings[_playAutoMappingKey(line)]!;
+      return OrderLine(
+        id: _uuid.v4(),
+        itemId: mapping.itemId!,
+        qty: line.quantity,
+      );
+    }).toList();
+    final first = grouped.first;
+    final orderNos = grouped
+        .map((line) => line.orderNo.trim())
+        .where((orderNo) => orderNo.isNotEmpty && orderNo != '-')
+        .toSet()
+        .toList();
+    final memo = [
+      '플토 주문묶음: ${first.orderDate} / ${first.customerName}',
+      if (orderNos.isNotEmpty) '플토 주문번호: ${orderNos.join(', ')}',
+      '판매처: ${first.shopName}',
+      if (first.phone.isNotEmpty) '연락처: ${first.phone}',
+      if (first.address.isNotEmpty) '주소: ${first.address}',
+      '',
+      '플토 주문상품',
+      for (final line in grouped)
+        '- ${line.productName}'
+            '${line.optionName.isEmpty ? '' : ' / ${line.optionName}'}'
+            ' x ${line.quantity}',
+    ].join('\n');
+    final chalstockOrder = Order(
+      id: orderId,
+      date: first.sortDate ?? DateTime.now(),
+      customer: first.customerName,
+      memo: memo,
+      status: OrderStatus.planned,
+      lines: lines,
+    );
+
+    final planningService = OrderPlanningService(
+      items: context.read<ItemRepo>(),
+      orders: context.read<OrderRepo>(),
+      works: context.read<WorkRepo>(),
+      purchases: context.read<PurchaseOrderRepo>(),
+      txns: context.read<TxnRepo>(),
+    );
+    await planningService.saveOrderAndAutoPlanShortage(
+      chalstockOrder,
+      preferWork: true,
+      forceMake: false,
+    );
+    await _orderLinkService.save(
+      externalOrderNo: groupKey,
+      orderId: orderId,
+      shopName: first.shopName,
+    );
+    await _loadMappings();
+    _openChalstockOrder(orderId);
+  }
+
+  void _openChalstockOrder(String orderId) {
+    context.read<MainTabController>().openShellRoute(
+          '/orders/detail',
+          arguments: orderId,
+          tabIndex: 1,
+        );
+  }
+
+  void _openMatchedItem(String itemId) {
+    context.read<MainTabController>().openShellRoute(
+          '/items/detail',
+          arguments: itemId,
+          tabIndex: 2,
+        );
+  }
+
+  List<_PlayAutoItemCandidate> _rankCandidates(
+    _PlayAutoOrderPreview order,
+    List<Item> items,
+  ) {
+    final orderText = _normalizeSearchText(
+      '${order.productName} ${order.optionName} ${order.sku}',
+    );
+    final productOnly = _normalizeSearchText(order.productName);
+    final optionOnly = _normalizeSearchText(order.optionName);
+    final scored = <_PlayAutoItemCandidate>[];
+
+    for (final item in items) {
+      final itemText = _normalizeSearchText(
+        '${item.name} ${item.displayName ?? ''} ${item.sku} '
+        '${item.folder} ${item.subfolder ?? ''} ${item.subsubfolder ?? ''}',
+      );
+      var score = 0;
+      if (order.sku.isNotEmpty &&
+          _normalizeSearchText(item.sku) == _normalizeSearchText(order.sku)) {
+        score += 120;
+      }
+      if (orderText.isNotEmpty && itemText.contains(orderText)) score += 90;
+      if (productOnly.isNotEmpty && itemText.contains(productOnly)) score += 50;
+      if (optionOnly.isNotEmpty && itemText.contains(optionOnly)) score += 25;
+      for (final token in _candidateTokens(order)) {
+        if (itemText.contains(token)) score += token.length >= 3 ? 12 : 6;
+      }
+      if (item.kind == 'Finished') score += 5;
+      if (score > 0) {
+        scored.add(_PlayAutoItemCandidate(item: item, score: score));
+      }
+    }
+
+    scored.sort((a, b) {
+      final byScore = b.score.compareTo(a.score);
+      if (byScore != 0) return byScore;
+      return a.item.name.compareTo(b.item.name);
+    });
+    return scored.take(5).toList();
+  }
+
+  List<String> _candidateTokens(_PlayAutoOrderPreview order) {
+    final raw = '${order.productName} ${order.optionName}'
+        .replaceAll(RegExp(r'[\[\]\(\),/|]+'), ' ');
+    return raw
+        .split(RegExp(r'\s+'))
+        .map(_normalizeSearchText)
+        .where((token) => token.length >= 2)
+        .toSet()
+        .toList();
   }
 
   Color _statusColor(ColorScheme scheme, String status) {
@@ -2007,6 +2402,7 @@ class _PlayAutoOrderPreviewScreenState
         _selectedShopName = null;
         _cacheNotice = result.notice;
       });
+      await _loadMappings();
     } on _PlayAutoUserMessage catch (e) {
       if (!mounted) return;
       _showSnack(e.message);
@@ -2016,176 +2412,6 @@ class _PlayAutoOrderPreviewScreenState
     } finally {
       if (mounted) setState(() => _loadingOrders = false);
     }
-  }
-
-  Future<void> _importOrders(List<_PlayAutoOrderPreview> previews) async {
-    final grouped = <String, List<_PlayAutoOrderPreview>>{};
-    for (final preview in previews) {
-      grouped.putIfAbsent(_externalOrderKey(preview), () => []).add(preview);
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('주문보기로 가져오기'),
-        content: Text(
-          '${grouped.length}건의 주문을 일반 주문 목록에 추가합니다.\n'
-          '이미 가져온 플토 주문은 자동으로 건너뜁니다.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('가져오기'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    setState(() => _importingOrders = true);
-    try {
-      final result = await _saveOrders(grouped);
-      if (!mounted) return;
-      _showSnack(
-        result.imported == 0
-            ? '새로 가져올 주문이 없습니다. 이미 등록된 주문입니다.'
-            : '${result.imported}건을 주문보기에 추가했습니다'
-                '${result.skipped > 0 ? ' (중복 ${result.skipped}건 제외)' : ''}.',
-      );
-    } catch (e) {
-      if (mounted) _showSnack('주문 가져오기에 실패했습니다: $e');
-    } finally {
-      if (mounted) setState(() => _importingOrders = false);
-    }
-  }
-
-  Future<({int imported, int skipped})> _saveOrders(
-    Map<String, List<_PlayAutoOrderPreview>> grouped,
-  ) async {
-    final db = context.read<AppDatabase>();
-    final uuid = context.read<Uuid>();
-    return _savePlayAutoOrders(
-      db,
-      uuid,
-      grouped.values.expand((previews) => previews),
-    );
-  }
-
-  Future<void> _ensureImportTables(AppDatabase db) async {
-    await db.customStatement('''
-      CREATE TABLE IF NOT EXISTS playauto_order_links (
-        external_order_no TEXT PRIMARY KEY,
-        provider TEXT NOT NULL DEFAULT 'playauto',
-        order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-        shop_name TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    ''');
-    await db.customStatement('''
-      CREATE TABLE IF NOT EXISTS playauto_item_mappings (
-        external_key TEXT PRIMARY KEY,
-        provider TEXT NOT NULL DEFAULT 'playauto',
-        product_name TEXT NOT NULL,
-        option_name TEXT NOT NULL DEFAULT '',
-        sku TEXT NOT NULL DEFAULT '',
-        shop_name TEXT NOT NULL DEFAULT '',
-        item_id TEXT NULL REFERENCES items(id) ON DELETE SET NULL,
-        status TEXT NOT NULL DEFAULT 'confirmed',
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    ''');
-  }
-
-  Future<String?> _findMappedItemId(
-    AppDatabase db,
-    _PlayAutoOrderPreview preview,
-  ) async {
-    for (final key in _mappingKeys(preview)) {
-      final row = await db.customSelect(
-        'SELECT m.item_id FROM playauto_item_mappings m '
-        'JOIN items i ON i.id = m.item_id '
-        'WHERE m.external_key = ? AND m.item_id IS NOT NULL LIMIT 1',
-        variables: [Variable.withString(key)],
-      ).getSingleOrNull();
-      final itemId = row?.data['item_id'] as String?;
-      if (itemId != null && itemId.isNotEmpty) return itemId;
-    }
-    return null;
-  }
-
-  Future<Object?> _findExistingOrderLink(
-    AppDatabase db,
-    List<String> externalKeys,
-  ) async {
-    for (final key in externalKeys) {
-      final row = await db.customSelect(
-        'SELECT order_id FROM playauto_order_links '
-        'WHERE external_order_no = ? LIMIT 1',
-        variables: [Variable.withString(key)],
-      ).getSingleOrNull();
-      if (row != null) return row;
-    }
-    return null;
-  }
-
-  List<String> _mappingKeys(_PlayAutoOrderPreview preview) {
-    final shop = _normalizeSearchText(preview.shopName);
-    final sku = _normalizeSearchText(preview.sku);
-    final product = _normalizeSearchText(preview.productName);
-    final option = _normalizeSearchText(preview.optionName);
-    final prefix = 'playauto::$shop';
-    final keys = <String>[];
-    if (sku.isNotEmpty) {
-      keys.add('$prefix::sku::$sku::product::$product::option::$option');
-      keys.add('$prefix::sku::$sku');
-    }
-    return keys;
-  }
-
-  String _externalOrderKey(_PlayAutoOrderPreview preview) {
-    return _externalOrderKeys(preview).first;
-  }
-
-  List<String> _externalOrderKeys(_PlayAutoOrderPreview preview) {
-    final orderNo = preview.orderNo.trim();
-    final fallback = 'playauto::date::${preview.orderDate}::customer::'
-        '${_normalizeSearchText(preview.customerName)}';
-    if (orderNo.isEmpty || orderNo == '-') return [fallback];
-    return [orderNo, fallback];
-  }
-
-  String _productSummary(_PlayAutoOrderPreview preview) =>
-      '${preview.productName}'
-      '${preview.optionName.isEmpty ? '' : ' / ${preview.optionName}'} '
-      'x ${preview.quantity <= 0 ? 1 : preview.quantity}';
-
-  String _importMemo(
-    _PlayAutoOrderPreview first,
-    List<_PlayAutoOrderPreview> previews,
-    List<String> unmatched,
-  ) {
-    final allProducts = previews.map(_productSummary).join('\n- ');
-    final buffer = StringBuffer()
-      ..writeln('플토 주문번호: ${first.orderNo}')
-      ..writeln('판매처: ${first.shopName}')
-      ..writeln('연락처: ${first.phone}')
-      ..writeln('주소: ${first.address}')
-      ..writeln()
-      ..writeln('플토 주문 상품')
-      ..writeln('- $allProducts');
-    if (unmatched.isNotEmpty) {
-      buffer
-        ..writeln()
-        ..writeln('품목 연결이 없어 주문 품목에 추가되지 않은 항목')
-        ..writeln('- ${unmatched.join('\n- ')}');
-    }
-    return buffer.toString().trim();
   }
 
   String _formatDate(DateTime date) {
@@ -2206,10 +2432,18 @@ class _PlayAutoSummaryBand extends StatelessWidget {
   const _PlayAutoSummaryBand({
     required this.orderCount,
     required this.totalQty,
+    required this.matchedCount,
+    required this.needsMappingCount,
+    required this.availableCount,
+    required this.shortageCount,
   });
 
   final int orderCount;
   final int totalQty;
+  final int matchedCount;
+  final int needsMappingCount;
+  final int availableCount;
+  final int shortageCount;
 
   @override
   Widget build(BuildContext context) {
@@ -2222,12 +2456,48 @@ class _PlayAutoSummaryBand extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.outlineVariant),
       ),
-      child: Row(
-        children: [
-          Expanded(child: _SummaryValue(label: '주문', value: '$orderCount건')),
-          Container(width: 1, height: 36, color: scheme.outlineVariant),
-          Expanded(child: _SummaryValue(label: '수량', value: '$totalQty개')),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final tileWidth = constraints.maxWidth < 420
+              ? (constraints.maxWidth - 10) / 2
+              : (constraints.maxWidth - 20) / 3;
+          return Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _SummaryValue(
+                label: '주문',
+                value: '$orderCount건',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '수량',
+                value: '$totalQty개',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '매칭 완료',
+                value: '$matchedCount건',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '매칭 필요',
+                value: '$needsMappingCount건',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '출고 가능',
+                value: '$availableCount건',
+                width: tileWidth,
+              ),
+              _SummaryValue(
+                label: '재고 부족',
+                value: '$shortageCount건',
+                width: tileWidth,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -2237,32 +2507,41 @@ class _SummaryValue extends StatelessWidget {
   const _SummaryValue({
     required this.label,
     required this.value,
+    this.width,
   });
 
   final String label;
   final String value;
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: scheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
-      ],
+    return SizedBox(
+      width: width,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2350,7 +2629,7 @@ class _OrderQueryPanel extends StatelessWidget {
               ),
             ),
           ),
-          FilledButton.icon(
+          OutlinedButton.icon(
             onPressed: loading ? null : onFetch,
             icon: loading
                 ? const SizedBox.square(
@@ -2358,12 +2637,12 @@ class _OrderQueryPanel extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.folder_open_outlined),
-            label: const Text('조회'),
+            label: const Text('캐시 조회'),
           ),
-          OutlinedButton.icon(
+          FilledButton.icon(
             onPressed: loading ? null : onRefresh,
             icon: const Icon(Icons.sync_outlined),
-            label: const Text('새로고침'),
+            label: const Text('동기화'),
           ),
           const Chip(
             avatar: Icon(Icons.event_available_outlined, size: 18),
@@ -2379,14 +2658,45 @@ class _PlayAutoOrderCard extends StatelessWidget {
   const _PlayAutoOrderCard({
     required this.order,
     required this.statusColor,
+    required this.mapping,
+    required this.matchedItem,
+    required this.stockStatus,
+    required this.orderLink,
+    required this.onTapProduct,
+    required this.onClearMapping,
+    required this.onOpenOrCreateOrder,
+    required this.onOpenMatchedItem,
+    required this.fulfillmentMode,
+    required this.actionRunning,
+    required this.onInstruction,
+    required this.onOpenPrintPreview,
+    required this.onRegisterInvoice,
+    required this.onSendInvoice,
+    required this.onSyncOrder,
   });
 
   final _PlayAutoOrderPreview order;
   final Color statusColor;
+  final PlayAutoItemMapping? mapping;
+  final Item? matchedItem;
+  final _PlayAutoStockStatus? stockStatus;
+  final PlayAutoOrderLink? orderLink;
+  final VoidCallback onTapProduct;
+  final VoidCallback onClearMapping;
+  final VoidCallback onOpenOrCreateOrder;
+  final VoidCallback onOpenMatchedItem;
+  final bool fulfillmentMode;
+  final bool actionRunning;
+  final VoidCallback onInstruction;
+  final VoidCallback onOpenPrintPreview;
+  final VoidCallback onRegisterInvoice;
+  final VoidCallback onSendInvoice;
+  final VoidCallback onSyncOrder;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final linked = mapping?.isConfirmed == true;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -2404,34 +2714,101 @@ class _PlayAutoOrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.productName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium,
+                  child: InkWell(
+                    onTap: onTapProduct,
+                    onLongPress: linked ? onClearMapping : null,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 2,
                       ),
-                      if (order.optionName.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          order.optionName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                        ),
-                      ],
-                    ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            order.productName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  color: scheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          if (order.optionName.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Text(
+                              order.optionName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: scheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                _StatusPill(label: order.status, color: statusColor),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _StatusPill(label: order.status, color: statusColor),
+                    if (mapping?.isConfirmed == true) ...[
+                      const SizedBox(height: 6),
+                      _StockStatusPill(status: stockStatus),
+                      const SizedBox(height: 6),
+                      ActionChip(
+                        label: const Text('찰스톡 주문'),
+                        onPressed: onOpenOrCreateOrder,
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
+                        side: BorderSide(
+                          color: scheme.primary.withValues(alpha: 0.35),
+                        ),
+                        backgroundColor:
+                            scheme.primaryContainer.withValues(alpha: 0.18),
+                        labelStyle:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: scheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
+            if (mapping?.isConfirmed == true) ...[
+              const SizedBox(height: 10),
+              _MatchedItemRow(
+                itemId: mapping!.itemId!,
+                item: matchedItem,
+                stockStatus: stockStatus,
+                onTap: onOpenMatchedItem,
+              ),
+            ],
+            if (fulfillmentMode) ...[
+              const SizedBox(height: 10),
+              _FulfillmentActionBar(
+                order: order,
+                mapping: mapping,
+                actionRunning: actionRunning,
+                onInstruction: onInstruction,
+                onOpenPrintPreview: onOpenPrintPreview,
+                onOpenOrCreateOrder: onOpenOrCreateOrder,
+                onRegisterInvoice: onRegisterInvoice,
+                onSendInvoice: onSendInvoice,
+                onSyncOrder: onSyncOrder,
+              ),
+            ],
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -2489,6 +2866,301 @@ class _PlayAutoOrderCard extends StatelessWidget {
   }
 }
 
+enum _PlayAutoFulfillmentStage {
+  all('전체'),
+  fresh('신규'),
+  ready('출고대기'),
+  chalstock('작업등록'),
+  invoice('송장번호'),
+  sent('전송완료'),
+  shipping('배송중'),
+  done('완료');
+
+  const _PlayAutoFulfillmentStage(this.label);
+
+  final String label;
+
+  bool matches(
+    _PlayAutoOrderPreview order,
+    PlayAutoOrderLink? orderLink,
+  ) {
+    final status = order.status;
+    return switch (this) {
+      _PlayAutoFulfillmentStage.all => true,
+      _PlayAutoFulfillmentStage.fresh =>
+        status.contains('신규') || status.contains('결제완료'),
+      _PlayAutoFulfillmentStage.ready =>
+        status.contains('출고대기') || status.contains('출고보류'),
+      _PlayAutoFulfillmentStage.chalstock => orderLink != null,
+      _PlayAutoFulfillmentStage.invoice => status.contains('운송장출력'),
+      _PlayAutoFulfillmentStage.sent => status.contains('출고완료'),
+      _PlayAutoFulfillmentStage.shipping => status.contains('배송중'),
+      _PlayAutoFulfillmentStage.done =>
+        status.contains('배송완료') || status.contains('구매결정'),
+    };
+  }
+}
+
+class _FulfillmentStageChips extends StatelessWidget {
+  const _FulfillmentStageChips({
+    required this.selected,
+    required this.orders,
+    required this.orderLinks,
+    required this.onSelected,
+  });
+
+  final _PlayAutoFulfillmentStage selected;
+  final List<_PlayAutoOrderPreview> orders;
+  final Map<String, PlayAutoOrderLink> orderLinks;
+  final ValueChanged<_PlayAutoFulfillmentStage> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final stage in _PlayAutoFulfillmentStage.values)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text('${stage.label} ${_count(stage)}'),
+                selected: selected == stage,
+                onSelected: (_) => onSelected(stage),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  int _count(_PlayAutoFulfillmentStage stage) {
+    return orders
+        .where((order) =>
+            stage.matches(order, orderLinks[_playAutoOrderGroupKey(order)]))
+        .length;
+  }
+}
+
+class _FulfillmentActionBar extends StatelessWidget {
+  const _FulfillmentActionBar({
+    required this.order,
+    required this.mapping,
+    required this.actionRunning,
+    required this.onInstruction,
+    required this.onOpenPrintPreview,
+    required this.onOpenOrCreateOrder,
+    required this.onRegisterInvoice,
+    required this.onSendInvoice,
+    required this.onSyncOrder,
+  });
+
+  final _PlayAutoOrderPreview order;
+  final PlayAutoItemMapping? mapping;
+  final bool actionRunning;
+  final VoidCallback onInstruction;
+  final VoidCallback onOpenPrintPreview;
+  final VoidCallback onOpenOrCreateOrder;
+  final VoidCallback onRegisterInvoice;
+  final VoidCallback onSendInvoice;
+  final VoidCallback onSyncOrder;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = order.status;
+    final isFresh = status.contains('신규') || status.contains('결제완료');
+    final isReady = status.contains('출고대기') || status.contains('출고보류');
+    final hasInvoice = order.invoiceNo.isNotEmpty || status.contains('운송장출력');
+    final canCreateOrder = mapping?.isConfirmed == true;
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        if (isFresh)
+          _SmallActionChip(
+            label: '출고지시',
+            icon: Icons.outbox_outlined,
+            disabled: actionRunning,
+            onPressed: onInstruction,
+          ),
+        if (isReady || hasInvoice)
+          _SmallActionChip(
+            label: '주문서',
+            icon: Icons.description_outlined,
+            disabled: actionRunning,
+            onPressed: onOpenPrintPreview,
+          ),
+        if (canCreateOrder)
+          _SmallActionChip(
+            label: '작업등록',
+            icon: Icons.handyman_outlined,
+            disabled: actionRunning,
+            onPressed: onOpenOrCreateOrder,
+          ),
+        _SmallActionChip(
+          label: '동기화',
+          icon: Icons.sync_outlined,
+          disabled: actionRunning,
+          onPressed: onSyncOrder,
+        ),
+        if (isReady || !hasInvoice)
+          _SmallActionChip(
+            label: '송장번호 입력',
+            icon: Icons.edit_note_outlined,
+            disabled: actionRunning,
+            onPressed: onRegisterInvoice,
+          ),
+        if (hasInvoice)
+          _SmallActionChip(
+            label: '송장전송',
+            icon: Icons.send_outlined,
+            disabled: actionRunning,
+            onPressed: onSendInvoice,
+          ),
+      ],
+    );
+  }
+}
+
+class _SmallActionChip extends StatelessWidget {
+  const _SmallActionChip({
+    required this.label,
+    required this.icon,
+    required this.disabled,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool disabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      avatar: Icon(icon, size: 17),
+      label: Text(label),
+      onPressed: disabled ? null : onPressed,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+    );
+  }
+}
+
+class _StockStatusPill extends StatelessWidget {
+  const _StockStatusPill({required this.status});
+
+  final _PlayAutoStockStatus? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (status == null) {
+      return _StatusPill(label: '재고 확인중', color: scheme.outline);
+    }
+    if (status!.isAvailable) {
+      return _StatusPill(label: '출고 가능', color: Colors.blue.shade700);
+    }
+    return _StatusPill(label: '재고 부족', color: scheme.error);
+  }
+}
+
+class _MatchedItemRow extends StatelessWidget {
+  const _MatchedItemRow({
+    required this.itemId,
+    required this.item,
+    required this.stockStatus,
+    required this.onTap,
+  });
+
+  final String itemId;
+  final Item? item;
+  final _PlayAutoStockStatus? stockStatus;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final resolvedItem = stockStatus?.item ?? item;
+    final title = resolvedItem == null
+        ? '찰스톡 아이템 불러오는 중'
+        : resolvedItem.displayName ?? resolvedItem.name;
+    final subtitle = resolvedItem == null
+        ? itemId
+        : [
+            if (resolvedItem.sku.isNotEmpty) resolvedItem.sku,
+            if (stockStatus == null)
+              '재고 ${resolvedItem.qty}${resolvedItem.unit}'
+            else
+              '주문 ${stockStatus!.orderQty}개',
+            if (stockStatus != null)
+              '현재고 ${stockStatus!.stockQty}${resolvedItem.unit}',
+            if (stockStatus != null)
+              '부족 ${stockStatus!.shortageQty}${resolvedItem.unit}',
+          ].join(' · ');
+    final hasShortage = stockStatus?.hasShortage == true;
+    final accent = hasShortage ? scheme.error : Colors.green.shade700;
+
+    return Material(
+      color: accent.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: accent.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                hasShortage
+                    ? Icons.warning_amber_outlined
+                    : Icons.check_circle_outline,
+                color: accent,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: scheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DeliveryTrackingRow extends StatelessWidget {
   const _DeliveryTrackingRow({
     required this.order,
@@ -2508,45 +3180,78 @@ class _DeliveryTrackingRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.18)),
       ),
-      child: Row(
-        children: [
-          Icon(Icons.local_shipping_outlined, size: 18, color: scheme.primary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  carrier,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 330;
+          return Row(
+            children: [
+              Icon(
+                Icons.local_shipping_outlined,
+                size: 18,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      carrier,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    SelectableText(
+                      order.invoiceNo,
+                      maxLines: 2,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                SelectableText(
-                  order.invoiceNo,
-                  maxLines: 1,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+              ),
+              const SizedBox(width: 6),
+              SizedBox.square(
+                dimension: 38,
+                child: IconButton.filledTonal(
+                  tooltip: '운송장 복사',
+                  onPressed: () => _copyInvoice(context),
+                  icon: const Icon(Icons.copy_outlined, size: 20),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
                 ),
-              ],
-            ),
-          ),
-          IconButton.filledTonal(
-            tooltip: '운송장 복사',
-            onPressed: () => _copyInvoice(context),
-            icon: const Icon(Icons.copy_outlined),
-          ),
-          const SizedBox(width: 6),
-          FilledButton.icon(
-            onPressed: () => _openTracking(context),
-            icon: const Icon(Icons.open_in_new, size: 18),
-            label: const Text('배송조회'),
-          ),
-        ],
+              ),
+              const SizedBox(width: 6),
+              if (compact)
+                SizedBox.square(
+                  dimension: 38,
+                  child: IconButton.filled(
+                    tooltip: '배송조회',
+                    onPressed: () => _openTracking(context),
+                    icon: const Icon(Icons.open_in_new, size: 19),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                )
+              else
+                FilledButton.icon(
+                  onPressed: () => _openTracking(context),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('배송조회'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(104, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    textStyle: Theme.of(context).textTheme.labelMedium,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -2632,6 +3337,240 @@ class _DeliveryTrackingRow extends StatelessWidget {
       return 'kr.chunilps';
     }
     return null;
+  }
+}
+
+class _InvoiceRegistrationInput {
+  const _InvoiceRegistrationInput({
+    required this.carrierCode,
+    required this.invoiceNo,
+  });
+
+  final String carrierCode;
+  final String invoiceNo;
+}
+
+class _InvoiceRegistrationDialog extends StatefulWidget {
+  const _InvoiceRegistrationDialog({required this.order});
+
+  final _PlayAutoOrderPreview order;
+
+  @override
+  State<_InvoiceRegistrationDialog> createState() =>
+      _InvoiceRegistrationDialogState();
+}
+
+class _InvoiceRegistrationDialogState
+    extends State<_InvoiceRegistrationDialog> {
+  late final TextEditingController _carrierCodeController;
+  late final TextEditingController _invoiceNoController;
+
+  @override
+  void initState() {
+    super.initState();
+    _carrierCodeController = TextEditingController(
+      text: widget.order.carrierCode,
+    );
+    _invoiceNoController = TextEditingController(text: widget.order.invoiceNo);
+  }
+
+  @override
+  void dispose() {
+    _carrierCodeController.dispose();
+    _invoiceNoController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('송장번호 입력'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              widget.order.playAutoBundleNo.isEmpty
+                  ? widget.order.orderNo
+                  : '묶음번호 ${widget.order.playAutoBundleNo}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _carrierCodeController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: '택배사 코드',
+              hintText: '예: CJ대한통운 4, 한진 5',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _invoiceNoController,
+            decoration: const InputDecoration(
+              labelText: '송장번호',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final carrierCode = _carrierCodeController.text.trim();
+            final invoiceNo = _invoiceNoController.text.trim();
+            if (carrierCode.isEmpty || invoiceNo.isEmpty) return;
+            Navigator.of(context).pop(
+              _InvoiceRegistrationInput(
+                carrierCode: carrierCode,
+                invoiceNo: invoiceNo,
+              ),
+            );
+          },
+          child: const Text('등록'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlayAutoOrderPrintPreviewScreen extends StatelessWidget {
+  const _PlayAutoOrderPrintPreviewScreen({
+    required this.order,
+    required this.lines,
+  });
+
+  final _PlayAutoOrderPreview order;
+  final List<_PlayAutoOrderPreview> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final totalQty = lines.fold<int>(0, (sum, line) => sum + line.quantity);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('주문서'),
+        actions: [
+          IconButton(
+            tooltip: '공유',
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('인쇄/공유는 다음 단계에서 연결할게요.')),
+              );
+            },
+            icon: const Icon(Icons.ios_share_outlined),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '찰스톡 주문서',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                _PrintInfoRow(label: '주문자', value: order.customerName),
+                _PrintInfoRow(label: '판매처', value: order.shopName),
+                _PrintInfoRow(label: '주문일', value: order.orderDate),
+                _PrintInfoRow(label: '주문번호', value: order.orderNo),
+                if (order.playAutoBundleNo.isNotEmpty)
+                  _PrintInfoRow(label: '묶음번호', value: order.playAutoBundleNo),
+                if (order.phone.isNotEmpty)
+                  _PrintInfoRow(label: '연락처', value: order.phone),
+                if (order.address.isNotEmpty)
+                  _PrintInfoRow(label: '주소', value: order.address),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            '상품 ${lines.length}건 · 수량 $totalQty개',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 8),
+          for (final line in lines)
+            Card(
+              elevation: 0,
+              margin: const EdgeInsets.only(bottom: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: scheme.outlineVariant),
+              ),
+              child: ListTile(
+                title: Text(line.productName),
+                subtitle: Text(
+                  [
+                    if (line.optionName.isNotEmpty) line.optionName,
+                    if (line.sku.isNotEmpty) 'SKU ${line.sku}',
+                  ].join('\n'),
+                ),
+                trailing: Text(
+                  '${line.quantity}개',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PrintInfoRow extends StatelessWidget {
+  const _PrintInfoRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 76,
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '-' : value,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -2743,6 +3682,301 @@ class _MutedLine extends StatelessWidget {
   }
 }
 
+class _PlayAutoItemMappingSheet extends StatelessWidget {
+  const _PlayAutoItemMappingSheet({
+    required this.order,
+    required this.currentMapping,
+    required this.candidates,
+  });
+
+  final _PlayAutoOrderPreview order;
+  final PlayAutoItemMapping? currentMapping;
+  final List<_PlayAutoItemCandidate> candidates;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.86;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 4,
+          bottom: 16 + viewInsets.bottom,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '찰스톡 아이템 매칭',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '닫기',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: scheme.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.productName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    if (order.optionName.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        order.optionName,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _InfoChip(
+                          icon: Icons.inventory_2_outlined,
+                          text: '${order.quantity}개',
+                        ),
+                        if (order.sku.isNotEmpty)
+                          _InfoChip(icon: Icons.qr_code_2, text: order.sku),
+                        _InfoChip(
+                          icon: Icons.storefront_outlined,
+                          text: order.shopName,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '추천 후보',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              if (candidates.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: scheme.outlineVariant),
+                  ),
+                  child: Text(
+                    '추천 후보가 없습니다. 직접 검색으로 연결해주세요.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: candidates.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final candidate = candidates[index];
+                      final item = candidate.item;
+                      final selected = currentMapping?.itemId == item.id;
+                      return _PlayAutoCandidateTile(
+                        candidate: candidate,
+                        selected: selected,
+                        onMatch: () => Navigator.pop(
+                          context,
+                          _PlayAutoMappingSheetResult.item(item.id),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.pop(
+                        context,
+                        const _PlayAutoMappingSheetResult.openPicker(),
+                      ),
+                      icon: const Icon(Icons.search),
+                      label: const Text('직접 검색'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      onPressed: () => Navigator.pop(
+                        context,
+                        const _PlayAutoMappingSheetResult.createNew(),
+                      ),
+                      icon: const Icon(Icons.add),
+                      label: const Text('새 아이템'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayAutoCandidateTile extends StatelessWidget {
+  const _PlayAutoCandidateTile({
+    required this.candidate,
+    required this.selected,
+    required this.onMatch,
+  });
+
+  final _PlayAutoItemCandidate candidate;
+  final bool selected;
+  final VoidCallback onMatch;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = candidate.item;
+    final scheme = Theme.of(context).colorScheme;
+    final title = item.displayName ?? item.name;
+    final path = [
+      item.folder,
+      if ((item.subfolder ?? '').isNotEmpty) item.subfolder!,
+      if ((item.subsubfolder ?? '').isNotEmpty) item.subsubfolder!,
+    ].where((part) => part.trim().isNotEmpty).join(' / ');
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: selected
+            ? scheme.primaryContainer.withValues(alpha: 0.35)
+            : scheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: selected ? scheme.primary : scheme.outlineVariant,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            selected ? Icons.check_circle : Icons.inventory_2_outlined,
+            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  [
+                    if (item.sku.isNotEmpty) item.sku,
+                    if (path.isNotEmpty) path,
+                    '재고 ${item.qty}${item.unit}',
+                  ].join(' · '),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: onMatch,
+            child: Text(selected ? '선택됨' : '매칭'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayAutoMappingSheetResult {
+  const _PlayAutoMappingSheetResult.item(this.itemId)
+      : openPicker = false,
+        createNew = false;
+
+  const _PlayAutoMappingSheetResult.openPicker()
+      : itemId = null,
+        openPicker = true,
+        createNew = false;
+
+  const _PlayAutoMappingSheetResult.createNew()
+      : itemId = null,
+        openPicker = false,
+        createNew = true;
+
+  final String? itemId;
+  final bool openPicker;
+  final bool createNew;
+}
+
+class _PlayAutoItemCandidate {
+  const _PlayAutoItemCandidate({
+    required this.item,
+    required this.score,
+  });
+
+  final Item item;
+  final int score;
+}
+
+class _PlayAutoStockStatus {
+  const _PlayAutoStockStatus({
+    required this.item,
+    required this.orderQty,
+    required this.stockQty,
+    required this.shortageQty,
+  });
+
+  final Item item;
+  final int orderQty;
+  final int stockQty;
+  final int shortageQty;
+
+  bool get isAvailable => shortageQty == 0;
+  bool get hasShortage => shortageQty > 0;
+}
+
 class _PlayAutoShopAccount {
   const _PlayAutoShopAccount({
     required this.code,
@@ -2777,6 +4011,8 @@ class _PlayAutoWorkTarget {
 class _PlayAutoOrderPreview {
   const _PlayAutoOrderPreview({
     required this.orderNo,
+    required this.uniq,
+    required this.bundleNo,
     required this.status,
     required this.shopName,
     required this.customerName,
@@ -2785,6 +4021,7 @@ class _PlayAutoOrderPreview {
     required this.productName,
     required this.optionName,
     required this.sku,
+    required this.carrierCode,
     required this.carrierName,
     required this.invoiceNo,
     required this.quantity,
@@ -2793,6 +4030,8 @@ class _PlayAutoOrderPreview {
   });
 
   final String orderNo;
+  final String uniq;
+  final String bundleNo;
   final String status;
   final String shopName;
   final String customerName;
@@ -2801,6 +4040,7 @@ class _PlayAutoOrderPreview {
   final String productName;
   final String optionName;
   final String sku;
+  final String carrierCode;
   final String carrierName;
   final String invoiceNo;
   final int quantity;
@@ -2848,6 +4088,16 @@ class _PlayAutoOrderPreview {
             'uniq',
           ],
           fallback: '-'),
+      uniq: _pickString(json, const [
+        'uniq',
+        'order_uniq',
+      ]),
+      bundleNo: _pickString(json, const [
+        'bundle_no',
+        'pa_bundle_no',
+        'package_no',
+        'bundle_code',
+      ]),
       status: _pickString(
           json,
           const [
@@ -2924,6 +4174,12 @@ class _PlayAutoOrderPreview {
         'shop_prod_no',
         'opt_custom_cd',
       ]),
+      carrierCode: _pickString(json, const [
+        'carr_no',
+        'carrier_code',
+        'delivery_company_code',
+        'courier_code',
+      ]),
       carrierName: _pickString(json, const [
         'carr_name',
         'carrier_name',
@@ -2983,10 +4239,37 @@ class _PlayAutoOrderPreview {
           productName,
           optionName,
           sku,
+          carrierCode,
           carrierName,
           invoiceNo,
         ].join(' '),
       );
+
+  String get playAutoBundleNo {
+    final candidates = [
+      bundleNo,
+      uniq,
+      if (orderNo != '-') orderNo,
+    ];
+    for (final value in candidates) {
+      final trimmed = value.trim();
+      if (trimmed.isNotEmpty && trimmed != '-') return trimmed;
+    }
+    return '';
+  }
+
+  String get playAutoWorkTargetNo {
+    final candidates = [
+      bundleNo,
+      uniq,
+      if (orderNo != '-') orderNo,
+    ];
+    for (final value in candidates) {
+      final trimmed = value.trim();
+      if (trimmed.isNotEmpty && trimmed != '-') return trimmed;
+    }
+    return '';
+  }
 
   static String _joinNonEmpty(List<String> values) {
     return values
@@ -3032,12 +4315,6 @@ class _PlayAutoResponse {
 
   final int? statusCode;
   final String body;
-}
-
-class _PlayAutoAutoSyncResult {
-  const _PlayAutoAutoSyncResult({required this.message});
-
-  final String message;
 }
 
 class _PlayAutoOrderFetchResult {
