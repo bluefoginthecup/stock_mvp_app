@@ -4,3 +4,4 @@ output-dir: lib/src/l10n
 output-localization-file: l10n.dart
 nullable-getter: false
 output-class: L10n
+synthetic-package: false

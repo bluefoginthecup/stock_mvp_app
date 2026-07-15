@@ -10,6 +10,8 @@ import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as image_lib;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -2665,6 +2667,10 @@ class _PlayAutoQuoteOrderAddScreenState
   }
 
   Future<void> _openDaumPostcodeSearch() async {
+    if (!_supportsEmbeddedDaumPostcode) {
+      _showSnack('이 환경에서는 주소 검색창을 열 수 없습니다. 고객/거래처 배송지 불러오기 또는 직접 입력을 사용해주세요.');
+      return;
+    }
     debugPrint('[PlayAutoQuoteOrderAdd] open shipping address search');
     final selected = await showModalBottomSheet<_DaumPostcodeResult>(
       context: context,
@@ -2686,6 +2692,10 @@ class _PlayAutoQuoteOrderAddScreenState
       'zip=${selected.zonecode} address=${selected.address}',
     );
     _showSnack('수령자 배송지 주소를 입력했습니다. 상세주소를 확인해주세요.');
+  }
+
+  bool get _supportsEmbeddedDaumPostcode {
+    return Platform.isAndroid || Platform.isIOS || Platform.isMacOS;
   }
 
   void _applyAddressEntry(_PlayAutoAddressEntry entry) {
@@ -3745,6 +3755,15 @@ class _ChalstockOrderPrintView extends StatelessWidget {
         title: const Text('찰스톡 주문서'),
         actions: [
           IconButton(
+            tooltip: 'PDF 저장/인쇄',
+            onPressed: () => _shareChalstockOrderPdf(
+              context,
+              captureKey: captureKey,
+              document: document,
+            ),
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+          ),
+          IconButton(
             tooltip: 'JPG 내보내기',
             onPressed: () => _shareChalstockOrderJpg(
               context,
@@ -3965,6 +3984,36 @@ Widget _printCentered(String text) {
 
 String _printMoney(int value) => NumberFormat('#,##0').format(value);
 
+Future<void> _shareChalstockOrderPdf(
+  BuildContext context, {
+  required GlobalKey captureKey,
+  required _ChalstockOrderPrintDocument document,
+}) async {
+  final box = context.findRenderObject() as RenderBox?;
+  try {
+    final pngBytes = await _captureChalstockOrderPng(captureKey);
+    final subject = '찰스톡주문서_${_safePrintFileName(document.orderNo)}';
+    final pdfBytes = await _buildChalstockOrderPdf(
+      pngBytes: pngBytes,
+      subject: subject,
+    );
+    final tempDir = await getTemporaryDirectory();
+    final outFile = File('${tempDir.path}/$subject.pdf');
+    await outFile.writeAsBytes(pdfBytes, flush: true);
+    await Share.shareXFiles(
+      [XFile(outFile.path, mimeType: 'application/pdf', name: '$subject.pdf')],
+      subject: subject,
+      sharePositionOrigin:
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('주문서 PDF 내보내기에 실패했습니다: $e')),
+    );
+  }
+}
+
 Future<void> _shareChalstockOrderJpg(
   BuildContext context, {
   required GlobalKey captureKey,
@@ -3972,13 +4021,7 @@ Future<void> _shareChalstockOrderJpg(
 }) async {
   final box = context.findRenderObject() as RenderBox?;
   try {
-    final boundary =
-        captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary == null) throw StateError('주문서 이미지를 만들 수 없습니다.');
-    final captured = await boundary.toImage(pixelRatio: 3);
-    final byteData = await captured.toByteData(format: ui.ImageByteFormat.png);
-    final pngBytes = byteData?.buffer.asUint8List();
-    if (pngBytes == null) throw StateError('주문서 이미지 변환에 실패했습니다.');
+    final pngBytes = await _captureChalstockOrderPng(captureKey);
     final decoded = image_lib.decodePng(pngBytes);
     if (decoded == null) throw StateError('주문서 이미지 인코딩에 실패했습니다.');
     final jpgBytes = image_lib.encodeJpg(decoded, quality: 90);
@@ -3998,6 +4041,36 @@ Future<void> _shareChalstockOrderJpg(
       SnackBar(content: Text('주문서 JPG 내보내기에 실패했습니다: $e')),
     );
   }
+}
+
+Future<Uint8List> _captureChalstockOrderPng(GlobalKey captureKey) async {
+  await WidgetsBinding.instance.endOfFrame;
+  final boundary =
+      captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+  if (boundary == null) throw StateError('주문서 이미지를 만들 수 없습니다.');
+  final captured = await boundary.toImage(pixelRatio: 3);
+  final byteData = await captured.toByteData(format: ui.ImageByteFormat.png);
+  final pngBytes = byteData?.buffer.asUint8List();
+  if (pngBytes == null) throw StateError('주문서 이미지 변환에 실패했습니다.');
+  return pngBytes;
+}
+
+Future<Uint8List> _buildChalstockOrderPdf({
+  required Uint8List pngBytes,
+  required String subject,
+}) async {
+  final doc = pw.Document(title: subject);
+  final image = pw.MemoryImage(pngBytes);
+  doc.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: pw.EdgeInsets.zero,
+      build: (_) => pw.Center(
+        child: pw.Image(image, fit: pw.BoxFit.contain),
+      ),
+    ),
+  );
+  return doc.save();
 }
 
 String _safePrintFileName(String value) {

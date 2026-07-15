@@ -297,7 +297,7 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
     // ✅ Item 전체를 만들어 updateItemMeta에 전달
     final updated = Item(
       id: i.id,
-      name: i.name,
+      name: nameC.text.trim().isEmpty ? i.name : nameC.text.trim(),
       displayName: displayNameC.text.trim().isEmpty
           ? i.displayName
           : displayNameC.text.trim(),
@@ -670,7 +670,13 @@ class _StockItemFullEditScreenState extends State<StockItemFullEditScreen> {
                   TextFormField(
                       controller: nameC,
                       decoration: _dec('name'),
-                      readOnly: true),
+                      maxLength: 80,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return '이름을 입력하세요';
+                        }
+                        return null;
+                      }),
                   FutureBuilder<List<String>>(
                     future: _registrationMissingFuture,
                     builder: (context, missingSnap) {

@@ -30,6 +30,7 @@ class _BulkItemInfoEditSheet extends StatefulWidget {
 
 class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
   final _formKey = GlobalKey<FormState>();
+  final _nameC = TextEditingController();
   final _minQtyC = TextEditingController();
   final _purchasePriceC = TextEditingController();
   final _salePriceC = TextEditingController();
@@ -39,6 +40,7 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
   final _conversionRateC = TextEditingController();
   final _attrRows = <_BulkAttrRow>[];
 
+  bool _nameEnabled = false;
   bool _pathEnabled = false;
   bool _supplierEnabled = false;
   bool _minQtyEnabled = false;
@@ -62,6 +64,7 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
 
   @override
   void dispose() {
+    _nameC.dispose();
     _minQtyC.dispose();
     _purchasePriceC.dispose();
     _salePriceC.dispose();
@@ -151,6 +154,7 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
 
   List<String> _summaryLines() {
     final lines = <String>[];
+    if (_nameEnabled) lines.add('아이템 이름: ${_nameC.text.trim()}');
     if (_pathEnabled && _pathLabel != null) lines.add('경로: $_pathLabel');
     if (_supplierEnabled && _supplier != null) {
       lines.add('거래처: ${_supplier!.name}');
@@ -281,11 +285,14 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
     final purchasePrice = double.tryParse(_purchasePriceC.text.trim());
     final salePrice = double.tryParse(_salePriceC.text.trim());
     final conversionRate = double.tryParse(_conversionRateC.text.trim());
+    final name = _nameC.text.trim();
     final unit = _unitC.text.trim();
     final unitIn = _unitInC.text.trim();
     final unitOut = _unitOutC.text.trim();
 
     return item.copyWith(
+      name: _nameEnabled && name.isNotEmpty ? name : null,
+      displayName: _nameEnabled && name.isNotEmpty ? name : null,
       minQty: _minQtyEnabled ? minQty : null,
       attrs: _attrsEnabled ? (attrs.isEmpty ? null : attrs) : null,
       supplierName: _supplierEnabled ? _supplier?.name : null,
@@ -317,6 +324,25 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
+              _sectionTitle('식별/표시'),
+              _enabledTextField(
+                label: '아이템 이름',
+                enabled: _nameEnabled,
+                onEnabledChanged: (value) =>
+                    setState(() => _nameEnabled = value),
+                controller: _nameC,
+                validator: (value) {
+                  if (!_nameEnabled) return null;
+                  if (value == null || value.trim().isEmpty) {
+                    return '이름을 입력하세요';
+                  }
+                  if (value.trim().length > 80) {
+                    return '80자 이하로 입력하세요';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
               _sectionTitle('분류'),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -546,6 +572,30 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
               }
               return null;
             },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _enabledTextField({
+    required String label,
+    required bool enabled,
+    required ValueChanged<bool> onEnabledChanged,
+    required TextEditingController controller,
+    FormFieldValidator<String>? validator,
+  }) {
+    return Row(
+      children: [
+        Checkbox(
+            value: enabled, onChanged: (v) => onEnabledChanged(v ?? false)),
+        Expanded(
+          child: TextFormField(
+            controller: controller,
+            enabled: enabled,
+            decoration: InputDecoration(labelText: label),
+            maxLength: enabled ? 80 : null,
+            validator: validator,
           ),
         ),
       ],
