@@ -3776,12 +3776,15 @@ class _ChalstockOrderPrintView extends StatelessWidget {
       ),
       body: ColoredBox(
         color: Colors.grey.shade200,
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: RepaintBoundary(
-              key: captureKey,
-              child: _ChalstockOrderPrintPage(document: document),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: RepaintBoundary(
+                key: captureKey,
+                child: _ChalstockOrderPrintPage(document: document),
+              ),
             ),
           ),
         ),
@@ -3797,12 +3800,12 @@ class _ChalstockOrderPrintPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const pageWidth = 744.0;
+    const pageWidth = 920.0;
     const border = Color(0xFFE2E2E2);
     return Container(
       width: pageWidth,
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(0, 0, 20, 28),
+      padding: const EdgeInsets.fromLTRB(32, 28, 32, 36),
       child: DefaultTextStyle(
         style: const TextStyle(
           color: Colors.black,
@@ -3813,16 +3816,22 @@ class _ChalstockOrderPrintPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const Text(
+              '찰스톡 주문서',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 22),
             _printSectionTitle('주문 내역'),
             Table(
               border: TableBorder.all(color: border),
               columnWidths: const {
-                0: FixedColumnWidth(108),
-                1: FlexColumnWidth(1.75),
-                2: FixedColumnWidth(142),
-                3: FlexColumnWidth(1.55),
-                4: FixedColumnWidth(108),
-                5: FlexColumnWidth(1.1),
+                0: FixedColumnWidth(104),
+                1: FlexColumnWidth(1.7),
+                2: FixedColumnWidth(120),
+                3: FlexColumnWidth(1.45),
+                4: FixedColumnWidth(104),
+                5: FlexColumnWidth(1.2),
               },
               children: [
                 _printTableRow([
@@ -3885,27 +3894,21 @@ class _ChalstockOrderPrintPage extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             _printSectionTitle('상품 내역'),
+            _printOrderSummaryTable(
+              totalQuantity: document.totalQuantity,
+              totalAmount: document.totalAmount,
+              border: border,
+            ),
             Table(
               border: TableBorder.all(color: border),
               columnWidths: const {
-                0: FixedColumnWidth(108),
-                1: FlexColumnWidth(2.8),
-                2: FlexColumnWidth(2.0),
-                3: FixedColumnWidth(72),
-                4: FixedColumnWidth(108),
+                0: FixedColumnWidth(128),
+                1: FlexColumnWidth(3.0),
+                2: FlexColumnWidth(3.0),
+                3: FixedColumnWidth(64),
+                4: FixedColumnWidth(104),
               },
               children: [
-                _printTableRow([
-                  _printLabel('주문 총 수량'),
-                  _printCentered('${document.totalQuantity}'),
-                  _printLabel('주문 총 금액'),
-                  _printCentered('${_printMoney(document.totalAmount)} 원'),
-                ], spans: const [
-                  1,
-                  1,
-                  1,
-                  2
-                ]),
                 _printTableRow([
                   _printLabel('이미지'),
                   _printCentered('상품명'),
@@ -3916,11 +3919,11 @@ class _ChalstockOrderPrintPage extends StatelessWidget {
                 for (final line in document.lines)
                   _printTableRow([
                     _printValue(''),
-                    _printValue(line.productName),
-                    _printValue(line.optionName),
+                    _printValue(line.productName, dense: true),
+                    _printValue(line.optionName, dense: true),
                     _printCentered('${line.quantity}'),
                     _printCentered('${_printMoney(line.amount)} 원'),
-                  ], minHeight: 64),
+                  ], minHeight: 72),
               ],
             ),
           ],
@@ -3971,8 +3974,11 @@ Widget _printLabel(String text) {
   return Text(text, style: const TextStyle(fontWeight: FontWeight.w600));
 }
 
-Widget _printValue(String text) {
-  return Text(text);
+Widget _printValue(String text, {bool dense = false}) {
+  return Text(
+    text,
+    style: dense ? const TextStyle(fontSize: 12.5, height: 1.4) : null,
+  );
 }
 
 Widget _printCentered(String text) {
@@ -3983,6 +3989,30 @@ Widget _printCentered(String text) {
 }
 
 String _printMoney(int value) => NumberFormat('#,##0').format(value);
+
+Widget _printOrderSummaryTable({
+  required int totalQuantity,
+  required int totalAmount,
+  required Color border,
+}) {
+  return Table(
+    border: TableBorder.all(color: border),
+    columnWidths: const {
+      0: FixedColumnWidth(132),
+      1: FlexColumnWidth(1),
+      2: FixedColumnWidth(152),
+      3: FixedColumnWidth(220),
+    },
+    children: [
+      _printTableRow([
+        _printLabel('주문 총 수량'),
+        _printCentered('$totalQuantity'),
+        _printLabel('주문 총 금액'),
+        _printCentered('${_printMoney(totalAmount)} 원'),
+      ], minHeight: 54),
+    ],
+  );
+}
 
 Future<void> _shareChalstockOrderPdf(
   BuildContext context, {
@@ -6035,122 +6065,209 @@ class _PlayAutoOrderPrintPreviewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final totalQty = lines.fold<int>(0, (sum, line) => sum + line.quantity);
+    final totalAmount = lines.fold<int>(0, (sum, line) => sum + line.amount);
+    final captureKey = GlobalKey();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('주문서'),
         actions: [
           IconButton(
-            tooltip: '공유',
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('인쇄/공유는 다음 단계에서 연결할게요.')),
-              );
-            },
-            icon: const Icon(Icons.ios_share_outlined),
+            tooltip: 'PDF 저장/인쇄',
+            onPressed: () => _sharePlayAutoOrderPreviewPdf(
+              context,
+              captureKey: captureKey,
+              order: order,
+            ),
+            icon: const Icon(Icons.picture_as_pdf_outlined),
           ),
         ],
       ),
-      body: ListView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: scheme.outlineVariant),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '찰스톡 주문서',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+        child: Center(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: RepaintBoundary(
+              key: captureKey,
+              child: ColoredBox(
+                color: scheme.surface,
+                child: SizedBox(
+                  width: 920,
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          '찰스톡 주문서',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        _printSectionTitle('주문 내역'),
+                        Table(
+                          border:
+                              TableBorder.all(color: const Color(0xFFE2E2E2)),
+                          columnWidths: const {
+                            0: FixedColumnWidth(104),
+                            1: FlexColumnWidth(1.7),
+                            2: FixedColumnWidth(120),
+                            3: FlexColumnWidth(1.45),
+                            4: FixedColumnWidth(104),
+                            5: FlexColumnWidth(1.2),
+                          },
+                          children: [
+                            _printTableRow([
+                              _printLabel('주문일'),
+                              _printValue(order.orderDate),
+                              _printLabel('구매 쇼핑몰'),
+                              _printValue(order.shopName),
+                            ], spans: const [
+                              1,
+                              2,
+                              1,
+                              2
+                            ]),
+                            _printTableRow([
+                              _printLabel('주문번호'),
+                              _printValue(order.orderNo),
+                            ], spans: const [
+                              1,
+                              5
+                            ]),
+                            _printTableRow([
+                              _printLabel('주문자'),
+                              _printValue(order.customerName),
+                              _printLabel('전화번호'),
+                              _printValue(''),
+                              _printLabel('휴대폰번호'),
+                              _printValue(order.phone),
+                            ]),
+                            _printTableRow([
+                              _printLabel('고객명'),
+                              _printValue(order.customerName),
+                              _printLabel('전화번호'),
+                              _printValue(''),
+                              _printLabel('휴대폰번호'),
+                              _printValue(order.phone),
+                            ]),
+                            _printTableRow([
+                              _printLabel('주소'),
+                              _printValue(order.address),
+                              _printLabel('배송방법'),
+                              _printValue(
+                                order.carrierName.isEmpty
+                                    ? '선결제'
+                                    : order.carrierName,
+                              ),
+                            ], spans: const [
+                              1,
+                              3,
+                              1,
+                              1
+                            ]),
+                            _printTableRow([
+                              _printLabel('배송메시지'),
+                              _printValue(order.shippingMessage),
+                              _printLabel(''),
+                              _printValue(''),
+                            ], spans: const [
+                              1,
+                              3,
+                              1,
+                              1
+                            ]),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        _printSectionTitle('상품 내역'),
+                        _printOrderSummaryTable(
+                          totalQuantity: totalQty,
+                          totalAmount: totalAmount,
+                          border: const Color(0xFFE2E2E2),
+                        ),
+                        Table(
+                          border:
+                              TableBorder.all(color: const Color(0xFFE2E2E2)),
+                          columnWidths: const {
+                            0: FixedColumnWidth(128),
+                            1: FlexColumnWidth(3.0),
+                            2: FlexColumnWidth(2.4),
+                            3: FixedColumnWidth(128),
+                            4: FixedColumnWidth(104),
+                            5: FixedColumnWidth(104),
+                          },
+                          children: [
+                            _printTableRow([
+                              _printLabel('이미지'),
+                              _printCentered('상품명'),
+                              _printCentered('옵션'),
+                              _printCentered('수량'),
+                              _printCentered('단가'),
+                              _printCentered('금액'),
+                            ]),
+                            for (final line in lines)
+                              _printTableRow([
+                                _printValue(''),
+                                _printValue(line.productName, dense: true),
+                                _printValue(line.optionName, dense: true),
+                                _printCentered('${line.quantity}'),
+                                _printCentered(
+                                  line.unitPrice > 0
+                                      ? '${_printMoney(line.unitPrice)} 원'
+                                      : '-',
+                                ),
+                                _printCentered(
+                                  line.amount > 0
+                                      ? '${_printMoney(line.amount)} 원'
+                                      : '-',
+                                ),
+                              ], minHeight: 72),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                _PrintInfoRow(label: '주문자', value: order.customerName),
-                _PrintInfoRow(label: '판매처', value: order.shopName),
-                _PrintInfoRow(label: '주문일', value: order.orderDate),
-                _PrintInfoRow(label: '주문번호', value: order.orderNo),
-                if (order.playAutoBundleNo.isNotEmpty)
-                  _PrintInfoRow(label: '묶음번호', value: order.playAutoBundleNo),
-                if (order.phone.isNotEmpty)
-                  _PrintInfoRow(label: '연락처', value: order.phone),
-                if (order.address.isNotEmpty)
-                  _PrintInfoRow(label: '주소', value: order.address),
-              ],
+              ),
             ),
           ),
-          const SizedBox(height: 14),
-          Text(
-            '상품 ${lines.length}건 · 수량 $totalQty개',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-          const SizedBox(height: 8),
-          for (final line in lines)
-            Card(
-              elevation: 0,
-              margin: const EdgeInsets.only(bottom: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: scheme.outlineVariant),
-              ),
-              child: ListTile(
-                title: Text(line.productName),
-                subtitle: Text(
-                  [
-                    if (line.optionName.isNotEmpty) line.optionName,
-                    if (line.sku.isNotEmpty) 'SKU ${line.sku}',
-                  ].join('\n'),
-                ),
-                trailing: Text(
-                  '${line.quantity}개',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _PrintInfoRow extends StatelessWidget {
-  const _PrintInfoRow({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 76,
-            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ),
-          Expanded(
-            child: Text(
-              value.isEmpty ? '-' : value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ],
-      ),
+Future<void> _sharePlayAutoOrderPreviewPdf(
+  BuildContext context, {
+  required GlobalKey captureKey,
+  required _PlayAutoOrderPreview order,
+}) async {
+  final box = context.findRenderObject() as RenderBox?;
+  try {
+    final pngBytes = await _captureChalstockOrderPng(captureKey);
+    final subject = '찰스톡주문서_${_safePrintFileName(order.orderNo)}';
+    final pdfBytes = await _buildChalstockOrderPdf(
+      pngBytes: pngBytes,
+      subject: subject,
+    );
+    final tempDir = await getTemporaryDirectory();
+    final outFile = File('${tempDir.path}/$subject.pdf');
+    await outFile.writeAsBytes(pdfBytes, flush: true);
+    await Share.shareXFiles(
+      [XFile(outFile.path, mimeType: 'application/pdf', name: '$subject.pdf')],
+      subject: subject,
+      sharePositionOrigin:
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('주문서 PDF 내보내기에 실패했습니다: $e')),
     );
   }
 }
@@ -6606,6 +6723,9 @@ class _PlayAutoOrderPreview {
     required this.carrierName,
     required this.invoiceNo,
     required this.quantity,
+    required this.unitPrice,
+    required this.amount,
+    required this.shippingMessage,
     required this.orderDate,
     required this.sortDate,
   });
@@ -6625,6 +6745,9 @@ class _PlayAutoOrderPreview {
   final String carrierName;
   final String invoiceNo;
   final int quantity;
+  final int unitPrice;
+  final int amount;
+  final String shippingMessage;
   final String orderDate;
   final DateTime? sortDate;
 
@@ -6656,6 +6779,43 @@ class _PlayAutoOrderPreview {
       ],
       fallback: '-',
     );
+
+    final quantity = _pickInt(json, const [
+      'qty',
+      'cnt',
+      'sale_cnt',
+      'order_cnt',
+      'ord_cnt',
+      'ea',
+    ]);
+    final rawUnitPrice = _pickInt(json, const [
+      'sale_price',
+      'unit_price',
+      'price',
+      'shop_sale_price',
+      'shop_cost_price',
+      'shop_supply_price',
+    ]);
+    final rawAmount = _pickInt(json, const [
+      'amount',
+      'total_amount',
+      'pay_amt',
+      'sales',
+      'order_price',
+      'total_price',
+      'sale_amt',
+      'goods_price',
+    ]);
+    final amount = rawAmount > 0
+        ? rawAmount
+        : rawUnitPrice > 0
+            ? rawUnitPrice * quantity
+            : 0;
+    final unitPrice = rawUnitPrice > 0
+        ? rawUnitPrice
+        : amount > 0 && quantity > 0
+            ? (amount / quantity).round()
+            : 0;
 
     return _PlayAutoOrderPreview(
       orderNo: _pickString(
@@ -6783,13 +6943,18 @@ class _PlayAutoOrderPreview {
         'ship_no',
         'shipNo',
       ]),
-      quantity: _pickInt(json, const [
-        'qty',
-        'cnt',
-        'sale_cnt',
-        'order_cnt',
-        'ord_cnt',
-        'ea',
+      quantity: quantity,
+      unitPrice: unitPrice,
+      amount: amount,
+      shippingMessage: _pickString(json, const [
+        'delivery_msg',
+        'delivery_message',
+        'ship_msg',
+        'shipping_message',
+        'memo',
+        'ord_memo',
+        'order_memo',
+        'remark',
       ]),
       orderDate: _shortDate(dateValue),
       sortDate: _parseDate(dateValue),

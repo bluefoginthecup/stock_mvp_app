@@ -30,7 +30,8 @@ class _BulkItemInfoEditSheet extends StatefulWidget {
 
 class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _nameC = TextEditingController();
+  final _nameFindC = TextEditingController();
+  final _nameReplaceC = TextEditingController();
   final _minQtyC = TextEditingController();
   final _purchasePriceC = TextEditingController();
   final _salePriceC = TextEditingController();
@@ -54,17 +55,21 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
   List<String>? _pathIds;
   String? _pathLabel;
   Supplier? _supplier;
+  List<Item> _items = const [];
+  bool _itemsLoading = true;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _attrRows.add(_BulkAttrRow());
+    _loadItems();
   }
 
   @override
   void dispose() {
-    _nameC.dispose();
+    _nameFindC.dispose();
+    _nameReplaceC.dispose();
     _minQtyC.dispose();
     _purchasePriceC.dispose();
     _salePriceC.dispose();
@@ -76,6 +81,20 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
       row.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _loadItems() async {
+    final repo = context.read<ItemRepo>();
+    final items = <Item>[];
+    for (final itemId in widget.itemIds) {
+      final item = await repo.getItem(itemId);
+      if (item != null) items.add(item);
+    }
+    if (!mounted) return;
+    setState(() {
+      _items = items;
+      _itemsLoading = false;
+    });
   }
 
   ChildrenProvider _childrenProvider(FolderTreeRepo repo) {
@@ -154,7 +173,11 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
 
   List<String> _summaryLines() {
     final lines = <String>[];
-    if (_nameEnabled) lines.add('아이템 이름: ${_nameC.text.trim()}');
+    if (_nameEnabled) {
+      lines.add(
+        '이름 치환: "${_nameFindC.text.trim()}" → "${_nameReplaceC.text.trim()}"',
+      );
+    }
     if (_pathEnabled && _pathLabel != null) lines.add('경로: $_pathLabel');
     if (_supplierEnabled && _supplier != null) {
       lines.add('거래처: ${_supplier!.name}');
@@ -202,6 +225,12 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
     if (_supplierEnabled && _supplier == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('거래처를 선택해주세요.')),
+      );
+      return;
+    }
+    if (_nameEnabled && !_hasAnyNameMatch()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('선택한 아이템 이름에 바꿀 부분이 없습니다.')),
       );
       return;
     }
@@ -285,14 +314,14 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
     final purchasePrice = double.tryParse(_purchasePriceC.text.trim());
     final salePrice = double.tryParse(_salePriceC.text.trim());
     final conversionRate = double.tryParse(_conversionRateC.text.trim());
-    final name = _nameC.text.trim();
+    final renamed = _renamedItemText(item);
     final unit = _unitC.text.trim();
     final unitIn = _unitInC.text.trim();
     final unitOut = _unitOutC.text.trim();
 
     return item.copyWith(
-      name: _nameEnabled && name.isNotEmpty ? name : null,
-      displayName: _nameEnabled && name.isNotEmpty ? name : null,
+      name: renamed?.name,
+      displayName: renamed?.displayName,
       minQty: _minQtyEnabled ? minQty : null,
       attrs: _attrsEnabled ? (attrs.isEmpty ? null : attrs) : null,
       supplierName: _supplierEnabled ? _supplier?.name : null,
@@ -305,6 +334,29 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
       conversionRate: _conversionEnabled ? conversionRate : null,
       conversionMode: _conversionEnabled ? _conversionMode : null,
     );
+  }
+
+  ({String name, String displayName})? _renamedItemText(Item item) {
+    if (!_nameEnabled) return null;
+    final find = _nameFindC.text.trim();
+    if (find.isEmpty) return null;
+    final replacement = _nameReplaceC.text.trim();
+    final currentDisplayName = (item.displayName?.trim().isNotEmpty == true)
+        ? item.displayName!
+        : item.name;
+    return (
+      name: item.name.replaceAll(find, replacement),
+      displayName: currentDisplayName.replaceAll(find, replacement),
+    );
+  }
+
+  bool _hasAnyNameMatch() {
+    final find = _nameFindC.text.trim();
+    if (find.isEmpty) return false;
+    return _items.any((item) {
+      final displayName = item.displayName ?? '';
+      return item.name.contains(find) || displayName.contains(find);
+    });
   }
 
   @override
@@ -325,23 +377,54 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
               ),
               const SizedBox(height: 12),
               _sectionTitle('식별/표시'),
-              _enabledTextField(
-                label: '아이템 이름',
-                enabled: _nameEnabled,
-                onEnabledChanged: (value) =>
-                    setState(() => _nameEnabled = value),
-                controller: _nameC,
-                validator: (value) {
-                  if (!_nameEnabled) return null;
-                  if (value == null || value.trim().isEmpty) {
-                    return '이름을 입력하세요';
-                  }
-                  if (value.trim().length > 80) {
-                    return '80자 이하로 입력하세요';
-                  }
-                  return null;
-                },
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _nameEnabled,
+                title: const Text('이름/표시명 부분 바꾸기'),
+                subtitle: const Text('선택한 아이템마다 포함된 문자열만 치환합니다'),
+                onChanged: (value) => setState(() => _nameEnabled = value),
               ),
+              if (_nameEnabled) ...[
+                _NameReplacementPreview(items: _items, loading: _itemsLoading),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: _nameFindC,
+                  decoration: const InputDecoration(
+                    labelText: '이름에서 바꿀 부분',
+                    hintText: '예: 200*250',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                  validator: (value) {
+                    if (!_nameEnabled) return null;
+                    if (value == null || value.trim().isEmpty) {
+                      return '바꿀 부분을 입력하세요';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _nameReplaceC,
+                  decoration: const InputDecoration(
+                    labelText: '이름 새 문자열',
+                    hintText: '예: 200*230',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                  validator: (value) {
+                    if (!_nameEnabled) return null;
+                    if ((value ?? '').trim().length > 80) {
+                      return '80자 이하로 입력하세요';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                _NameReplacementResultPreview(
+                  items: _items,
+                  find: _nameFindC.text.trim(),
+                  replacement: _nameReplaceC.text.trim(),
+                ),
+              ],
               const SizedBox(height: 16),
               _sectionTitle('분류'),
               SwitchListTile(
@@ -577,28 +660,116 @@ class _BulkItemInfoEditSheetState extends State<_BulkItemInfoEditSheet> {
       ],
     );
   }
+}
 
-  Widget _enabledTextField({
-    required String label,
-    required bool enabled,
-    required ValueChanged<bool> onEnabledChanged,
-    required TextEditingController controller,
-    FormFieldValidator<String>? validator,
-  }) {
-    return Row(
+class _NameReplacementPreview extends StatelessWidget {
+  const _NameReplacementPreview({
+    required this.items,
+    required this.loading,
+  });
+
+  final List<Item> items;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: LinearProgressIndicator(),
+      );
+    }
+    return Column(
       children: [
-        Checkbox(
-            value: enabled, onChanged: (v) => onEnabledChanged(v ?? false)),
-        Expanded(
-          child: TextFormField(
-            controller: controller,
-            enabled: enabled,
-            decoration: InputDecoration(labelText: label),
-            maxLength: enabled ? 80 : null,
-            validator: validator,
-          ),
+        _NamePreviewBox(
+          title: '기존 이름',
+          lines: items.map((item) => item.name).toList(),
+        ),
+        const SizedBox(height: 8),
+        _NamePreviewBox(
+          title: '기존 표시명',
+          lines: items
+              .map((item) => item.displayName?.trim().isNotEmpty == true
+                  ? item.displayName!
+                  : item.name)
+              .toList(),
         ),
       ],
+    );
+  }
+}
+
+class _NameReplacementResultPreview extends StatelessWidget {
+  const _NameReplacementResultPreview({
+    required this.items,
+    required this.find,
+    required this.replacement,
+  });
+
+  final List<Item> items;
+  final String find;
+  final String replacement;
+
+  @override
+  Widget build(BuildContext context) {
+    if (find.isEmpty) {
+      return const Text('바꿀 부분을 입력하면 변경 결과를 미리 볼 수 있습니다.');
+    }
+    final changed = items
+        .where((item) =>
+            item.name.contains(find) || (item.displayName ?? '').contains(find))
+        .toList();
+    if (changed.isEmpty) {
+      return const Text('선택한 아이템 이름에 바꿀 부분이 없습니다.');
+    }
+    return _NamePreviewBox(
+      title: '변경 후 미리보기',
+      lines: changed.map((item) {
+        final displayName = item.displayName?.trim().isNotEmpty == true
+            ? item.displayName!
+            : item.name;
+        return displayName.replaceAll(find, replacement);
+      }).toList(),
+    );
+  }
+}
+
+class _NamePreviewBox extends StatelessWidget {
+  const _NamePreviewBox({
+    required this.title,
+    required this.lines,
+  });
+
+  final String title;
+  final List<String> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = lines.take(8).toList();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          if (shown.isEmpty)
+            const Text('선택한 아이템을 불러오지 못했습니다.')
+          else
+            for (final line in shown)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(line),
+              ),
+          if (lines.length > shown.length)
+            Text('외 ${lines.length - shown.length}개'),
+        ],
+      ),
     );
   }
 }
