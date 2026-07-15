@@ -2505,7 +2505,7 @@ class _DeliveryInfoSheetState extends State<_DeliveryInfoSheet> {
             ] else ...[
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                initialValue: validSelectedId,
+                value: validSelectedId,
                 decoration: const InputDecoration(labelText: '배송지 선택'),
                 items: [
                   for (final destination in destinations)
