@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../app/main_tab_controller.dart';
 import '../../models/item.dart';
@@ -2046,145 +2047,70 @@ class _PlayAutoAddressBookSheetState extends State<_PlayAutoAddressBookSheet> {
   }
 }
 
-class _JusoAddressSelection {
-  final _JusoAddressResult address;
-  final String confmKey;
+class _DaumPostcodeResult {
+  final String zonecode;
+  final String roadAddress;
+  final String jibunAddress;
+  final String buildingName;
 
-  const _JusoAddressSelection({
-    required this.address,
-    required this.confmKey,
-  });
-}
-
-class _JusoAddressResult {
-  final String zipNo;
-  final String roadAddr;
-  final String jibunAddr;
-
-  const _JusoAddressResult({
-    required this.zipNo,
-    required this.roadAddr,
-    required this.jibunAddr,
+  const _DaumPostcodeResult({
+    required this.zonecode,
+    required this.roadAddress,
+    required this.jibunAddress,
+    required this.buildingName,
   });
 
-  factory _JusoAddressResult.fromJson(Map<String, Object?> json) {
-    return _JusoAddressResult(
-      zipNo: json['zipNo']?.toString() ?? '',
-      roadAddr: json['roadAddr']?.toString() ?? '',
-      jibunAddr: json['jibunAddr']?.toString() ?? '',
+  factory _DaumPostcodeResult.fromJson(Map<String, Object?> json) {
+    return _DaumPostcodeResult(
+      zonecode: json['zonecode']?.toString() ?? '',
+      roadAddress: json['roadAddress']?.toString() ?? '',
+      jibunAddress: json['jibunAddress']?.toString() ?? '',
+      buildingName: json['buildingName']?.toString() ?? '',
     );
+  }
+
+  String get address {
+    if (roadAddress.trim().isNotEmpty) return roadAddress.trim();
+    return jibunAddress.trim();
   }
 }
 
-class _JusoAddressSearchSheet extends StatefulWidget {
-  final String initialConfmKey;
-  final String initialKeyword;
-
-  const _JusoAddressSearchSheet({
-    required this.initialConfmKey,
-    required this.initialKeyword,
-  });
+class _DaumPostcodeSheet extends StatefulWidget {
+  const _DaumPostcodeSheet();
 
   @override
-  State<_JusoAddressSearchSheet> createState() =>
-      _JusoAddressSearchSheetState();
+  State<_DaumPostcodeSheet> createState() => _DaumPostcodeSheetState();
 }
 
-class _JusoAddressSearchSheetState extends State<_JusoAddressSearchSheet> {
-  late final TextEditingController _confmKeyController;
-  late final TextEditingController _keywordController;
-  var _loading = false;
-  String? _message;
-  List<_JusoAddressResult> _results = const [];
+class _DaumPostcodeSheetState extends State<_DaumPostcodeSheet> {
+  late final WebViewController _controller;
+  var _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _confmKeyController = TextEditingController(text: widget.initialConfmKey);
-    _keywordController = TextEditingController(text: widget.initialKeyword);
-  }
-
-  @override
-  void dispose() {
-    _confmKeyController.dispose();
-    _keywordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _search() async {
-    final confmKey = _confmKeyController.text.trim();
-    final keyword = _keywordController.text.trim();
-    if (confmKey.isEmpty) {
-      setState(() => _message = '도로명주소 API 승인키를 입력해주세요.');
-      return;
-    }
-    if (keyword.length < 2) {
-      setState(() => _message = '주소 검색어를 2글자 이상 입력해주세요.');
-      return;
-    }
-
-    setState(() {
-      _loading = true;
-      _message = null;
-    });
-    try {
-      final uri = Uri.https(
-        'business.juso.go.kr',
-        '/addrlink/addrLinkApi.do',
-        {
-          'confmKey': confmKey,
-          'currentPage': '1',
-          'countPerPage': '30',
-          'keyword': keyword,
-          'resultType': 'json',
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (_) {
+            if (mounted) setState(() => _loading = false);
+          },
+        ),
+      )
+      ..addJavaScriptChannel(
+        'DaumPostcode',
+        onMessageReceived: (message) {
+          final decoded = jsonDecode(message.message);
+          if (decoded is! Map) return;
+          Navigator.of(context).pop(
+            _DaumPostcodeResult.fromJson(
+              decoded.map((key, value) => MapEntry(key.toString(), value)),
+            ),
+          );
         },
-      );
-      final response = await http.get(uri);
-      final decoded = jsonDecode(response.body);
-      final root = decoded is Map ? decoded['results'] : null;
-      final common = root is Map ? root['common'] : null;
-      final errorCode = common is Map ? common['errorCode']?.toString() : null;
-      final errorMessage =
-          common is Map ? common['errorMessage']?.toString() : null;
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('HTTP ${response.statusCode}');
-      }
-      if (errorCode != null && errorCode != '0') {
-        throw Exception(errorMessage ?? '주소 검색 오류 $errorCode');
-      }
-      final juso = root is Map ? root['juso'] : null;
-      final results = juso is List
-          ? juso
-              .whereType<Map>()
-              .map((row) => _JusoAddressResult.fromJson(
-                    row.map((key, value) => MapEntry(key.toString(), value)),
-                  ))
-              .toList()
-          : <_JusoAddressResult>[];
-
-      if (!mounted) return;
-      setState(() {
-        _results = results;
-        _message = results.isEmpty ? '검색 결과가 없습니다.' : null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _results = const [];
-        _message = '주소 검색 실패: $e';
-      });
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  void _select(_JusoAddressResult address) {
-    Navigator.of(context).pop(
-      _JusoAddressSelection(
-        address: address,
-        confmKey: _confmKeyController.text.trim(),
-      ),
-    );
+      )
+      ..loadHtmlString(_daumPostcodeHtml);
   }
 
   @override
@@ -2192,9 +2118,9 @@ class _JusoAddressSearchSheetState extends State<_JusoAddressSearchSheet> {
     return SafeArea(
       child: DraggableScrollableSheet(
         expand: false,
-        initialChildSize: 0.86,
+        initialChildSize: 0.9,
         minChildSize: 0.5,
-        maxChildSize: 0.95,
+        maxChildSize: 0.96,
         builder: (context, scrollController) {
           return Column(
             children: [
@@ -2204,7 +2130,7 @@ class _JusoAddressSearchSheetState extends State<_JusoAddressSearchSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        '도로명주소 검색',
+                        '주소 검색',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
@@ -2216,93 +2142,14 @@ class _JusoAddressSearchSheetState extends State<_JusoAddressSearchSheet> {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Column(
+              Expanded(
+                child: Stack(
                   children: [
-                    TextField(
-                      controller: _confmKeyController,
-                      decoration: const InputDecoration(
-                        labelText: '도로명주소 API 승인키',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _keywordController,
-                      autofocus: true,
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => _search(),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _loading
-                            ? const Padding(
-                                padding: EdgeInsets.all(12),
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              )
-                            : IconButton(
-                                tooltip: '검색',
-                                onPressed: _search,
-                                icon: const Icon(Icons.arrow_forward),
-                              ),
-                        hintText: '예: 테헤란로 152, 세종대로',
-                        border: const OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                    ),
-                    if (_message != null) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          _message!,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                        ),
-                      ),
-                    ],
+                    WebViewWidget(controller: _controller),
+                    if (_loading)
+                      const Center(child: CircularProgressIndicator()),
                   ],
                 ),
-              ),
-              Expanded(
-                child: _results.isEmpty
-                    ? ListView(
-                        controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
-                        children: const [
-                          Icon(Icons.travel_explore, size: 42),
-                          SizedBox(height: 12),
-                          Center(child: Text('주소를 검색해주세요')),
-                        ],
-                      )
-                    : ListView.separated(
-                        controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                        itemCount: _results.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final result = _results[index];
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: CircleAvatar(
-                              child: Text(result.zipNo),
-                            ),
-                            title: Text(result.roadAddr),
-                            subtitle: result.jibunAddr.trim().isEmpty
-                                ? null
-                                : Text(result.jibunAddr),
-                            onTap: () => _select(result),
-                          );
-                        },
-                      ),
               ),
             ],
           );
@@ -2311,6 +2158,53 @@ class _JusoAddressSearchSheetState extends State<_JusoAddressSearchSheet> {
     );
   }
 }
+
+const _daumPostcodeHtml = '''
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <style>
+    html, body, #postcode {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+  </style>
+</head>
+<body>
+  <div id="postcode"></div>
+  <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+  <script>
+    function openPostcode() {
+      new daum.Postcode({
+        width: '100%',
+        height: '100%',
+        oncomplete: function(data) {
+          DaumPostcode.postMessage(JSON.stringify({
+            zonecode: data.zonecode || '',
+            roadAddress: data.roadAddress || '',
+            jibunAddress: data.jibunAddress || '',
+            buildingName: data.buildingName || ''
+          }));
+        }
+      }).embed(document.getElementById('postcode'));
+    }
+
+    if (window.daum && window.daum.Postcode) {
+      openPostcode();
+    } else {
+      window.onload = openPostcode;
+    }
+  </script>
+</body>
+</html>
+''';
 
 class PlayAutoQuoteOrderAddScreen extends StatefulWidget {
   const PlayAutoQuoteOrderAddScreen({
@@ -2339,7 +2233,6 @@ class _PlayAutoQuoteOrderAddScreenState
       _PlayAutoOrderImportScreenState._tokenIssuedAtKey;
   static const _quoteOrderAddLogKey =
       _PlayAutoOrderImportScreenState._quoteOrderAddLogKey;
-  static const _jusoConfmKeyKey = 'juso_address_api_confm_key_v1';
   static const _tokenLifetime = _PlayAutoOrderImportScreenState._tokenLifetime;
 
   final _formKey = GlobalKey<FormState>();
@@ -2358,7 +2251,6 @@ class _PlayAutoQuoteOrderAddScreenState
   final _zipController = TextEditingController();
   final _address1Controller = TextEditingController();
   final _address2Controller = TextEditingController();
-  final _jusoConfmKeyController = TextEditingController();
   final _shipMessageController = TextEditingController();
   final _shippingCostController = TextEditingController(text: '0');
   final _shopOrderNoController = TextEditingController(text: '__AUTO__');
@@ -2406,7 +2298,6 @@ class _PlayAutoQuoteOrderAddScreenState
     _zipController.dispose();
     _address1Controller.dispose();
     _address2Controller.dispose();
-    _jusoConfmKeyController.dispose();
     _shipMessageController.dispose();
     _shippingCostController.dispose();
     _shopOrderNoController.dispose();
@@ -2422,7 +2313,6 @@ class _PlayAutoQuoteOrderAddScreenState
         key: _authenticationKeyKey,
       );
       final token = await _storage.read(key: _tokenKey);
-      final jusoConfmKey = await _storage.read(key: _jusoConfmKeyKey);
       final tokenIssuedAtText = await _storage.read(key: _tokenIssuedAtKey);
       final tokenIssuedAt = tokenIssuedAtText == null
           ? null
@@ -2441,9 +2331,6 @@ class _PlayAutoQuoteOrderAddScreenState
         if (tokenStillValid && token != null) {
           _tokenController.text = token;
           _tokenIssuedAt = tokenIssuedAt;
-        }
-        if (jusoConfmKey != null && jusoConfmKey.isNotEmpty) {
-          _jusoConfmKeyController.text = jusoConfmKey;
         }
       });
     } on MissingPluginException {
@@ -2543,27 +2430,17 @@ class _PlayAutoQuoteOrderAddScreenState
     _applyAddressEntry(selected);
   }
 
-  Future<void> _openJusoAddressSearch() async {
-    final keyword = _address1Controller.text.trim().isNotEmpty
-        ? _address1Controller.text.trim()
-        : widget.quote.customerName;
-    final selected = await showModalBottomSheet<_JusoAddressSelection>(
+  Future<void> _openDaumPostcodeSearch() async {
+    final selected = await showModalBottomSheet<_DaumPostcodeResult>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _JusoAddressSearchSheet(
-        initialConfmKey: _jusoConfmKeyController.text.trim(),
-        initialKeyword: keyword,
-      ),
+      builder: (_) => const _DaumPostcodeSheet(),
     );
     if (selected == null) return;
 
-    _jusoConfmKeyController.text = selected.confmKey;
-    if (selected.confmKey.isNotEmpty) {
-      await _storage.write(key: _jusoConfmKeyKey, value: selected.confmKey);
-    }
     setState(() {
-      _zipController.text = selected.address.zipNo;
-      _address1Controller.text = selected.address.roadAddr;
+      _zipController.text = selected.zonecode;
+      _address1Controller.text = selected.address;
       _address2Controller.clear();
     });
   }
@@ -3177,19 +3054,11 @@ class _PlayAutoQuoteOrderAddScreenState
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: _openJusoAddressSearch,
+                  onPressed: _openDaumPostcodeSearch,
                   icon: const Icon(Icons.travel_explore_outlined),
-                  label: const Text('도로명주소 검색'),
+                  label: const Text('주소 검색'),
                 ),
               ],
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _jusoConfmKeyController,
-              decoration: const InputDecoration(
-                labelText: '도로명주소 API 승인키',
-                hintText: '도로명주소 검색 버튼에서도 입력할 수 있습니다',
-              ),
             ),
             const SizedBox(height: 8),
             TextFormField(
@@ -3217,8 +3086,8 @@ class _PlayAutoQuoteOrderAddScreenState
               decoration: InputDecoration(
                 labelText: '주소',
                 suffixIcon: IconButton(
-                  tooltip: '주소록 검색',
-                  onPressed: _addressEntries.isEmpty ? null : _openAddressBook,
+                  tooltip: '주소 검색',
+                  onPressed: _openDaumPostcodeSearch,
                   icon: const Icon(Icons.search),
                 ),
               ),
