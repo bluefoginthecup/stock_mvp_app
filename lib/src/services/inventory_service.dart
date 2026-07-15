@@ -26,6 +26,11 @@ class InventoryService {
 
   /// 주문 삭제 (소프트/하드 옵션)
   Future<void> deleteOrderCascade(String orderId, {bool hard = false}) async {
+    final linkedWorks = await works.listWorksByOrder(orderId);
+    for (final work in linkedWorks) {
+      await deleteWorkSafe(work.id, hard: hard);
+    }
+
     if (hard) {
       await orders.hardDeleteOrder(orderId);
     } else {

@@ -317,6 +317,40 @@ class _WorkListScreenState extends State<WorkListScreen> {
     );
   }
 
+  Future<void> _deleteWork(Work w) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('작업 삭제'),
+        content: const Text('이 작업을 작업 목록에서 삭제할까요? 삭제된 작업은 휴지통에서 확인할 수 있어요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    try {
+      await context.read<InventoryService>().deleteWorkSafe(w.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('작업을 삭제했어요.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('작업 삭제 실패: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final workRepo = context.read<WorkRepo>();
@@ -421,6 +455,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
                               onDone: (w.status == WorkStatus.inProgress)
                                   ? () => inv.completeWork(w.id)
                                   : null,
+                              onDelete: () => _deleteWork(w),
                               onTap: () => _openWorkDetail(w),
                             ),
                           );
@@ -452,6 +487,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
                           onDone: (w.status == WorkStatus.inProgress)
                               ? () => inv.completeWork(w.id)
                               : null,
+                          onDelete: () => _deleteWork(w),
                           onTap: () => _openWorkDetail(w),
                         );
                       },

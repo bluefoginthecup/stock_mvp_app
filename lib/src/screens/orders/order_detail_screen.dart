@@ -621,11 +621,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
     setState(() => _busy = true);
     try {
-      await context.read<OrderRepo>().softDeleteOrder(o.id);
+      await context.read<InventoryService>().deleteOrderCascade(o.id);
       if (!mounted) return;
 
       setState(() => _order = o.copyWith(isDeleted: true, deletedAt: DateTime.now()));
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('주문을 취소했어요.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('주문과 연결된 작업을 함께 삭제했어요.')),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('취소 실패: $e')));

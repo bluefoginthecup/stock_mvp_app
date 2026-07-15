@@ -70,6 +70,18 @@ Future<String> createChildWork({
 
 
   @override
+  Future<List<Work>> listWorksByOrder(String orderId) async {
+    final rows = await (db.select(db.works)
+      ..where((t) => t.orderId.equals(orderId))
+      ..where((t) => t.isDeleted.equals(false))
+      ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+        .get();
+
+    return rows.map((r) => r.toDomain()).toList();
+  }
+
+
+  @override
 Future<List<Work>> findWorksByOrderAndItem(
     String orderId,
     String itemId,
@@ -233,10 +245,12 @@ Future<void> cancelWork(String id) => updateWorkStatus(id, WorkStatus.canceled);
 
 @override
 Future<void> softDeleteWork(String workId) async {
+  final nowIso = DateTime.now().toIso8601String();
   await (db.update(db.works)..where((t) => t.id.equals(workId))).write(
     WorksCompanion(
       isDeleted: const Value(true),
-      updatedAt: Value(DateTime.now().toIso8601String()),
+      updatedAt: Value(nowIso),
+      deletedAt: Value(nowIso),
     ),
   );
 }

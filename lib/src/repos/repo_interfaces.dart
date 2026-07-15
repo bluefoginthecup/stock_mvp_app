@@ -304,6 +304,7 @@ abstract class WorkRepo {
   });
 
   Future<Work?> findWorkForOrderLine(String orderId, String itemId);
+  Future<List<Work>> listWorksByOrder(String orderId);
   Future<List<Work>> findWorksByOrderAndItem(
       String orderId, String itemId); // ✅ 추가
 

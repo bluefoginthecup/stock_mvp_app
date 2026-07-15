@@ -14,6 +14,7 @@ class WorkRow extends StatelessWidget {
   final Work w;
   final VoidCallback? onStart;
   final VoidCallback? onDone;
+  final VoidCallback? onDelete;
   final VoidCallback? onTap; // 상세 이동 (옵션)
 
   const WorkRow({
@@ -21,6 +22,7 @@ class WorkRow extends StatelessWidget {
     required this.w,
     this.onStart,
     this.onDone,
+    this.onDelete,
     this.onTap,
   });
 
@@ -82,16 +84,31 @@ class WorkRow extends StatelessWidget {
         final customer = snap.data?.$2;
 
         // 오른쪽 버튼 영역
-        Widget? trailing;
+        Widget? action;
         if (w.status == WorkStatus.planned && onStart != null) {
-          trailing = OutlinedButton(
+          action = OutlinedButton(
               onPressed: onStart, child: Text(context.t.work_action_start));
         } else if (w.status == WorkStatus.inProgress && onDone != null) {
-          trailing = OutlinedButton(
+          action = OutlinedButton(
               onPressed: onDone, child: Text(context.t.work_action_done));
         } else if (w.status == WorkStatus.done) {
-          trailing = const Icon(Icons.check, color: Colors.green);
+          action = const Icon(Icons.check, color: Colors.green);
         }
+
+        final trailing = onDelete == null
+            ? action
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (action != null) action,
+                  IconButton(
+                    tooltip: '작업 삭제',
+                    icon: const Icon(Icons.delete_outline),
+                    color: Colors.redAccent,
+                    onPressed: onDelete,
+                  ),
+                ],
+              );
 
         return ListTile(
           // "$itemName   x${w.qty}" → 플레이스홀더 키

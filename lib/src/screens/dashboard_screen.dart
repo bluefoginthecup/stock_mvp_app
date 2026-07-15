@@ -26,6 +26,7 @@ import 'stock/stock_item_detail_screen.dart';
 const _dashboardSectionOrderPrefsKey = 'dashboard.sectionOrder.v1';
 const _dashboardHiddenSectionsPrefsKey = 'dashboard.hiddenSections.v1';
 const _dashboardCollapsedSectionsPrefsKey = 'dashboard.collapsedSections.v1';
+const _reorderAlertReadPrefsKey = 'dashboard.reorderAlertRead.v1';
 
 enum _DashboardSectionType {
   summary('summary', '현재 요약', Icons.dashboard_customize_rounded),
@@ -84,6 +85,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ..._defaultDashboardSectionOrder,
   };
   Set<_DashboardSectionType> _collapsedSections = {};
+  Set<String> _readReorderAlertKeys = {};
   bool _editingDashboard = false;
 
   @override
@@ -93,7 +95,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadOrderFromDb();
       _loadDashboardLayout();
+      _loadReadReorderAlerts();
     });
+  }
+
+  Future<void> _loadReadReorderAlerts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        _readReorderAlertKeys =
+            (prefs.getStringList(_reorderAlertReadPrefsKey) ?? const [])
+                .toSet();
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _readReorderAlertKeys = {});
+    }
+  }
+
+  Future<void> _persistReadReorderAlerts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        _reorderAlertReadPrefsKey,
+        _readReorderAlertKeys.toList()..sort(),
+      );
+    } catch (_) {
+      // 읽음 상태 저장 실패는 알림 표시를 막지 않는다.
+    }
   }
 
   Future<void> _loadDashboardLayout() async {
@@ -258,6 +288,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return _reorderAlertItems(items);
   }
 
+  String _reorderAlertKey(Item item) {
+    final nextDate = ReorderScheduleUtils.effectiveNextReorderDate(item);
+    final dateKey = nextDate == null
+        ? 'none'
+        : ReorderScheduleUtils.dateOnly(nextDate).toIso8601String();
+    return '${item.id}:$dateKey';
+  }
+
+  Future<void> _markReorderAlertsRead(Iterable<Item> items) async {
+    final keys = items.map(_reorderAlertKey).toSet();
+    if (keys.isEmpty || _readReorderAlertKeys.containsAll(keys)) return;
+
+    setState(() {
+      _readReorderAlertKeys = {..._readReorderAlertKeys, ...keys};
+    });
+    await _persistReadReorderAlerts();
+  }
+
   List<Item> _reorderAlertItems(Iterable<Item> items) {
     final now = DateTime.now();
     final alerts = items.where((item) {
@@ -284,17 +332,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _showReorderAlerts(ItemRepo repo) async {
     final items = await _loadReorderAlertItems(repo);
     if (!mounted) return;
+    await _markReorderAlertsRead(items);
+    if (!mounted) return;
 
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) => _ReorderAlertSheet(
         items: items,
+        readKeys: _readReorderAlertKeys,
+        alertKeyOf: _reorderAlertKey,
         onOpenItem: (item) {
           Navigator.of(sheetContext).pop();
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => StockItemDetailScreen(itemId: item.id),
+            ),
+          );
+        },
+        onMarkOrdered: (item) async {
+          await repo.markItemOrderedNow(item.id);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${item.displayName ?? item.name} 발주 완료 처리됨'),
             ),
           );
         },
@@ -321,6 +382,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (!_editingDashboard)
             _DashboardNotificationButton(
               stream: itemRepo.watchItems().map(_reorderAlertItems),
+              readKeys: _readReorderAlertKeys,
+              alertKeyOf: _reorderAlertKey,
               onPressed: () => _showReorderAlerts(itemRepo),
             ),
           if (_editingDashboard)
@@ -438,10 +501,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _DashboardNotificationButton extends StatelessWidget {
   final Stream<List<Item>> stream;
+  final Set<String> readKeys;
+  final String Function(Item item) alertKeyOf;
   final VoidCallback onPressed;
 
   const _DashboardNotificationButton({
     required this.stream,
+    required this.readKeys,
+    required this.alertKeyOf,
     required this.onPressed,
   });
 
@@ -451,9 +518,11 @@ class _DashboardNotificationButton extends StatelessWidget {
       stream: stream,
       initialData: const <Item>[],
       builder: (context, snapshot) {
-        final count = snapshot.data?.length ?? 0;
+        final items = snapshot.data ?? const <Item>[];
+        final count =
+            items.where((item) => !readKeys.contains(alertKeyOf(item))).length;
         return Semantics(
-          label: count > 0 ? '발주 알림 $count개' : '알림',
+          label: count > 0 ? '미확인 발주 알림 $count개' : '알림',
           button: true,
           child: Stack(
             clipBehavior: Clip.none,
@@ -484,19 +553,46 @@ class _DashboardNotificationButton extends StatelessWidget {
   }
 }
 
-class _ReorderAlertSheet extends StatelessWidget {
+class _ReorderAlertSheet extends StatefulWidget {
   final List<Item> items;
+  final Set<String> readKeys;
+  final String Function(Item item) alertKeyOf;
   final ValueChanged<Item> onOpenItem;
+  final Future<void> Function(Item item) onMarkOrdered;
 
   const _ReorderAlertSheet({
     required this.items,
+    required this.readKeys,
+    required this.alertKeyOf,
     required this.onOpenItem,
+    required this.onMarkOrdered,
   });
+
+  @override
+  State<_ReorderAlertSheet> createState() => _ReorderAlertSheetState();
+}
+
+class _ReorderAlertSheetState extends State<_ReorderAlertSheet> {
+  late List<Item> _items;
+
+  @override
+  void initState() {
+    super.initState();
+    _items = [...widget.items];
+  }
 
   String _dateText(DateTime? value) {
     if (value == null) return '예정일 없음';
     final d = ReorderScheduleUtils.dateOnly(value);
     return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _markOrdered(Item item) async {
+    await widget.onMarkOrdered(item);
+    if (!mounted) return;
+    setState(() {
+      _items.removeWhere((candidate) => candidate.id == item.id);
+    });
   }
 
   @override
@@ -527,7 +623,7 @@ class _ReorderAlertSheet extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    '${items.length}개',
+                    '${_items.length}개',
                     style: text.bodyMedium?.copyWith(
                       color: const Color(0xFF6F6878),
                       fontWeight: FontWeight.w800,
@@ -537,7 +633,7 @@ class _ReorderAlertSheet extends StatelessWidget {
               ),
             ),
             const Divider(height: 1),
-            if (items.isEmpty)
+            if (_items.isEmpty)
               const Expanded(
                 child: Center(
                   child: Text(
@@ -553,13 +649,15 @@ class _ReorderAlertSheet extends StatelessWidget {
               Expanded(
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: items.length,
+                  itemCount: _items.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
-                    final item = items[index];
+                    final item = _items[index];
                     final status = ReorderScheduleUtils.statusFor(item);
                     final nextDate =
                         ReorderScheduleUtils.effectiveNextReorderDate(item);
+                    final read =
+                        widget.readKeys.contains(widget.alertKeyOf(item));
                     final color = status.overdue
                         ? Colors.deepOrange.shade700
                         : const Color(0xFF7756E7);
@@ -580,12 +678,23 @@ class _ReorderAlertSheet extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.w900),
                       ),
                       subtitle: Text(
-                        '${status.label} · ${_dateText(nextDate)}',
+                        '${status.label} · ${_dateText(nextDate)}${read ? ' · 읽음' : ''}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => onOpenItem(item),
+                      trailing: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 4,
+                        children: [
+                          IconButton(
+                            tooltip: '발주 완료',
+                            onPressed: () => _markOrdered(item),
+                            icon: const Icon(Icons.check_circle_outline),
+                          ),
+                          const Icon(Icons.chevron_right_rounded),
+                        ],
+                      ),
+                      onTap: () => widget.onOpenItem(item),
                     );
                   },
                 ),
