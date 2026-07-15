@@ -72,6 +72,9 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
         _getEventsForDay(_selectedDay ?? _focusedDay ?? DateTime.now());
 
     Color colorForEvent(CalendarEvent e) {
+      final customColor = e.colorValue;
+      if (customColor != null) return Color(customColor);
+
       // 🔥 미결제
       if (e.type == CalendarEventType.paymentDate && e.isPaid == false) {
         return Colors.red;
@@ -99,6 +102,8 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
           return Colors.indigo;
         case CalendarEventType.quoteValidUntil:
           return Colors.deepOrange;
+        case CalendarEventType.playAutoOrder:
+          return Colors.teal;
         default:
           return Colors.grey;
       }
@@ -255,6 +260,8 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
         return Icons.request_quote_outlined;
       case CalendarEventType.quoteValidUntil:
         return Icons.event_available;
+      case CalendarEventType.playAutoOrder:
+        return Icons.fact_check_outlined;
       default:
         return Icons.event;
     }
@@ -284,6 +291,8 @@ class _CommonCalendarViewState extends State<CommonCalendarView> {
         return '견적일';
       case CalendarEventType.quoteValidUntil:
         return '유효기한';
+      case CalendarEventType.playAutoOrder:
+        return '플토 주문';
       default:
         return '';
     }

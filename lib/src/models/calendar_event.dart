@@ -11,6 +11,7 @@ enum CalendarEventType {
   workDone,
   quoteDate,
   quoteValidUntil,
+  playAutoOrder,
 }
 
 class CalendarEvent {
@@ -21,6 +22,7 @@ class CalendarEvent {
   final bool? isPaid;
   final String? subtitle;
   final String? searchText;
+  final int? colorValue;
 
   const CalendarEvent({
     required this.date,
@@ -30,6 +32,7 @@ class CalendarEvent {
     required this.refId,
     this.isPaid,
     this.searchText,
+    this.colorValue,
   });
 
   /// 날짜 비교용 (시간 제거)

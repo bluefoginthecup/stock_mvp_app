@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as image_lib;
 import 'package:intl/intl.dart';
@@ -20,6 +23,7 @@ import 'package:uuid/uuid.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../app/main_tab_controller.dart';
+import '../../models/calendar_event.dart';
 import '../../models/item.dart';
 import '../../models/order.dart';
 import '../../models/quote.dart';
@@ -29,6 +33,7 @@ import '../../repos/repo_interfaces.dart';
 import '../../services/order_planning_service.dart';
 import '../../services/playauto_item_mapping_service.dart';
 import '../../services/playauto_order_link_service.dart';
+import '../../ui/common/common_calendar_view.dart';
 import '../../ui/common/item_picker_sheet.dart';
 import '../stock/stock_new_item_sheet.dart';
 import '../stock/widgets/new_item_result.dart';
@@ -52,6 +57,29 @@ String _playAutoOrderGroupKey(_PlayAutoOrderPreview order) {
   return 'playauto::date::$date::customer::$customer';
 }
 
+String _playAutoOrderIdentityKey(_PlayAutoOrderPreview order) {
+  final primary = [
+    order.bundleNo,
+    order.uniq,
+    order.orderNo,
+  ].map((value) => value.trim()).firstWhere(
+        (value) => value.isNotEmpty && value != '-',
+        orElse: () => '',
+      );
+  if (primary.isNotEmpty) return _normalizeSearchText(primary);
+  return _normalizeSearchText([
+    order.orderDate,
+    order.shopName,
+    order.customerName,
+    order.productName,
+    order.optionName,
+  ].join('::'));
+}
+
+bool _isPlayAutoFreshOrderStatus(String status) {
+  return status.contains('신규') || status.contains('결제완료');
+}
+
 class PlayAutoOrderImportScreen extends StatefulWidget {
   const PlayAutoOrderImportScreen({super.key})
       : orderViewOnly = false,
@@ -73,7 +101,8 @@ class PlayAutoOrderImportScreen extends StatefulWidget {
       _PlayAutoOrderImportScreenState();
 }
 
-class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
+class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
+    with WidgetsBindingObserver {
   static const _storage = FlutterSecureStorage();
   static const _baseUrlKey = 'playauto_openapi_base_url_v1';
   static const _apiKeyKey = 'playauto_api_key_v1';
@@ -82,6 +111,11 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   static const _tokenIssuedAtKey = 'playauto_token_issued_at_v1';
   static const _orderCachePrefix = 'playauto_order_cache_v1';
   static const _quoteOrderAddLogKey = 'playauto_quote_order_add_logs_v1';
+  static const _autoSyncEnabledKey = 'playauto_auto_sync_enabled_v1';
+  static const _autoSyncIntervalMinutesKey =
+      'playauto_auto_sync_interval_minutes_v1';
+  static const _autoSyncLastRunKey = 'playauto_auto_sync_last_run_v1';
+  static const _knownOrderKeysKey = 'playauto_known_order_keys_v1';
   static const _tokenLifetime = Duration(hours: 24);
 
   final _baseUrlController = TextEditingController(
@@ -110,20 +144,32 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   String? _result;
   int? _statusCode;
   DateTime? _tokenIssuedAt;
+  Timer? _autoSyncTimer;
+  var _autoSyncEnabled = false;
+  var _autoSyncIntervalMinutes = 60;
+  var _autoSyncRunning = false;
+  DateTime? _lastAutoSyncAt;
+  String? _lastAutoSyncError;
+  int _newOrderBadgeCount = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final now = DateTime.now();
     final weekAgo = now.subtract(const Duration(days: 7));
     _sdateController.text = _formatDate(weekAgo);
     _edateController.text = _formatDate(now);
+    _loadAutoSyncSettings();
     _loadSavedCredentials();
     _loadQuoteOrderAddLogs();
+    _initializePlayAutoNotifications();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _autoSyncTimer?.cancel();
     _baseUrlController.dispose();
     _apiKeyController.dispose();
     _authenticationKeyController.dispose();
@@ -136,6 +182,13 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     _workShopCodeController.dispose();
     _workShopIdsController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _runDueAutoSync();
+    }
   }
 
   Future<void> _issueToken() async {
@@ -249,12 +302,180 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         _credentialsLoaded = true;
       });
       _scheduleOrderViewAutoFetch();
+      _runDueAutoSync();
     } on MissingPluginException {
       if (!mounted) return;
       setState(() => _credentialsLoaded = true);
       _scheduleOrderViewAutoFetch();
+      _runDueAutoSync();
       _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
     }
+  }
+
+  Future<void> _initializePlayAutoNotifications() async {
+    await _PlayAutoOrderNotificationService.initialize();
+  }
+
+  Future<void> _loadAutoSyncSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_autoSyncEnabledKey) ?? false;
+    final interval = prefs.getInt(_autoSyncIntervalMinutesKey) ?? 60;
+    final lastRunText = prefs.getString(_autoSyncLastRunKey);
+    final lastRun = lastRunText == null ? null : DateTime.tryParse(lastRunText);
+    if (!mounted) return;
+    setState(() {
+      _autoSyncEnabled = enabled;
+      _autoSyncIntervalMinutes = _normalizeAutoSyncInterval(interval);
+      _lastAutoSyncAt = lastRun;
+    });
+    _restartAutoSyncTimer();
+  }
+
+  Future<void> _saveAutoSyncSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoSyncEnabledKey, _autoSyncEnabled);
+    await prefs.setInt(
+      _autoSyncIntervalMinutesKey,
+      _autoSyncIntervalMinutes,
+    );
+  }
+
+  int _normalizeAutoSyncInterval(int value) {
+    const allowed = [30, 60, 120, 360];
+    return allowed.contains(value) ? value : 60;
+  }
+
+  Future<void> _setAutoSyncEnabled(bool enabled) async {
+    setState(() {
+      _autoSyncEnabled = enabled;
+      _lastAutoSyncError = null;
+    });
+    await _saveAutoSyncSettings();
+    _restartAutoSyncTimer();
+    if (enabled) {
+      await _seedKnownOrderKeysIfNeeded();
+      await _runDueAutoSync(force: true);
+    } else {
+      await _PlayAutoOrderNotificationService.showBadgeOnly(0);
+      if (mounted) setState(() => _newOrderBadgeCount = 0);
+    }
+  }
+
+  Future<void> _setAutoSyncInterval(int minutes) async {
+    setState(() {
+      _autoSyncIntervalMinutes = _normalizeAutoSyncInterval(minutes);
+      _lastAutoSyncError = null;
+    });
+    await _saveAutoSyncSettings();
+    _restartAutoSyncTimer();
+  }
+
+  void _restartAutoSyncTimer() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = null;
+    if (!_autoSyncEnabled) return;
+    _autoSyncTimer = Timer.periodic(
+      Duration(minutes: _autoSyncIntervalMinutes),
+      (_) => _runDueAutoSync(force: true),
+    );
+  }
+
+  Future<void> _runDueAutoSync({bool force = false}) async {
+    if (!_autoSyncEnabled || _autoSyncRunning) return;
+    if (_apiKeyController.text.trim().isEmpty) return;
+    if (!mounted) return;
+    final last = _lastAutoSyncAt;
+    final due = last == null ||
+        DateTime.now().difference(last) >=
+            Duration(minutes: _autoSyncIntervalMinutes);
+    if (!force && !due) return;
+
+    setState(() {
+      _autoSyncRunning = true;
+      _lastAutoSyncError = null;
+    });
+    try {
+      final sdate = _sdateController.text.trim();
+      final edate = _edateController.text.trim();
+      final length = int.tryParse(_lengthController.text.trim()) ?? 100;
+      final result = await _fetchOrdersFromPlayAuto(
+        sdate: sdate,
+        edate: edate,
+        length: length,
+        forceRefresh: true,
+      );
+      final newOrders = await _detectNewAutoSyncedOrders(result.orders);
+      final freshCount = _freshOrderCount(result.orders);
+      final now = DateTime.now();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_autoSyncLastRunKey, now.toIso8601String());
+      await _storeKnownOrderKeys(result.orders);
+      if (!mounted) return;
+      setState(() {
+        _orders = result.orders;
+        _statusCode = result.statusCode;
+        _result = result.body;
+        _lastAutoSyncAt = now;
+        _newOrderBadgeCount = freshCount;
+      });
+      if (newOrders.isNotEmpty) {
+        await _PlayAutoOrderNotificationService.showNewOrders(
+          count: newOrders.length,
+          badgeCount: freshCount,
+          sampleTitle: newOrders.first.productName,
+        );
+      } else {
+        await _PlayAutoOrderNotificationService.showBadgeOnly(freshCount);
+      }
+    } on _PlayAutoUserMessage catch (e) {
+      if (!mounted) return;
+      setState(() => _lastAutoSyncError = e.message);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _lastAutoSyncError = '$e');
+    } finally {
+      if (mounted) setState(() => _autoSyncRunning = false);
+    }
+  }
+
+  Future<void> _seedKnownOrderKeysIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getStringList(_knownOrderKeysKey) ?? const [];
+    if (existing.isNotEmpty || _orders.isEmpty) return;
+    await _storeKnownOrderKeys(_orders);
+  }
+
+  Future<List<_PlayAutoOrderPreview>> _detectNewAutoSyncedOrders(
+    List<_PlayAutoOrderPreview> orders,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final knownKeys = (prefs.getStringList(_knownOrderKeysKey) ?? const [])
+        .where((key) => key.isNotEmpty)
+        .toSet();
+    if (knownKeys.isEmpty) return const [];
+    return orders
+        .where((order) =>
+            _isPlayAutoFreshOrderStatus(order.status) &&
+            !knownKeys.contains(_playAutoOrderIdentityKey(order)))
+        .toList();
+  }
+
+  Future<void> _storeKnownOrderKeys(List<_PlayAutoOrderPreview> orders) async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = orders
+        .map(_playAutoOrderIdentityKey)
+        .where((key) {
+          return key.isNotEmpty;
+        })
+        .toSet()
+        .toList();
+    await prefs.setStringList(_knownOrderKeysKey, keys);
+  }
+
+  int _freshOrderCount(List<_PlayAutoOrderPreview> orders) {
+    return orders
+        .where((order) => _isPlayAutoFreshOrderStatus(order.status))
+        .length;
   }
 
   void _scheduleOrderViewAutoFetch() {
@@ -311,6 +532,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       }
       if (showMessage) _showSnack('플토 인증 정보를 저장했습니다.');
       if (mounted) setState(() {});
+      _runDueAutoSync();
     } on MissingPluginException {
       _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
     }
@@ -786,6 +1008,18 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     );
   }
 
+  void _openPlayAutoOrderCalendar() {
+    if (_orders.isEmpty) {
+      _showSnack('먼저 캐시 조회 또는 동기화로 주문을 불러와주세요.');
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _PlayAutoOrderCalendarScreen(orders: _orders),
+      ),
+    );
+  }
+
   Future<_PlayAutoResponse> _requestShipmentInstruction(
     _PlayAutoOrderPreview order,
   ) async {
@@ -1043,7 +1277,14 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         _lengthController.text = length.toString();
         _statusCode = result.statusCode;
         _result = result.body;
+        _newOrderBadgeCount = _freshOrderCount(result.orders);
       });
+    }
+    if (result.orders.isNotEmpty) {
+      await _storeKnownOrderKeys(result.orders);
+      await _PlayAutoOrderNotificationService.showBadgeOnly(
+        _freshOrderCount(result.orders),
+      );
     }
     return result;
   }
@@ -1439,6 +1680,20 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     return '$year-$month-$day $hour:$minute';
   }
 
+  String _lastAutoSyncText() {
+    final last = _lastAutoSyncAt;
+    if (last == null) return '없음';
+    return DateFormat('MM-dd HH:mm').format(last);
+  }
+
+  String _nextAutoSyncText() {
+    final last = _lastAutoSyncAt;
+    if (last == null) return '대기 중';
+    final next = last.add(Duration(minutes: _autoSyncIntervalMinutes));
+    if (next.isBefore(DateTime.now())) return '곧 실행';
+    return DateFormat('MM-dd HH:mm').format(next);
+  }
+
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -1473,20 +1728,56 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('플토'),
-          bottom: TabBar(
-            onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-            tabs: const [
-              Tab(icon: Icon(Icons.manage_accounts_outlined), text: '계정'),
-              Tab(icon: Icon(Icons.fact_check_outlined), text: '주문'),
+          toolbarHeight: 52,
+          titleSpacing: 12,
+          title: Row(
+            children: [
+              const Text('플토'),
+              if (_newOrderBadgeCount > 0) ...[
+                const SizedBox(width: 6),
+                _PlayAutoNewOrderBadge(count: _newOrderBadgeCount),
+              ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: TabBar(
+                  onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                  dividerHeight: 0,
+                  indicatorSize: TabBarIndicatorSize.label,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+                  tabs: const [
+                    Tab(height: 38, text: '주문'),
+                    Tab(height: 38, text: '계정'),
+                  ],
+                ),
+              ),
             ],
           ),
+          actions: [
+            IconButton(
+              tooltip: '주문 달력',
+              onPressed: _openPlayAutoOrderCalendar,
+              icon: const Icon(Icons.calendar_month_outlined),
+            ),
+          ],
         ),
         body: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
           child: TabBarView(
             children: [
+              _PlayAutoOrderPreviewScreen(
+                orders: _orders,
+                startDate: _sdateController.text.trim(),
+                endDate: _edateController.text.trim(),
+                length: int.tryParse(_lengthController.text.trim()) ?? 100,
+                onFetchOrders: _fetchOrdersForPreview,
+                fulfillmentMode: true,
+                embedded: true,
+                onInstruction: _requestShipmentInstruction,
+                onSetInvoice: _requestSetInvoice,
+                onCompleteInvoice: _requestCompleteInvoice,
+                onSendInvoice: _requestSendInvoice,
+              ),
               ListView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
@@ -1566,6 +1857,103 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
                       labelText: '발급 토큰',
                       helperText: _tokenHelperText,
                       border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(color: scheme.outlineVariant),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SwitchListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('자동 동기화'),
+                            subtitle: Text(
+                              '앱이 켜져 있을 때 PlayAuto 주문을 주기적으로 확인합니다.',
+                              style: TextStyle(color: scheme.onSurfaceVariant),
+                            ),
+                            value: _autoSyncEnabled,
+                            onChanged:
+                                _credentialsLoaded ? _setAutoSyncEnabled : null,
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<int>(
+                            value: _autoSyncIntervalMinutes,
+                            decoration: const InputDecoration(
+                              labelText: '동기화 간격',
+                              border: OutlineInputBorder(),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 30,
+                                child: Text('30분마다'),
+                              ),
+                              DropdownMenuItem(
+                                value: 60,
+                                child: Text('1시간마다'),
+                              ),
+                              DropdownMenuItem(
+                                value: 120,
+                                child: Text('2시간마다'),
+                              ),
+                              DropdownMenuItem(
+                                value: 360,
+                                child: Text('6시간마다'),
+                              ),
+                            ],
+                            onChanged: _autoSyncEnabled
+                                ? (value) {
+                                    if (value != null) {
+                                      _setAutoSyncInterval(value);
+                                    }
+                                  }
+                                : null,
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 6,
+                            children: [
+                              _AutoSyncStatusChip(
+                                icon: Icons.notifications_active_outlined,
+                                label: '신규 $_newOrderBadgeCount',
+                              ),
+                              _AutoSyncStatusChip(
+                                icon: Icons.history_outlined,
+                                label: '마지막 ${_lastAutoSyncText()}',
+                              ),
+                              if (_autoSyncEnabled)
+                                _AutoSyncStatusChip(
+                                  icon: Icons.schedule_outlined,
+                                  label: '다음 ${_nextAutoSyncText()}',
+                                ),
+                              if (_autoSyncRunning)
+                                const _AutoSyncStatusChip(
+                                  icon: Icons.sync_outlined,
+                                  label: '동기화 중',
+                                ),
+                            ],
+                          ),
+                          if (_lastAutoSyncError != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '최근 자동 동기화 실패: $_lastAutoSyncError',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(color: scheme.error),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -1883,24 +2271,183 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
                   ],
                 ],
               ),
-              _PlayAutoOrderPreviewScreen(
-                orders: _orders,
-                startDate: _sdateController.text.trim(),
-                endDate: _edateController.text.trim(),
-                length: int.tryParse(_lengthController.text.trim()) ?? 100,
-                onFetchOrders: _fetchOrdersForPreview,
-                fulfillmentMode: true,
-                embedded: true,
-                onInstruction: _requestShipmentInstruction,
-                onSetInvoice: _requestSetInvoice,
-                onCompleteInvoice: _requestCompleteInvoice,
-                onSendInvoice: _requestSendInvoice,
-              ),
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+class _AutoSyncStatusChip extends StatelessWidget {
+  const _AutoSyncStatusChip({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 5),
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayAutoNewOrderBadge extends StatelessWidget {
+  const _PlayAutoNewOrderBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.redAccent,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+            ),
+      ),
+    );
+  }
+}
+
+class _PlayAutoOrderNotificationService {
+  static final FlutterLocalNotificationsPlugin _notifications =
+      FlutterLocalNotificationsPlugin();
+  static var _initialized = false;
+  static var _unavailable = false;
+
+  static Future<void> initialize() async {
+    if (_initialized || _unavailable) return;
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const darwin = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
+    const settings = InitializationSettings(
+      android: android,
+      iOS: darwin,
+      macOS: darwin,
+      windows: WindowsInitializationSettings(
+        appName: 'ChalStock',
+        appUserModelId: 'Bluefog.ChalStock.StockApp',
+        guid: '9cf3e4e5-6d0f-4c6d-a5f5-4c3ed2a65b9b',
+      ),
+    );
+    try {
+      await _notifications.initialize(settings);
+      _initialized = true;
+    } on MissingPluginException catch (e) {
+      _unavailable = true;
+      debugPrint('PlayAuto notifications unavailable until full rebuild: $e');
+    } catch (e, st) {
+      debugPrint('PlayAuto notifications initialize failed: $e');
+      debugPrint('$st');
+    }
+  }
+
+  static Future<void> showNewOrders({
+    required int count,
+    required int badgeCount,
+    required String sampleTitle,
+  }) async {
+    await initialize();
+    if (!_initialized) return;
+    await _requestPermissionsIfNeeded();
+    final title = '신규 주문 $count건';
+    final body = count == 1
+        ? sampleTitle
+        : '$sampleTitle 외 ${count - 1}건의 새 주문이 들어왔습니다.';
+    await _notifications.show(
+      220715,
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'playauto_new_orders',
+          '플토 신규 주문',
+          channelDescription: 'PlayAuto 신규 주문 자동 동기화 알림',
+          importance: Importance.high,
+          priority: Priority.high,
+          number: badgeCount,
+        ),
+        iOS: DarwinNotificationDetails(badgeNumber: badgeCount),
+        macOS: DarwinNotificationDetails(badgeNumber: badgeCount),
+        windows: const WindowsNotificationDetails(),
+      ),
+      payload: 'playauto_orders',
+    );
+  }
+
+  static Future<void> showBadgeOnly(int badgeCount) async {
+    await initialize();
+    if (!_initialized) return;
+    if (!Platform.isIOS && !Platform.isMacOS) return;
+    await _requestPermissionsIfNeeded();
+    final normalizedBadgeCount = math.max(0, badgeCount);
+    await _notifications.show(
+      220716,
+      null,
+      null,
+      NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: false,
+          presentBadge: true,
+          presentSound: false,
+          badgeNumber: normalizedBadgeCount,
+        ),
+        macOS: DarwinNotificationDetails(
+          presentAlert: false,
+          presentBadge: true,
+          presentSound: false,
+          badgeNumber: normalizedBadgeCount,
+        ),
+      ),
+    );
+    if (normalizedBadgeCount == 0) {
+      await _notifications.cancel(220716);
+    }
+  }
+
+  static Future<void> _requestPermissionsIfNeeded() async {
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
+    await _notifications
+        .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 }
 
@@ -1946,6 +2493,145 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
   @override
   State<_PlayAutoOrderPreviewScreen> createState() =>
       _PlayAutoOrderPreviewScreenState();
+}
+
+class _PlayAutoOrderCalendarScreen extends StatelessWidget {
+  const _PlayAutoOrderCalendarScreen({required this.orders});
+
+  final List<_PlayAutoOrderPreview> orders;
+
+  @override
+  Widget build(BuildContext context) {
+    final events = _calendarEvents;
+    final focusedDay = _focusedDay(events);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('플토 주문 달력'),
+      ),
+      body: events.isEmpty
+          ? const Center(child: Text('날짜가 있는 주문이 없습니다.'))
+          : CommonCalendarView(
+              events: events,
+              focusedDay: focusedDay,
+              expandedBuilder: (event) {
+                final index = int.tryParse(event.refId);
+                if (index == null || index < 0 || index >= orders.length) {
+                  return const SizedBox.shrink();
+                }
+                return _PlayAutoCalendarOrderTile(order: orders[index]);
+              },
+            ),
+    );
+  }
+
+  List<CalendarEvent> get _calendarEvents {
+    final events = <CalendarEvent>[];
+    for (var i = 0; i < orders.length; i += 1) {
+      final order = orders[i];
+      final date = order.sortDate;
+      if (date == null) continue;
+      events.add(
+        CalendarEvent(
+          date: date,
+          type: CalendarEventType.playAutoOrder,
+          title: order.customerName,
+          subtitle: [
+            order.shopName,
+            order.productName,
+            '${order.quantity}개',
+            if (order.status.isNotEmpty) order.status,
+          ].where((value) => value.trim().isNotEmpty).join(' · '),
+          refId: '$i',
+          searchText: order.searchText,
+          colorValue: _playAutoCalendarStatusColor(order.status).toARGB32(),
+        ),
+      );
+    }
+    return events;
+  }
+
+  DateTime? _focusedDay(List<CalendarEvent> events) {
+    if (events.isEmpty) return null;
+    final sorted = [...events]..sort((a, b) => b.date.compareTo(a.date));
+    return sorted.first.date;
+  }
+}
+
+class _PlayAutoCalendarOrderTile extends StatelessWidget {
+  const _PlayAutoCalendarOrderTile({required this.order});
+
+  final _PlayAutoOrderPreview order;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final statusColor = _playAutoCalendarStatusColor(order.status);
+    final amountText = order.amount > 0
+        ? '${NumberFormat('#,##0').format(order.amount)} 원'
+        : '-';
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: statusColor.withValues(alpha: 0.38)),
+      ),
+      color: statusColor.withValues(alpha: 0.12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              order.productName,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            if (order.optionName.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                order.optionName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                _InfoChip(
+                    icon: Icons.storefront_outlined, text: order.shopName),
+                _InfoChip(icon: Icons.person_outline, text: order.customerName),
+                _InfoChip(icon: Icons.local_offer_outlined, text: order.status),
+                _InfoChip(
+                  icon: Icons.inventory_2_outlined,
+                  text: '${order.quantity}개',
+                ),
+                _InfoChip(icon: Icons.payments_outlined, text: amountText),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Color _playAutoCalendarStatusColor(String status) {
+  if (status.contains('신규')) return Colors.pink.shade400;
+  if (status.contains('배송완료') || status.contains('구매결정')) {
+    return Colors.grey.shade600;
+  }
+  if (status.contains('배송중')) return Colors.blue.shade600;
+  return const Color(0xFFE0B72F);
 }
 
 class _PlayAutoAddressEntry {
@@ -3025,6 +3711,36 @@ class _PlayAutoQuoteOrderAddScreenState
           'pay_amt',
           'shop_cost_price',
           'shop_supply_price',
+          'delivery_msg',
+          'delivery_message',
+          'delivery_memo',
+          'delivery_request',
+          'delivery_request_msg',
+          'ship_msg',
+          'ship_message',
+          'ship_memo',
+          'shipping_message',
+          'shipping_memo',
+          'shipping_request',
+          'order_memo',
+          'order_msg',
+          'to_memo',
+          'receiver_memo',
+          'delivery_remark',
+          'etc_msg',
+          'etc_message',
+          'etc_memo',
+          'extra_msg',
+          'extra_message',
+          'extra_memo',
+          'admin_msg',
+          'admin_memo',
+          'manager_msg',
+          'manager_memo',
+          'cs_memo',
+          'mall_memo',
+          'seller_memo',
+          'private_memo',
         ]) {
           if (map.containsKey(key)) interesting.add('$key=${map[key]}');
         }
@@ -3437,8 +4153,12 @@ class _PlayAutoQuoteOrderAddScreenState
           : '직접입력',
       orderName: _orderNameController.text.trim(),
       orderPhone: _orderPhoneController.text.trim(),
+      orderTel: '',
+      orderMobile: _orderPhoneController.text.trim(),
       receiverName: _receiverNameController.text.trim(),
       receiverPhone: _receiverPhoneController.text.trim(),
+      receiverTel: '',
+      receiverMobile: _receiverPhoneController.text.trim(),
       address: address,
       shippingMethod: '선결제',
       shippingMessage: _shipMessageController.text.trim(),
@@ -3721,8 +4441,12 @@ class _ChalstockOrderPrintDocument {
     required this.shopName,
     required this.orderName,
     required this.orderPhone,
+    required this.orderTel,
+    required this.orderMobile,
     required this.receiverName,
     required this.receiverPhone,
+    required this.receiverTel,
+    required this.receiverMobile,
     required this.address,
     required this.shippingMethod,
     required this.shippingMessage,
@@ -3736,8 +4460,12 @@ class _ChalstockOrderPrintDocument {
   final String shopName;
   final String orderName;
   final String orderPhone;
+  final String orderTel;
+  final String orderMobile;
   final String receiverName;
   final String receiverPhone;
+  final String receiverTel;
+  final String receiverMobile;
   final String address;
   final String shippingMethod;
   final String shippingMessage;
@@ -3770,7 +4498,7 @@ class _ChalstockOrderPrintView extends StatelessWidget {
     final captureKey = GlobalKey();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('찰스톡 주문서'),
+        title: const Text('주문서'),
         actions: [
           IconButton(
             tooltip: 'PDF 저장/인쇄',
@@ -3795,14 +4523,11 @@ class _ChalstockOrderPrintView extends StatelessWidget {
       body: ColoredBox(
         color: Colors.grey.shade200,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(12),
           child: Center(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: RepaintBoundary(
-                key: captureKey,
-                child: _ChalstockOrderPrintPage(document: document),
-              ),
+            child: RepaintBoundary(
+              key: captureKey,
+              child: _ChalstockOrderPrintPage(document: document),
             ),
           ),
         ),
@@ -3818,130 +4543,75 @@ class _ChalstockOrderPrintPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const pageWidth = 920.0;
-    const border = Color(0xFFE2E2E2);
     return Container(
-      width: pageWidth,
+      width: 390,
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(32, 28, 32, 36),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       child: DefaultTextStyle(
         style: const TextStyle(
           color: Colors.black,
-          fontSize: 13,
-          height: 1.35,
-          letterSpacing: 0,
+          fontSize: 14,
+          height: 1.38,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              '찰스톡 주문서',
+              '주문서',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 22),
-            _printSectionTitle('주문 내역'),
-            Table(
-              border: TableBorder.all(color: border),
-              columnWidths: const {
-                0: FixedColumnWidth(104),
-                1: FlexColumnWidth(1.7),
-                2: FixedColumnWidth(120),
-                3: FlexColumnWidth(1.45),
-                4: FixedColumnWidth(104),
-                5: FlexColumnWidth(1.2),
-              },
+            const SizedBox(height: 18),
+            _orderMobileSection(
+              title: '주문 내역',
               children: [
-                _printTableRow([
-                  _printLabel('주문일'),
-                  _printValue(document.orderDate),
-                  _printLabel('구매 쇼핑몰'),
-                  _printValue(document.shopName),
-                ], spans: const [
-                  1,
-                  2,
-                  1,
-                  2
-                ]),
-                _printTableRow([
-                  _printLabel('주문번호'),
-                  _printValue(document.orderNo),
-                ], spans: const [
-                  1,
-                  5
-                ]),
-                _printTableRow([
-                  _printLabel('주문자'),
-                  _printValue(document.orderName),
-                  _printLabel('전화번호'),
-                  _printValue(''),
-                  _printLabel('휴대폰번호'),
-                  _printValue(document.orderPhone),
-                ]),
-                _printTableRow([
-                  _printLabel('고객명'),
-                  _printValue(document.receiverName),
-                  _printLabel('전화번호'),
-                  _printValue(''),
-                  _printLabel('휴대폰번호'),
-                  _printValue(document.receiverPhone),
-                ]),
-                _printTableRow([
-                  _printLabel('주소'),
-                  _printValue(document.address),
-                  _printLabel('배송방법'),
-                  _printValue(document.shippingMethod),
-                ], spans: const [
-                  1,
-                  3,
-                  1,
-                  1
-                ]),
-                _printTableRow([
-                  _printLabel('배송메시지'),
-                  _printValue(document.shippingMessage),
-                  _printLabel(''),
-                  _printValue(''),
-                ], spans: const [
-                  1,
-                  3,
-                  1,
-                  1
-                ]),
+                _orderMobileInfoLine('주문일', document.orderDate),
+                _orderMobileInfoLine('구매 쇼핑몰', document.shopName),
+                _orderMobileInfoLine('주문번호', document.orderNo),
               ],
             ),
-            const SizedBox(height: 32),
-            _printSectionTitle('상품 내역'),
-            _printOrderSummaryTable(
-              totalQuantity: document.totalQuantity,
-              totalAmount: document.totalAmount,
-              border: border,
-            ),
-            Table(
-              border: TableBorder.all(color: border),
-              columnWidths: const {
-                0: FixedColumnWidth(128),
-                1: FlexColumnWidth(3.0),
-                2: FlexColumnWidth(3.0),
-                3: FixedColumnWidth(64),
-                4: FixedColumnWidth(104),
-              },
+            const SizedBox(height: 14),
+            _orderMobileSection(
+              title: '배송 정보',
               children: [
-                _printTableRow([
-                  _printLabel('이미지'),
-                  _printCentered('상품명'),
-                  _printCentered('옵션'),
-                  _printCentered('수량'),
-                  _printCentered('금액'),
-                ]),
-                for (final line in document.lines)
-                  _printTableRow([
-                    _printValue(''),
-                    _printValue(line.productName, dense: true),
-                    _printValue(line.optionName, dense: true),
-                    _printCentered('${line.quantity}'),
-                    _printCentered('${_printMoney(line.amount)} 원'),
-                  ], minHeight: 72),
+                _orderMobileInfoLine('주문자', document.orderName),
+                _orderMobileInfoLine('주문자 전화번호', document.orderTel),
+                _orderMobileInfoLine('주문자 휴대폰번호', document.orderMobile),
+                _orderMobileInfoLine('고객명', document.receiverName),
+                _orderMobileInfoLine('고객 전화번호', document.receiverTel),
+                _orderMobileInfoLine('고객 휴대폰번호', document.receiverMobile),
+                _orderMobileInfoLine('주소', document.address),
+                _orderMobileInfoLine('배송방법', document.shippingMethod),
+                if (document.shippingMessage.trim().isNotEmpty)
+                  _orderMobileInfoLine('배송메시지', document.shippingMessage),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const Text('상품 내역', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            if (document.lines.isEmpty) _orderMobileEmptyBox('주문 상품이 없습니다.'),
+            for (final line in document.lines)
+              _orderMobileLineCard(
+                productName: line.productName,
+                optionName: line.optionName,
+                quantity: line.quantity,
+                unitPrice: line.quantity > 0
+                    ? (line.amount / line.quantity).round()
+                    : 0,
+                amount: line.amount,
+              ),
+            const SizedBox(height: 8),
+            _orderMobileTotalBox(
+              children: [
+                _orderMobileTextTotalLine(
+                  '주문 총 수량',
+                  '${document.totalQuantity}개',
+                ),
+                _orderMobileMoneyTotalLine(
+                  '주문 총 금액',
+                  document.totalAmount,
+                  bold: true,
+                ),
               ],
             ),
           ],
@@ -3951,84 +4621,139 @@ class _ChalstockOrderPrintPage extends StatelessWidget {
   }
 }
 
-Widget _printSectionTitle(String text) {
+String _printMoney(int value) => NumberFormat('#,##0').format(value);
+
+Widget _orderMobileSection({
+  required String title,
+  required List<Widget> children,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      const SizedBox(height: 7),
+      ...children,
+    ],
+  );
+}
+
+Widget _orderMobileInfoLine(String label, String value) {
+  final display = value.trim().isEmpty ? '-' : value.trim();
   return Padding(
-    padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
-    child: Text(
-      text,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+    padding: const EdgeInsets.only(bottom: 7),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 92,
+          child:
+              Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        Expanded(child: Text(display)),
+      ],
     ),
   );
 }
 
-TableRow _printTableRow(
-  List<Widget> cells, {
-  List<int>? spans,
-  double minHeight = 44,
+Widget _orderMobileLineCard({
+  required String productName,
+  required String optionName,
+  required int quantity,
+  required int unitPrice,
+  required int amount,
 }) {
-  final expanded = <Widget>[];
-  for (var i = 0; i < cells.length; i += 1) {
-    final span = spans == null ? 1 : spans[i];
-    expanded.add(cells[i]);
-    for (var j = 1; j < span; j += 1) {
-      expanded.add(const SizedBox.shrink());
-    }
-  }
-  return TableRow(
-    children: [
-      for (final cell in expanded)
-        ConstrainedBox(
-          constraints: BoxConstraints(minHeight: minHeight),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Align(alignment: Alignment.centerLeft, child: cell),
-          ),
+  return Container(
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(border: Border.all(color: Colors.black38)),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          productName.trim().isEmpty ? '상품명 없음' : productName.trim(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-    ],
+        if (optionName.trim().isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(optionName.trim(), style: const TextStyle(fontSize: 12.5)),
+        ],
+        const SizedBox(height: 10),
+        _orderMobileAmountRow('수량', '$quantity개'),
+        _orderMobileAmountRow(
+          '단가',
+          unitPrice > 0 ? '${_printMoney(unitPrice)} 원' : '-',
+        ),
+        _orderMobileAmountRow(
+          '금액',
+          amount > 0 ? '${_printMoney(amount)} 원' : '-',
+          bold: true,
+        ),
+      ],
+    ),
   );
 }
 
-Widget _printLabel(String text) {
-  return Text(text, style: const TextStyle(fontWeight: FontWeight.w600));
-}
-
-Widget _printValue(String text, {bool dense = false}) {
-  return Text(
-    text,
-    style: dense ? const TextStyle(fontSize: 12.5, height: 1.4) : null,
+Widget _orderMobileAmountRow(String label, String value, {bool bold = false}) {
+  final style =
+      TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal);
+  return Padding(
+    padding: const EdgeInsets.only(top: 4),
+    child: Row(
+      children: [
+        Text(label, style: style),
+        const Spacer(),
+        Text(value, textAlign: TextAlign.right, style: style),
+      ],
+    ),
   );
 }
 
-Widget _printCentered(String text) {
-  return Align(
-    alignment: Alignment.center,
+Widget _orderMobileEmptyBox(String text) {
+  return Container(
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(border: Border.all(color: Colors.black26)),
     child: Text(text, textAlign: TextAlign.center),
   );
 }
 
-String _printMoney(int value) => NumberFormat('#,##0').format(value);
+Widget _orderMobileTotalBox({required List<Widget> children}) {
+  return Container(
+    decoration: BoxDecoration(border: Border.all(color: Colors.black87)),
+    child: Column(children: children),
+  );
+}
 
-Widget _printOrderSummaryTable({
-  required int totalQuantity,
-  required int totalAmount,
-  required Color border,
+Widget _orderMobileTextTotalLine(
+  String label,
+  String value, {
+  bool bold = false,
 }) {
-  return Table(
-    border: TableBorder.all(color: border),
-    columnWidths: const {
-      0: FixedColumnWidth(132),
-      1: FlexColumnWidth(1),
-      2: FixedColumnWidth(152),
-      3: FixedColumnWidth(220),
-    },
-    children: [
-      _printTableRow([
-        _printLabel('주문 총 수량'),
-        _printCentered('$totalQuantity'),
-        _printLabel('주문 총 금액'),
-        _printCentered('${_printMoney(totalAmount)} 원'),
-      ], minHeight: 54),
-    ],
+  final style =
+      TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal);
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    decoration: const BoxDecoration(
+      border: Border(bottom: BorderSide(color: Colors.black26)),
+    ),
+    child: Row(
+      children: [
+        Text(label, style: style),
+        const Spacer(),
+        Text(value, style: style),
+      ],
+    ),
+  );
+}
+
+Widget _orderMobileMoneyTotalLine(
+  String label,
+  int value, {
+  bool bold = false,
+}) {
+  return _orderMobileTextTotalLine(
+    label,
+    '${_printMoney(value)} 원',
+    bold: bold,
   );
 }
 
@@ -4040,7 +4765,7 @@ Future<void> _shareChalstockOrderPdf(
   final box = context.findRenderObject() as RenderBox?;
   try {
     final pngBytes = await _captureChalstockOrderPng(captureKey);
-    final subject = '찰스톡주문서_${_safePrintFileName(document.orderNo)}';
+    final subject = '주문서_${_safePrintFileName(document.orderNo)}';
     final pdfBytes = await _buildChalstockOrderPdf(
       pngBytes: pngBytes,
       subject: subject,
@@ -4074,7 +4799,7 @@ Future<void> _shareChalstockOrderJpg(
     if (decoded == null) throw StateError('주문서 이미지 인코딩에 실패했습니다.');
     final jpgBytes = image_lib.encodeJpg(decoded, quality: 90);
     final tempDir = await getTemporaryDirectory();
-    final subject = '찰스톡주문서_${_safePrintFileName(document.orderNo)}';
+    final subject = '주문서_${_safePrintFileName(document.orderNo)}';
     final outFile = File('${tempDir.path}/$subject.jpg');
     await outFile.writeAsBytes(jpgBytes, flush: true);
     await Share.shareXFiles(
@@ -4109,12 +4834,24 @@ Future<Uint8List> _buildChalstockOrderPdf({
 }) async {
   final doc = pw.Document(title: subject);
   final image = pw.MemoryImage(pngBytes);
+  final decoded = image_lib.decodePng(pngBytes);
+  final aspectRatio =
+      decoded == null ? 0.5 : decoded.width / math.max(1, decoded.height);
+  const pageFormat = PdfPageFormat.a4;
+  const margin = 36.0;
+  const preferredImageWidth = 300.0;
+  final maxImageHeight = pageFormat.height - (margin * 2);
+  final imageWidth = math.min(
+    preferredImageWidth,
+    maxImageHeight * aspectRatio,
+  );
   doc.addPage(
     pw.Page(
-      pageFormat: PdfPageFormat.a4,
-      margin: pw.EdgeInsets.zero,
-      build: (_) => pw.Center(
-        child: pw.Image(image, fit: pw.BoxFit.contain),
+      pageFormat: pageFormat,
+      margin: const pw.EdgeInsets.all(margin),
+      build: (_) => pw.Align(
+        alignment: pw.Alignment.topCenter,
+        child: pw.Image(image, width: imageWidth, fit: pw.BoxFit.contain),
       ),
     ),
   );
@@ -4129,6 +4866,7 @@ String _safePrintFileName(String value) {
 class _PlayAutoOrderPreviewScreenState
     extends State<_PlayAutoOrderPreviewScreen> {
   static const _uuid = Uuid();
+  final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   final _mappingService = PlayAutoItemMappingService();
   final _orderLinkService = PlayAutoOrderLinkService();
@@ -4156,15 +4894,28 @@ class _PlayAutoOrderPreviewScreenState
     _endDateController = TextEditingController(text: widget.endDate);
     _lengthController = TextEditingController(text: widget.length.toString());
     _loadMappings();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _orders.isNotEmpty) return;
+      _fetchOrders(forceRefresh: false);
+    });
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
     _lengthController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PlayAutoOrderPreviewScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.orders, widget.orders)) {
+      setState(() => _orders = widget.orders);
+    }
   }
 
   @override
@@ -4176,11 +4927,12 @@ class _PlayAutoOrderPreviewScreenState
     final shopNames = _shopNames;
 
     final body = CustomScrollView(
+      controller: _scrollController,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -4189,35 +4941,26 @@ class _PlayAutoOrderPreviewScreenState
                   endDateController: _endDateController,
                   lengthController: _lengthController,
                   loading: _loadingOrders,
-                  onPickStartDate: () => _pickDate(_startDateController),
-                  onPickEndDate: () => _pickDate(_endDateController),
-                  onFetch: () => _fetchOrders(forceRefresh: false),
-                  onRefresh: () => _fetchOrders(forceRefresh: true),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _cacheNotice,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                _PlayAutoSummaryBand(
                   orderCount: filteredOrders.length,
                   totalQty: totalQty,
                   matchedCount: _matchedCount(filteredOrders),
                   needsMappingCount: _needsMappingCount(filteredOrders),
                   availableCount: _availableCount(filteredOrders),
                   shortageCount: _shortageCount(filteredOrders),
+                  onPickStartDate: () => _pickDate(_startDateController),
+                  onPickEndDate: () => _pickDate(_endDateController),
+                  onFetch: () => _fetchOrders(forceRefresh: false),
+                  onRefresh: () => _fetchOrders(forceRefresh: true),
+                ),
+                const SizedBox(height: 6),
+                _PlayAutoSummaryBand(
+                  fulfillmentMode: widget.fulfillmentMode,
+                  selectedStage: _stage,
+                  orders: _orders,
+                  orderLinks: _orderLinks,
+                  onStageSelected: (stage) => setState(() => _stage = stage),
                 ),
                 if (widget.fulfillmentMode) ...[
-                  const SizedBox(height: 12),
-                  _FulfillmentStageChips(
-                    selected: _stage,
-                    orders: _orders,
-                    orderLinks: _orderLinks,
-                    onSelected: (stage) => setState(() => _stage = stage),
-                  ),
                   if (_runningAction) ...[
                     const SizedBox(height: 8),
                     const LinearProgressIndicator(),
@@ -4247,7 +4990,17 @@ class _PlayAutoOrderPreviewScreenState
                   const SizedBox(height: 8),
                   const LinearProgressIndicator(),
                 ],
-                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Text(
+                    _cacheNotice,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
@@ -4263,7 +5016,24 @@ class _PlayAutoOrderPreviewScreenState
                             icon: const Icon(Icons.close),
                           ),
                     labelText: '주문자, 주소, 연락처 검색',
-                    border: const OutlineInputBorder(),
+                    isDense: true,
+                    filled: true,
+                    fillColor: scheme.surface,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: scheme.outlineVariant),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: scheme.primary, width: 1.4),
+                    ),
                   ),
                   onChanged: (value) => setState(() => _query = value),
                 ),
@@ -4278,6 +5048,13 @@ class _PlayAutoOrderPreviewScreenState
                           child: FilterChip(
                             label: const Text('전체'),
                             selected: _selectedShopName == null,
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            side: BorderSide(color: scheme.outlineVariant),
                             onSelected: (_) {
                               setState(() => _selectedShopName = null);
                             },
@@ -4289,6 +5066,13 @@ class _PlayAutoOrderPreviewScreenState
                             child: FilterChip(
                               label: Text(shopName),
                               selected: _selectedShopName == shopName,
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              side: BorderSide(color: scheme.outlineVariant),
                               onSelected: (_) {
                                 setState(() {
                                   _selectedShopName =
@@ -4349,7 +5133,6 @@ class _PlayAutoOrderPreviewScreenState
                   onOpenPrintPreview: () => _openPrintPreview(order),
                   onRegisterInvoice: () => _openInvoiceDialog(order),
                   onSendInvoice: () => _sendInvoiceAfterSync(order),
-                  onSyncOrder: () => _fetchOrders(forceRefresh: true),
                 ),
               );
             },
@@ -4357,7 +5140,23 @@ class _PlayAutoOrderPreviewScreenState
       ],
     );
 
-    if (widget.embedded) return body;
+    final bodyWithScrollTop = Stack(
+      children: [
+        body,
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton.small(
+            heroTag: 'play_auto_scroll_top',
+            tooltip: '맨 위로',
+            onPressed: _scrollToTop,
+            child: const Icon(Icons.keyboard_arrow_up),
+          ),
+        ),
+      ],
+    );
+
+    if (widget.embedded) return bodyWithScrollTop;
 
     return Scaffold(
       appBar: AppBar(
@@ -4374,7 +5173,16 @@ class _PlayAutoOrderPreviewScreenState
           ],
         ),
       ),
-      body: body,
+      body: bodyWithScrollTop,
+    );
+  }
+
+  void _scrollToTop() {
+    if (!_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -5060,76 +5868,63 @@ class _PlayAutoOrderPreviewScreenState
 
 class _PlayAutoSummaryBand extends StatelessWidget {
   const _PlayAutoSummaryBand({
-    required this.orderCount,
-    required this.totalQty,
-    required this.matchedCount,
-    required this.needsMappingCount,
-    required this.availableCount,
-    required this.shortageCount,
+    required this.fulfillmentMode,
+    required this.selectedStage,
+    required this.orders,
+    required this.orderLinks,
+    required this.onStageSelected,
   });
 
-  final int orderCount;
-  final int totalQty;
-  final int matchedCount;
-  final int needsMappingCount;
-  final int availableCount;
-  final int shortageCount;
+  final bool fulfillmentMode;
+  final _PlayAutoFulfillmentStage selectedStage;
+  final List<_PlayAutoOrderPreview> orders;
+  final Map<String, PlayAutoOrderLink> orderLinks;
+  final ValueChanged<_PlayAutoFulfillmentStage> onStageSelected;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final tileWidth = constraints.maxWidth < 420
-              ? (constraints.maxWidth - 10) / 2
-              : (constraints.maxWidth - 20) / 3;
-          return Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _SummaryValue(
-                label: '주문',
-                value: '$orderCount건',
-                width: tileWidth,
-              ),
-              _SummaryValue(
-                label: '수량',
-                value: '$totalQty개',
-                width: tileWidth,
-              ),
-              _SummaryValue(
-                label: '매칭 완료',
-                value: '$matchedCount건',
-                width: tileWidth,
-              ),
-              _SummaryValue(
-                label: '매칭 필요',
-                value: '$needsMappingCount건',
-                width: tileWidth,
-              ),
-              _SummaryValue(
-                label: '출고 가능',
-                value: '$availableCount건',
-                width: tileWidth,
-              ),
-              _SummaryValue(
-                label: '재고 부족',
-                value: '$shortageCount건',
-                width: tileWidth,
-              ),
-            ],
-          );
-        },
+      child: Center(
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          runAlignment: WrapAlignment.center,
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            if (fulfillmentMode)
+              for (final stage in _PlayAutoFulfillmentStage.values)
+                _CompactFilterChip(
+                  label: stage.label,
+                  value: '${_stageCount(stage)}',
+                  selected: selectedStage == stage,
+                  onTap: () => onStageSelected(stage),
+                ),
+          ],
+        ),
       ),
     );
+  }
+
+  int _stageCount(_PlayAutoFulfillmentStage stage) {
+    return orders
+        .where((order) =>
+            stage.matches(order, orderLinks[_playAutoOrderGroupKey(order)]))
+        .length;
   }
 }
 
@@ -5137,40 +5932,90 @@ class _SummaryValue extends StatelessWidget {
   const _SummaryValue({
     required this.label,
     required this.value,
-    this.width,
   });
 
   final String label;
   final String value;
-  final double? width;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return SizedBox(
-      width: width,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
-        ],
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$label ',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: scheme.onSurface,
+              ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactFilterChip extends StatelessWidget {
+  const _CompactFilterChip({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = selected
+        ? scheme.primaryContainer.withValues(alpha: 0.8)
+        : scheme.surface.withValues(alpha: 0.92);
+    final borderColor = selected
+        ? scheme.primary.withValues(alpha: 0.72)
+        : scheme.outlineVariant;
+    final textColor = selected ? scheme.onPrimaryContainer : scheme.onSurface;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected) ...[
+              Icon(Icons.check, size: 14, color: textColor),
+              const SizedBox(width: 3),
+            ],
+            Text(
+              '$label $value',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: textColor,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -5182,6 +6027,12 @@ class _OrderQueryPanel extends StatelessWidget {
     required this.endDateController,
     required this.lengthController,
     required this.loading,
+    required this.orderCount,
+    required this.totalQty,
+    required this.matchedCount,
+    required this.needsMappingCount,
+    required this.availableCount,
+    required this.shortageCount,
     required this.onPickStartDate,
     required this.onPickEndDate,
     required this.onFetch,
@@ -5192,6 +6043,12 @@ class _OrderQueryPanel extends StatelessWidget {
   final TextEditingController endDateController;
   final TextEditingController lengthController;
   final bool loading;
+  final int orderCount;
+  final int totalQty;
+  final int matchedCount;
+  final int needsMappingCount;
+  final int availableCount;
+  final int shortageCount;
   final VoidCallback onPickStartDate;
   final VoidCallback onPickEndDate;
   final VoidCallback onFetch;
@@ -5203,80 +6060,131 @@ class _OrderQueryPanel extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            width: 160,
-            child: TextField(
-              controller: startDateController,
-              readOnly: true,
-              onTap: onPickStartDate,
-              decoration: InputDecoration(
-                labelText: '시작일',
-                suffixIcon: IconButton(
-                  tooltip: '시작일 선택',
-                  onPressed: onPickStartDate,
-                  icon: const Icon(Icons.calendar_month_outlined),
+          Wrap(
+            alignment: WrapAlignment.center,
+            runAlignment: WrapAlignment.center,
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 148,
+                child: TextField(
+                  controller: startDateController,
+                  readOnly: true,
+                  onTap: onPickStartDate,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor:
+                        scheme.surfaceContainerHighest.withValues(alpha: 0.24),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 10),
+                    labelText: '주문수집 시작일',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
-                border: const OutlineInputBorder(),
               ),
-            ),
-          ),
-          SizedBox(
-            width: 160,
-            child: TextField(
-              controller: endDateController,
-              readOnly: true,
-              onTap: onPickEndDate,
-              decoration: InputDecoration(
-                labelText: '종료일',
-                suffixIcon: IconButton(
-                  tooltip: '종료일 선택',
-                  onPressed: onPickEndDate,
-                  icon: const Icon(Icons.calendar_month_outlined),
+              SizedBox(
+                width: 126,
+                child: TextField(
+                  controller: endDateController,
+                  readOnly: true,
+                  onTap: onPickEndDate,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor:
+                        scheme.surfaceContainerHighest.withValues(alpha: 0.24),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 10),
+                    labelText: '종료일',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
-                border: const OutlineInputBorder(),
               ),
-            ),
-          ),
-          SizedBox(
-            width: 98,
-            child: TextField(
-              controller: lengthController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: '개수',
-                border: OutlineInputBorder(),
+              SizedBox(
+                width: 56,
+                child: TextField(
+                  controller: lengthController,
+                  keyboardType: TextInputType.number,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    filled: true,
+                    fillColor:
+                        scheme.surfaceContainerHighest.withValues(alpha: 0.24),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
+                    labelText: '개수',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               ),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: loading ? null : onFetch,
+                child: loading
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('캐시'),
+              ),
+              IconButton.filled(
+                visualDensity: VisualDensity.compact,
+                tooltip: '동기화',
+                onPressed: loading ? null : onRefresh,
+                icon: const Icon(Icons.sync_outlined),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Center(
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              runAlignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 4,
+              children: [
+                _SummaryValue(label: '주문', value: '$orderCount'),
+                _SummaryValue(label: '수량', value: '$totalQty'),
+                _SummaryValue(
+                    label: '매칭', value: '$matchedCount/$needsMappingCount'),
+                _SummaryValue(label: '출고', value: '$availableCount'),
+                _SummaryValue(label: '부족', value: '$shortageCount'),
+              ],
             ),
-          ),
-          OutlinedButton.icon(
-            onPressed: loading ? null : onFetch,
-            icon: loading
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.folder_open_outlined),
-            label: const Text('캐시 조회'),
-          ),
-          FilledButton.icon(
-            onPressed: loading ? null : onRefresh,
-            icon: const Icon(Icons.sync_outlined),
-            label: const Text('동기화'),
-          ),
-          const Chip(
-            avatar: Icon(Icons.event_available_outlined, size: 18),
-            label: Text('수집일 기준'),
           ),
         ],
       ),
@@ -5302,7 +6210,6 @@ class _PlayAutoOrderCard extends StatelessWidget {
     required this.onOpenPrintPreview,
     required this.onRegisterInvoice,
     required this.onSendInvoice,
-    required this.onSyncOrder,
   });
 
   final _PlayAutoOrderPreview order;
@@ -5321,19 +6228,26 @@ class _PlayAutoOrderCard extends StatelessWidget {
   final VoidCallback onOpenPrintPreview;
   final VoidCallback onRegisterInvoice;
   final VoidCallback onSendInvoice;
-  final VoidCallback onSyncOrder;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final linked = mapping?.isConfirmed == true;
+    final needsAttention = _needsAttentionBeforeSent;
+    final cardColor = needsAttention
+        ? const Color(0xFFFFFBEA)
+        : Theme.of(context).cardTheme.color;
+    final borderColor =
+        needsAttention ? const Color(0xFFE5D19B) : scheme.outlineVariant;
 
     return Card(
       margin: EdgeInsets.zero,
-      elevation: 0,
+      elevation: needsAttention ? 0.5 : 0,
+      shadowColor: Colors.black.withValues(alpha: 0.08),
+      color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: scheme.outlineVariant),
+        side: BorderSide(color: borderColor),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -5351,7 +6265,7 @@ class _PlayAutoOrderCard extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 2,
-                        vertical: 2,
+                        vertical: 1,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -5369,15 +6283,33 @@ class _PlayAutoOrderCard extends StatelessWidget {
                                 ),
                           ),
                           if (order.optionName.isNotEmpty) ...[
-                            const SizedBox(height: 3),
-                            Text(
-                              order.optionName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: scheme.onSurfaceVariant),
+                            const SizedBox(height: 5),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    order.optionName,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: scheme.onSurfaceVariant),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                _OrderQuantityBadge(quantity: order.quantity),
+                              ],
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 5),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child:
+                                  _OrderQuantityBadge(quantity: order.quantity),
                             ),
                           ],
                         ],
@@ -5404,7 +6336,7 @@ class _PlayAutoOrderCard extends StatelessWidget {
                           color: scheme.primary.withValues(alpha: 0.35),
                         ),
                         backgroundColor:
-                            scheme.primaryContainer.withValues(alpha: 0.18),
+                            scheme.primaryContainer.withValues(alpha: 0.24),
                         labelStyle:
                             Theme.of(context).textTheme.labelMedium?.copyWith(
                                   color: scheme.primary,
@@ -5436,63 +6368,70 @@ class _PlayAutoOrderCard extends StatelessWidget {
                 onOpenOrCreateOrder: onOpenOrCreateOrder,
                 onRegisterInvoice: onRegisterInvoice,
                 onSendInvoice: onSendInvoice,
-                onSyncOrder: onSyncOrder,
               ),
             ],
             const SizedBox(height: 12),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 7,
+              runSpacing: 7,
               children: [
+                _InfoChip(
+                  icon: Icons.calendar_today_outlined,
+                  text: order.orderDate,
+                ),
                 _InfoChip(
                   icon: Icons.storefront_outlined,
                   text: order.shopName,
                 ),
                 _InfoChip(icon: Icons.person_outline, text: order.customerName),
-                _InfoChip(
-                  icon: Icons.inventory_2_outlined,
-                  text: '${order.quantity}개',
-                ),
               ],
             ),
             const SizedBox(height: 12),
             Divider(height: 1, color: scheme.outlineVariant),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _MutedLine(label: '주문번호', value: order.orderNo),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _MutedLine(
-                    label: '주문일',
-                    value: order.orderDate,
-                    alignEnd: true,
-                  ),
-                ),
-              ],
-            ),
-            if (order.sku.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              _MutedLine(label: 'SKU', value: order.sku),
-            ],
             if (order.invoiceNo.isNotEmpty) ...[
-              const SizedBox(height: 10),
               _DeliveryTrackingRow(order: order),
-            ],
-            if (order.phone.isNotEmpty) ...[
               const SizedBox(height: 6),
-              _MutedLine(label: '연락처', value: order.phone),
+            ],
+            if (_displayTel.isNotEmpty) ...[
+              _MutedLine(label: '전화번호', value: _displayTel),
+              const SizedBox(height: 6),
+            ],
+            if (_displayMobile.isNotEmpty) ...[
+              _MutedLine(label: '휴대폰번호', value: _displayMobile),
+              const SizedBox(height: 6),
             ],
             if (order.address.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              _MutedLine(label: '주소', value: order.address),
+              _MutedLine(label: '주소', value: order.address, maxLines: 2),
             ],
           ],
         ),
       ),
     );
+  }
+
+  String get _displayTel {
+    for (final value in [order.receiverTel, order.ordererTel]) {
+      final trimmed = value.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    return '';
+  }
+
+  String get _displayMobile {
+    for (final value in [order.receiverMobile, order.ordererMobile]) {
+      final trimmed = value.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    return '';
+  }
+
+  bool get _needsAttentionBeforeSent {
+    final status = order.status;
+    return !(status.contains('출고완료') ||
+        status.contains('배송중') ||
+        status.contains('배송완료') ||
+        status.contains('구매결정'));
   }
 }
 
@@ -5501,7 +6440,7 @@ enum _PlayAutoFulfillmentStage {
   fresh('신규'),
   ready('출고대기'),
   chalstock('작업등록'),
-  invoice('송장번호'),
+  invoice('운송장출력'),
   sent('전송완료'),
   shipping('배송중'),
   done('완료');
@@ -5531,47 +6470,6 @@ enum _PlayAutoFulfillmentStage {
   }
 }
 
-class _FulfillmentStageChips extends StatelessWidget {
-  const _FulfillmentStageChips({
-    required this.selected,
-    required this.orders,
-    required this.orderLinks,
-    required this.onSelected,
-  });
-
-  final _PlayAutoFulfillmentStage selected;
-  final List<_PlayAutoOrderPreview> orders;
-  final Map<String, PlayAutoOrderLink> orderLinks;
-  final ValueChanged<_PlayAutoFulfillmentStage> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final stage in _PlayAutoFulfillmentStage.values)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Text('${stage.label} ${_count(stage)}'),
-                selected: selected == stage,
-                onSelected: (_) => onSelected(stage),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  int _count(_PlayAutoFulfillmentStage stage) {
-    return orders
-        .where((order) =>
-            stage.matches(order, orderLinks[_playAutoOrderGroupKey(order)]))
-        .length;
-  }
-}
-
 class _FulfillmentActionBar extends StatelessWidget {
   const _FulfillmentActionBar({
     required this.order,
@@ -5582,7 +6480,6 @@ class _FulfillmentActionBar extends StatelessWidget {
     required this.onOpenOrCreateOrder,
     required this.onRegisterInvoice,
     required this.onSendInvoice,
-    required this.onSyncOrder,
   });
 
   final _PlayAutoOrderPreview order;
@@ -5593,7 +6490,6 @@ class _FulfillmentActionBar extends StatelessWidget {
   final VoidCallback onOpenOrCreateOrder;
   final VoidCallback onRegisterInvoice;
   final VoidCallback onSendInvoice;
-  final VoidCallback onSyncOrder;
 
   @override
   Widget build(BuildContext context) {
@@ -5628,12 +6524,6 @@ class _FulfillmentActionBar extends StatelessWidget {
             disabled: actionRunning,
             onPressed: onOpenOrCreateOrder,
           ),
-        _SmallActionChip(
-          label: '동기화',
-          icon: Icons.sync_outlined,
-          disabled: actionRunning,
-          onPressed: onSyncOrder,
-        ),
         if (isReady || !hasInvoice)
           _SmallActionChip(
             label: '송장번호 입력',
@@ -5668,13 +6558,21 @@ class _SmallActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return ActionChip(
       avatar: Icon(icon, size: 17),
       label: Text(label),
       onPressed: disabled ? null : onPressed,
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 5),
+      side: BorderSide(color: scheme.outlineVariant),
+      backgroundColor: scheme.surface.withValues(alpha: 0.92),
+      labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: disabled ? scheme.onSurfaceVariant : scheme.onSurface,
+          ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
     );
   }
 }
@@ -5804,84 +6702,48 @@ class _DeliveryTrackingRow extends StatelessWidget {
     final carrier = order.carrierName.isEmpty ? '택배사 없음' : order.carrierName;
 
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: scheme.primaryContainer.withValues(alpha: 0.22),
+        color: scheme.primaryContainer.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.18)),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 330;
-          return Row(
-            children: [
-              Icon(
-                Icons.local_shipping_outlined,
-                size: 18,
-                color: scheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      carrier,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    SelectableText(
-                      order.invoiceNo,
-                      maxLines: 2,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 6),
-              SizedBox.square(
-                dimension: 38,
-                child: IconButton.filledTonal(
-                  tooltip: '운송장 복사',
-                  onPressed: () => _copyInvoice(context),
-                  icon: const Icon(Icons.copy_outlined, size: 20),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-              const SizedBox(width: 6),
-              if (compact)
-                SizedBox.square(
-                  dimension: 38,
-                  child: IconButton.filled(
-                    tooltip: '배송조회',
-                    onPressed: () => _openTracking(context),
-                    icon: const Icon(Icons.open_in_new, size: 19),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
+      child: Row(
+        children: [
+          Icon(Icons.local_shipping_outlined, size: 17, color: scheme.primary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '$carrier ${order.invoiceNo}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                )
-              else
-                FilledButton.icon(
-                  onPressed: () => _openTracking(context),
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('배송조회'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(104, 38),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    textStyle: Theme.of(context).textTheme.labelMedium,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-            ],
-          );
-        },
+            ),
+          ),
+          const SizedBox(width: 4),
+          SizedBox.square(
+            dimension: 28,
+            child: IconButton.filledTonal(
+              tooltip: '운송장 복사',
+              onPressed: () => _copyInvoice(context),
+              icon: const Icon(Icons.copy_outlined, size: 17),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+          SizedBox.square(
+            dimension: 28,
+            child: IconButton.filled(
+              tooltip: '배송조회',
+              onPressed: () => _openTracking(context),
+              icon: const Icon(Icons.open_in_new, size: 16),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -6102,159 +6964,117 @@ class _PlayAutoOrderPrintPreviewScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+      body: ColoredBox(
+        color: Colors.grey.shade200,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Center(
             child: RepaintBoundary(
               key: captureKey,
-              child: ColoredBox(
-                color: scheme.surface,
-                child: SizedBox(
-                  width: 920,
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          '찰스톡 주문서',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        _printSectionTitle('주문 내역'),
-                        Table(
-                          border:
-                              TableBorder.all(color: const Color(0xFFE2E2E2)),
-                          columnWidths: const {
-                            0: FixedColumnWidth(104),
-                            1: FlexColumnWidth(1.7),
-                            2: FixedColumnWidth(120),
-                            3: FlexColumnWidth(1.45),
-                            4: FixedColumnWidth(104),
-                            5: FlexColumnWidth(1.2),
-                          },
-                          children: [
-                            _printTableRow([
-                              _printLabel('주문일'),
-                              _printValue(order.orderDate),
-                              _printLabel('구매 쇼핑몰'),
-                              _printValue(order.shopName),
-                            ], spans: const [
-                              1,
-                              2,
-                              1,
-                              2
-                            ]),
-                            _printTableRow([
-                              _printLabel('주문번호'),
-                              _printValue(order.orderNo),
-                            ], spans: const [
-                              1,
-                              5
-                            ]),
-                            _printTableRow([
-                              _printLabel('주문자'),
-                              _printValue(order.customerName),
-                              _printLabel('전화번호'),
-                              _printValue(''),
-                              _printLabel('휴대폰번호'),
-                              _printValue(order.phone),
-                            ]),
-                            _printTableRow([
-                              _printLabel('고객명'),
-                              _printValue(order.customerName),
-                              _printLabel('전화번호'),
-                              _printValue(''),
-                              _printLabel('휴대폰번호'),
-                              _printValue(order.phone),
-                            ]),
-                            _printTableRow([
-                              _printLabel('주소'),
-                              _printValue(order.address),
-                              _printLabel('배송방법'),
-                              _printValue(
-                                order.carrierName.isEmpty
-                                    ? '선결제'
-                                    : order.carrierName,
-                              ),
-                            ], spans: const [
-                              1,
-                              3,
-                              1,
-                              1
-                            ]),
-                            _printTableRow([
-                              _printLabel('배송메시지'),
-                              _printValue(order.shippingMessage),
-                              _printLabel(''),
-                              _printValue(''),
-                            ], spans: const [
-                              1,
-                              3,
-                              1,
-                              1
-                            ]),
-                          ],
-                        ),
-                        const SizedBox(height: 32),
-                        _printSectionTitle('상품 내역'),
-                        _printOrderSummaryTable(
-                          totalQuantity: totalQty,
-                          totalAmount: totalAmount,
-                          border: const Color(0xFFE2E2E2),
-                        ),
-                        Table(
-                          border:
-                              TableBorder.all(color: const Color(0xFFE2E2E2)),
-                          columnWidths: const {
-                            0: FixedColumnWidth(128),
-                            1: FlexColumnWidth(3.0),
-                            2: FlexColumnWidth(2.4),
-                            3: FixedColumnWidth(128),
-                            4: FixedColumnWidth(104),
-                            5: FixedColumnWidth(104),
-                          },
-                          children: [
-                            _printTableRow([
-                              _printLabel('이미지'),
-                              _printCentered('상품명'),
-                              _printCentered('옵션'),
-                              _printCentered('수량'),
-                              _printCentered('단가'),
-                              _printCentered('금액'),
-                            ]),
-                            for (final line in lines)
-                              _printTableRow([
-                                _printValue(''),
-                                _printValue(line.productName, dense: true),
-                                _printValue(line.optionName, dense: true),
-                                _printCentered('${line.quantity}'),
-                                _printCentered(
-                                  line.unitPrice > 0
-                                      ? '${_printMoney(line.unitPrice)} 원'
-                                      : '-',
-                                ),
-                                _printCentered(
-                                  line.amount > 0
-                                      ? '${_printMoney(line.amount)} 원'
-                                      : '-',
-                                ),
-                              ], minHeight: 72),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              child: _PlayAutoOrderMobilePage(
+                order: order,
+                lines: lines,
+                totalQuantity: totalQty,
+                totalAmount: totalAmount,
+                backgroundColor: scheme.surface,
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayAutoOrderMobilePage extends StatelessWidget {
+  const _PlayAutoOrderMobilePage({
+    required this.order,
+    required this.lines,
+    required this.totalQuantity,
+    required this.totalAmount,
+    required this.backgroundColor,
+  });
+
+  final _PlayAutoOrderPreview order;
+  final List<_PlayAutoOrderPreview> lines;
+  final int totalQuantity;
+  final int totalAmount;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 390,
+      color: backgroundColor,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      child: DefaultTextStyle(
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 14,
+          height: 1.38,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '주문서',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 18),
+            _orderMobileSection(
+              title: '주문 내역',
+              children: [
+                _orderMobileInfoLine('주문일', order.orderDate),
+                _orderMobileInfoLine('구매 쇼핑몰', order.shopName),
+                _orderMobileInfoLine('주문번호', order.orderNo),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _orderMobileSection(
+              title: '배송 정보',
+              children: [
+                _orderMobileInfoLine('주문자', order.ordererName),
+                _orderMobileInfoLine('주문자 전화번호', order.ordererTel),
+                _orderMobileInfoLine('주문자 휴대폰번호', order.ordererMobile),
+                _orderMobileInfoLine('고객명', order.receiverName),
+                _orderMobileInfoLine('고객 전화번호', order.receiverTel),
+                _orderMobileInfoLine('고객 휴대폰번호', order.receiverMobile),
+                _orderMobileInfoLine('주소', order.address),
+                _orderMobileInfoLine(
+                  '배송방법',
+                  order.shippingMethod.isEmpty ? '선결제' : order.shippingMethod,
+                ),
+                if (order.shippingMessage.trim().isNotEmpty)
+                  _orderMobileInfoLine('배송메시지', order.shippingMessage),
+                if (order.otherMessage.trim().isNotEmpty)
+                  _orderMobileInfoLine('기타메시지', order.otherMessage),
+              ],
+            ),
+            const SizedBox(height: 18),
+            const Text('상품 내역', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            if (lines.isEmpty) _orderMobileEmptyBox('주문 상품이 없습니다.'),
+            for (final line in lines)
+              _orderMobileLineCard(
+                productName: line.productName,
+                optionName: line.optionName,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+                amount: line.amount,
+              ),
+            const SizedBox(height: 8),
+            _orderMobileTotalBox(
+              children: [
+                _orderMobileTextTotalLine('주문 총 수량', '$totalQuantity개'),
+                _orderMobileMoneyTotalLine(
+                  '주문 총 금액',
+                  totalAmount,
+                  bold: true,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -6269,7 +7089,7 @@ Future<void> _sharePlayAutoOrderPreviewPdf(
   final box = context.findRenderObject() as RenderBox?;
   try {
     final pngBytes = await _captureChalstockOrderPng(captureKey);
-    final subject = '찰스톡주문서_${_safePrintFileName(order.orderNo)}';
+    final subject = '주문서_${_safePrintFileName(order.orderNo)}';
     final pdfBytes = await _buildChalstockOrderPdf(
       pngBytes: pngBytes,
       subject: subject,
@@ -6291,6 +7111,33 @@ Future<void> _sharePlayAutoOrderPreviewPdf(
   }
 }
 
+class _OrderQuantityBadge extends StatelessWidget {
+  const _OrderQuantityBadge({required this.quantity});
+
+  final int quantity;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.tertiary.withValues(alpha: 0.36)),
+      ),
+      child: Text(
+        '$quantity개',
+        maxLines: 1,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: scheme.onTertiaryContainer,
+              fontWeight: FontWeight.w900,
+            ),
+      ),
+    );
+  }
+}
+
 class _StatusPill extends StatelessWidget {
   const _StatusPill({
     required this.label,
@@ -6304,10 +7151,10 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 112),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
@@ -6337,10 +7184,11 @@ class _InfoChip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.28),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -6353,7 +7201,9 @@ class _InfoChip extends StatelessWidget {
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
         ],
@@ -6366,20 +7216,19 @@ class _MutedLine extends StatelessWidget {
   const _MutedLine({
     required this.label,
     required this.value,
-    this.alignEnd = false,
+    this.maxLines = 1,
   });
 
   final String label;
   final String value;
-  final bool alignEnd;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return Column(
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -6390,7 +7239,7 @@ class _MutedLine extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           value,
-          maxLines: 1,
+          maxLines: maxLines,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall,
         ),
@@ -6732,6 +7581,14 @@ class _PlayAutoOrderPreview {
     required this.bundleNo,
     required this.status,
     required this.shopName,
+    required this.ordererName,
+    required this.ordererPhone,
+    required this.ordererTel,
+    required this.ordererMobile,
+    required this.receiverName,
+    required this.receiverPhone,
+    required this.receiverTel,
+    required this.receiverMobile,
     required this.customerName,
     required this.address,
     required this.phone,
@@ -6740,11 +7597,13 @@ class _PlayAutoOrderPreview {
     required this.sku,
     required this.carrierCode,
     required this.carrierName,
+    required this.shippingMethod,
     required this.invoiceNo,
     required this.quantity,
     required this.unitPrice,
     required this.amount,
     required this.shippingMessage,
+    required this.otherMessage,
     required this.orderDate,
     required this.sortDate,
   });
@@ -6754,6 +7613,14 @@ class _PlayAutoOrderPreview {
   final String bundleNo;
   final String status;
   final String shopName;
+  final String ordererName;
+  final String ordererPhone;
+  final String ordererTel;
+  final String ordererMobile;
+  final String receiverName;
+  final String receiverPhone;
+  final String receiverTel;
+  final String receiverMobile;
   final String customerName;
   final String address;
   final String phone;
@@ -6762,11 +7629,13 @@ class _PlayAutoOrderPreview {
   final String sku;
   final String carrierCode;
   final String carrierName;
+  final String shippingMethod;
   final String invoiceNo;
   final int quantity;
   final int unitPrice;
   final int amount;
   final String shippingMessage;
+  final String otherMessage;
   final String orderDate;
   final DateTime? sortDate;
 
@@ -6807,34 +7676,137 @@ class _PlayAutoOrderPreview {
       'ord_cnt',
       'ea',
     ]);
-    final rawUnitPrice = _pickInt(json, const [
-      'sale_price',
-      'unit_price',
-      'price',
-      'shop_sale_price',
-      'shop_cost_price',
-      'shop_supply_price',
-    ]);
-    final rawAmount = _pickInt(json, const [
-      'amount',
-      'total_amount',
-      'pay_amt',
-      'sales',
-      'order_price',
-      'total_price',
-      'sale_amt',
-      'goods_price',
-    ]);
-    final amount = rawAmount > 0
-        ? rawAmount
+    final rawLineAmount = _pickInt(
+        json,
+        const [
+          'sale_price',
+          'sales',
+          'sale_amt',
+          'goods_price',
+          'amount',
+          'line_amount',
+          'line_total',
+          'opt_sale_price',
+          'shop_opt_price',
+          'shop_sale_amt',
+        ],
+        fallback: 0);
+    final rawUnitPrice = _pickInt(
+        json,
+        const [
+          'unit_price',
+          'unit_sale_price',
+          'price',
+          'opt_unit_price',
+          'shop_unit_price',
+          'shop_sale_price',
+          'shop_cost_price',
+          'shop_supply_price',
+        ],
+        fallback: 0);
+    final amount = rawLineAmount > 0
+        ? rawLineAmount
         : rawUnitPrice > 0
             ? rawUnitPrice * quantity
             : 0;
-    final unitPrice = rawUnitPrice > 0
-        ? rawUnitPrice
-        : amount > 0 && quantity > 0
-            ? (amount / quantity).round()
-            : 0;
+    final unitPrice =
+        amount > 0 && quantity > 0 ? (amount / quantity).round() : rawUnitPrice;
+
+    final ordererName = _pickString(json, const [
+      'order_name',
+      'orderer_name',
+      'ord_name',
+      'buyer_name',
+      'buyer',
+      'from_name',
+    ]);
+    final receiverName = _pickString(
+      json,
+      const [
+        'to_name',
+        'receiver_name',
+        'recipient_name',
+        'customer_name',
+        'cust_name',
+        'consignee_name',
+        'delivery_name',
+        'ship_name',
+      ],
+      fallback: ordererName,
+    );
+    final ordererMobile = _pickString(json, const [
+      'order_htel',
+      'order_mobile',
+      'order_hp',
+      'buyer_mobile',
+      'buyer_hp',
+      'buyer_htel',
+      'from_htel',
+    ]);
+    final ordererTel = _pickString(json, const [
+      'order_tel',
+      'buyer_tel',
+      'from_tel',
+    ]);
+    final ordererPhone = _joinUniqueNonEmpty([ordererTel, ordererMobile]);
+    final receiverMobile = _pickString(json, const [
+      'to_htel',
+      'to_mobile',
+      'receiver_mobile',
+      'receiver_htel',
+      'recipient_mobile',
+      'recipient_htel',
+      'customer_mobile',
+      'customer_htel',
+    ]);
+    final receiverTel = _pickString(json, const [
+      'to_tel',
+      'receiver_tel',
+      'recipient_tel',
+      'customer_tel',
+    ]);
+    final receiverPhone = _joinUniqueNonEmpty([receiverTel, receiverMobile]);
+    final zip = _pickString(json, const [
+      'to_zipcd',
+      'to_zip',
+      'zip',
+      'zipcode',
+      'zip_code',
+      'post_code',
+      'zonecode',
+    ]);
+    final address = _formatAddress(
+      zip: zip,
+      address1: _pickString(json, const [
+        'to_addr1',
+        'addr1',
+        'address1',
+        'addr',
+        'address',
+        'to_addr',
+        'receiver_addr',
+        'recipient_addr',
+        'delivery_addr',
+        'ship_addr',
+      ]),
+      address2: _pickString(json, const [
+        'to_addr2',
+        'addr2',
+        'address2',
+        'addr_detail',
+        'address_detail',
+        'to_addr_detail',
+        'receiver_addr_detail',
+        'delivery_addr_detail',
+        'ship_addr_detail',
+      ]),
+    );
+    final phone = receiverPhone.isNotEmpty ? receiverPhone : ordererPhone;
+    final customerName = receiverName.isNotEmpty
+        ? receiverName
+        : ordererName.isNotEmpty
+            ? ordererName
+            : '주문자 없음';
 
     return _PlayAutoOrderPreview(
       orderNo: _pickString(
@@ -6875,56 +7847,17 @@ class _PlayAutoOrderPreview {
             'shop_id',
           ],
           fallback: '판매처 없음'),
-      customerName: _pickString(
-          json,
-          const [
-            'order_name',
-            'to_name',
-            'receiver_name',
-            'buyer_name',
-            'order_id',
-          ],
-          fallback: '주문자 없음'),
-      address: _joinNonEmpty([
-        _pickString(json, const [
-          'addr',
-          'address',
-          'to_addr',
-          'receiver_addr',
-          'recipient_addr',
-          'delivery_addr',
-          'ship_addr',
-        ]),
-        _pickString(json, const [
-          'addr_detail',
-          'address_detail',
-          'to_addr_detail',
-          'receiver_addr_detail',
-          'delivery_addr_detail',
-          'ship_addr_detail',
-        ]),
-      ]),
-      phone: _joinNonEmpty([
-        _pickString(json, const [
-          'tel',
-          'phone',
-          'mobile',
-          'hp',
-          'cellphone',
-          'to_tel',
-          'to_mobile',
-          'receiver_tel',
-          'receiver_mobile',
-          'buyer_tel',
-          'order_tel',
-        ]),
-        _pickString(json, const [
-          'tel2',
-          'phone2',
-          'to_tel2',
-          'receiver_tel2',
-        ]),
-      ]),
+      ordererName: ordererName.isNotEmpty ? ordererName : customerName,
+      ordererPhone: ordererPhone.isNotEmpty ? ordererPhone : phone,
+      ordererTel: ordererTel,
+      ordererMobile: ordererMobile,
+      receiverName: receiverName.isNotEmpty ? receiverName : customerName,
+      receiverPhone: receiverPhone.isNotEmpty ? receiverPhone : phone,
+      receiverTel: receiverTel,
+      receiverMobile: receiverMobile,
+      customerName: customerName,
+      address: address,
+      phone: phone,
       productName: productName.isEmpty ? '상품명 없음' : productName,
       optionName: optionName,
       sku: _pickString(json, const [
@@ -6950,6 +7883,14 @@ class _PlayAutoOrderPreview {
         'courier',
         'courier_name',
       ]),
+      shippingMethod: _pickString(json, const [
+        'ship_method',
+        'shipping_method',
+        'delivery_method',
+        'delivery_type',
+        'ship_type',
+        'delivery_pay_type',
+      ]),
       invoiceNo: _pickString(json, const [
         'invoice_no',
         'invoiceNo',
@@ -6965,15 +7906,74 @@ class _PlayAutoOrderPreview {
       quantity: quantity,
       unitPrice: unitPrice,
       amount: amount,
-      shippingMessage: _pickString(json, const [
+      shippingMessage: _pickStringDeep(json, const [
         'delivery_msg',
         'delivery_message',
+        'delivery_memo',
+        'delivery_request',
+        'delivery_request_msg',
+        'delivery_request_message',
+        'deliv_msg',
+        'deliv_memo',
         'ship_msg',
+        'ship_message',
+        'ship_memo',
         'shipping_message',
+        'shipping_memo',
+        'shipping_request',
+        'shipping_request_msg',
+        'shipping_request_message',
+        'recv_msg',
+        'recv_memo',
+        'receiver_msg',
+        'receiver_memo',
+        'to_msg',
+        'to_memo',
+        'buyer_msg',
+        'buyer_memo',
+        'order_msg',
+        'order_message',
+        'cs_msg',
+        'delivery_remark',
         'memo',
         'ord_memo',
         'order_memo',
         'remark',
+      ]),
+      otherMessage: _pickStringDeep(json, const [
+        'etc_msg',
+        'etc_message',
+        'etc_memo',
+        'etc',
+        'extra_msg',
+        'extra_message',
+        'extra_memo',
+        'admin_msg',
+        'admin_message',
+        'admin_memo',
+        'manager_msg',
+        'manager_message',
+        'manager_memo',
+        'cs_msg',
+        'cs_message',
+        'cs_memo',
+        'mall_msg',
+        'mall_message',
+        'mall_memo',
+        'seller_msg',
+        'seller_message',
+        'seller_memo',
+        'private_msg',
+        'private_message',
+        'private_memo',
+        'internal_msg',
+        'internal_message',
+        'internal_memo',
+        'work_msg',
+        'work_message',
+        'work_memo',
+        'remark2',
+        'memo2',
       ]),
       orderDate: _shortDate(dateValue),
       sortDate: _parseDate(dateValue),
@@ -6994,8 +7994,43 @@ class _PlayAutoOrderPreview {
     return fallback;
   }
 
+  static String _pickStringDeep(
+    Object? node,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    if (node is Map) {
+      final map = node.map((key, value) => MapEntry(key.toString(), value));
+      for (final key in keys) {
+        final value = map[key];
+        if (value == null) continue;
+        final text = value.toString().trim();
+        if (text.isNotEmpty && text != 'null') return text;
+      }
+      for (final value in map.values) {
+        final found = _pickStringDeep(value, keys);
+        if (found.isNotEmpty) return found;
+      }
+    }
+    if (node is List) {
+      for (final value in node) {
+        final found = _pickStringDeep(value, keys);
+        if (found.isNotEmpty) return found;
+      }
+    }
+    return fallback;
+  }
+
   String get searchText => _normalizeSearchText(
         [
+          ordererName,
+          ordererTel,
+          ordererMobile,
+          ordererPhone,
+          receiverName,
+          receiverTel,
+          receiverMobile,
+          receiverPhone,
           customerName,
           address,
           phone,
@@ -7007,6 +8042,8 @@ class _PlayAutoOrderPreview {
           carrierCode,
           carrierName,
           invoiceNo,
+          shippingMessage,
+          otherMessage,
         ].join(' '),
       );
 
@@ -7061,7 +8098,36 @@ class _PlayAutoOrderPreview {
         .join(' ');
   }
 
-  static int _pickInt(Map<String, Object?> json, List<String> keys) {
+  static String _joinUniqueNonEmpty(List<String> values) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final value in values) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty || seen.contains(trimmed)) continue;
+      seen.add(trimmed);
+      result.add(trimmed);
+    }
+    return result.join(' ');
+  }
+
+  static String _formatAddress({
+    required String zip,
+    required String address1,
+    required String address2,
+  }) {
+    final parts = [
+      if (zip.trim().isNotEmpty) '(${zip.trim()})',
+      address1,
+      address2,
+    ];
+    return _joinNonEmpty(parts);
+  }
+
+  static int _pickInt(
+    Map<String, Object?> json,
+    List<String> keys, {
+    int fallback = 1,
+  }) {
     for (final key in keys) {
       final value = json[key];
       if (value is int) return value;
@@ -7071,7 +8137,7 @@ class _PlayAutoOrderPreview {
         if (parsed != null) return parsed;
       }
     }
-    return 1;
+    return fallback;
   }
 
   static String _shortDate(String value) {

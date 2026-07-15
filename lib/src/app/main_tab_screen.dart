@@ -88,9 +88,9 @@ class _ScrollableBottomTabs extends StatelessWidget {
             child: ListView.separated(
               controller: scrollController,
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               itemCount: tabs.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: 4),
+              separatorBuilder: (_, __) => const SizedBox(width: 1),
               itemBuilder: (context, index) {
                 if (index == tabs.length) {
                   return _BottomTabEditButton(onTap: onEdit);
@@ -137,9 +137,9 @@ class _BottomTabButton extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(18),
           child: SizedBox(
-            width: 76,
+            width: 66,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
