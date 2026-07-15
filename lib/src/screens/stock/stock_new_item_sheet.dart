@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/item.dart';
 import '../../models/suppliers.dart';
+import '../../repos/repo_interfaces.dart';
+import '../../ui/common/path_picker.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
 import '../../ui/common/ui.dart';
 import 'widgets/new_item_result.dart';
@@ -26,7 +29,16 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
   final _purchasePriceC = TextEditingController();
   final _salePriceC = TextEditingController();
   final _supplierC = TextEditingController();
+  late List<String> _pathIds;
+  var _pathLabel = '위치 불러오는 중';
   Supplier? _selectedSupplier;
+
+  @override
+  void initState() {
+    super.initState();
+    _pathIds = List<String>.from(widget.pathIds);
+    _loadPathLabel();
+  }
 
   @override
   void dispose() {
@@ -82,7 +94,46 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
     if (!mounted) return;
     // 아이템 + 최종 pathIds(ID 체인)를 함께 반환
     Navigator.pop<NewItemResult>(
-        context, NewItemResult(item, List<String>.from(widget.pathIds)));
+        context, NewItemResult(item, List<String>.from(_pathIds)));
+  }
+
+  Future<void> _loadPathLabel() async {
+    if (_pathIds.isEmpty) {
+      if (mounted) setState(() => _pathLabel = '선택된 위치 없음');
+      return;
+    }
+
+    final folderRepo = context.read<FolderTreeRepo>();
+    final names = <String>[];
+    for (final id in _pathIds) {
+      final folder = await folderRepo.folderById(id);
+      if (folder != null) names.add(folder.name);
+    }
+    if (!mounted) return;
+    setState(() {
+      _pathLabel = names.isEmpty ? '선택된 위치 없음' : names.join(' > ');
+    });
+  }
+
+  Future<void> _pickPath() async {
+    final folderRepo = context.read<FolderTreeRepo>();
+    final selected = await showPathPicker(
+      context,
+      childrenProvider: (String? parentId) async {
+        final folders = await folderRepo.listFolderChildren(parentId);
+        return folders
+            .map((folder) => PathNode(folder.id, folder.name))
+            .toList();
+      },
+      title: '새 아이템 위치 선택',
+      maxDepth: 3,
+    );
+    if (!mounted || selected == null || selected.isEmpty) return;
+    setState(() {
+      _pathIds = selected;
+      _pathLabel = '위치 불러오는 중';
+    });
+    await _loadPathLabel();
   }
 
   Future<void> _pickSupplier() async {
@@ -118,6 +169,18 @@ class _StockNewItemSheetState extends State<StockNewItemSheet> {
             const Text('새 아이템',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.folder_outlined),
+              title: const Text('저장 위치'),
+              subtitle: Text(_pathLabel),
+              trailing: OutlinedButton.icon(
+                onPressed: _pickPath,
+                icon: const Icon(Icons.drive_file_move_outline),
+                label: const Text('경로 선택'),
+              ),
+            ),
+            const SizedBox(height: 8),
             TextField(
                 controller: _nameC,
                 decoration: const InputDecoration(labelText: '이름')),
