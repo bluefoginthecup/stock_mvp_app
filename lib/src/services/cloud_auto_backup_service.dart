@@ -3,7 +3,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_entitlement.dart';
 import 'auth_service.dart';
+import 'backup_encryption_account_service.dart';
 import 'backup_encryption_key_store.dart';
+import 'backup_encryption_settings_service.dart';
 import 'cloud_backup_service.dart';
 import 'entitlement_service.dart';
 
@@ -76,6 +78,7 @@ class CloudAutoBackupService {
     CloudBackupService? cloudBackupService,
     EntitlementService? entitlementService,
     this.keyStore = const BackupEncryptionKeyStore(),
+    this.accountEncryptionService = const BackupEncryptionAccountService(),
   })  : _cloudBackupService = cloudBackupService,
         _entitlementService = entitlementService;
 
@@ -83,6 +86,7 @@ class CloudAutoBackupService {
   final CloudBackupService? _cloudBackupService;
   final EntitlementService? _entitlementService;
   final BackupEncryptionKeyStore keyStore;
+  final BackupEncryptionAccountService accountEncryptionService;
 
   CloudBackupService get cloudBackupService =>
       _cloudBackupService ?? CloudBackupService(authService: authService);
@@ -183,7 +187,7 @@ class CloudAutoBackupService {
         );
       }
 
-      final secret = await keyStore.readSecret();
+      final secret = await _readEncryptionSecretWithAccountSync(uid);
       if (secret == null) {
         return const CloudAutoBackupRunResult(
           attempted: false,
@@ -238,6 +242,27 @@ class CloudAutoBackupService {
       debugPrintStack(stackTrace: stackTrace);
       return null;
     }
+  }
+
+  Future<BackupEncryptionStoredSecret?> _readEncryptionSecretWithAccountSync(
+    String uid,
+  ) async {
+    final localSecret = await keyStore.readSecret();
+    if (localSecret != null) return localSecret;
+
+    final account = await accountEncryptionService.load(uid);
+    final accountSecret = account?.toStoredSecret();
+    if (accountSecret == null) return null;
+
+    await keyStore.saveStoredSecret(
+      passwordSecret: accountSecret.passwordSecret,
+      recoverySecret: accountSecret.recoverySecret,
+    );
+    await const BackupEncryptionSettingsService().completeSetupWithHash(
+      recoveryKeyHash: account?.recoveryKeyHash ?? '',
+      configuredAt: account?.configuredAt,
+    );
+    return accountSecret;
   }
 
   Future<void> _saveLastAttempt(String uid, DateTime value) async {

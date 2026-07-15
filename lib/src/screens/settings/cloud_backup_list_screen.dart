@@ -6,6 +6,9 @@ import 'package:provider/provider.dart';
 import 'package:path/path.dart' as p;
 
 import '/src/services/auth_service.dart';
+import '/src/services/backup_encryption_account_service.dart';
+import '/src/services/backup_encryption_key_store.dart';
+import '/src/services/backup_encryption_settings_service.dart';
 import '/src/services/backup_encryption_service.dart';
 import '/src/services/cloud_backup_service.dart';
 import '/src/services/full_restore_service.dart';
@@ -29,6 +32,10 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
   final FullRestoreService _restoreService = const FullRestoreService();
   final BackupEncryptionService _encryptionService =
       const BackupEncryptionService();
+  final BackupEncryptionKeyStore _encryptionKeyStore =
+      const BackupEncryptionKeyStore();
+  final BackupEncryptionAccountService _encryptionAccountService =
+      const BackupEncryptionAccountService();
 
   @override
   void didChangeDependencies() {
@@ -272,13 +279,54 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
         '${p.basenameWithoutExtension(encryptedFile.path)}_decrypted.zip',
       ),
     );
+    debugPrint(
+      '☁️ CloudBackup restore decrypt start: '
+      'mode=${request.unlockMode}, file=${encryptedFile.path}',
+    );
+    final resolvedRequest = await _resolveEncryptedBackupUnlockRequest(request);
     final decrypted = await _encryptionService.decryptToZip(
       encryptedFile: encryptedFile,
       outputFile: outputFile,
-      password: request.password,
-      recoveryKey: request.recoveryKey,
+      password: resolvedRequest.password,
+      recoveryKey: resolvedRequest.recoveryKey,
     );
     return decrypted.file;
+  }
+
+  Future<_EncryptedBackupUnlockRequest> _resolveEncryptedBackupUnlockRequest(
+    _EncryptedBackupUnlockRequest request,
+  ) async {
+    if (request.usesStoredSecret) return request;
+
+    final uid = context.read<AuthService>().uid;
+    if (uid == null) return request;
+
+    try {
+      final account = await _encryptionAccountService.load(uid);
+      final accountSecret = account?.toStoredSecret();
+      if (accountSecret == null) return request;
+
+      final password = request.password;
+      if (password?.isNotEmpty == true && account!.passwordMatches(password!)) {
+        return _EncryptedBackupUnlockRequest.storedSecret(
+          passwordSecret: accountSecret.passwordSecret,
+          recoverySecret: accountSecret.recoverySecret,
+        );
+      }
+
+      final recoveryKey = request.recoveryKey;
+      if (recoveryKey?.isNotEmpty == true &&
+          account!.recoveryKeyMatches(recoveryKey!)) {
+        return _EncryptedBackupUnlockRequest.storedSecret(
+          passwordSecret: accountSecret.passwordSecret,
+          recoverySecret: accountSecret.recoverySecret,
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('☁️ CloudBackup account unlock resolve skipped: $e');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+    return request;
   }
 
   Future<_EncryptedBackupUnlockRequest?> _showEncryptedBackupUnlockDialog() {
@@ -286,6 +334,8 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
     final recoveryKeyController = TextEditingController();
     var useRecoveryKey = false;
     String? errorText;
+    var loadingStoredSecret = false;
+    var showPassword = false;
 
     return showDialog<_EncryptedBackupUnlockRequest>(
       context: context,
@@ -299,6 +349,49 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
               children: [
                 const Text(
                   '이 백업은 암호화되어 있습니다. 백업 비밀번호 또는 복구키를 입력해야 복원할 수 있습니다.',
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: loadingStoredSecret
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            loadingStoredSecret = true;
+                            errorText = null;
+                          });
+                          try {
+                            final secret = await _readStoredEncryptionSecret();
+                            if (!dialogContext.mounted) return;
+                            if (secret == null) {
+                              setDialogState(() {
+                                loadingStoredSecret = false;
+                                errorText =
+                                    '계정 또는 이 기기에 저장된 백업 암호화 설정을 찾지 못했습니다.';
+                              });
+                              return;
+                            }
+                            Navigator.of(dialogContext).pop(
+                              _EncryptedBackupUnlockRequest.storedSecret(
+                                passwordSecret: secret.passwordSecret,
+                                recoverySecret: secret.recoverySecret,
+                              ),
+                            );
+                          } catch (e) {
+                            if (!dialogContext.mounted) return;
+                            setDialogState(() {
+                              loadingStoredSecret = false;
+                              errorText = '저장된 암호화 설정을 읽지 못했습니다: $e';
+                            });
+                          }
+                        },
+                  icon: loadingStoredSecret
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.security_outlined),
+                  label: const Text('이 기기의 저장된 암호로 잠금 해제'),
                 ),
                 const SizedBox(height: 12),
                 SegmentedButton<bool>(
@@ -337,10 +430,21 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
                 else
                   TextField(
                     controller: passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: !showPassword,
+                    decoration: InputDecoration(
                       labelText: '백업 비밀번호',
-                      border: OutlineInputBorder(),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        tooltip: showPassword ? '비밀번호 숨기기' : '비밀번호 보기',
+                        icon: Icon(
+                          showPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () {
+                          setDialogState(() => showPassword = !showPassword);
+                        },
+                      ),
                     ),
                   ),
                 if (errorText != null) ...[
@@ -453,6 +557,28 @@ class _CloudBackupListScreenState extends State<CloudBackupListScreen> {
       const SnackBar(content: Text('클라우드 백업을 삭제했습니다.')),
     );
     await _refresh();
+  }
+
+  Future<BackupEncryptionStoredSecret?> _readStoredEncryptionSecret() async {
+    final uid = context.read<AuthService>().uid;
+    final localSecret = await _encryptionKeyStore.readSecret();
+    if (localSecret != null) return localSecret;
+
+    if (uid == null) return null;
+
+    final account = await _encryptionAccountService.load(uid);
+    final accountSecret = account?.toStoredSecret();
+    if (accountSecret == null) return null;
+
+    await _encryptionKeyStore.saveStoredSecret(
+      passwordSecret: accountSecret.passwordSecret,
+      recoverySecret: accountSecret.recoverySecret,
+    );
+    await const BackupEncryptionSettingsService().completeSetupWithHash(
+      recoveryKeyHash: account?.recoveryKeyHash ?? '',
+      configuredAt: account?.configuredAt,
+    );
+    return accountSecret;
   }
 }
 
@@ -816,15 +942,31 @@ String _formatDateTime(DateTime value) {
 class _EncryptedBackupUnlockRequest {
   final String? password;
   final String? recoveryKey;
+  final bool usesStoredSecret;
 
   const _EncryptedBackupUnlockRequest({
     this.password,
     this.recoveryKey,
-  });
+  }) : usesStoredSecret = false;
+
+  const _EncryptedBackupUnlockRequest.storedSecret({
+    required String passwordSecret,
+    required String recoverySecret,
+  })  : password = passwordSecret,
+        recoveryKey = recoverySecret,
+        usesStoredSecret = true;
 
   const _EncryptedBackupUnlockRequest.none()
       : password = null,
-        recoveryKey = null;
+        recoveryKey = null,
+        usesStoredSecret = false;
+
+  String get unlockMode {
+    if (usesStoredSecret) return 'stored-secret';
+    if (recoveryKey?.isNotEmpty == true) return 'recovery-key';
+    if (password?.isNotEmpty == true) return 'password';
+    return 'none';
+  }
 }
 
 class _CloudBackupRestorePreview extends StatelessWidget {

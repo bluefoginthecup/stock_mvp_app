@@ -10,6 +10,7 @@ import '../../models/quote_line.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/buyer_profile_service.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
+import '../integrations/playauto_order_import_screen.dart';
 import '../stock/stock_item_detail_screen.dart';
 import 'quote_line_edit_screen.dart';
 import 'quote_print_view.dart';
@@ -264,6 +265,20 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
     );
   }
 
+  Future<void> _openPlayAutoOrderAdd() async {
+    await _saveHeader();
+    if (!mounted || _quote == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlayAutoQuoteOrderAddScreen(
+          quote: _quote!,
+          lines: _lines,
+        ),
+      ),
+    );
+  }
+
   String _statusText(QuoteStatus status) {
     switch (status) {
       case QuoteStatus.draft:
@@ -305,6 +320,11 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
       appBar: AppBar(
         title: const Text('견적 상세'),
         actions: [
+          TextButton.icon(
+            onPressed: _openPlayAutoOrderAdd,
+            icon: const Icon(Icons.storefront_outlined),
+            label: const Text('플토 주문'),
+          ),
           PopupMenuButton<String>(
             tooltip: '견적서 보기',
             icon: const Icon(Icons.article_outlined),

@@ -40,14 +40,24 @@ class BackupEncryptionKeyStore {
     required String password,
     required String recoveryKey,
   }) async {
+    await saveStoredSecret(
+      passwordSecret: _derivePasswordSecret(password),
+      recoverySecret: deriveRecoverySecret(recoveryKey),
+    );
+  }
+
+  Future<void> saveStoredSecret({
+    required String passwordSecret,
+    required String recoverySecret,
+  }) async {
     try {
       await _storage.write(
         key: _passwordSecretKey,
-        value: _derivePasswordSecret(password),
+        value: passwordSecret,
       );
       await _storage.write(
         key: _recoverySecretKey,
-        value: deriveRecoverySecret(recoveryKey),
+        value: recoverySecret,
       );
     } on MissingPluginException catch (e) {
       throw BackupEncryptionKeyStoreException(
@@ -106,7 +116,55 @@ class BackupEncryptionKeyStore {
 
   String _derivePasswordSecret(String password) {
     return sha256
-        .convert(utf8.encode('stockapp:password-wrap:v1:$password'))
+        .convert(
+          utf8.encode(
+            'stockapp:password-wrap:v1:${_composeHangulJamo(password)}',
+          ),
+        )
         .toString();
+  }
+
+  String _composeHangulJamo(String value) {
+    const choseongBase = 0x1100;
+    const jungseongBase = 0x1161;
+    const jongseongBase = 0x11A7;
+    const syllableBase = 0xAC00;
+    const jungseongCount = 21;
+    const jongseongCount = 28;
+    const choseongCount = 19;
+
+    final output = <int>[];
+    final codes = value.runes.toList();
+    var i = 0;
+    while (i < codes.length) {
+      final lead = codes[i];
+      if (lead >= choseongBase &&
+          lead < choseongBase + choseongCount &&
+          i + 1 < codes.length) {
+        final vowel = codes[i + 1];
+        if (vowel >= jungseongBase && vowel < jungseongBase + jungseongCount) {
+          var trailIndex = 0;
+          var consumed = 2;
+          if (i + 2 < codes.length) {
+            final trail = codes[i + 2];
+            if (trail > jongseongBase && trail <= 0x11C2) {
+              trailIndex = trail - jongseongBase;
+              consumed = 3;
+            }
+          }
+          output.add(
+            syllableBase +
+                (lead - choseongBase) * jungseongCount * jongseongCount +
+                (vowel - jungseongBase) * jongseongCount +
+                trailIndex,
+          );
+          i += consumed;
+          continue;
+        }
+      }
+      output.add(lead);
+      i += 1;
+    }
+    return String.fromCharCodes(output);
   }
 }

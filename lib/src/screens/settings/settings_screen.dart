@@ -11,6 +11,7 @@ import '/src/models/attachment_domain.dart';
 import '/src/models/app_entitlement.dart';
 import '/src/models/buyer_profile.dart';
 import '/src/models/subscription_plan.dart';
+import '/src/services/backup_encryption_account_service.dart';
 import '/src/services/backup_file_delivery_service.dart';
 import '/src/services/business_document_service.dart';
 import '/src/services/backup_encryption_settings_service.dart';
@@ -2221,10 +2222,40 @@ class _BackupEncryptionSection extends StatefulWidget {
       _BackupEncryptionSectionState();
 }
 
+Future<BackupEncryptionStoredSecret?> _syncAccountBackupEncryptionToLocal({
+  required BuildContext context,
+  required BackupEncryptionSettingsService settingsService,
+  required BackupEncryptionKeyStore keyStore,
+  BackupEncryptionAccountService accountService =
+      const BackupEncryptionAccountService(),
+}) async {
+  final uid = context.read<AuthService>().uid;
+  if (uid == null) return keyStore.readSecret();
+
+  final localSecret = await keyStore.readSecret();
+  if (localSecret != null) return localSecret;
+
+  final account = await accountService.load(uid);
+  final accountSecret = account?.toStoredSecret();
+  if (accountSecret == null) return null;
+
+  await keyStore.saveStoredSecret(
+    passwordSecret: accountSecret.passwordSecret,
+    recoverySecret: accountSecret.recoverySecret,
+  );
+  await settingsService.completeSetupWithHash(
+    recoveryKeyHash: account?.recoveryKeyHash ?? '',
+    configuredAt: account?.configuredAt,
+  );
+  return accountSecret;
+}
+
 class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
   final BackupEncryptionSettingsService _service =
       const BackupEncryptionSettingsService();
   final BackupEncryptionKeyStore _keyStore = const BackupEncryptionKeyStore();
+  final BackupEncryptionAccountService _accountService =
+      const BackupEncryptionAccountService();
   BackupEncryptionSettings? _settings;
   bool _loading = true;
   bool _saving = false;
@@ -2243,7 +2274,7 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
     });
 
     try {
-      final settings = await _service.load();
+      final settings = await _loadSettingsWithAccountSync();
       if (!mounted) return;
       setState(() {
         _settings = settings;
@@ -2261,6 +2292,7 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
   Future<void> _setupEncryption() async {
     if (_saving) return;
 
+    final uid = context.read<AuthService>().uid;
     final password = await _showPasswordDialog();
     if (password == null || !mounted) return;
 
@@ -2270,11 +2302,27 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
 
     setState(() => _saving = true);
     try {
-      await _keyStore.saveSecret(
-        password: password,
-        recoveryKey: draft.recoveryKey,
+      final account = uid == null ? null : await _accountService.load(uid);
+      final localSecret = await _keyStore.readSecret();
+      final accountSecret = account?.toStoredSecret() ??
+          localSecret ??
+          BackupEncryptionAccountService.generateStoredSecret();
+      await _keyStore.saveStoredSecret(
+        passwordSecret: accountSecret.passwordSecret,
+        recoverySecret: accountSecret.recoverySecret,
       );
       await _service.completeSetup(draft);
+      Object? syncError;
+      try {
+        await _syncLocalSettingsToAccount(
+          password: password,
+          recoveryKeyHash: draft.recoveryKeyHash,
+        );
+      } catch (e, stackTrace) {
+        syncError = e;
+        debugPrint('☁️ BackupEncryption account sync save failed: $e');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       final settings = await _service.load();
       if (!mounted) return;
       setState(() {
@@ -2282,7 +2330,13 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
         _saving = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('백업 암호화 설정을 완료했습니다.')),
+        SnackBar(
+          content: Text(
+            syncError == null
+                ? '계정 백업 키와 백업 암호를 동기화했습니다.'
+                : '이 기기에는 설정했지만 계정 동기화는 실패했습니다: $syncError',
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -2299,6 +2353,7 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
   Future<void> _resetEncryption() async {
     if (_saving) return;
 
+    final uid = context.read<AuthService>().uid;
     final confirmed = await _showResetEncryptionDialog();
     if (confirmed != true || !mounted) return;
 
@@ -2306,6 +2361,9 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
     try {
       await _keyStore.deleteSecret();
       await _service.clearSetup();
+      if (uid != null) {
+        await _accountService.clear(uid);
+      }
       final settings = await _service.load();
       if (!mounted) return;
       setState(() {
@@ -2334,6 +2392,114 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
     }
   }
 
+  Future<void> _rotateEncryptionKey() async {
+    if (_saving) return;
+
+    final uid = context.read<AuthService>().uid;
+    final confirmed = await _showRotateEncryptionKeyDialog();
+    if (confirmed != true || !mounted) return;
+
+    final password = await _showPasswordDialog();
+    if (password == null || !mounted) return;
+
+    final draft = _service.createSetupDraft();
+    final recoveryConfirmed = await _showRecoveryKeyDialog(draft.recoveryKey);
+    if (recoveryConfirmed != true || !mounted) return;
+
+    final newSecret = BackupEncryptionAccountService.generateStoredSecret();
+    setState(() => _saving = true);
+    try {
+      if (uid != null) {
+        await _accountService.save(
+          uid: uid,
+          secret: newSecret,
+          recoveryKeyHash: draft.recoveryKeyHash,
+          passwordCheckHash:
+              BackupEncryptionAccountService.hashPassword(password),
+        );
+      }
+      await _keyStore.saveStoredSecret(
+        passwordSecret: newSecret.passwordSecret,
+        recoverySecret: newSecret.recoverySecret,
+      );
+      await _service.completeSetup(draft);
+      final settings = await _service.load();
+      if (!mounted) return;
+      setState(() {
+        _settings = settings;
+        _saving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('백업 키를 새로 만들었습니다. 새 클라우드 백업을 만들어 주세요.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      await _showSimpleErrorDialog(
+        context,
+        title: '백업 키 재생성 실패',
+        message: '백업 키를 새로 만들지 못했습니다.\n\n$e',
+      );
+    }
+  }
+
+  Future<BackupEncryptionSettings> _loadSettingsWithAccountSync() async {
+    final uid = context.read<AuthService>().uid;
+    var settings = await _service.load();
+    if (uid == null) return settings;
+
+    try {
+      final account = await _accountService.load(uid);
+      final localSecret = await _keyStore.readSecret();
+      if (account?.hasSecrets == true) {
+        final accountSecret = account!.toStoredSecret();
+        if (accountSecret != null &&
+            (!settings.configured || localSecret == null)) {
+          await _keyStore.saveStoredSecret(
+            passwordSecret: accountSecret.passwordSecret,
+            recoverySecret: accountSecret.recoverySecret,
+          );
+          await _service.completeSetupWithHash(
+            recoveryKeyHash: account.recoveryKeyHash ?? '',
+            configuredAt: account.configuredAt,
+          );
+          settings = await _service.load();
+        }
+      } else if (settings.configured &&
+          localSecret != null &&
+          settings.recoveryKeyHash?.isNotEmpty == true) {
+        await _accountService.save(
+          uid: uid,
+          secret: localSecret,
+          recoveryKeyHash: settings.recoveryKeyHash!,
+          configuredAt: settings.configuredAt,
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('☁️ BackupEncryption account sync load skipped: $e');
+      debugPrintStack(stackTrace: stackTrace);
+    }
+    return settings;
+  }
+
+  Future<void> _syncLocalSettingsToAccount({
+    required String password,
+    required String recoveryKeyHash,
+  }) async {
+    final uid = context.read<AuthService>().uid;
+    if (uid == null) return;
+    final secret = await _keyStore.readSecret();
+    if (secret == null) return;
+    await _accountService.save(
+      uid: uid,
+      secret: secret,
+      recoveryKeyHash: recoveryKeyHash,
+      passwordCheckHash: BackupEncryptionAccountService.hashPassword(password),
+    );
+  }
+
   Future<bool?> _showResetEncryptionDialog() {
     var checked = false;
 
@@ -2349,7 +2515,7 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '이 기기에 저장된 백업 암호화 secret과 복구키 검증 정보를 삭제합니다.',
+                  '계정에 동기화된 백업 암호화 secret과 이 기기에 저장된 암호화 설정을 삭제합니다.',
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -2362,7 +2528,7 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  '초기화 후에는 새 백업을 만들기 전에 백업 암호를 다시 설정해야 합니다.',
+                  '초기화 후에는 새 백업을 만들기 전에 백업 암호를 다시 설정해야 하며, 다른 기기에도 변경이 반영됩니다.',
                 ),
                 const SizedBox(height: 8),
                 CheckboxListTile(
@@ -2397,10 +2563,75 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
     );
   }
 
+  Future<bool?> _showRotateEncryptionKeyDialog() {
+    var checked = false;
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('백업 키 재생성'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '새 랜덤 계정 백업 키를 만듭니다. 이후 새 백업은 새 키로 암호화됩니다.',
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '기존 클라우드 백업은 이전 백업 키로 만들어졌기 때문에, 새 키만으로는 열리지 않을 수 있습니다. '
+                  '키 재생성 후에는 새 클라우드 백업을 바로 만드는 것이 좋습니다.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '이 기능은 백업 키 유출이 의심될 때 사용하는 보안 조치입니다. 평상시 암호 변경은 백업 암호 변경을 사용하세요.',
+                ),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: checked,
+                  onChanged: (value) {
+                    setDialogState(() => checked = value ?? false);
+                  },
+                  title: const Text('기존 백업과 호환이 끊길 수 있음을 이해했습니다'),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Theme.of(context).colorScheme.onError,
+              ),
+              onPressed:
+                  checked ? () => Navigator.of(dialogContext).pop(true) : null,
+              child: const Text('키 재생성'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<String?> _showPasswordDialog() {
     final passwordController = TextEditingController();
     final confirmController = TextEditingController();
     String? errorText;
+    var showPassword = false;
+    var showConfirmPassword = false;
 
     return showDialog<String>(
       context: context,
@@ -2413,24 +2644,48 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
             children: [
               const Text(
                 '이 비밀번호는 클라우드 백업 암호화와 복원에 사용합니다. '
-                '비밀번호 원문은 저장하지 않고 암호화용 secret만 기기 보안 저장소에 저장합니다.',
+                '실제 백업 키는 자동 생성되며, 비밀번호 원문은 저장하지 않습니다.',
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: !showPassword,
+                decoration: InputDecoration(
                   labelText: '비밀번호',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    tooltip: showPassword ? '비밀번호 숨기기' : '비밀번호 보기',
+                    icon: Icon(
+                      showPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () {
+                      setDialogState(() => showPassword = !showPassword);
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: confirmController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: !showConfirmPassword,
+                decoration: InputDecoration(
                   labelText: '비밀번호 확인',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    tooltip: showConfirmPassword ? '비밀번호 숨기기' : '비밀번호 보기',
+                    icon: Icon(
+                      showConfirmPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () {
+                      setDialogState(
+                        () => showConfirmPassword = !showConfirmPassword,
+                      );
+                    },
+                  ),
                 ),
               ),
               if (errorText != null) ...[
@@ -2593,9 +2848,8 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
               ],
               const SizedBox(height: 8),
               Text(
-                '수동/자동 클라우드 백업은 저장된 암호화 secret으로 .stockbackup 파일만 업로드합니다. '
-                '복구키 원문은 저장하지 않고 검증용 hash만 저장합니다. '
-                '다른 기기에서 복원할 때는 비밀번호 또는 복구키가 필요합니다.',
+                '수동/자동 클라우드 백업은 자동 생성된 계정 백업 키로 .stockbackup 파일만 업로드합니다. '
+                '비밀번호와 복구키 원문은 저장하지 않습니다. 백업 암호를 다시 설정해도 기존 백업과 새 백업은 같은 계정 백업 키로 열립니다.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context)
                           .colorScheme
@@ -2618,8 +2872,15 @@ class _BackupEncryptionSectionState extends State<_BackupEncryptionSection> {
                   FilledButton.icon(
                     onPressed: _loading || _saving ? null : _setupEncryption,
                     icon: const Icon(Icons.lock_outline),
-                    label: Text(configured ? '백업 암호 다시 설정' : '백업 암호 설정'),
+                    label: Text(configured ? '백업 암호 변경' : '백업 암호 설정'),
                   ),
+                  if (configured)
+                    OutlinedButton.icon(
+                      onPressed:
+                          _loading || _saving ? null : _rotateEncryptionKey,
+                      icon: const Icon(Icons.key_outlined),
+                      label: const Text('백업 키 재생성'),
+                    ),
                   if (configured)
                     OutlinedButton.icon(
                       onPressed: _loading || _saving ? null : _resetEncryption,
@@ -2763,6 +3024,11 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
     const encryptionSettingsService = BackupEncryptionSettingsService();
     const keyStore = BackupEncryptionKeyStore();
     try {
+      await _syncAccountBackupEncryptionToLocal(
+        context: context,
+        settingsService: encryptionSettingsService,
+        keyStore: keyStore,
+      );
       final settings = await encryptionSettingsService.load();
       if (!settings.configured) {
         if (!mounted) return false;
@@ -2775,8 +3041,8 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
         return false;
       }
 
-      final hasSecret = await keyStore.hasSecret();
-      if (!hasSecret) {
+      final secret = await keyStore.readSecret();
+      if (secret == null) {
         if (!mounted) return false;
         await _showSimpleErrorDialog(
           context,
@@ -2886,7 +3152,13 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
     const encryptionSettingsService = BackupEncryptionSettingsService();
     const keyStore = BackupEncryptionKeyStore();
     late final BackupEncryptionSettings settings;
+    BackupEncryptionStoredSecret? syncedSecret;
     try {
+      syncedSecret = await _syncAccountBackupEncryptionToLocal(
+        context: context,
+        settingsService: encryptionSettingsService,
+        keyStore: keyStore,
+      );
       settings = await encryptionSettingsService.load();
     } catch (e) {
       if (!mounted) return null;
@@ -2909,7 +3181,7 @@ class _CloudBackupSectionState extends State<_CloudBackupSection> {
 
     late final BackupEncryptionStoredSecret? secret;
     try {
-      secret = await keyStore.readSecret();
+      secret = syncedSecret ?? await keyStore.readSecret();
     } on BackupEncryptionKeyStoreException catch (e) {
       if (!mounted) return null;
       await _showSimpleErrorDialog(

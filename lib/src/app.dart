@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:provider/provider.dart';
 
@@ -121,13 +124,44 @@ class _StockMaterialApp extends StatefulWidget {
   State<_StockMaterialApp> createState() => _StockMaterialAppState();
 }
 
-class _StockMaterialAppState extends State<_StockMaterialApp> {
+class _StockMaterialAppState extends State<_StockMaterialApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScheduleWidgetBridge.initialize(navigatorKey: widget.rootNavKey);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _clearKeyboardState();
+    }
+  }
+
+  @override
+  void didChangeViewFocus(ui.ViewFocusEvent event) {
+    if (event.state == ui.ViewFocusState.unfocused) {
+      _clearKeyboardState();
+    }
+  }
+
+  void _clearKeyboardState() {
+    // Defensive desktop focus cleanup: Flutter can otherwise keep a stale
+    // pressed key and assert on the next real key down.
+    // ignore: invalid_use_of_visible_for_testing_member
+    HardwareKeyboard.instance.clearState();
   }
 
   @override

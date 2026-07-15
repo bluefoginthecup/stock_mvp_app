@@ -228,13 +228,9 @@ class BackupEncryptionService {
     String? recoveryKey,
   }) async {
     final attempts = <_UnwrapAttempt>[
-      if (password != null && password.isNotEmpty) ...[
-        _UnwrapAttempt('passwordWrappedKey', password),
-        _UnwrapAttempt(
-          'passwordWrappedKey',
-          _derivePasswordUnlockSecret(password),
-        ),
-      ],
+      if (password != null && password.isNotEmpty)
+        for (final secret in _passwordUnlockSecretCandidates(password))
+          _UnwrapAttempt('passwordWrappedKey', secret),
       if (recoveryKey != null && recoveryKey.isNotEmpty) ...[
         _UnwrapAttempt('recoveryWrappedKey', recoveryKey),
         _UnwrapAttempt(
@@ -269,6 +265,23 @@ class BackupEncryptionService {
     }
 
     throw const BackupEncryptionException('비밀번호 또는 복구키가 올바르지 않습니다.');
+  }
+
+  List<String> _passwordUnlockSecretCandidates(String password) {
+    final variants = <String>{
+      password,
+      password.trim(),
+      _composeHangulJamo(password),
+      _composeHangulJamo(password.trim()),
+      _decomposeHangulSyllables(password),
+      _decomposeHangulSyllables(password.trim()),
+    }..removeWhere((value) => value.isEmpty);
+    return [
+      for (final variant in variants) ...[
+        variant,
+        _derivePasswordUnlockSecret(variant),
+      ],
+    ];
   }
 
   Future<SecretKey> _deriveWrappingKey({
@@ -388,6 +401,79 @@ class BackupEncryptionService {
     return crypto.sha256
         .convert(utf8.encode('stockapp:recovery-wrap:v1:$normalized'))
         .toString();
+  }
+
+  String _composeHangulJamo(String value) {
+    const choseongBase = 0x1100;
+    const jungseongBase = 0x1161;
+    const jongseongBase = 0x11A7;
+    const syllableBase = 0xAC00;
+    const jungseongCount = 21;
+    const jongseongCount = 28;
+    const choseongCount = 19;
+
+    final output = <int>[];
+    final codes = value.runes.toList();
+    var i = 0;
+    while (i < codes.length) {
+      final lead = codes[i];
+      if (lead >= choseongBase &&
+          lead < choseongBase + choseongCount &&
+          i + 1 < codes.length) {
+        final vowel = codes[i + 1];
+        if (vowel >= jungseongBase && vowel < jungseongBase + jungseongCount) {
+          var trailIndex = 0;
+          var consumed = 2;
+          if (i + 2 < codes.length) {
+            final trail = codes[i + 2];
+            if (trail > jongseongBase && trail <= 0x11C2) {
+              trailIndex = trail - jongseongBase;
+              consumed = 3;
+            }
+          }
+          final syllable = syllableBase +
+              (lead - choseongBase) * jungseongCount * jongseongCount +
+              (vowel - jungseongBase) * jongseongCount +
+              trailIndex;
+          output.add(syllable);
+          i += consumed;
+          continue;
+        }
+      }
+      output.add(lead);
+      i += 1;
+    }
+    return String.fromCharCodes(output);
+  }
+
+  String _decomposeHangulSyllables(String value) {
+    const choseongBase = 0x1100;
+    const jungseongBase = 0x1161;
+    const jongseongBase = 0x11A7;
+    const syllableBase = 0xAC00;
+    const syllableEnd = 0xD7A3;
+    const jungseongCount = 21;
+    const jongseongCount = 28;
+
+    final output = <int>[];
+    for (final code in value.runes) {
+      if (code < syllableBase || code > syllableEnd) {
+        output.add(code);
+        continue;
+      }
+      final offset = code - syllableBase;
+      final leadIndex = offset ~/ (jungseongCount * jongseongCount);
+      final vowelIndex =
+          (offset % (jungseongCount * jongseongCount)) ~/ jongseongCount;
+      final trailIndex = offset % jongseongCount;
+      output
+        ..add(choseongBase + leadIndex)
+        ..add(jungseongBase + vowelIndex);
+      if (trailIndex > 0) {
+        output.add(jongseongBase + trailIndex);
+      }
+    }
+    return String.fromCharCodes(output);
   }
 
   List<int> _randomBytes(int length) {

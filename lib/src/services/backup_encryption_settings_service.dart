@@ -55,13 +55,20 @@ class BackupEncryptionSettingsService {
   }
 
   Future<void> completeSetup(BackupEncryptionSetupDraft draft) async {
+    await completeSetupWithHash(recoveryKeyHash: draft.recoveryKeyHash);
+  }
+
+  Future<void> completeSetupWithHash({
+    required String recoveryKeyHash,
+    DateTime? configuredAt,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_configuredKey, true);
     await prefs.setString(
       _configuredAtKey,
-      DateTime.now().toUtc().toIso8601String(),
+      (configuredAt ?? DateTime.now()).toUtc().toIso8601String(),
     );
-    await prefs.setString(_recoveryKeyHashKey, draft.recoveryKeyHash);
+    await prefs.setString(_recoveryKeyHashKey, recoveryKeyHash);
 
     // The password/recovery-key derived encryption secrets are stored by
     // BackupEncryptionKeyStore. SharedPreferences only keeps non-secret state.

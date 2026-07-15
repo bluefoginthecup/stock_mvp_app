@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -12,6 +13,8 @@ import 'package:uuid/uuid.dart';
 import '../../app/main_tab_controller.dart';
 import '../../models/item.dart';
 import '../../models/order.dart';
+import '../../models/quote.dart';
+import '../../models/quote_line.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/order_planning_service.dart';
 import '../../services/playauto_item_mapping_service.dart';
@@ -68,6 +71,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   static const _tokenKey = 'playauto_token_v1';
   static const _tokenIssuedAtKey = 'playauto_token_issued_at_v1';
   static const _orderCachePrefix = 'playauto_order_cache_v1';
+  static const _quoteOrderAddLogKey = 'playauto_quote_order_add_logs_v1';
   static const _tokenLifetime = Duration(hours: 24);
 
   final _baseUrlController = TextEditingController(
@@ -91,6 +95,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   var _workAction = 'ScrapOrder';
   List<_PlayAutoOrderPreview> _orders = const [];
   List<_PlayAutoShopAccount> _shopAccounts = const [];
+  List<_PlayAutoQuoteOrderAddLog> _quoteOrderAddLogs = const [];
   Set<String> _selectedShopAccountKeys = const {};
   List<String> _lastWorkNos = const [];
   String? _result;
@@ -105,6 +110,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     _sdateController.text = _formatDate(weekAgo);
     _edateController.text = _formatDate(now);
     _loadSavedCredentials();
+    _loadQuoteOrderAddLogs();
   }
 
   @override
@@ -319,6 +325,34 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     } on MissingPluginException {
       _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
     }
+  }
+
+  Future<void> _loadQuoteOrderAddLogs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final text = prefs.getString(_quoteOrderAddLogKey);
+    if (text == null || text.trim().isEmpty) return;
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is! List) return;
+      final logs = decoded
+          .whereType<Map>()
+          .map((row) => _PlayAutoQuoteOrderAddLog.fromJson(
+                row.map((key, value) => MapEntry(key.toString(), value)),
+              ))
+          .toList();
+      if (!mounted) return;
+      setState(() => _quoteOrderAddLogs = logs);
+    } catch (_) {
+      // 저장된 로그가 깨진 경우 화면 표시만 건너뛴다.
+    }
+  }
+
+  Future<void> _clearQuoteOrderAddLogs() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_quoteOrderAddLogKey);
+    if (!mounted) return;
+    setState(() => _quoteOrderAddLogs = const []);
+    _showSnack('플토 주문 전송 로그를 지웠습니다.');
   }
 
   Future<_PlayAutoOrderFetchResult> _fetchOrdersFromPlayAuto({
@@ -731,6 +765,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           fulfillmentMode: widget.fulfillmentMode,
           onInstruction: _requestShipmentInstruction,
           onSetInvoice: _requestSetInvoice,
+          onCompleteInvoice: _requestCompleteInvoice,
           onSendInvoice: _requestSendInvoice,
         ),
       ),
@@ -781,6 +816,22 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     String carrierCode,
     String invoiceNo,
   ) async {
+    return _requestSetInvoiceInternal(
+      order: order,
+      carrierCode: carrierCode,
+      invoiceNo: invoiceNo,
+      changeComplete: false,
+      label: '송장번호 입력',
+    );
+  }
+
+  Future<_PlayAutoResponse> _requestSetInvoiceInternal({
+    required _PlayAutoOrderPreview order,
+    required String carrierCode,
+    required String invoiceNo,
+    required bool changeComplete,
+    required String label,
+  }) async {
     final apiKey = _apiKeyController.text.trim();
     if (apiKey.isEmpty) {
       throw const _PlayAutoUserMessage('API Key를 입력해주세요.');
@@ -805,7 +856,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         }
       ],
       'overwrite': true,
-      'change_complete': false,
+      'change_complete': changeComplete,
     };
     final response = await http.put(
       _endpoint('/order/setInvoice'),
@@ -815,8 +866,9 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     return _PlayAutoResponse(
       statusCode: response.statusCode,
       body: [
-        '송장번호 입력',
+        label,
         '묶음번호 $bundleNo',
+        '상태변경 ${changeComplete ? '출고완료' : '운송장출력'}',
         '',
         '요청 바디',
         const JsonEncoder.withIndent('  ').convert(requestBody),
@@ -827,6 +879,24 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     );
   }
 
+  Future<_PlayAutoResponse> _requestCompleteInvoice(
+    _PlayAutoOrderPreview order,
+  ) async {
+    final carrierCode = order.carrierCode.trim();
+    final invoiceNo = order.invoiceNo.trim();
+    if (carrierCode.isEmpty || invoiceNo.isEmpty) {
+      throw const _PlayAutoUserMessage(
+          '출고완료 처리할 송장정보가 없습니다. 먼저 동기화하거나 송장번호를 입력해주세요.');
+    }
+    return _requestSetInvoiceInternal(
+      order: order,
+      carrierCode: carrierCode,
+      invoiceNo: invoiceNo,
+      changeComplete: true,
+      label: '출고완료 처리',
+    );
+  }
+
   Future<_PlayAutoResponse> _requestSendInvoice(
     _PlayAutoOrderPreview order,
   ) async {
@@ -834,36 +904,109 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
     if (apiKey.isEmpty) {
       throw const _PlayAutoUserMessage('API Key를 입력해주세요.');
     }
-    final targetNo = order.playAutoWorkTargetNo;
-    if (targetNo.isEmpty) {
+    final targets = order.playAutoSendInvoiceTargets;
+    if (targets.isEmpty) {
       throw const _PlayAutoUserMessage('송장전송할 주문/묶음번호를 찾지 못했습니다.');
     }
 
     final tokenResult = await _ensureTokenForOrderFetch(apiKey);
     if (tokenResult.response != null) return tokenResult.response!;
     final token = tokenResult.token!;
-    final requestBody = <String, Object?>{
-      'work_type': 'SEND_INVOICE',
-      'list': [targetNo],
-    };
-    final response = await http.post(
-      _endpoint('/work/addWorkSelect/v1.1'),
-      headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
-      body: jsonEncode(requestBody),
-    );
-    return _PlayAutoResponse(
-      statusCode: response.statusCode,
-      body: [
-        '송장전송 작업 등록',
+    final attempts = <String>[];
+    int? lastStatusCode;
+    for (final targetNo in targets) {
+      final requestBody = <String, Object?>{
+        'work_type': 'SEND_INVOICE',
+        'list': [targetNo],
+      };
+      final response = await http.post(
+        _endpoint('/work/addWorkSelect/v1.1'),
+        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+        body: jsonEncode(requestBody),
+      );
+      lastStatusCode = response.statusCode;
+      final prettyResponse = _prettyBody(response.body);
+      final businessError = _playAutoBodyHasError(response.body);
+      final workNos = _readWorkNos(response.body);
+      final ok = response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          !businessError;
+      debugPrint(
+        [
+          '[PlayAuto SEND_INVOICE]',
+          ok ? 'success' : 'business_error',
+          'http=${response.statusCode}',
+          'target=$targetNo',
+          if (workNos.isNotEmpty) 'work_no=${workNos.join(',')}',
+          'response=${_compactLogText(prettyResponse)}',
+        ].join(' '),
+      );
+      attempts.add([
         '대상 $targetNo',
+        if (workNos.isNotEmpty) '작업번호 ${workNos.join(', ')}',
         '',
         '요청 바디',
         const JsonEncoder.withIndent('  ').convert(requestBody),
         '',
         '응답',
-        _prettyBody(response.body),
+        prettyResponse,
+      ].join('\n'));
+      if (ok) {
+        return _PlayAutoResponse(
+          statusCode: response.statusCode,
+          body: [
+            '송장전송 작업 등록',
+            '성공 대상 $targetNo',
+            '',
+            attempts.join('\n\n--- 재시도 ---\n\n'),
+          ].join('\n'),
+        );
+      }
+    }
+    return _PlayAutoResponse(
+      statusCode: lastStatusCode,
+      body: [
+        '송장전송 작업 등록 실패',
+        '시도 대상 ${targets.join(', ')}',
+        '',
+        attempts.join('\n\n--- 재시도 ---\n\n'),
       ].join('\n'),
     );
+  }
+
+  bool _playAutoBodyHasError(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      return _jsonContainsError(decoded);
+    } catch (_) {
+      final lower = body.toLowerCase();
+      return lower.contains('"error"') || lower.contains('error_code');
+    }
+  }
+
+  bool _jsonContainsError(Object? node) {
+    if (node is Map) {
+      if (node.containsKey('error') || node.containsKey('error_code')) {
+        return true;
+      }
+      final status = node['status']?.toString().trim();
+      if (status == '실패' || status?.toLowerCase() == 'failed') return true;
+      for (final value in node.values) {
+        if (_jsonContainsError(value)) return true;
+      }
+    }
+    if (node is List) {
+      for (final value in node) {
+        if (_jsonContainsError(value)) return true;
+      }
+    }
+    return false;
+  }
+
+  String _compactLogText(String text) {
+    final compact = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.length <= 220) return compact;
+    return '${compact.substring(0, 220)}...';
   }
 
   Future<_PlayAutoOrderFetchResult> _fetchOrdersForPreview({
@@ -1177,8 +1320,9 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   void _collectWorkNos(Object? node, Set<String> workNos) {
     if (node is Map) {
       final value = node['work_no'];
-      if (value != null && value.toString().trim().isNotEmpty) {
-        workNos.add(value.toString().trim());
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty && text != '0') {
+        workNos.add(text);
       }
       for (final child in node.values) {
         _collectWorkNos(child, workNos);
@@ -1307,6 +1451,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
         fulfillmentMode: widget.fulfillmentMode,
         onInstruction: _requestShipmentInstruction,
         onSetInvoice: _requestSetInvoice,
+        onCompleteInvoice: _requestCompleteInvoice,
         onSendInvoice: _requestSendInvoice,
       );
     }
@@ -1321,7 +1466,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
             const SizedBox(height: 12),
           ],
           Text(
-            'PlayAuto 토큰 발급과 최근 주문 조회 응답 확인용 화면입니다. 아직 주문 저장은 하지 않습니다.',
+            'PlayAuto 토큰 발급, 주문 수집, 견적 주문 전송 로그를 확인합니다.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -1425,6 +1570,60 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
               ),
             ],
           ),
+          if (_quoteOrderAddLogs.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          '최근 견적 주문 전송',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: _clearQuoteOrderAddLogs,
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('지우기'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    for (final log in _quoteOrderAddLogs.take(5))
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          log.success
+                              ? Icons.check_circle_outline
+                              : Icons.error_outline,
+                          color: log.success ? Colors.green : Colors.red,
+                        ),
+                        title: Text(
+                          log.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          [
+                            _formatDateTime(log.sentAt),
+                            if (log.statusCode != null)
+                              'HTTP ${log.statusCode}',
+                            log.message,
+                          ].join(' · '),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           Text(
             '주문 수집 작업',
@@ -1652,6 +1851,7 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     required this.fulfillmentMode,
     required this.onInstruction,
     required this.onSetInvoice,
+    required this.onCompleteInvoice,
     required this.onSendInvoice,
   });
 
@@ -1674,11 +1874,1424 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     String invoiceNo,
   ) onSetInvoice;
   final Future<_PlayAutoResponse> Function(_PlayAutoOrderPreview order)
+      onCompleteInvoice;
+  final Future<_PlayAutoResponse> Function(_PlayAutoOrderPreview order)
       onSendInvoice;
 
   @override
   State<_PlayAutoOrderPreviewScreen> createState() =>
       _PlayAutoOrderPreviewScreenState();
+}
+
+class _PlayAutoAddressEntry {
+  final String title;
+  final String address;
+  final String source;
+  final String? contactName;
+  final String? phone;
+
+  const _PlayAutoAddressEntry({
+    required this.title,
+    required this.address,
+    required this.source,
+    this.contactName,
+    this.phone,
+  });
+
+  String get searchableText {
+    return [
+      title,
+      address,
+      source,
+      contactName,
+      phone,
+    ].whereType<String>().join(' ').toLowerCase();
+  }
+}
+
+class _PlayAutoAddressBookSheet extends StatefulWidget {
+  final List<_PlayAutoAddressEntry> entries;
+  final String initialQuery;
+
+  const _PlayAutoAddressBookSheet({
+    required this.entries,
+    required this.initialQuery,
+  });
+
+  @override
+  State<_PlayAutoAddressBookSheet> createState() =>
+      _PlayAutoAddressBookSheetState();
+}
+
+class _PlayAutoAddressBookSheetState extends State<_PlayAutoAddressBookSheet> {
+  late final TextEditingController _queryController;
+
+  @override
+  void initState() {
+    super.initState();
+    _queryController = TextEditingController(text: widget.initialQuery.trim());
+    _queryController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    super.dispose();
+  }
+
+  List<_PlayAutoAddressEntry> get _filteredEntries {
+    final query = _queryController.text.trim().toLowerCase();
+    final entries = widget.entries
+        .where((entry) => entry.address.trim().isNotEmpty)
+        .toList();
+    if (query.isEmpty) return entries;
+    return entries
+        .where((entry) => entry.searchableText.contains(query))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = _filteredEntries;
+
+    return SafeArea(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.82,
+        minChildSize: 0.45,
+        maxChildSize: 0.94,
+        builder: (context, scrollController) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '주소록에서 불러오기',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '닫기',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: TextField(
+                  controller: _queryController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _queryController.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: '검색어 지우기',
+                            onPressed: _queryController.clear,
+                            icon: const Icon(Icons.clear),
+                          ),
+                    hintText: '고객명, 거래처명, 주소, 연락처 검색',
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: entries.isEmpty
+                    ? ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
+                        children: const [
+                          Icon(Icons.manage_search, size: 42),
+                          SizedBox(height: 12),
+                          Center(child: Text('불러올 주소가 없습니다')),
+                        ],
+                      )
+                    : ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                        itemCount: entries.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final entry = entries[index];
+                          final subtitle = [
+                            entry.address.trim(),
+                            if ((entry.contactName ?? '').trim().isNotEmpty)
+                              entry.contactName!.trim(),
+                            if ((entry.phone ?? '').trim().isNotEmpty)
+                              entry.phone!.trim(),
+                          ].join(' · ');
+
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.place_outlined),
+                            title: Text(entry.title),
+                            subtitle: Text(subtitle),
+                            trailing: Text(entry.source),
+                            onTap: () => Navigator.of(context).pop(entry),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _JusoAddressSelection {
+  final _JusoAddressResult address;
+  final String confmKey;
+
+  const _JusoAddressSelection({
+    required this.address,
+    required this.confmKey,
+  });
+}
+
+class _JusoAddressResult {
+  final String zipNo;
+  final String roadAddr;
+  final String jibunAddr;
+
+  const _JusoAddressResult({
+    required this.zipNo,
+    required this.roadAddr,
+    required this.jibunAddr,
+  });
+
+  factory _JusoAddressResult.fromJson(Map<String, Object?> json) {
+    return _JusoAddressResult(
+      zipNo: json['zipNo']?.toString() ?? '',
+      roadAddr: json['roadAddr']?.toString() ?? '',
+      jibunAddr: json['jibunAddr']?.toString() ?? '',
+    );
+  }
+}
+
+class _JusoAddressSearchSheet extends StatefulWidget {
+  final String initialConfmKey;
+  final String initialKeyword;
+
+  const _JusoAddressSearchSheet({
+    required this.initialConfmKey,
+    required this.initialKeyword,
+  });
+
+  @override
+  State<_JusoAddressSearchSheet> createState() =>
+      _JusoAddressSearchSheetState();
+}
+
+class _JusoAddressSearchSheetState extends State<_JusoAddressSearchSheet> {
+  late final TextEditingController _confmKeyController;
+  late final TextEditingController _keywordController;
+  var _loading = false;
+  String? _message;
+  List<_JusoAddressResult> _results = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _confmKeyController = TextEditingController(text: widget.initialConfmKey);
+    _keywordController = TextEditingController(text: widget.initialKeyword);
+  }
+
+  @override
+  void dispose() {
+    _confmKeyController.dispose();
+    _keywordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final confmKey = _confmKeyController.text.trim();
+    final keyword = _keywordController.text.trim();
+    if (confmKey.isEmpty) {
+      setState(() => _message = '도로명주소 API 승인키를 입력해주세요.');
+      return;
+    }
+    if (keyword.length < 2) {
+      setState(() => _message = '주소 검색어를 2글자 이상 입력해주세요.');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _message = null;
+    });
+    try {
+      final uri = Uri.https(
+        'business.juso.go.kr',
+        '/addrlink/addrLinkApi.do',
+        {
+          'confmKey': confmKey,
+          'currentPage': '1',
+          'countPerPage': '30',
+          'keyword': keyword,
+          'resultType': 'json',
+        },
+      );
+      final response = await http.get(uri);
+      final decoded = jsonDecode(response.body);
+      final root = decoded is Map ? decoded['results'] : null;
+      final common = root is Map ? root['common'] : null;
+      final errorCode = common is Map ? common['errorCode']?.toString() : null;
+      final errorMessage =
+          common is Map ? common['errorMessage']?.toString() : null;
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+      if (errorCode != null && errorCode != '0') {
+        throw Exception(errorMessage ?? '주소 검색 오류 $errorCode');
+      }
+      final juso = root is Map ? root['juso'] : null;
+      final results = juso is List
+          ? juso
+              .whereType<Map>()
+              .map((row) => _JusoAddressResult.fromJson(
+                    row.map((key, value) => MapEntry(key.toString(), value)),
+                  ))
+              .toList()
+          : <_JusoAddressResult>[];
+
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _message = results.isEmpty ? '검색 결과가 없습니다.' : null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _results = const [];
+        _message = '주소 검색 실패: $e';
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _select(_JusoAddressResult address) {
+    Navigator.of(context).pop(
+      _JusoAddressSelection(
+        address: address,
+        confmKey: _confmKeyController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.86,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) {
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '도로명주소 검색',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '닫기',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _confmKeyController,
+                      decoration: const InputDecoration(
+                        labelText: '도로명주소 API 승인키',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _keywordController,
+                      autofocus: true,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _search(),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _loading
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              )
+                            : IconButton(
+                                tooltip: '검색',
+                                onPressed: _search,
+                                icon: const Icon(Icons.arrow_forward),
+                              ),
+                        hintText: '예: 테헤란로 152, 세종대로',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                    if (_message != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          _message!,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _results.isEmpty
+                    ? ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
+                        children: const [
+                          Icon(Icons.travel_explore, size: 42),
+                          SizedBox(height: 12),
+                          Center(child: Text('주소를 검색해주세요')),
+                        ],
+                      )
+                    : ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                        itemCount: _results.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final result = _results[index];
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              child: Text(result.zipNo),
+                            ),
+                            title: Text(result.roadAddr),
+                            subtitle: result.jibunAddr.trim().isEmpty
+                                ? null
+                                : Text(result.jibunAddr),
+                            onTap: () => _select(result),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class PlayAutoQuoteOrderAddScreen extends StatefulWidget {
+  const PlayAutoQuoteOrderAddScreen({
+    super.key,
+    required this.quote,
+    required this.lines,
+  });
+
+  final Quote quote;
+  final List<QuoteLine> lines;
+
+  @override
+  State<PlayAutoQuoteOrderAddScreen> createState() =>
+      _PlayAutoQuoteOrderAddScreenState();
+}
+
+class _PlayAutoQuoteOrderAddScreenState
+    extends State<PlayAutoQuoteOrderAddScreen> {
+  static const _storage = FlutterSecureStorage();
+  static const _baseUrlKey = _PlayAutoOrderImportScreenState._baseUrlKey;
+  static const _apiKeyKey = _PlayAutoOrderImportScreenState._apiKeyKey;
+  static const _authenticationKeyKey =
+      _PlayAutoOrderImportScreenState._authenticationKeyKey;
+  static const _tokenKey = _PlayAutoOrderImportScreenState._tokenKey;
+  static const _tokenIssuedAtKey =
+      _PlayAutoOrderImportScreenState._tokenIssuedAtKey;
+  static const _quoteOrderAddLogKey =
+      _PlayAutoOrderImportScreenState._quoteOrderAddLogKey;
+  static const _jusoConfmKeyKey = 'juso_address_api_confm_key_v1';
+  static const _tokenLifetime = _PlayAutoOrderImportScreenState._tokenLifetime;
+
+  final _formKey = GlobalKey<FormState>();
+  final _baseUrlController = TextEditingController(
+    text: 'https://openapi.playauto.io/api',
+  );
+  final _apiKeyController = TextEditingController();
+  final _authenticationKeyController = TextEditingController();
+  final _tokenController = TextEditingController();
+  final _customShopCodeController = TextEditingController();
+  final _customShopIdController = TextEditingController();
+  final _orderNameController = TextEditingController();
+  final _orderPhoneController = TextEditingController();
+  final _receiverNameController = TextEditingController();
+  final _receiverPhoneController = TextEditingController();
+  final _zipController = TextEditingController();
+  final _address1Controller = TextEditingController();
+  final _address2Controller = TextEditingController();
+  final _jusoConfmKeyController = TextEditingController();
+  final _shipMessageController = TextEditingController();
+  final _shippingCostController = TextEditingController(text: '0');
+  final _shopOrderNoController = TextEditingController(text: '__AUTO__');
+  final _shopSaleNameController = TextEditingController();
+
+  DateTime? _tokenIssuedAt;
+  var _loading = false;
+  var _loadingShops = false;
+  String? _result;
+  List<_PlayAutoShopAccount> _shops = const [];
+  _PlayAutoShopAccount? _selectedShop;
+  Map<String, String> _lineSkus = const {};
+  List<_PlayAutoAddressEntry> _addressEntries = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    final customerName = widget.quote.customerName.trim();
+    final firstLineName =
+        widget.lines.isEmpty ? '찰스톡 견적 주문' : widget.lines.first.name;
+    _orderNameController.text = customerName;
+    _receiverNameController.text = customerName;
+    _shopSaleNameController.text = widget.lines.length <= 1
+        ? firstLineName
+        : '$firstLineName 외 ${widget.lines.length - 1}건';
+    _shippingCostController.text =
+        widget.quote.shippingCost.clamp(0, double.infinity).toStringAsFixed(0);
+    _loadSavedCredentials();
+    _loadLineSkus();
+    _loadAddressEntries();
+  }
+
+  @override
+  void dispose() {
+    _baseUrlController.dispose();
+    _apiKeyController.dispose();
+    _authenticationKeyController.dispose();
+    _tokenController.dispose();
+    _customShopCodeController.dispose();
+    _customShopIdController.dispose();
+    _orderNameController.dispose();
+    _orderPhoneController.dispose();
+    _receiverNameController.dispose();
+    _receiverPhoneController.dispose();
+    _zipController.dispose();
+    _address1Controller.dispose();
+    _address2Controller.dispose();
+    _jusoConfmKeyController.dispose();
+    _shipMessageController.dispose();
+    _shippingCostController.dispose();
+    _shopOrderNoController.dispose();
+    _shopSaleNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final baseUrl = await _storage.read(key: _baseUrlKey);
+      final apiKey = await _storage.read(key: _apiKeyKey);
+      final authenticationKey = await _storage.read(
+        key: _authenticationKeyKey,
+      );
+      final token = await _storage.read(key: _tokenKey);
+      final jusoConfmKey = await _storage.read(key: _jusoConfmKeyKey);
+      final tokenIssuedAtText = await _storage.read(key: _tokenIssuedAtKey);
+      final tokenIssuedAt = tokenIssuedAtText == null
+          ? null
+          : DateTime.tryParse(tokenIssuedAtText);
+      final tokenStillValid = tokenIssuedAt != null &&
+          DateTime.now().difference(tokenIssuedAt) < _tokenLifetime;
+      if (!mounted) return;
+      setState(() {
+        if (baseUrl != null && baseUrl.isNotEmpty) {
+          _baseUrlController.text = baseUrl;
+        }
+        if (apiKey != null) _apiKeyController.text = apiKey;
+        if (authenticationKey != null) {
+          _authenticationKeyController.text = authenticationKey;
+        }
+        if (tokenStillValid && token != null) {
+          _tokenController.text = token;
+          _tokenIssuedAt = tokenIssuedAt;
+        }
+        if (jusoConfmKey != null && jusoConfmKey.isNotEmpty) {
+          _jusoConfmKeyController.text = jusoConfmKey;
+        }
+      });
+    } on MissingPluginException {
+      if (!mounted) return;
+      _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
+    }
+  }
+
+  Future<void> _loadAddressEntries() async {
+    try {
+      final repo = context.read<SupplierRepo>();
+      final suppliers = await repo.list(onlyActive: true);
+      final entries = <_PlayAutoAddressEntry>[];
+      final quoteCustomerId = widget.quote.customerId;
+      final quoteCustomerName = widget.quote.customerName.trim();
+
+      for (final supplier in suppliers) {
+        final supplierAddress = (supplier.addr ?? '').trim();
+        if (supplierAddress.isNotEmpty) {
+          entries.add(
+            _PlayAutoAddressEntry(
+              title: supplier.name,
+              address: supplierAddress,
+              source: supplier.isCustomer ? '고객' : '거래처',
+              contactName: supplier.contactName,
+              phone: supplier.phone,
+            ),
+          );
+        }
+
+        final contacts = await repo.listContacts(supplier.id);
+        for (final contact in contacts) {
+          final contactAddress = (contact.address ?? '').trim();
+          if (contactAddress.isEmpty) continue;
+          entries.add(
+            _PlayAutoAddressEntry(
+              title: '${supplier.name} · ${contact.name}',
+              address: contactAddress,
+              source: contact.isPrimary ? '주 담당자' : '담당자',
+              contactName: contact.name,
+              phone: contact.phone,
+            ),
+          );
+        }
+      }
+
+      entries.sort((a, b) {
+        final aScore =
+            _addressEntryScore(a, quoteCustomerId, quoteCustomerName);
+        final bScore =
+            _addressEntryScore(b, quoteCustomerId, quoteCustomerName);
+        if (aScore != bScore) return bScore.compareTo(aScore);
+        return a.title.compareTo(b.title);
+      });
+
+      if (!mounted) return;
+      setState(() => _addressEntries = entries);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _addressEntries = const []);
+    }
+  }
+
+  int _addressEntryScore(
+    _PlayAutoAddressEntry entry,
+    String? customerId,
+    String customerName,
+  ) {
+    final text = entry.searchableText;
+    var score = 0;
+    if (customerId != null &&
+        customerId.isNotEmpty &&
+        text.contains(customerId)) {
+      score += 4;
+    }
+    if (customerName.isNotEmpty && text.contains(customerName.toLowerCase())) {
+      score += 3;
+    }
+    if (entry.source == '고객') score += 2;
+    if (entry.source == '주 담당자') score += 1;
+    return score;
+  }
+
+  Future<void> _openAddressBook() async {
+    final initialQuery = _address1Controller.text.trim().isNotEmpty
+        ? _address1Controller.text.trim()
+        : widget.quote.customerName;
+    final selected = await showModalBottomSheet<_PlayAutoAddressEntry>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _PlayAutoAddressBookSheet(
+        entries: _addressEntries,
+        initialQuery: initialQuery,
+      ),
+    );
+    if (selected == null) return;
+    _applyAddressEntry(selected);
+  }
+
+  Future<void> _openJusoAddressSearch() async {
+    final keyword = _address1Controller.text.trim().isNotEmpty
+        ? _address1Controller.text.trim()
+        : widget.quote.customerName;
+    final selected = await showModalBottomSheet<_JusoAddressSelection>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _JusoAddressSearchSheet(
+        initialConfmKey: _jusoConfmKeyController.text.trim(),
+        initialKeyword: keyword,
+      ),
+    );
+    if (selected == null) return;
+
+    _jusoConfmKeyController.text = selected.confmKey;
+    if (selected.confmKey.isNotEmpty) {
+      await _storage.write(key: _jusoConfmKeyKey, value: selected.confmKey);
+    }
+    setState(() {
+      _zipController.text = selected.address.zipNo;
+      _address1Controller.text = selected.address.roadAddr;
+      _address2Controller.clear();
+    });
+  }
+
+  void _applyAddressEntry(_PlayAutoAddressEntry entry) {
+    setState(() {
+      _orderNameController.text = entry.title.split(' · ').first;
+      _receiverNameController.text = (entry.contactName ?? '').trim().isNotEmpty
+          ? entry.contactName!.trim()
+          : entry.title.split(' · ').first;
+      final phone = (entry.phone ?? '').trim();
+      if (phone.isNotEmpty) {
+        _orderPhoneController.text = phone;
+        _receiverPhoneController.text = phone;
+      }
+      _address1Controller.text = entry.address.trim();
+    });
+  }
+
+  Future<void> _loadLineSkus() async {
+    final repo = context.read<ItemRepo>();
+    final skus = <String, String>{};
+    for (final line in widget.lines) {
+      final itemId = line.itemId.trim();
+      if (itemId.isEmpty) continue;
+      final item = await repo.getItem(itemId);
+      final sku = item?.sku.trim() ?? '';
+      if (sku.isNotEmpty) skus[line.id] = sku;
+    }
+    if (!mounted) return;
+    setState(() => _lineSkus = skus);
+  }
+
+  Future<void> _fetchShops() async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      _showSnack('API Key를 입력해주세요.');
+      return;
+    }
+    setState(() {
+      _loadingShops = true;
+      _result = null;
+    });
+    try {
+      final token = await _ensureToken(apiKey);
+      final response = await http.get(
+        _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
+        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+      );
+      final shops = _readShopAccounts(response.body);
+      if (!mounted) return;
+      setState(() {
+        _shops = shops;
+        if (_selectedShop != null &&
+            !shops.any((shop) => shop.key == _selectedShop!.key)) {
+          _selectedShop = null;
+        }
+        _result = [
+          '쇼핑몰 계정 ${shops.length}건',
+          if (shops.isEmpty) '직접입력 쇼핑몰 계정을 찾지 못하면 코드와 아이디를 직접 입력해주세요.',
+        ].join('\n');
+      });
+    } on _PlayAutoUserMessage catch (e) {
+      if (!mounted) return;
+      _showSnack(e.message);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('쇼핑몰 조회 실패: $e');
+    } finally {
+      if (mounted) setState(() => _loadingShops = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (widget.lines.isEmpty) {
+      _showSnack('플토 주문으로 보낼 견적 품목이 없습니다.');
+      return;
+    }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      _showSnack('API Key를 입력해주세요.');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _result = null;
+    });
+    try {
+      final token = await _ensureToken(apiKey);
+      final requestBody = _buildRequestBody();
+      final response = await http.post(
+        _endpoint('/order/add'),
+        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+        body: jsonEncode(requestBody),
+      );
+      final responseText = _prettyBody(response.body);
+      final success = response.statusCode >= 200 &&
+          response.statusCode < 300 &&
+          !_playAutoBodyHasError(response.body);
+      final log = _PlayAutoQuoteOrderAddLog(
+        sentAt: DateTime.now(),
+        quoteId: widget.quote.id,
+        title: _shopSaleNameController.text.trim(),
+        statusCode: response.statusCode,
+        success: success,
+        message: _shortResponseMessage(responseText),
+      );
+      debugPrint(
+        [
+          '[PlayAuto /order/add]',
+          success ? 'success' : 'business_error',
+          'quote=${widget.quote.id}',
+          'http=${response.statusCode}',
+          'title=${log.title}',
+          'response=${log.message}',
+        ].join(' '),
+      );
+      await _saveQuoteOrderAddLog(log);
+      if (!mounted) return;
+      setState(() {
+        _result = [
+          success ? '플토 주문 등록 요청 완료' : '플토 주문 등록 응답 확인 필요',
+          'HTTP ${response.statusCode}',
+          '',
+          '요청 바디',
+          const JsonEncoder.withIndent('  ').convert(requestBody),
+          '',
+          '응답',
+          responseText,
+        ].join('\n');
+      });
+      _showSnack(
+        success ? '플토 주문 등록 요청을 보냈습니다.' : '플토 응답을 확인해주세요.',
+      );
+    } on _PlayAutoUserMessage catch (e) {
+      if (!mounted) return;
+      debugPrint(
+          '[PlayAuto /order/add] user-message quote=${widget.quote.id} $e');
+      _showSnack(e.message);
+    } catch (e) {
+      if (!mounted) return;
+      debugPrint('[PlayAuto /order/add] exception quote=${widget.quote.id} $e');
+      await _saveQuoteOrderAddLog(
+        _PlayAutoQuoteOrderAddLog(
+          sentAt: DateTime.now(),
+          quoteId: widget.quote.id,
+          title: _shopSaleNameController.text.trim(),
+          statusCode: null,
+          success: false,
+          message: e.toString(),
+        ),
+      );
+      _showSnack('플토 주문 등록 실패: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _saveQuoteOrderAddLog(_PlayAutoQuoteOrderAddLog log) async {
+    final prefs = await SharedPreferences.getInstance();
+    final existingText = prefs.getString(_quoteOrderAddLogKey);
+    final logs = <_PlayAutoQuoteOrderAddLog>[log];
+    if (existingText != null && existingText.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(existingText);
+        if (decoded is List) {
+          logs.addAll(
+            decoded.whereType<Map>().map(
+                  (row) => _PlayAutoQuoteOrderAddLog.fromJson(
+                    row.map((key, value) => MapEntry(key.toString(), value)),
+                  ),
+                ),
+          );
+        }
+      } catch (_) {
+        // 깨진 기존 로그는 새 로그로 대체한다.
+      }
+    }
+    await prefs.setString(
+      _quoteOrderAddLogKey,
+      jsonEncode(logs.take(20).map((entry) => entry.toJson()).toList()),
+    );
+  }
+
+  String _shortResponseMessage(String responseText) {
+    final flattened = responseText
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll(RegExp(r'"token"\s*:\s*"[^"]+"'), '"token":"***"')
+        .trim();
+    if (flattened.length <= 180) return flattened;
+    return '${flattened.substring(0, 180)}...';
+  }
+
+  bool _playAutoBodyHasError(String body) {
+    try {
+      return _jsonContainsError(jsonDecode(body));
+    } catch (_) {
+      final lower = body.toLowerCase();
+      return lower.contains('"error"') ||
+          lower.contains('error_code') ||
+          body.contains('"status": "실패"') ||
+          body.contains('"status":"실패"');
+    }
+  }
+
+  bool _jsonContainsError(Object? node) {
+    if (node is Map) {
+      if (node.containsKey('error') || node.containsKey('error_code')) {
+        return true;
+      }
+      final status = node['status']?.toString().trim();
+      if (status == '실패' || status?.toLowerCase() == 'failed') return true;
+      for (final value in node.values) {
+        if (_jsonContainsError(value)) return true;
+      }
+    }
+    if (node is List) {
+      for (final value in node) {
+        if (_jsonContainsError(value)) return true;
+      }
+    }
+    return false;
+  }
+
+  Map<String, Object?> _buildRequestBody() {
+    final nowText = _formatDateTime(DateTime.now());
+    final shopCode = _customShopCodeController.text.trim();
+    final shopId = _customShopIdController.text.trim();
+    final shipCost =
+        double.tryParse(_shippingCostController.text.replaceAll(',', '')) ?? 0;
+    final totals = QuoteTotals.fromLines(
+      quote: widget.quote,
+      lines: widget.lines,
+    );
+    return {
+      'ord_time': nowText,
+      'pay_time': nowText,
+      if (shopCode.isNotEmpty) 'custom_shop_cd': shopCode,
+      if (shopId.isNotEmpty) 'custom_shop_id': shopId,
+      'order_name': _orderNameController.text.trim(),
+      'order_htel': _orderPhoneController.text.trim(),
+      'to_name': _receiverNameController.text.trim(),
+      'to_htel': _receiverPhoneController.text.trim(),
+      'to_zipcd': _zipController.text.trim(),
+      'to_addr1': _address1Controller.text.trim(),
+      'to_addr2': _address2Controller.text.trim(),
+      'shop_ord_no': _shopOrderNoController.text.trim().isEmpty
+          ? '__AUTO__'
+          : _shopOrderNoController.text.trim(),
+      'shop_sale_name': _shopSaleNameController.text.trim(),
+      'ship_method': '선결제',
+      'ship_cost': shipCost.round(),
+      'pay_amt': totals.total.round(),
+      'ship_msg': _shipMessageController.text.trim(),
+      'c_sale_cd': widget.quote.id,
+      'opts': [
+        for (final line in widget.lines)
+          {
+            'opt_name': _lineOptionName(line),
+            'sale_price': line.unitPrice.round(),
+            'shop_cost_price': 0,
+            'shop_supply_price': line.supplyAmount.round(),
+            'sale_cnt': line.qty.round().clamp(1, 999999),
+            'set_no': '',
+            'set_pack_unit': '',
+          },
+      ],
+    };
+  }
+
+  String _lineOptionName(QuoteLine line) {
+    final memo = line.memo?.trim() ?? '';
+    if (memo.isEmpty) return line.name.trim();
+    return '${line.name.trim()} / $memo';
+  }
+
+  Future<String> _ensureToken(String apiKey) async {
+    final currentToken = _tokenController.text.trim();
+    if (currentToken.isNotEmpty && !_isSavedTokenExpired) return currentToken;
+    final authenticationKey = _authenticationKeyController.text.trim();
+    if (authenticationKey.isEmpty) {
+      throw const _PlayAutoUserMessage('솔루션 인증키를 저장하거나 입력해주세요.');
+    }
+    final response = await http.post(
+      _endpoint('/auth'),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+      },
+      body: jsonEncode({'authentication_key': authenticationKey}),
+    );
+    final token = _readToken(response.body);
+    if (token == null) {
+      throw _PlayAutoUserMessage('토큰 자동 발급 실패\n${_prettyBody(response.body)}');
+    }
+    _tokenController.text = token;
+    _tokenIssuedAt = DateTime.now();
+    await _storage.write(key: _tokenKey, value: token);
+    await _storage.write(
+      key: _tokenIssuedAtKey,
+      value: _tokenIssuedAt!.toIso8601String(),
+    );
+    return token;
+  }
+
+  bool get _isSavedTokenExpired {
+    final issuedAt = _tokenIssuedAt;
+    if (issuedAt == null || _tokenController.text.trim().isEmpty) return false;
+    return DateTime.now().difference(issuedAt) >= _tokenLifetime;
+  }
+
+  Uri _endpoint(String path) {
+    final base =
+        _baseUrlController.text.trim().replaceFirst(RegExp(r'/+$'), '');
+    return Uri.parse('$base$path');
+  }
+
+  Map<String, String> _authorizedJsonHeaders({
+    required String apiKey,
+    required String token,
+  }) {
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'Authorization': 'Token $token',
+    };
+  }
+
+  List<_PlayAutoShopAccount> _readShopAccounts(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      final accounts = <String, _PlayAutoShopAccount>{};
+      _collectShopAccounts(decoded, accounts);
+      final list = accounts.values.toList();
+      list.sort((a, b) => a.label.compareTo(b.label));
+      return list;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  void _collectShopAccounts(
+    Object? node,
+    Map<String, _PlayAutoShopAccount> accounts, {
+    String inheritedCode = '',
+    String inheritedName = '',
+  }) {
+    if (node is List) {
+      for (final child in node) {
+        _collectShopAccounts(
+          child,
+          accounts,
+          inheritedCode: inheritedCode,
+          inheritedName: inheritedName,
+        );
+      }
+      return;
+    }
+    if (node is! Map) return;
+    final map = node.map((key, value) => MapEntry(key.toString(), value));
+    final code = _pickStringFromMap(
+      map,
+      const ['site_code', 'shop_cd', 'shop_code', 'mall_code', 'code'],
+      fallback: inheritedCode,
+    );
+    final name = _pickStringFromMap(
+      map,
+      const [
+        'site_name',
+        'shop_name',
+        'mall_name',
+        'name',
+        'seller_nick',
+        'custom_shop_name',
+      ],
+      fallback: inheritedName,
+    );
+    final id = _pickStringFromMap(map, const [
+      'site_id',
+      'shop_id',
+      'id',
+      'custom_shop_id',
+      'mall_id',
+      'account_id',
+      'seller_id',
+      'login_id',
+    ]);
+    if (code.isNotEmpty) {
+      final account = _PlayAutoShopAccount(code: code, id: id, name: name);
+      accounts[account.key] = account;
+    }
+    for (final entry in map.entries) {
+      _collectShopAccounts(
+        entry.value,
+        accounts,
+        inheritedCode: _looksLikeShopCode(entry.key) ? entry.key : code,
+        inheritedName: name,
+      );
+    }
+  }
+
+  String _pickStringFromMap(
+    Map<String, Object?> map,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      final value = map[key];
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty && text != 'null') return text;
+    }
+    return fallback;
+  }
+
+  bool _looksLikeShopCode(String value) {
+    return RegExp(r'^[A-Z]\d{3}$').hasMatch(value.trim());
+  }
+
+  String? _readToken(String body) {
+    try {
+      return _findTokenValue(jsonDecode(body));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _findTokenValue(Object? node) {
+    if (node is Map) {
+      for (final key in const ['token', 'access_token', 'auth_token']) {
+        final value = node[key];
+        if (value is String && value.trim().isNotEmpty) return value.trim();
+      }
+      for (final value in node.values) {
+        final token = _findTokenValue(value);
+        if (token != null) return token;
+      }
+    }
+    if (node is List) {
+      for (final value in node) {
+        final token = _findTokenValue(value);
+        if (token != null) return token;
+      }
+    }
+    return null;
+  }
+
+  String _prettyBody(String body) {
+    try {
+      return const JsonEncoder.withIndent('  ').convert(jsonDecode(body));
+    } catch (_) {
+      return body;
+    }
+  }
+
+  String _formatDateTime(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    return '$year-$month-$day $hour:$minute:$second';
+  }
+
+  String? _requiredText(String? value) {
+    if ((value ?? '').trim().isEmpty) return '필수 입력';
+    return null;
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totals = QuoteTotals.fromLines(
+      quote: widget.quote,
+      lines: widget.lines,
+    );
+    return Scaffold(
+      appBar: AppBar(title: const Text('플토 주문')),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              '견적 ${widget.lines.length}개 품목 · 합계 ${NumberFormat('#,##0').format(totals.total)}',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 16),
+            _sectionTitle('플토 계정'),
+            TextFormField(
+              controller: _baseUrlController,
+              decoration: const InputDecoration(labelText: 'API 주소'),
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _apiKeyController,
+              decoration: const InputDecoration(labelText: 'API Key'),
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _authenticationKeyController,
+              decoration: const InputDecoration(labelText: '솔루션 인증키'),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<_PlayAutoShopAccount>(
+                    value: _selectedShop,
+                    decoration: const InputDecoration(labelText: '직접입력 쇼핑몰'),
+                    items: [
+                      for (final shop in _shops)
+                        DropdownMenuItem(value: shop, child: Text(shop.label)),
+                    ],
+                    onChanged: (shop) {
+                      setState(() {
+                        _selectedShop = shop;
+                        if (shop != null) {
+                          _customShopCodeController.text = shop.code;
+                          _customShopIdController.text = shop.id;
+                        }
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  tooltip: '쇼핑몰 불러오기',
+                  onPressed: _loadingShops ? null : _fetchShops,
+                  icon: _loadingShops
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _customShopCodeController,
+                    decoration: const InputDecoration(labelText: 'shop_cd'),
+                    validator: _requiredText,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    controller: _customShopIdController,
+                    decoration: const InputDecoration(labelText: 'shop_id'),
+                    validator: _requiredText,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle('주문 정보'),
+            TextFormField(
+              controller: _shopOrderNoController,
+              decoration: const InputDecoration(labelText: '플토 주문번호'),
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _shopSaleNameController,
+              decoration: const InputDecoration(labelText: '주문상품명'),
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _orderNameController,
+              decoration: const InputDecoration(labelText: '주문자명'),
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _orderPhoneController,
+              decoration: const InputDecoration(labelText: '주문자 연락처'),
+              keyboardType: TextInputType.phone,
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle('배송 정보'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _addressEntries.isEmpty ? null : _openAddressBook,
+                  icon: const Icon(Icons.manage_search_outlined),
+                  label: Text(
+                    _addressEntries.isEmpty
+                        ? '불러올 고객/거래처 주소 없음'
+                        : '고객/거래처 주소 불러오기',
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _openJusoAddressSearch,
+                  icon: const Icon(Icons.travel_explore_outlined),
+                  label: const Text('도로명주소 검색'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _jusoConfmKeyController,
+              decoration: const InputDecoration(
+                labelText: '도로명주소 API 승인키',
+                hintText: '도로명주소 검색 버튼에서도 입력할 수 있습니다',
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _receiverNameController,
+              decoration: const InputDecoration(labelText: '수령자명'),
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _receiverPhoneController,
+              decoration: const InputDecoration(labelText: '수령자 연락처'),
+              keyboardType: TextInputType.phone,
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _zipController,
+              decoration: const InputDecoration(labelText: '우편번호'),
+              keyboardType: TextInputType.number,
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _address1Controller,
+              decoration: InputDecoration(
+                labelText: '주소',
+                suffixIcon: IconButton(
+                  tooltip: '주소록 검색',
+                  onPressed: _addressEntries.isEmpty ? null : _openAddressBook,
+                  icon: const Icon(Icons.search),
+                ),
+              ),
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _address2Controller,
+              decoration: const InputDecoration(labelText: '상세주소'),
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _shippingCostController,
+              decoration: const InputDecoration(labelText: '배송비'),
+              keyboardType: TextInputType.number,
+              validator: _requiredText,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _shipMessageController,
+              decoration: const InputDecoration(labelText: '배송메시지'),
+            ),
+            const SizedBox(height: 20),
+            _sectionTitle('품목'),
+            for (final line in widget.lines)
+              Card(
+                child: ListTile(
+                  title: Text(line.name),
+                  subtitle: Text([
+                    '${_formatQty(line.qty)} ${line.unit}',
+                    '${NumberFormat('#,##0').format(line.unitPrice)}원',
+                    if ((_lineSkus[line.id] ?? '').isNotEmpty)
+                      '찰스톡 SKU ${_lineSkus[line.id]}',
+                  ].join(' · ')),
+                  trailing:
+                      Text(NumberFormat('#,##0').format(line.totalAmount)),
+                ),
+              ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: _loading ? null : _submit,
+              icon: _loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.send_outlined),
+              label: const Text('플토 주문 생성'),
+            ),
+            if (_result != null) ...[
+              const SizedBox(height: 16),
+              SelectableText(
+                _result!,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+    );
+  }
+
+  String _formatQty(double value) =>
+      value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
 }
 
 class _PlayAutoOrderPreviewScreenState
@@ -1699,6 +3312,7 @@ class _PlayAutoOrderPreviewScreenState
   var _loadingMappings = false;
   var _runningAction = false;
   var _cacheNotice = '캐시 조회는 저장된 주문을 먼저 보여주고, 동기화는 PlayAuto에서 새로 가져옵니다.';
+  String? _lastFulfillmentActionLog;
   String? _selectedShopName;
   _PlayAutoFulfillmentStage _stage = _PlayAutoFulfillmentStage.all;
 
@@ -1789,6 +3403,26 @@ class _PlayAutoOrderPreviewScreenState
                     if (_runningAction) ...[
                       const SizedBox(height: 8),
                       const LinearProgressIndicator(),
+                    ],
+                    if (_lastFulfillmentActionLog != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: scheme.outlineVariant),
+                          borderRadius: BorderRadius.circular(8),
+                          color: scheme.surfaceContainerHighest
+                              .withValues(alpha: 0.35),
+                        ),
+                        child: SelectableText(
+                          _lastFulfillmentActionLog!,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
                     ],
                   ],
                   if (_loadingMappings) ...[
@@ -1897,11 +3531,7 @@ class _PlayAutoOrderPreviewScreenState
                     ),
                     onOpenPrintPreview: () => _openPrintPreview(order),
                     onRegisterInvoice: () => _openInvoiceDialog(order),
-                    onSendInvoice: () => _runFulfillmentAction(
-                      label: '송장전송',
-                      request: () => widget.onSendInvoice(order),
-                      refreshAfter: true,
-                    ),
+                    onSendInvoice: () => _sendInvoiceAfterSync(order),
                     onSyncOrder: () => _fetchOrders(forceRefresh: true),
                   ),
                 );
@@ -1932,26 +3562,185 @@ class _PlayAutoOrderPreviewScreenState
     required Future<_PlayAutoResponse> Function() request,
     bool refreshAfter = false,
   }) async {
-    setState(() => _runningAction = true);
+    setState(() {
+      _runningAction = true;
+      _lastFulfillmentActionLog = null;
+    });
     try {
       final response = await request();
       if (!mounted) return;
-      final ok = response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 300;
+      final ok = _playAutoResponseSucceeded(response);
+      setState(() {
+        _lastFulfillmentActionLog = [
+          '$label 응답',
+          if (response.statusCode != null) 'HTTP ${response.statusCode}',
+          '',
+          response.body,
+        ].join('\n');
+      });
+      debugPrint(
+        [
+          '[PlayAuto fulfillment]',
+          label,
+          ok ? 'success' : 'failed',
+          if (response.statusCode != null) 'http=${response.statusCode}',
+          'body=${_compactDebugText(response.body)}',
+        ].join(' '),
+      );
       _showSnack(ok ? '$label 요청을 보냈습니다.' : '$label 응답을 확인해주세요.');
       if (refreshAfter) {
         await _fetchOrders(forceRefresh: true);
       }
     } on _PlayAutoUserMessage catch (e) {
       if (!mounted) return;
+      setState(() => _lastFulfillmentActionLog = '$label 실패\n\n${e.message}');
+      debugPrint('[PlayAuto fulfillment] $label user-message ${e.message}');
       _showSnack(e.message);
     } catch (e) {
       if (!mounted) return;
+      setState(() => _lastFulfillmentActionLog = '$label 실패\n\n$e');
+      debugPrint('[PlayAuto fulfillment] $label exception $e');
       _showSnack('$label 실패: $e');
     } finally {
       if (mounted) setState(() => _runningAction = false);
     }
+  }
+
+  Future<void> _sendInvoiceAfterSync(_PlayAutoOrderPreview order) async {
+    await _runFulfillmentAction(
+      label: '송장전송',
+      request: () async {
+        debugPrint(
+          '[PlayAuto SEND_INVOICE] sync-before-send '
+          'current_target=${order.playAutoWorkTargetNo} '
+          'order_no=${order.orderNo} status=${order.status}',
+        );
+        final syncedOrders = await _fetchOrders(
+          forceRefresh: true,
+          showLoading: false,
+        );
+        var latest = _findSyncedOrder(order, syncedOrders) ?? order;
+        debugPrint(
+          '[PlayAuto SEND_INVOICE] synced-target '
+          'target=${latest.playAutoWorkTargetNo} '
+          'bundle=${latest.bundleNo} uniq=${latest.uniq} '
+          'order_no=${latest.orderNo} status=${latest.status} '
+          'invoice=${latest.invoiceNo}',
+        );
+        final responses = <String>[];
+        if (latest.status.contains('운송장출력')) {
+          debugPrint(
+            '[PlayAuto SEND_INVOICE] complete-before-send '
+            'bundle=${latest.bundleNo} carrier=${latest.carrierCode} '
+            'invoice=${latest.invoiceNo}',
+          );
+          final completeResponse = await widget.onCompleteInvoice(latest);
+          responses.add(completeResponse.body);
+          if (!_playAutoResponseSucceeded(completeResponse)) {
+            return _PlayAutoResponse(
+              statusCode: completeResponse.statusCode,
+              body: [
+                '송장전송 전 출고완료 처리 실패',
+                '',
+                completeResponse.body,
+              ].join('\n'),
+            );
+          }
+          final completedOrders = await _fetchOrders(
+            forceRefresh: true,
+            showLoading: false,
+          );
+          latest = _findSyncedOrder(latest, completedOrders) ?? latest;
+          debugPrint(
+            '[PlayAuto SEND_INVOICE] completed-target '
+            'target=${latest.playAutoWorkTargetNo} '
+            'bundle=${latest.bundleNo} uniq=${latest.uniq} '
+            'status=${latest.status} invoice=${latest.invoiceNo}',
+          );
+        }
+        final sendResponse = await widget.onSendInvoice(latest);
+        if (responses.isEmpty) return sendResponse;
+        return _PlayAutoResponse(
+          statusCode: sendResponse.statusCode,
+          body: [
+            '송장전송 전 처리',
+            responses.join('\n\n---\n\n'),
+            '',
+            '송장전송',
+            sendResponse.body,
+          ].join('\n'),
+        );
+      },
+      refreshAfter: true,
+    );
+  }
+
+  _PlayAutoOrderPreview? _findSyncedOrder(
+    _PlayAutoOrderPreview original,
+    List<_PlayAutoOrderPreview> syncedOrders,
+  ) {
+    final originalKeys = {
+      original.bundleNo.trim(),
+      original.uniq.trim(),
+      original.orderNo.trim(),
+    }.where((value) => value.isNotEmpty && value != '-').toSet();
+    for (final order in syncedOrders) {
+      final keys = {
+        order.bundleNo.trim(),
+        order.uniq.trim(),
+        order.orderNo.trim(),
+      };
+      if (keys.any(originalKeys.contains)) return order;
+    }
+    final originalGroup = _playAutoOrderGroupKey(original);
+    for (final order in syncedOrders) {
+      if (_playAutoOrderGroupKey(order) == originalGroup &&
+          _normalizeSearchText(order.productName) ==
+              _normalizeSearchText(original.productName) &&
+          _normalizeSearchText(order.optionName) ==
+              _normalizeSearchText(original.optionName)) {
+        return order;
+      }
+    }
+    return null;
+  }
+
+  String _compactDebugText(String text) {
+    final compact = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.length <= 260) return compact;
+    return '${compact.substring(0, 260)}...';
+  }
+
+  bool _playAutoResponseSucceeded(_PlayAutoResponse response) {
+    final statusOk = response.statusCode != null &&
+        response.statusCode! >= 200 &&
+        response.statusCode! < 300;
+    if (!statusOk) return false;
+    try {
+      return !_jsonContainsError(jsonDecode(response.body));
+    } catch (_) {
+      final lower = response.body.toLowerCase();
+      return !lower.contains('"error"') && !lower.contains('error_code');
+    }
+  }
+
+  bool _jsonContainsError(Object? node) {
+    if (node is Map) {
+      if (node.containsKey('error') || node.containsKey('error_code')) {
+        return true;
+      }
+      final status = node['status']?.toString().trim();
+      if (status == '실패' || status?.toLowerCase() == 'failed') return true;
+      for (final value in node.values) {
+        if (_jsonContainsError(value)) return true;
+      }
+    }
+    if (node is List) {
+      for (final value in node) {
+        if (_jsonContainsError(value)) return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _openInvoiceDialog(_PlayAutoOrderPreview order) async {
@@ -2369,26 +4158,29 @@ class _PlayAutoOrderPreviewScreenState
     setState(() => controller.text = _formatDate(picked));
   }
 
-  Future<void> _fetchOrders({required bool forceRefresh}) async {
+  Future<List<_PlayAutoOrderPreview>> _fetchOrders({
+    required bool forceRefresh,
+    bool showLoading = true,
+  }) async {
     final sdate = _startDateController.text.trim();
     final edate = _endDateController.text.trim();
     final length = int.tryParse(_lengthController.text.trim());
     if (length == null || length <= 0 || length > 3000) {
       _showSnack('조회 개수는 1~3000 사이로 입력해주세요.');
-      return;
+      return _orders;
     }
     final startDate = DateTime.tryParse(sdate);
     final endDate = DateTime.tryParse(edate);
     if (startDate == null || endDate == null) {
       _showSnack('조회 날짜는 YYYY-MM-DD 형식으로 선택해주세요.');
-      return;
+      return _orders;
     }
     if (startDate.isAfter(endDate)) {
       _showSnack('시작일은 종료일보다 늦을 수 없습니다.');
-      return;
+      return _orders;
     }
 
-    setState(() => _loadingOrders = true);
+    if (showLoading) setState(() => _loadingOrders = true);
     try {
       final result = await widget.onFetchOrders(
         sdate: sdate,
@@ -2396,22 +4188,24 @@ class _PlayAutoOrderPreviewScreenState
         length: length,
         forceRefresh: forceRefresh,
       );
-      if (!mounted) return;
+      if (!mounted) return result.orders;
       setState(() {
         _orders = result.orders;
         _selectedShopName = null;
         _cacheNotice = result.notice;
       });
       await _loadMappings();
+      return result.orders;
     } on _PlayAutoUserMessage catch (e) {
-      if (!mounted) return;
+      if (!mounted) return _orders;
       _showSnack(e.message);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return _orders;
       _showSnack('주문 조회 실패: $e');
     } finally {
-      if (mounted) setState(() => _loadingOrders = false);
+      if (mounted && showLoading) setState(() => _loadingOrders = false);
     }
+    return _orders;
   }
 
   String _formatDate(DateTime date) {
@@ -4271,6 +6065,24 @@ class _PlayAutoOrderPreview {
     return '';
   }
 
+  List<String> get playAutoSendInvoiceTargets {
+    final seen = <String>{};
+    final targets = <String>[];
+    for (final value in [
+      bundleNo,
+      uniq,
+      if (orderNo != '-') orderNo,
+    ]) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty || trimmed == '-' || seen.contains(trimmed)) {
+        continue;
+      }
+      seen.add(trimmed);
+      targets.add(trimmed);
+    }
+    return targets;
+  }
+
   static String _joinNonEmpty(List<String> values) {
     return values
         .map((value) => value.trim())
@@ -4343,6 +6155,49 @@ class _PlayAutoOrderFetchResult {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     return '$month-$day $hour:$minute';
+  }
+}
+
+class _PlayAutoQuoteOrderAddLog {
+  const _PlayAutoQuoteOrderAddLog({
+    required this.sentAt,
+    required this.quoteId,
+    required this.title,
+    required this.statusCode,
+    required this.success,
+    required this.message,
+  });
+
+  final DateTime sentAt;
+  final String quoteId;
+  final String title;
+  final int? statusCode;
+  final bool success;
+  final String message;
+
+  factory _PlayAutoQuoteOrderAddLog.fromJson(Map<String, Object?> json) {
+    return _PlayAutoQuoteOrderAddLog(
+      sentAt: DateTime.tryParse(json['sent_at']?.toString() ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      quoteId: json['quote_id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '플토 주문',
+      statusCode: json['status_code'] is int
+          ? json['status_code'] as int
+          : int.tryParse(json['status_code']?.toString() ?? ''),
+      success: json['success'] == true || json['success']?.toString() == 'true',
+      message: json['message']?.toString() ?? '',
+    );
+  }
+
+  Map<String, Object?> toJson() {
+    return {
+      'sent_at': sentAt.toIso8601String(),
+      'quote_id': quoteId,
+      'title': title,
+      'status_code': statusCode,
+      'success': success,
+      'message': message,
+    };
   }
 }
 
