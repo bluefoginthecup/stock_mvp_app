@@ -2085,6 +2085,7 @@ class _DaumPostcodeSheet extends StatefulWidget {
 class _DaumPostcodeSheetState extends State<_DaumPostcodeSheet> {
   late final WebViewController _controller;
   var _loading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -2109,8 +2110,20 @@ class _DaumPostcodeSheetState extends State<_DaumPostcodeSheet> {
             ),
           );
         },
-      )
-      ..loadHtmlString(_daumPostcodeHtml);
+      );
+    _loadPostcodeHtml();
+  }
+
+  Future<void> _loadPostcodeHtml() async {
+    try {
+      await _controller.loadHtmlString(_daumPostcodeHtml);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorMessage = '주소 검색 화면을 열 수 없습니다. 앱을 완전히 종료한 뒤 다시 실행해주세요.';
+      });
+    }
   }
 
   @override
@@ -2143,13 +2156,23 @@ class _DaumPostcodeSheetState extends State<_DaumPostcodeSheet> {
                 ),
               ),
               Expanded(
-                child: Stack(
-                  children: [
-                    WebViewWidget(controller: _controller),
-                    if (_loading)
-                      const Center(child: CircularProgressIndicator()),
-                  ],
-                ),
+                child: _errorMessage == null
+                    ? Stack(
+                        children: [
+                          WebViewWidget(controller: _controller),
+                          if (_loading)
+                            const Center(child: CircularProgressIndicator()),
+                        ],
+                      )
+                    : Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _errorMessage!,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
               ),
             ],
           );
