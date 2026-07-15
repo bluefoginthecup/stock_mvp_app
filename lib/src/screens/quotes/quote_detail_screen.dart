@@ -89,7 +89,13 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
       title: '견적 거래처 선택',
     );
     if (supplier == null) return;
-    setState(() => _customerC.text = supplier.name);
+    setState(() {
+      _customerC.text = supplier.name;
+      _quote = _quote?.copyWith(
+        customerName: supplier.name,
+        customerId: supplier.id,
+      );
+    });
     await _saveHeader();
   }
 

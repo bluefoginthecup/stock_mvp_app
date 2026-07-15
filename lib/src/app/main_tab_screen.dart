@@ -38,6 +38,7 @@ import 'main_tab_controller.dart';
 
 const _bottomTabOrderPrefsKey = 'main.bottomTabs.order.v1';
 const _bottomTabHiddenPrefsKey = 'main.bottomTabs.hidden.v1';
+const _playAutoTabId = 'playauto';
 
 class _BottomTabSpec {
   final String id;
@@ -417,14 +418,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
       ),
       _BottomTabSpec(id: 'orders', label: '주문', icon: Icons.receipt_long),
       _BottomTabSpec(
-        id: 'playautoOrders',
-        label: '주문보기',
+        id: _playAutoTabId,
+        label: '플토',
         icon: Icons.fact_check_outlined,
-      ),
-      _BottomTabSpec(
-        id: 'playautoFulfillment',
-        label: '출고',
-        icon: Icons.local_shipping,
       ),
       _BottomTabSpec(id: 'stock', label: '재고', icon: Icons.inventory_2),
       _BottomTabSpec(id: 'txns', label: '입출고기록', icon: Icons.swap_vert),
@@ -482,8 +478,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
 
       setState(() {
         _tabOrder = _mergeTabOrder(savedOrder);
+        final normalizedHidden = _normalizeHiddenTabIds(hidden);
         _visibleTabIds = _allTabs
-            .where((tab) => !hidden.contains(tab.id))
+            .where((tab) => !normalizedHidden.contains(tab.id))
             .map((tab) => tab.id)
             .toSet();
         _visibleTabIds.add(MainTabController.dashboardTabId);
@@ -503,12 +500,33 @@ class _MainTabScreenState extends State<MainTabScreen> {
     final seen = <String>{};
     final merged = <String>[];
     for (final id in savedIds ?? const <String>[]) {
-      if (allIds.contains(id) && seen.add(id)) merged.add(id);
+      final normalizedId = _normalizeTabId(id);
+      if (allIds.contains(normalizedId) && seen.add(normalizedId)) {
+        merged.add(normalizedId);
+      }
     }
     for (final id in allIds) {
       if (seen.add(id)) merged.add(id);
     }
     return merged;
+  }
+
+  String _normalizeTabId(String id) {
+    return switch (id) {
+      'playautoOrders' || 'playautoFulfillment' => _playAutoTabId,
+      _ => id,
+    };
+  }
+
+  Set<String> _normalizeHiddenTabIds(List<String> hiddenIds) {
+    final hidden = hiddenIds.toSet();
+    final normalized = hidden.map(_normalizeTabId).toSet();
+    final hidOnlyOneLegacyPlayAuto = hidden.contains('playautoOrders') !=
+        hidden.contains('playautoFulfillment');
+    if (hidOnlyOneLegacyPlayAuto && !hidden.contains(_playAutoTabId)) {
+      normalized.remove(_playAutoTabId);
+    }
+    return normalized;
   }
 
   Future<void> _persistBottomTabs() async {
@@ -723,10 +741,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
     switch (tabId) {
       case 'orders':
         return const OrderListScreen();
-      case 'playautoOrders':
-        return const PlayAutoOrderImportScreen.orderView();
-      case 'playautoFulfillment':
-        return const PlayAutoOrderImportScreen.fulfillment();
+      case _playAutoTabId:
+        return const PlayAutoOrderImportScreen();
       case 'stock':
         return const StockBrowserScreen();
       case 'txns':

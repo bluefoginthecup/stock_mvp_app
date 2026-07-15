@@ -1,11 +1,17 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as image_lib;
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
@@ -16,6 +22,7 @@ import '../../models/item.dart';
 import '../../models/order.dart';
 import '../../models/quote.dart';
 import '../../models/quote_line.dart';
+import '../../models/suppliers.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../services/order_planning_service.dart';
 import '../../services/playauto_item_mapping_service.dart';
@@ -250,7 +257,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
   }
 
   void _scheduleOrderViewAutoFetch() {
-    if (!widget.orderViewOnly || _autoFetchedOrderView) return;
+    if (_autoFetchedOrderView) return;
     if (_apiKeyController.text.trim().isEmpty) return;
     _autoFetchedOrderView = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -263,7 +270,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
           forceRefresh: false,
         );
       } catch (_) {
-        // 주문보기 탭 최초 진입 자동조회 실패는 수동 조회로 다시 시도할 수 있다.
+        // 최초 진입 자동조회 실패는 주문 탭에서 수동 조회로 다시 시도할 수 있다.
       }
     });
   }
@@ -1457,386 +1464,421 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('플토 테스트')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (!_credentialsLoaded) ...[
-            const LinearProgressIndicator(),
-            const SizedBox(height: 12),
-          ],
-          Text(
-            'PlayAuto 토큰 발급, 주문 수집, 견적 주문 전송 로그를 확인합니다.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: scheme.onSurfaceVariant,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('플토'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.manage_accounts_outlined), text: '계정'),
+              Tab(icon: Icon(Icons.fact_check_outlined), text: '주문'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (!_credentialsLoaded) ...[
+                  const LinearProgressIndicator(),
+                  const SizedBox(height: 12),
+                ],
+                Text(
+                  'PlayAuto 토큰 발급, 주문 수집, 견적 주문 전송 로그를 확인합니다.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                 ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _baseUrlController,
-            keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              labelText: 'OpenAPI Base URL',
-              helperText: '문서와 계정 설정에 따라 /api 포함 여부가 다를 수 있어 수정 가능하게 둡니다.',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _apiKeyController,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'API Key',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _authenticationKeyController,
-            obscureText: true,
-            decoration: const InputDecoration(
-              labelText: '솔루션 인증키',
-              helperText: '이 값을 입력하면 이메일/비밀번호 없이 토큰 발급을 시도합니다.',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _baseUrlController,
+                  keyboardType: TextInputType.url,
                   decoration: const InputDecoration(
-                    labelText: '이메일',
+                    labelText: 'OpenAPI Base URL',
+                    helperText:
+                        '문서와 계정 설정에 따라 /api 포함 여부가 다를 수 있어 수정 가능하게 둡니다.',
                     border: OutlineInputBorder(),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _passwordController,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _apiKeyController,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    labelText: '비밀번호',
+                    labelText: 'API Key',
                     border: OutlineInputBorder(),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _tokenController,
-            obscureText: true,
-            decoration: InputDecoration(
-              labelText: '발급 토큰',
-              helperText: _tokenHelperText,
-              border: const OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton.icon(
-                onPressed: _loading ? null : _issueToken,
-                icon: _loading
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.vpn_key_outlined),
-                label: const Text('토큰 발급 테스트'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _loading ? null : _openOrderPreview,
-                icon: const Icon(Icons.view_agenda_outlined),
-                label: Text(
-                  _orders.isEmpty ? '주문 보기' : '주문 보기 ${_orders.length}건',
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _authenticationKeyController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: '솔루션 인증키',
+                    helperText: '이 값을 입력하면 이메일/비밀번호 없이 토큰 발급을 시도합니다.',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _loading ? null : () => _saveCredentials(),
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('인증 정보 저장'),
-              ),
-              TextButton.icon(
-                onPressed: _loading ? null : _clearSavedCredentials,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('저장 정보 삭제'),
-              ),
-            ],
-          ),
-          if (_quoteOrderAddLogs.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 12),
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          '최근 견적 주문 전송',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: _clearQuoteOrderAddLogs,
-                          icon: const Icon(Icons.delete_outline),
-                          label: const Text('지우기'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    for (final log in _quoteOrderAddLogs.take(5))
-                      ListTile(
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          log.success
-                              ? Icons.check_circle_outline
-                              : Icons.error_outline,
-                          color: log.success ? Colors.green : Colors.red,
-                        ),
-                        title: Text(
-                          log.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          [
-                            _formatDateTime(log.sentAt),
-                            if (log.statusCode != null)
-                              'HTTP ${log.statusCode}',
-                            log.message,
-                          ].join(' · '),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      child: TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: '이메일',
+                          border: OutlineInputBorder(),
                         ),
                       ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: '비밀번호',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 24),
-          Text(
-            '주문 수집 작업',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '쇼핑몰에서 PlayAuto로 주문 수집 또는 상태 동기화를 실행합니다. 수집 후 다음 주문 조회는 PlayAuto에서 새로 받아 캐시에 반영합니다.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _tokenController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: '발급 토큰',
+                    helperText: _tokenHelperText,
+                    border: const OutlineInputBorder(),
+                  ),
                 ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _workAction,
-            decoration: const InputDecoration(
-              labelText: '수집 작업',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: 'ScrapOrder',
-                child: Text('발주확인된 주문 수집'),
-              ),
-              DropdownMenuItem(
-                value: 'ScrapOrderConfirmList',
-                child: Text('결제완료 주문 수집'),
-              ),
-              DropdownMenuItem(
-                value: 'ScrapOrderAndConfirmDoit',
-                child: Text('발주확인 후 주문 수집'),
-              ),
-              DropdownMenuItem(
-                value: 'SyncOrderState',
-                child: Text('주문동기화'),
-              ),
-            ],
-            onChanged: _loading
-                ? null
-                : (value) {
-                    if (value == null) return;
-                    setState(() => _workAction = value);
-                  },
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              OutlinedButton.icon(
-                onPressed: _loading ? null : _fetchShopAccounts,
-                icon: const Icon(Icons.storefront_outlined),
-                label: const Text('쇼핑몰 목록 불러오기'),
-              ),
-              if (_shopAccounts.isNotEmpty)
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _loading ? null : _issueToken,
+                      icon: _loading
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.vpn_key_outlined),
+                      label: const Text('토큰 발급 테스트'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _loading ? null : _openOrderPreview,
+                      icon: const Icon(Icons.view_agenda_outlined),
+                      label: Text(
+                        _orders.isEmpty ? '주문 보기' : '주문 보기 ${_orders.length}건',
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _loading ? null : () => _saveCredentials(),
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('인증 정보 저장'),
+                    ),
+                    TextButton.icon(
+                      onPressed: _loading ? null : _clearSavedCredentials,
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('저장 정보 삭제'),
+                    ),
+                  ],
+                ),
+                if (_quoteOrderAddLogs.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                '최근 견적 주문 전송',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: _clearQuoteOrderAddLogs,
+                                icon: const Icon(Icons.delete_outline),
+                                label: const Text('지우기'),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          for (final log in _quoteOrderAddLogs.take(5))
+                            ListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                log.success
+                                    ? Icons.check_circle_outline
+                                    : Icons.error_outline,
+                                color: log.success ? Colors.green : Colors.red,
+                              ),
+                              title: Text(
+                                log.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                [
+                                  _formatDateTime(log.sentAt),
+                                  if (log.statusCode != null)
+                                    'HTTP ${log.statusCode}',
+                                  log.message,
+                                ].join(' · '),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
                 Text(
-                  '${_shopAccounts.length}개 쇼핑몰 불러옴',
+                  '주문 수집 작업',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '쇼핑몰에서 PlayAuto로 주문 수집 또는 상태 동기화를 실행합니다. 수집 후 다음 주문 조회는 PlayAuto에서 새로 받아 캐시에 반영합니다.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
                 ),
-            ],
-          ),
-          if (_shopAccounts.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                  '선택 ${_selectedShopAccountKeys.length}개',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: _loading
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _workAction,
+                  decoration: const InputDecoration(
+                    labelText: '수집 작업',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'ScrapOrder',
+                      child: Text('발주확인된 주문 수집'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'ScrapOrderConfirmList',
+                      child: Text('결제완료 주문 수집'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'ScrapOrderAndConfirmDoit',
+                      child: Text('발주확인 후 주문 수집'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'SyncOrderState',
+                      child: Text('주문동기화'),
+                    ),
+                  ],
+                  onChanged: _loading
                       ? null
-                      : () {
-                          setState(() {
-                            _selectAllShopAccounts(
-                              _selectedShopAccountKeys.length !=
-                                  _shopAccounts.length,
-                            );
-                          });
+                      : (value) {
+                          if (value == null) return;
+                          setState(() => _workAction = value);
                         },
-                  icon: Icon(
-                    _selectedShopAccountKeys.length == _shopAccounts.length
-                        ? Icons.check_box_outlined
-                        : Icons.select_all_outlined,
-                  ),
-                  label: Text(
-                    _selectedShopAccountKeys.length == _shopAccounts.length
-                        ? '전체 해제'
-                        : '전체 선택',
-                  ),
                 ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _loading ? null : _fetchShopAccounts,
+                      icon: const Icon(Icons.storefront_outlined),
+                      label: const Text('쇼핑몰 목록 불러오기'),
+                    ),
+                    if (_shopAccounts.isNotEmpty)
+                      Text(
+                        '${_shopAccounts.length}개 쇼핑몰 불러옴',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                      ),
+                  ],
+                ),
+                if (_shopAccounts.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Text(
+                        '선택 ${_selectedShopAccountKeys.length}개',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: _loading
+                            ? null
+                            : () {
+                                setState(() {
+                                  _selectAllShopAccounts(
+                                    _selectedShopAccountKeys.length !=
+                                        _shopAccounts.length,
+                                  );
+                                });
+                              },
+                        icon: Icon(
+                          _selectedShopAccountKeys.length ==
+                                  _shopAccounts.length
+                              ? Icons.check_box_outlined
+                              : Icons.select_all_outlined,
+                        ),
+                        label: Text(
+                          _selectedShopAccountKeys.length ==
+                                  _shopAccounts.length
+                              ? '전체 해제'
+                              : '전체 선택',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 260),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: scheme.outlineVariant),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: _shopAccounts.length,
+                      separatorBuilder: (_, __) =>
+                          Divider(height: 1, color: scheme.outlineVariant),
+                      itemBuilder: (context, index) {
+                        final shop = _shopAccounts[index];
+                        final selected =
+                            _selectedShopAccountKeys.contains(shop.key);
+                        return CheckboxListTile(
+                          value: selected,
+                          enabled: !_loading,
+                          dense: true,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          title: Text(
+                            shop.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            shop.id.isEmpty
+                                ? '${shop.code} · 쇼핑몰 아이디 필요'
+                                : '${shop.code} · ${shop.id}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onChanged: (value) {
+                            setState(
+                                () => _toggleShopAccount(shop, value ?? false));
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 150,
+                      child: TextField(
+                        controller: _workShopCodeController,
+                        decoration: const InputDecoration(
+                          labelText: '쇼핑몰 코드',
+                          hintText: '예: A001',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _workShopIdsController,
+                        minLines: 1,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: '쇼핑몰 아이디',
+                          hintText: '여러 개면 쉼표 또는 줄바꿈',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: _loading ? null : _registerOrderCollectionWork,
+                      icon: const Icon(Icons.play_arrow_outlined),
+                      label: const Text('쇼핑몰 주문 수집'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _loading || _lastWorkNos.isEmpty
+                          ? null
+                          : _fetchLastWorkResult,
+                      icon: const Icon(Icons.fact_check_outlined),
+                      label: Text(
+                        _lastWorkNos.isEmpty
+                            ? '결과 확인'
+                            : '결과 확인 ${_lastWorkNos.length}건',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_statusCode != null)
+                  Text(
+                    'HTTP $_statusCode',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                if (_result != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.of(context).dividerColor),
+                      borderRadius: BorderRadius.circular(8),
+                      color: scheme.surfaceContainerHighest
+                          .withValues(alpha: 0.35),
+                    ),
+                    child: SelectableText(
+                      _result!,
+                      style: const TextStyle(
+                          fontFamily: 'monospace', fontSize: 12),
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 8),
-            Container(
-              constraints: const BoxConstraints(maxHeight: 260),
-              decoration: BoxDecoration(
-                border: Border.all(color: scheme.outlineVariant),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: _shopAccounts.length,
-                separatorBuilder: (_, __) =>
-                    Divider(height: 1, color: scheme.outlineVariant),
-                itemBuilder: (context, index) {
-                  final shop = _shopAccounts[index];
-                  final selected = _selectedShopAccountKeys.contains(shop.key);
-                  return CheckboxListTile(
-                    value: selected,
-                    enabled: !_loading,
-                    dense: true,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: Text(
-                      shop.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      shop.id.isEmpty
-                          ? '${shop.code} · 쇼핑몰 아이디 필요'
-                          : '${shop.code} · ${shop.id}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onChanged: (value) {
-                      setState(() => _toggleShopAccount(shop, value ?? false));
-                    },
-                  );
-                },
-              ),
+            _PlayAutoOrderPreviewScreen(
+              orders: _orders,
+              startDate: _sdateController.text.trim(),
+              endDate: _edateController.text.trim(),
+              length: int.tryParse(_lengthController.text.trim()) ?? 100,
+              onFetchOrders: _fetchOrdersForPreview,
+              fulfillmentMode: true,
+              embedded: true,
+              onInstruction: _requestShipmentInstruction,
+              onSetInvoice: _requestSetInvoice,
+              onCompleteInvoice: _requestCompleteInvoice,
+              onSendInvoice: _requestSendInvoice,
             ),
           ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              SizedBox(
-                width: 150,
-                child: TextField(
-                  controller: _workShopCodeController,
-                  decoration: const InputDecoration(
-                    labelText: '쇼핑몰 코드',
-                    hintText: '예: A001',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _workShopIdsController,
-                  minLines: 1,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: '쇼핑몰 아이디',
-                    hintText: '여러 개면 쉼표 또는 줄바꿈',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton.icon(
-                onPressed: _loading ? null : _registerOrderCollectionWork,
-                icon: const Icon(Icons.play_arrow_outlined),
-                label: const Text('쇼핑몰 주문 수집'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _loading || _lastWorkNos.isEmpty
-                    ? null
-                    : _fetchLastWorkResult,
-                icon: const Icon(Icons.fact_check_outlined),
-                label: Text(
-                  _lastWorkNos.isEmpty
-                      ? '결과 확인'
-                      : '결과 확인 ${_lastWorkNos.length}건',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_statusCode != null)
-            Text(
-              'HTTP $_statusCode',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-          if (_result != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Theme.of(context).dividerColor),
-                borderRadius: BorderRadius.circular(8),
-                color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-              ),
-              child: SelectableText(
-                _result!,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -1850,6 +1892,7 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     required this.length,
     required this.onFetchOrders,
     required this.fulfillmentMode,
+    this.embedded = false,
     required this.onInstruction,
     required this.onSetInvoice,
     required this.onCompleteInvoice,
@@ -1867,6 +1910,7 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     bool forceRefresh,
   }) onFetchOrders;
   final bool fulfillmentMode;
+  final bool embedded;
   final Future<_PlayAutoResponse> Function(_PlayAutoOrderPreview order)
       onInstruction;
   final Future<_PlayAutoResponse> Function(
@@ -2085,30 +2129,41 @@ class _DaumPostcodeSheet extends StatefulWidget {
 class _DaumPostcodeSheetState extends State<_DaumPostcodeSheet> {
   late final WebViewController _controller;
   var _loading = true;
+  var _completed = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('[DaumPostcode] init');
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (_) {
+            debugPrint('[DaumPostcode] page finished');
             if (mounted) setState(() => _loading = false);
+          },
+          onNavigationRequest: (request) {
+            debugPrint('[DaumPostcode] navigation ${request.url}');
+            final uri = Uri.tryParse(request.url);
+            if (uri?.host == 'postcode.chalstock.local' &&
+                uri?.path == '/complete') {
+              _handlePostcodePayload(uri);
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
           },
         ),
       )
       ..addJavaScriptChannel(
         'DaumPostcode',
         onMessageReceived: (message) {
-          final decoded = jsonDecode(message.message);
-          if (decoded is! Map) return;
-          Navigator.of(context).pop(
-            _DaumPostcodeResult.fromJson(
-              decoded.map((key, value) => MapEntry(key.toString(), value)),
-            ),
+          debugPrint(
+            '[DaumPostcode] js channel ${_compactLogText(message.message)}',
           );
+          if (message.message.startsWith('log:')) return;
+          _completePostcode(message.message);
         },
       );
     _loadPostcodeHtml();
@@ -2116,14 +2171,61 @@ class _DaumPostcodeSheetState extends State<_DaumPostcodeSheet> {
 
   Future<void> _loadPostcodeHtml() async {
     try {
-      await _controller.loadHtmlString(_daumPostcodeHtml);
+      debugPrint('[DaumPostcode] load html');
+      await _controller.loadHtmlString(
+        _daumPostcodeHtml,
+        baseUrl: 'https://postcode.chalstock.local/search.html',
+      );
+      debugPrint('[DaumPostcode] load html requested');
     } catch (e) {
+      debugPrint('[DaumPostcode] load html failed $e');
       if (!mounted) return;
       setState(() {
         _loading = false;
         _errorMessage = '주소 검색 화면을 열 수 없습니다. 앱을 완전히 종료한 뒤 다시 실행해주세요.';
       });
     }
+  }
+
+  void _handlePostcodePayload(Uri? uri) {
+    final payload = uri?.queryParameters['payload'];
+    debugPrint(
+      '[DaumPostcode] url payload ${payload == null ? 'null' : _compactLogText(payload)}',
+    );
+    if (payload == null || payload.isEmpty) return;
+    _completePostcode(payload);
+  }
+
+  void _completePostcode(String payload) {
+    if (_completed) {
+      debugPrint('[DaumPostcode] complete ignored after pop');
+      return;
+    }
+    try {
+      debugPrint('[DaumPostcode] complete ${_compactLogText(payload)}');
+      if (mounted) {
+        setState(() => _errorMessage = null);
+      }
+      final decoded = jsonDecode(payload);
+      if (decoded is! Map || !mounted) return;
+      debugPrint('[DaumPostcode] pop result $decoded');
+      _completed = true;
+      Navigator.of(context).pop(
+        _DaumPostcodeResult.fromJson(
+          decoded.map((key, value) => MapEntry(key.toString(), value)),
+        ),
+      );
+    } catch (_) {
+      debugPrint('[DaumPostcode] complete parse failed');
+      if (!mounted) return;
+      setState(() => _errorMessage = '선택한 주소를 읽지 못했습니다. 다시 선택해주세요.');
+    }
+  }
+
+  String _compactLogText(String value) {
+    final compact = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.length <= 220) return compact;
+    return '${compact.substring(0, 220)}...';
   }
 
   @override
@@ -2189,7 +2291,7 @@ const _daumPostcodeHtml = '''
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <style>
-    html, body, #postcode {
+    html, body {
       width: 100%;
       height: 100%;
       margin: 0;
@@ -2198,31 +2300,85 @@ const _daumPostcodeHtml = '''
       background: #fff;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+    .postcode-help {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      box-sizing: border-box;
+      border-bottom: 1px solid #e5e7eb;
+      background: #f8fafc;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    #postcode {
+      width: 100%;
+      height: calc(100% - 42px);
+    }
   </style>
 </head>
 <body>
+  <div class="postcode-help">검색 결과의 주소 행을 클릭하면 자동 입력됩니다.</div>
   <div id="postcode"></div>
   <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
   <script>
+    function log(message) {
+      try { console.log('[DaumPostcodeHTML] ' + message); } catch (e) {}
+      try {
+        if (window.DaumPostcode && window.DaumPostcode.postMessage) {
+          window.DaumPostcode.postMessage('log:' + message);
+        }
+      } catch (e) {}
+    }
+
+    function sendResult(data) {
+      log('sendResult called');
+      var payload = JSON.stringify({
+        zonecode: data.zonecode || '',
+        roadAddress: data.roadAddress || '',
+        jibunAddress: data.jibunAddress || '',
+        buildingName: data.buildingName || ''
+      });
+
+      try {
+        if (window.DaumPostcode && window.DaumPostcode.postMessage) {
+          log('posting payload to channel');
+          window.DaumPostcode.postMessage(payload);
+          return;
+        }
+      } catch (e) {
+        log('channel post failed; using fallback url');
+      }
+
+      setTimeout(function() {
+        log('navigating fallback url');
+        window.location.href = 'https://postcode.chalstock.local/complete?payload=' + encodeURIComponent(payload);
+      }, 0);
+    }
+
     function openPostcode() {
+      log('openPostcode called');
       new daum.Postcode({
         width: '100%',
         height: '100%',
+        autoClose: false,
         oncomplete: function(data) {
-          DaumPostcode.postMessage(JSON.stringify({
-            zonecode: data.zonecode || '',
-            roadAddress: data.roadAddress || '',
-            jibunAddress: data.jibunAddress || '',
-            buildingName: data.buildingName || ''
-          }));
+          log('oncomplete called');
+          sendResult(data);
         }
       }).embed(document.getElementById('postcode'));
     }
 
     if (window.daum && window.daum.Postcode) {
+      log('daum.Postcode ready');
       openPostcode();
     } else {
-      window.onload = openPostcode;
+      log('waiting window.onload');
+      window.onload = function() {
+        log('window.onload');
+        openPostcode();
+      };
     }
   </script>
 </body>
@@ -2283,6 +2439,8 @@ class _PlayAutoQuoteOrderAddScreenState
   var _loading = false;
   var _loadingShops = false;
   String? _result;
+  String? _lastCreatedOrderNoText;
+  DateTime? _lastCreatedAt;
   List<_PlayAutoShopAccount> _shops = const [];
   _PlayAutoShopAccount? _selectedShop;
   Map<String, String> _lineSkus = const {};
@@ -2304,6 +2462,7 @@ class _PlayAutoQuoteOrderAddScreenState
     _loadSavedCredentials();
     _loadLineSkus();
     _loadAddressEntries();
+    _loadQuoteCustomerDefaults();
   }
 
   @override
@@ -2417,6 +2576,58 @@ class _PlayAutoQuoteOrderAddScreenState
     }
   }
 
+  Future<void> _loadQuoteCustomerDefaults() async {
+    try {
+      final repo = context.read<SupplierRepo>();
+      final supplier = await _findQuoteCustomer(repo);
+      if (supplier == null || !mounted) return;
+
+      final contacts = await repo.listContacts(supplier.id);
+      final primaryContact = contacts.where((contact) => contact.isPrimary);
+      final fallbackContact = primaryContact.isNotEmpty
+          ? primaryContact.first
+          : (contacts.isNotEmpty ? contacts.first : null);
+      final phone = (supplier.phone ?? '').trim().isNotEmpty
+          ? supplier.phone!.trim()
+          : (fallbackContact?.phone ?? '').trim();
+      if (phone.isEmpty || !mounted) return;
+
+      setState(() {
+        if (_orderPhoneController.text.trim().isEmpty) {
+          _orderPhoneController.text = phone;
+        }
+        if (_receiverPhoneController.text.trim().isEmpty) {
+          _receiverPhoneController.text = phone;
+        }
+      });
+    } catch (_) {
+      // 연락처 자동 채움 실패는 사용자가 직접 입력할 수 있으므로 조용히 넘어간다.
+    }
+  }
+
+  Future<Supplier?> _findQuoteCustomer(SupplierRepo repo) async {
+    final customerId = widget.quote.customerId?.trim();
+    if (customerId != null && customerId.isNotEmpty) {
+      final supplier = await repo.get(customerId);
+      if (supplier != null) return supplier;
+    }
+
+    final customerName = widget.quote.customerName.trim();
+    if (customerName.isEmpty) return null;
+    final candidates = await repo.list(q: customerName, onlyActive: true);
+    if (candidates.isEmpty) return null;
+
+    final exactMatches = candidates
+        .where((supplier) => supplier.name.trim() == customerName)
+        .toList();
+    if (exactMatches.isEmpty) return candidates.first;
+    exactMatches.sort((a, b) {
+      if (a.isCustomer != b.isCustomer) return a.isCustomer ? -1 : 1;
+      return a.name.compareTo(b.name);
+    });
+    return exactMatches.first;
+  }
+
   int _addressEntryScore(
     _PlayAutoAddressEntry entry,
     String? customerId,
@@ -2454,6 +2665,7 @@ class _PlayAutoQuoteOrderAddScreenState
   }
 
   Future<void> _openDaumPostcodeSearch() async {
+    debugPrint('[PlayAutoQuoteOrderAdd] open shipping address search');
     final selected = await showModalBottomSheet<_DaumPostcodeResult>(
       context: context,
       isScrollControlled: true,
@@ -2462,10 +2674,18 @@ class _PlayAutoQuoteOrderAddScreenState
     if (selected == null) return;
 
     setState(() {
+      if (_receiverPhoneController.text.trim().isEmpty) {
+        _receiverPhoneController.text = _orderPhoneController.text.trim();
+      }
       _zipController.text = selected.zonecode;
       _address1Controller.text = selected.address;
       _address2Controller.clear();
     });
+    debugPrint(
+      '[PlayAutoQuoteOrderAdd] applied shipping address '
+      'zip=${selected.zonecode} address=${selected.address}',
+    );
+    _showSnack('수령자 배송지 주소를 입력했습니다. 상세주소를 확인해주세요.');
   }
 
   void _applyAddressEntry(_PlayAutoAddressEntry entry) {
@@ -2556,6 +2776,7 @@ class _PlayAutoQuoteOrderAddScreenState
     try {
       final token = await _ensureToken(apiKey);
       final requestBody = _buildRequestBody();
+      _debugPrintPlayAutoOrderAddRequest(requestBody);
       final response = await http.post(
         _endpoint('/order/add'),
         headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
@@ -2565,6 +2786,17 @@ class _PlayAutoQuoteOrderAddScreenState
       final success = response.statusCode >= 200 &&
           response.statusCode < 300 &&
           !_playAutoBodyHasError(response.body);
+      final createdOrderNoText = success
+          ? _readCreatedOrderNumberText(response.body)
+          : _lastCreatedOrderNoText;
+      final createdAt = success ? DateTime.now() : _lastCreatedAt;
+      final createdOrderDetails = success
+          ? await _debugFetchCreatedPlayAutoOrders(
+              apiKey: apiKey,
+              token: token,
+              responseBody: response.body,
+            )
+          : null;
       final log = _PlayAutoQuoteOrderAddLog(
         sentAt: DateTime.now(),
         quoteId: widget.quote.id,
@@ -2586,15 +2818,25 @@ class _PlayAutoQuoteOrderAddScreenState
       await _saveQuoteOrderAddLog(log);
       if (!mounted) return;
       setState(() {
+        _lastCreatedOrderNoText = createdOrderNoText;
+        _lastCreatedAt = createdAt;
         _result = [
           success ? '플토 주문 등록 요청 완료' : '플토 주문 등록 응답 확인 필요',
           'HTTP ${response.statusCode}',
+          '',
+          '전송 금액 요약',
+          _playAutoAmountSummary(),
           '',
           '요청 바디',
           const JsonEncoder.withIndent('  ').convert(requestBody),
           '',
           '응답',
           responseText,
+          if (createdOrderDetails != null) ...[
+            '',
+            '생성 주문 상세 확인',
+            createdOrderDetails,
+          ],
         ].join('\n');
       });
       _showSnack(
@@ -2622,6 +2864,159 @@ class _PlayAutoQuoteOrderAddScreenState
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _debugPrintPlayAutoOrderAddRequest(Map<String, Object?> requestBody) {
+    debugPrint('[PlayAuto /order/add] request amount summary');
+    for (final line in widget.lines) {
+      final qty = _linePlayAutoSaleCount(line);
+      final lineAmount = _linePlayAutoLineAmount(line);
+      debugPrint(
+        '[PlayAuto /order/add] line '
+        'name=${line.name} sale_price(lineAmount)=$lineAmount '
+        'sale_cnt=$qty quoteTotal=${line.totalAmount.round()}',
+      );
+    }
+    final opts = requestBody['opts'];
+    final goodsTotal = widget.lines.fold<int>(
+      0,
+      (sum, line) => sum + _linePlayAutoLineAmount(line),
+    );
+    debugPrint(
+      '[PlayAuto /order/add] pay_amt=${requestBody['pay_amt']} '
+      'ship_cost=${requestBody['ship_cost']} goods_total=$goodsTotal',
+    );
+    debugPrint('[PlayAuto /order/add] opts=${jsonEncode(opts)}');
+    _debugPrintLong(
+      '[PlayAuto /order/add] request body ',
+      const JsonEncoder.withIndent('  ').convert(requestBody),
+    );
+  }
+
+  void _debugPrintLong(String prefix, String text) {
+    const chunkSize = 900;
+    if (text.length <= chunkSize) {
+      debugPrint('$prefix$text');
+      return;
+    }
+    for (var start = 0; start < text.length; start += chunkSize) {
+      final end = (start + chunkSize).clamp(0, text.length);
+      debugPrint('$prefix${text.substring(start, end)}');
+    }
+  }
+
+  Future<String?> _debugFetchCreatedPlayAutoOrders({
+    required String apiKey,
+    required String token,
+    required String responseBody,
+  }) async {
+    final uniqs = _readCreatedOrderUniqs(responseBody);
+    if (uniqs.isEmpty) {
+      debugPrint('[PlayAuto /order/add] no uniq found for detail lookup');
+      return null;
+    }
+
+    final details = <String>[];
+    for (final uniq in uniqs.take(5)) {
+      try {
+        final response = await http.get(
+          _endpoint('/order/$uniq'),
+          headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+        );
+        final pretty = _prettyBody(response.body);
+        final summary = _playAutoOrderDetailSummary(response.body);
+        debugPrint(
+          '[PlayAuto /order/$uniq] http=${response.statusCode} $summary',
+        );
+        _debugPrintLong('[PlayAuto /order/$uniq] body ', pretty);
+        details.add(
+          [
+            '주문 $uniq',
+            'HTTP ${response.statusCode}',
+            if (summary.isNotEmpty) summary,
+            pretty,
+          ].join('\n'),
+        );
+      } catch (e) {
+        debugPrint('[PlayAuto /order/$uniq] detail lookup failed $e');
+        details.add('주문 $uniq\n상세 조회 실패: $e');
+      }
+    }
+    return details.join('\n\n');
+  }
+
+  List<String> _readCreatedOrderUniqs(String body) {
+    try {
+      final uniqs = <String>{};
+      void visit(Object? node) {
+        if (node is List) {
+          for (final value in node) {
+            visit(value);
+          }
+          return;
+        }
+        if (node is! Map) return;
+        final map = node.map((key, value) => MapEntry(key.toString(), value));
+        final uniq = map['uniq']?.toString().trim();
+        if (uniq != null && uniq.isNotEmpty && uniq != 'null') {
+          uniqs.add(uniq);
+        }
+        for (final value in map.values) {
+          visit(value);
+        }
+      }
+
+      visit(jsonDecode(body));
+      return uniqs.toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  String _playAutoOrderDetailSummary(String body) {
+    try {
+      final summaries = <String>[];
+      void visit(Object? node) {
+        if (node is List) {
+          for (final value in node) {
+            visit(value);
+          }
+          return;
+        }
+        if (node is! Map) return;
+        final map = node.map((key, value) => MapEntry(key.toString(), value));
+        final interesting = <String>[];
+        for (final key in const [
+          'uniq',
+          'shop_sale_name',
+          'shop_opt_name',
+          'sale_cnt',
+          'opt_sale_cnt',
+          'sale_price',
+          'sales',
+          'pay_amt',
+          'shop_cost_price',
+          'shop_supply_price',
+        ]) {
+          if (map.containsKey(key)) interesting.add('$key=${map[key]}');
+        }
+        if (interesting.length >= 2) summaries.add(interesting.join(' '));
+        for (final value in map.values) {
+          visit(value);
+        }
+      }
+
+      visit(jsonDecode(body));
+      return summaries.take(8).join(' | ');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String? _readCreatedOrderNumberText(String body) {
+    final uniqs = _readCreatedOrderUniqs(body);
+    if (uniqs.isEmpty) return null;
+    return '${_formatOrderNoDate(DateTime.now())} 외 ${uniqs.length}건';
   }
 
   Future<void> _saveQuoteOrderAddLog(_PlayAutoQuoteOrderAddLog log) async {
@@ -2725,15 +3120,42 @@ class _PlayAutoQuoteOrderAddScreenState
         for (final line in widget.lines)
           {
             'opt_name': _lineOptionName(line),
-            'sale_price': line.unitPrice.round(),
+            'sale_price': _linePlayAutoLineAmount(line),
             'shop_cost_price': 0,
-            'shop_supply_price': line.supplyAmount.round(),
-            'sale_cnt': line.qty.round().clamp(1, 999999),
-            'set_no': '',
-            'set_pack_unit': '',
+            'shop_supply_price': 0,
+            'sale_cnt': _linePlayAutoSaleCount(line),
+            if ((_lineSkus[line.id] ?? '').trim().isNotEmpty)
+              'sku_cd': _lineSkus[line.id]!.trim(),
+            'pack_unit': 1,
           },
       ],
     };
+  }
+
+  String _playAutoAmountSummary() {
+    final lines = widget.lines.map((line) {
+      final qty = _linePlayAutoSaleCount(line);
+      final lineAmount = _linePlayAutoLineAmount(line);
+      return '${line.name}: 전송금액 $lineAmount / 수량 $qty';
+    }).join('\n');
+    final goodsTotal = widget.lines.fold<int>(
+      0,
+      (sum, line) => sum + _linePlayAutoLineAmount(line),
+    );
+    return [
+      lines,
+      '상품합계: $goodsTotal',
+    ].where((line) => line.trim().isNotEmpty).join('\n');
+  }
+
+  int _linePlayAutoSaleCount(QuoteLine line) {
+    return line.qty.round().clamp(1, 999999);
+  }
+
+  int _linePlayAutoLineAmount(QuoteLine line) {
+    final lineTotal = line.totalAmount.round();
+    if (lineTotal > 0) return lineTotal;
+    return (line.unitPrice * _linePlayAutoSaleCount(line)).round();
   }
 
   String _lineOptionName(QuoteLine line) {
@@ -2933,6 +3355,16 @@ class _PlayAutoQuoteOrderAddScreenState
     return '$year-$month-$day $hour:$minute:$second';
   }
 
+  String _formatOrderNoDate(DateTime date) {
+    final year = date.year.toString().padLeft(4, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    return '$year$month$day$hour$minute$second';
+  }
+
   String? _requiredText(String? value) {
     if ((value ?? '').trim().isEmpty) return '필수 입력';
     return null;
@@ -2942,6 +3374,63 @@ class _PlayAutoQuoteOrderAddScreenState
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _openChalstockOrderPrint() {
+    final document = _buildChalstockOrderPrintDocument();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _ChalstockOrderPrintView(document: document),
+      ),
+    );
+  }
+
+  _ChalstockOrderPrintDocument _buildChalstockOrderPrintDocument() {
+    final createdAt = _lastCreatedAt ?? DateTime.now();
+    final totals = QuoteTotals.fromLines(
+      quote: widget.quote,
+      lines: widget.lines,
+    );
+    final orderNo = (_lastCreatedOrderNoText ?? '').trim().isNotEmpty
+        ? _lastCreatedOrderNoText!.trim()
+        : '${_formatOrderNoDate(createdAt)} 외 ${widget.lines.length}건';
+    final address = [
+      if (_zipController.text.trim().isNotEmpty)
+        '(${_zipController.text.trim()})',
+      _address1Controller.text.trim(),
+      _address2Controller.text.trim(),
+    ].where((value) => value.isNotEmpty).join(' ');
+    return _ChalstockOrderPrintDocument(
+      orderDate: _formatDateTime(createdAt),
+      orderNo: orderNo,
+      shopName: _selectedShop?.name.trim().isNotEmpty == true
+          ? _selectedShop!.name.trim()
+          : '직접입력',
+      orderName: _orderNameController.text.trim(),
+      orderPhone: _orderPhoneController.text.trim(),
+      receiverName: _receiverNameController.text.trim(),
+      receiverPhone: _receiverPhoneController.text.trim(),
+      address: address,
+      shippingMethod: '선결제',
+      shippingMessage: _shipMessageController.text.trim(),
+      totalQuantity: widget.lines.fold<int>(
+        0,
+        (sum, line) => sum + _linePlayAutoSaleCount(line),
+      ),
+      totalAmount: totals.total.round(),
+      lines: [
+        for (final line in widget.lines)
+          _ChalstockOrderPrintLine(
+            productName: line.name,
+            optionName: line.memo?.trim().isNotEmpty == true
+                ? line.memo!.trim()
+                : line.name,
+            quantity: _linePlayAutoSaleCount(line),
+            amount: line.totalAmount.round(),
+          ),
+      ],
+    );
   }
 
   @override
@@ -3073,13 +3562,13 @@ class _PlayAutoQuoteOrderAddScreenState
                   label: Text(
                     _addressEntries.isEmpty
                         ? '불러올 고객/거래처 주소 없음'
-                        : '고객/거래처 주소 불러오기',
+                        : '고객/거래처 배송지 불러오기',
                   ),
                 ),
                 OutlinedButton.icon(
                   onPressed: _openDaumPostcodeSearch,
                   icon: const Icon(Icons.travel_explore_outlined),
-                  label: const Text('주소 검색'),
+                  label: const Text('수령자 주소 검색'),
                 ),
               ],
             ),
@@ -3109,7 +3598,7 @@ class _PlayAutoQuoteOrderAddScreenState
               decoration: InputDecoration(
                 labelText: '주소',
                 suffixIcon: IconButton(
-                  tooltip: '주소 검색',
+                  tooltip: '수령자 주소 검색',
                   onPressed: _openDaumPostcodeSearch,
                   icon: const Icon(Icons.search),
                 ),
@@ -3150,16 +3639,27 @@ class _PlayAutoQuoteOrderAddScreenState
                 ),
               ),
             const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _loading ? null : _submit,
-              icon: _loading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send_outlined),
-              label: const Text('플토 주문 생성'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: _loading ? null : _submit,
+                  icon: _loading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.send_outlined),
+                  label: const Text('플토 주문 생성'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _openChalstockOrderPrint,
+                  icon: const Icon(Icons.print_outlined),
+                  label: const Text('주문서 보기/인쇄'),
+                ),
+              ],
             ),
             if (_result != null) ...[
               const SizedBox(height: 16),
@@ -3184,6 +3684,325 @@ class _PlayAutoQuoteOrderAddScreenState
 
   String _formatQty(double value) =>
       value % 1 == 0 ? value.toStringAsFixed(0) : value.toString();
+}
+
+class _ChalstockOrderPrintDocument {
+  const _ChalstockOrderPrintDocument({
+    required this.orderDate,
+    required this.orderNo,
+    required this.shopName,
+    required this.orderName,
+    required this.orderPhone,
+    required this.receiverName,
+    required this.receiverPhone,
+    required this.address,
+    required this.shippingMethod,
+    required this.shippingMessage,
+    required this.totalQuantity,
+    required this.totalAmount,
+    required this.lines,
+  });
+
+  final String orderDate;
+  final String orderNo;
+  final String shopName;
+  final String orderName;
+  final String orderPhone;
+  final String receiverName;
+  final String receiverPhone;
+  final String address;
+  final String shippingMethod;
+  final String shippingMessage;
+  final int totalQuantity;
+  final int totalAmount;
+  final List<_ChalstockOrderPrintLine> lines;
+}
+
+class _ChalstockOrderPrintLine {
+  const _ChalstockOrderPrintLine({
+    required this.productName,
+    required this.optionName,
+    required this.quantity,
+    required this.amount,
+  });
+
+  final String productName;
+  final String optionName;
+  final int quantity;
+  final int amount;
+}
+
+class _ChalstockOrderPrintView extends StatelessWidget {
+  const _ChalstockOrderPrintView({required this.document});
+
+  final _ChalstockOrderPrintDocument document;
+
+  @override
+  Widget build(BuildContext context) {
+    final captureKey = GlobalKey();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('찰스톡 주문서'),
+        actions: [
+          IconButton(
+            tooltip: 'JPG 내보내기',
+            onPressed: () => _shareChalstockOrderJpg(
+              context,
+              captureKey: captureKey,
+              document: document,
+            ),
+            icon: const Icon(Icons.ios_share),
+          ),
+        ],
+      ),
+      body: ColoredBox(
+        color: Colors.grey.shade200,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: RepaintBoundary(
+              key: captureKey,
+              child: _ChalstockOrderPrintPage(document: document),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChalstockOrderPrintPage extends StatelessWidget {
+  const _ChalstockOrderPrintPage({required this.document});
+
+  final _ChalstockOrderPrintDocument document;
+
+  @override
+  Widget build(BuildContext context) {
+    const pageWidth = 744.0;
+    const border = Color(0xFFE2E2E2);
+    return Container(
+      width: pageWidth,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(0, 0, 20, 28),
+      child: DefaultTextStyle(
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 13,
+          height: 1.35,
+          letterSpacing: 0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _printSectionTitle('주문 내역'),
+            Table(
+              border: TableBorder.all(color: border),
+              columnWidths: const {
+                0: FixedColumnWidth(108),
+                1: FlexColumnWidth(1.75),
+                2: FixedColumnWidth(142),
+                3: FlexColumnWidth(1.55),
+                4: FixedColumnWidth(108),
+                5: FlexColumnWidth(1.1),
+              },
+              children: [
+                _printTableRow([
+                  _printLabel('주문일'),
+                  _printValue(document.orderDate),
+                  _printLabel('구매 쇼핑몰'),
+                  _printValue(document.shopName),
+                ], spans: const [
+                  1,
+                  2,
+                  1,
+                  2
+                ]),
+                _printTableRow([
+                  _printLabel('주문번호'),
+                  _printValue(document.orderNo),
+                ], spans: const [
+                  1,
+                  5
+                ]),
+                _printTableRow([
+                  _printLabel('주문자'),
+                  _printValue(document.orderName),
+                  _printLabel('전화번호'),
+                  _printValue(''),
+                  _printLabel('휴대폰번호'),
+                  _printValue(document.orderPhone),
+                ]),
+                _printTableRow([
+                  _printLabel('고객명'),
+                  _printValue(document.receiverName),
+                  _printLabel('전화번호'),
+                  _printValue(''),
+                  _printLabel('휴대폰번호'),
+                  _printValue(document.receiverPhone),
+                ]),
+                _printTableRow([
+                  _printLabel('주소'),
+                  _printValue(document.address),
+                  _printLabel('배송방법'),
+                  _printValue(document.shippingMethod),
+                ], spans: const [
+                  1,
+                  3,
+                  1,
+                  1
+                ]),
+                _printTableRow([
+                  _printLabel('배송메시지'),
+                  _printValue(document.shippingMessage),
+                  _printLabel(''),
+                  _printValue(''),
+                ], spans: const [
+                  1,
+                  3,
+                  1,
+                  1
+                ]),
+              ],
+            ),
+            const SizedBox(height: 32),
+            _printSectionTitle('상품 내역'),
+            Table(
+              border: TableBorder.all(color: border),
+              columnWidths: const {
+                0: FixedColumnWidth(108),
+                1: FlexColumnWidth(2.8),
+                2: FlexColumnWidth(2.0),
+                3: FixedColumnWidth(72),
+                4: FixedColumnWidth(108),
+              },
+              children: [
+                _printTableRow([
+                  _printLabel('주문 총 수량'),
+                  _printCentered('${document.totalQuantity}'),
+                  _printLabel('주문 총 금액'),
+                  _printCentered('${_printMoney(document.totalAmount)} 원'),
+                ], spans: const [
+                  1,
+                  1,
+                  1,
+                  2
+                ]),
+                _printTableRow([
+                  _printLabel('이미지'),
+                  _printCentered('상품명'),
+                  _printCentered('옵션'),
+                  _printCentered('수량'),
+                  _printCentered('금액'),
+                ]),
+                for (final line in document.lines)
+                  _printTableRow([
+                    _printValue(''),
+                    _printValue(line.productName),
+                    _printValue(line.optionName),
+                    _printCentered('${line.quantity}'),
+                    _printCentered('${_printMoney(line.amount)} 원'),
+                  ], minHeight: 64),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Widget _printSectionTitle(String text) {
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(0, 8, 0, 10),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+    ),
+  );
+}
+
+TableRow _printTableRow(
+  List<Widget> cells, {
+  List<int>? spans,
+  double minHeight = 44,
+}) {
+  final expanded = <Widget>[];
+  for (var i = 0; i < cells.length; i += 1) {
+    final span = spans == null ? 1 : spans[i];
+    expanded.add(cells[i]);
+    for (var j = 1; j < span; j += 1) {
+      expanded.add(const SizedBox.shrink());
+    }
+  }
+  return TableRow(
+    children: [
+      for (final cell in expanded)
+        ConstrainedBox(
+          constraints: BoxConstraints(minHeight: minHeight),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Align(alignment: Alignment.centerLeft, child: cell),
+          ),
+        ),
+    ],
+  );
+}
+
+Widget _printLabel(String text) {
+  return Text(text, style: const TextStyle(fontWeight: FontWeight.w600));
+}
+
+Widget _printValue(String text) {
+  return Text(text);
+}
+
+Widget _printCentered(String text) {
+  return Align(
+    alignment: Alignment.center,
+    child: Text(text, textAlign: TextAlign.center),
+  );
+}
+
+String _printMoney(int value) => NumberFormat('#,##0').format(value);
+
+Future<void> _shareChalstockOrderJpg(
+  BuildContext context, {
+  required GlobalKey captureKey,
+  required _ChalstockOrderPrintDocument document,
+}) async {
+  final box = context.findRenderObject() as RenderBox?;
+  try {
+    final boundary =
+        captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    if (boundary == null) throw StateError('주문서 이미지를 만들 수 없습니다.');
+    final captured = await boundary.toImage(pixelRatio: 3);
+    final byteData = await captured.toByteData(format: ui.ImageByteFormat.png);
+    final pngBytes = byteData?.buffer.asUint8List();
+    if (pngBytes == null) throw StateError('주문서 이미지 변환에 실패했습니다.');
+    final decoded = image_lib.decodePng(pngBytes);
+    if (decoded == null) throw StateError('주문서 이미지 인코딩에 실패했습니다.');
+    final jpgBytes = image_lib.encodeJpg(decoded, quality: 90);
+    final tempDir = await getTemporaryDirectory();
+    final subject = '찰스톡주문서_${_safePrintFileName(document.orderNo)}';
+    final outFile = File('${tempDir.path}/$subject.jpg');
+    await outFile.writeAsBytes(jpgBytes, flush: true);
+    await Share.shareXFiles(
+      [XFile(outFile.path, mimeType: 'image/jpeg', name: '$subject.jpg')],
+      subject: subject,
+      sharePositionOrigin:
+          box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('주문서 JPG 내보내기에 실패했습니다: $e')),
+    );
+  }
+}
+
+String _safePrintFileName(String value) {
+  final cleaned = value.replaceAll(RegExp(r'[\\/:*?"<>|\s]+'), '_');
+  return cleaned.isEmpty ? 'order' : cleaned;
 }
 
 class _PlayAutoOrderPreviewScreenState
@@ -3235,6 +4054,189 @@ class _PlayAutoOrderPreviewScreenState
         filteredOrders.fold<int>(0, (sum, order) => sum + order.quantity);
     final shopNames = _shopNames;
 
+    final body = CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _OrderQueryPanel(
+                  startDateController: _startDateController,
+                  endDateController: _endDateController,
+                  lengthController: _lengthController,
+                  loading: _loadingOrders,
+                  onPickStartDate: () => _pickDate(_startDateController),
+                  onPickEndDate: () => _pickDate(_endDateController),
+                  onFetch: () => _fetchOrders(forceRefresh: false),
+                  onRefresh: () => _fetchOrders(forceRefresh: true),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _cacheNotice,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                _PlayAutoSummaryBand(
+                  orderCount: filteredOrders.length,
+                  totalQty: totalQty,
+                  matchedCount: _matchedCount(filteredOrders),
+                  needsMappingCount: _needsMappingCount(filteredOrders),
+                  availableCount: _availableCount(filteredOrders),
+                  shortageCount: _shortageCount(filteredOrders),
+                ),
+                if (widget.fulfillmentMode) ...[
+                  const SizedBox(height: 12),
+                  _FulfillmentStageChips(
+                    selected: _stage,
+                    orders: _orders,
+                    orderLinks: _orderLinks,
+                    onSelected: (stage) => setState(() => _stage = stage),
+                  ),
+                  if (_runningAction) ...[
+                    const SizedBox(height: 8),
+                    const LinearProgressIndicator(),
+                  ],
+                  if (_lastFulfillmentActionLog != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: scheme.outlineVariant),
+                        borderRadius: BorderRadius.circular(8),
+                        color: scheme.surfaceContainerHighest
+                            .withValues(alpha: 0.35),
+                      ),
+                      child: SelectableText(
+                        _lastFulfillmentActionLog!,
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+                if (_loadingMappings) ...[
+                  const SizedBox(height: 8),
+                  const LinearProgressIndicator(),
+                ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: '검색 지우기',
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                            icon: const Icon(Icons.close),
+                          ),
+                    labelText: '주문자, 주소, 연락처 검색',
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (value) => setState(() => _query = value),
+                ),
+                if (shopNames.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            label: const Text('전체'),
+                            selected: _selectedShopName == null,
+                            onSelected: (_) {
+                              setState(() => _selectedShopName = null);
+                            },
+                          ),
+                        ),
+                        for (final shopName in shopNames)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: Text(shopName),
+                              selected: _selectedShopName == shopName,
+                              onSelected: (_) {
+                                setState(() {
+                                  _selectedShopName =
+                                      _selectedShopName == shopName
+                                          ? null
+                                          : shopName;
+                                });
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (filteredOrders.isEmpty)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: Text('조건에 맞는 주문이 없습니다.')),
+          )
+        else
+          SliverList.separated(
+            itemCount: filteredOrders.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final order = filteredOrders[index];
+              return Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  index == 0 ? 4 : 0,
+                  16,
+                  index == filteredOrders.length - 1 ? 20 : 0,
+                ),
+                child: _PlayAutoOrderCard(
+                  order: order,
+                  statusColor: _statusColor(scheme, order.status),
+                  mapping: _mappings[_playAutoMappingKey(order)],
+                  matchedItem: _matchedItemFor(order),
+                  stockStatus: _stockStatusFor(order),
+                  orderLink: _orderLinks[_playAutoOrderGroupKey(order)],
+                  onTapProduct: () => _openMappingSheet(order),
+                  onClearMapping: () => _clearMapping(order),
+                  onOpenOrCreateOrder: () => _openOrCreateChalstockOrder(order),
+                  onOpenMatchedItem: () {
+                    final itemId =
+                        _mappings[_playAutoMappingKey(order)]?.itemId;
+                    if (itemId != null) _openMatchedItem(itemId);
+                  },
+                  fulfillmentMode: widget.fulfillmentMode,
+                  actionRunning: _runningAction,
+                  onInstruction: () => _runFulfillmentAction(
+                    label: '출고지시',
+                    request: () => widget.onInstruction(order),
+                  ),
+                  onOpenPrintPreview: () => _openPrintPreview(order),
+                  onRegisterInvoice: () => _openInvoiceDialog(order),
+                  onSendInvoice: () => _sendInvoiceAfterSync(order),
+                  onSyncOrder: () => _fetchOrders(forceRefresh: true),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+
+    if (widget.embedded) return body;
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -3250,187 +4252,7 @@ class _PlayAutoOrderPreviewScreenState
           ],
         ),
       ),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _OrderQueryPanel(
-                    startDateController: _startDateController,
-                    endDateController: _endDateController,
-                    lengthController: _lengthController,
-                    loading: _loadingOrders,
-                    onPickStartDate: () => _pickDate(_startDateController),
-                    onPickEndDate: () => _pickDate(_endDateController),
-                    onFetch: () => _fetchOrders(forceRefresh: false),
-                    onRefresh: () => _fetchOrders(forceRefresh: true),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _cacheNotice,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  _PlayAutoSummaryBand(
-                    orderCount: filteredOrders.length,
-                    totalQty: totalQty,
-                    matchedCount: _matchedCount(filteredOrders),
-                    needsMappingCount: _needsMappingCount(filteredOrders),
-                    availableCount: _availableCount(filteredOrders),
-                    shortageCount: _shortageCount(filteredOrders),
-                  ),
-                  if (widget.fulfillmentMode) ...[
-                    const SizedBox(height: 12),
-                    _FulfillmentStageChips(
-                      selected: _stage,
-                      orders: _orders,
-                      orderLinks: _orderLinks,
-                      onSelected: (stage) => setState(() => _stage = stage),
-                    ),
-                    if (_runningAction) ...[
-                      const SizedBox(height: 8),
-                      const LinearProgressIndicator(),
-                    ],
-                    if (_lastFulfillmentActionLog != null) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: scheme.outlineVariant),
-                          borderRadius: BorderRadius.circular(8),
-                          color: scheme.surfaceContainerHighest
-                              .withValues(alpha: 0.35),
-                        ),
-                        child: SelectableText(
-                          _lastFulfillmentActionLog!,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                  if (_loadingMappings) ...[
-                    const SizedBox(height: 8),
-                    const LinearProgressIndicator(),
-                  ],
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _query.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: '검색 지우기',
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _query = '');
-                              },
-                              icon: const Icon(Icons.close),
-                            ),
-                      labelText: '주문자, 주소, 연락처 검색',
-                      border: const OutlineInputBorder(),
-                    ),
-                    onChanged: (value) => setState(() => _query = value),
-                  ),
-                  if (shopNames.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: FilterChip(
-                              label: const Text('전체'),
-                              selected: _selectedShopName == null,
-                              onSelected: (_) {
-                                setState(() => _selectedShopName = null);
-                              },
-                            ),
-                          ),
-                          for (final shopName in shopNames)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: FilterChip(
-                                label: Text(shopName),
-                                selected: _selectedShopName == shopName,
-                                onSelected: (_) {
-                                  setState(() {
-                                    _selectedShopName =
-                                        _selectedShopName == shopName
-                                            ? null
-                                            : shopName;
-                                  });
-                                },
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          if (filteredOrders.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('조건에 맞는 주문이 없습니다.')),
-            )
-          else
-            SliverList.separated(
-              itemCount: filteredOrders.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final order = filteredOrders[index];
-                return Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    index == 0 ? 4 : 0,
-                    16,
-                    index == filteredOrders.length - 1 ? 20 : 0,
-                  ),
-                  child: _PlayAutoOrderCard(
-                    order: order,
-                    statusColor: _statusColor(scheme, order.status),
-                    mapping: _mappings[_playAutoMappingKey(order)],
-                    matchedItem: _matchedItemFor(order),
-                    stockStatus: _stockStatusFor(order),
-                    orderLink: _orderLinks[_playAutoOrderGroupKey(order)],
-                    onTapProduct: () => _openMappingSheet(order),
-                    onClearMapping: () => _clearMapping(order),
-                    onOpenOrCreateOrder: () =>
-                        _openOrCreateChalstockOrder(order),
-                    onOpenMatchedItem: () {
-                      final itemId =
-                          _mappings[_playAutoMappingKey(order)]?.itemId;
-                      if (itemId != null) _openMatchedItem(itemId);
-                    },
-                    fulfillmentMode: widget.fulfillmentMode,
-                    actionRunning: _runningAction,
-                    onInstruction: () => _runFulfillmentAction(
-                      label: '출고지시',
-                      request: () => widget.onInstruction(order),
-                    ),
-                    onOpenPrintPreview: () => _openPrintPreview(order),
-                    onRegisterInvoice: () => _openInvoiceDialog(order),
-                    onSendInvoice: () => _sendInvoiceAfterSync(order),
-                    onSyncOrder: () => _fetchOrders(forceRefresh: true),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
+      body: body,
     );
   }
 
