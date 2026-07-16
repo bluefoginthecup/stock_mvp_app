@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'firebase_options.dart';
 import 'src/app.dart';
+import 'src/features/daily_gift/daily_gift_service.dart';
 import 'src/services/auth_service.dart';
 import 'src/services/reorder_reminder_service.dart';
 
@@ -21,6 +22,7 @@ Future<void> main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
+  await DailyGiftService.initialize();
   await ReorderReminderService.initialize();
 
   Provider.debugCheckInvalidValueType = null;

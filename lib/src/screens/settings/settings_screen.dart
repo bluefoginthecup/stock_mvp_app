@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:stockapp_mvp/src/services/seed_importer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:stockapp_mvp/src/db/app_database.dart';
+import 'package:stockapp_mvp/src/features/daily_gift/daily_gift_box_screen.dart';
+import 'package:stockapp_mvp/src/features/daily_gift/daily_gift_settings_screen.dart';
 import 'dart:io';
 import '/src/models/attachment_domain.dart';
 import '/src/models/app_entitlement.dart';
@@ -69,6 +71,50 @@ class SettingsScreen extends StatelessWidget {
             subtitle: '저장 공간, 백업, 복원 및 데이터 가져오기',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const _DataSettingsScreen()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _SettingsMenuCard(
+            icon: Icons.card_giftcard_rounded,
+            title: '작업실 선물',
+            subtitle: '선물 도착 시간과 텍스트 카드 보관함',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const _DailyGiftHomeScreen()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DailyGiftHomeScreen extends StatelessWidget {
+  const _DailyGiftHomeScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('작업실 선물')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _SettingsMenuCard(
+            icon: Icons.schedule_rounded,
+            title: '선물 시간',
+            subtitle: '매일 몇 시에 선물을 받을지 정합니다',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const DailyGiftSettingsScreen(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _SettingsMenuCard(
+            icon: Icons.inventory_2_outlined,
+            title: '선물 보관함',
+            subtitle: '받은 텍스트 카드 선물을 모아봅니다',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DailyGiftBoxScreen()),
             ),
           ),
         ],

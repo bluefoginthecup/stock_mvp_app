@@ -52,6 +52,7 @@ import 'services/dashboard_purchase_stats_service.dart';
 import 'services/db_auto_backup_service.dart';
 import 'services/entitlement_service.dart';
 import 'services/export_service.dart';
+import 'features/daily_gift/daily_gift_service.dart';
 import 'services/folder_service.dart';
 import 'services/inventory_service.dart';
 import 'services/shortage_service.dart';
@@ -132,6 +133,7 @@ class _StockMaterialAppState extends State<_StockMaterialApp>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ScheduleWidgetBridge.initialize(navigatorKey: widget.rootNavKey);
+      _syncDailyGift();
     });
   }
 
@@ -143,6 +145,9 @@ class _StockMaterialAppState extends State<_StockMaterialApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncDailyGift();
+    }
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
@@ -162,6 +167,17 @@ class _StockMaterialAppState extends State<_StockMaterialApp>
     // pressed key and assert on the next real key down.
     // ignore: invalid_use_of_visible_for_testing_member
     HardwareKeyboard.instance.clearState();
+  }
+
+  Future<void> _syncDailyGift() async {
+    try {
+      final service = DailyGiftService();
+      final settings = await service.loadSettings();
+      await service.scheduleReminder(settings);
+      await service.grantTodayIfDue();
+    } catch (e) {
+      debugPrint('DailyGift sync failed: $e');
+    }
   }
 
   @override

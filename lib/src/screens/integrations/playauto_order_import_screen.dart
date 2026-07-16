@@ -1657,6 +1657,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     Map<String, _PlayAutoShopAccount> accounts, {
     String inheritedCode = '',
     String inheritedName = '',
+    bool inheritedCustomInput = false,
   }) {
     if (node is List) {
       for (final child in node) {
@@ -1665,6 +1666,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
           accounts,
           inheritedCode: inheritedCode,
           inheritedName: inheritedName,
+          inheritedCustomInput: inheritedCustomInput,
         );
       }
       return;
@@ -1675,6 +1677,10 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     final code = _pickStringFromMap(
         map,
         const [
+          'custom_shop_cd',
+          'customShopCd',
+          'custom_shop_code',
+          'customShopCode',
           'site_code',
           'shop_cd',
           'shop_code',
@@ -1718,22 +1724,32 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       'loginId',
     ]);
     if (code.isNotEmpty) {
+      final isCustomInput = inheritedCustomInput || _isCustomInputShopMap(map);
       final account = _PlayAutoShopAccount(
         code: code,
         id: id,
         name: name,
+        isCustomInput: isCustomInput,
       );
-      accounts[account.key] = account;
+      final existing = accounts[account.key];
+      accounts[account.key] = existing == null
+          ? account
+          : account.copyWith(
+              isCustomInput: account.isCustomInput || existing.isCustomInput,
+            );
     }
 
     for (final entry in map.entries) {
       final childInheritedCode =
           _looksLikeShopCode(entry.key) ? entry.key : code;
+      final childInheritedCustomInput =
+          inheritedCustomInput || _looksLikeCustomInputKey(entry.key);
       if (_looksLikeShopCode(entry.key) && entry.value is String) {
         final account = _PlayAutoShopAccount(
           code: entry.key,
           id: '',
           name: entry.value.toString().trim(),
+          isCustomInput: childInheritedCustomInput,
         );
         accounts[account.key] = account;
       }
@@ -1742,6 +1758,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         accounts,
         inheritedCode: childInheritedCode,
         inheritedName: name,
+        inheritedCustomInput: childInheritedCustomInput,
       );
     }
   }
@@ -1762,6 +1779,31 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
 
   bool _looksLikeShopCode(String value) {
     return RegExp(r'^[A-Z]\d{3}$').hasMatch(value.trim());
+  }
+
+  bool _isCustomInputShopMap(Map<String, Object?> map) {
+    if (map.keys.any(_looksLikeCustomInputKey)) {
+      return true;
+    }
+    final name = _pickStringFromMap(map, const [
+      'site_name',
+      'shop_name',
+      'shopName',
+      'mall_name',
+      'mallName',
+      'name',
+      'custom_shop_name',
+      'customShopName',
+    ]);
+    return name.contains('직접입력') || name.toLowerCase().contains('custom');
+  }
+
+  bool _looksLikeCustomInputKey(String key) {
+    final lower = key.toLowerCase();
+    return lower.contains('custom_shop') ||
+        lower.contains('customshop') ||
+        lower.contains('direct_shop') ||
+        lower.contains('directshop');
   }
 
   void _collectWorkNos(Object? node, Set<String> workNos) {
@@ -3497,6 +3539,8 @@ class _PlayAutoQuoteOrderAddScreenState
   static const _quoteOrderAddLogKey =
       _PlayAutoOrderImportScreenState._quoteOrderAddLogKey;
   static const _quoteOrderAddDraftKey = 'playauto_quote_order_add_draft';
+  static const _customShopCodeKey = 'playauto_custom_shop_code_v1';
+  static const _customShopIdKey = 'playauto_custom_shop_id_v1';
   static const _tokenLifetime = _PlayAutoOrderImportScreenState._tokenLifetime;
 
   final _formKey = GlobalKey<FormState>();
@@ -3645,11 +3689,15 @@ class _PlayAutoQuoteOrderAddScreenState
         _draftReady = true;
         return;
       }
+      final draftShopCode = (decoded['customShopCode'] ?? '').toString();
+      final draftShopId = (decoded['customShopId'] ?? '').toString();
       setState(() {
-        _customShopCodeController.text =
-            (decoded['customShopCode'] ?? '').toString();
-        _customShopIdController.text =
-            (decoded['customShopId'] ?? '').toString();
+        if (draftShopCode.trim().isNotEmpty) {
+          _customShopCodeController.text = draftShopCode;
+        }
+        if (draftShopId.trim().isNotEmpty) {
+          _customShopIdController.text = draftShopId;
+        }
         _orderNameController.text = (decoded['orderName'] ?? '').toString();
         _orderPhoneController.text = (decoded['orderPhone'] ?? '').toString();
         if (_receiverNameController.text.trim().isEmpty) {
@@ -3740,6 +3788,8 @@ class _PlayAutoQuoteOrderAddScreenState
       );
       final token = await _storage.read(key: _tokenKey);
       final tokenIssuedAtText = await _storage.read(key: _tokenIssuedAtKey);
+      final customShopCode = await _storage.read(key: _customShopCodeKey);
+      final customShopId = await _storage.read(key: _customShopIdKey);
       final tokenIssuedAt = tokenIssuedAtText == null
           ? null
           : DateTime.tryParse(tokenIssuedAtText);
@@ -3758,11 +3808,32 @@ class _PlayAutoQuoteOrderAddScreenState
           _tokenController.text = token;
           _tokenIssuedAt = tokenIssuedAt;
         }
+        if (customShopCode != null && customShopCode.trim().isNotEmpty) {
+          _customShopCodeController.text = customShopCode.trim();
+        }
+        if (customShopId != null && customShopId.trim().isNotEmpty) {
+          _customShopIdController.text = customShopId.trim();
+        }
       });
     } on MissingPluginException {
       if (!mounted) return;
       _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
     }
+  }
+
+  Future<void> _saveDefaultCustomShopAccount() async {
+    final code = _customShopCodeController.text.trim();
+    final id = _customShopIdController.text.trim();
+    if (code.isEmpty || id.isEmpty) return;
+    await _storage.write(key: _customShopCodeKey, value: code);
+    await _storage.write(key: _customShopIdKey, value: id);
+  }
+
+  Future<void> _clearDefaultCustomShopAccount() async {
+    _customShopCodeController.clear();
+    _customShopIdController.clear();
+    await _storage.delete(key: _customShopCodeKey);
+    await _storage.delete(key: _customShopIdKey);
   }
 
   Future<void> _loadAddressEntries() async {
@@ -3985,7 +4056,10 @@ class _PlayAutoQuoteOrderAddScreenState
         _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
         headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
       );
-      final shops = _readShopAccounts(response.body);
+      final shops = _withManualCustomShopAccount(
+          _readShopAccounts(response.body)
+              .where((shop) => shop.isCustomInput)
+              .toList());
       if (!mounted) return;
       setState(() {
         _shops = shops;
@@ -4086,6 +4160,9 @@ class _PlayAutoQuoteOrderAddScreenState
           'response=${log.message}',
         ].join(' '),
       );
+      if (!success && _isInvalidCustomShopResponse(response.body)) {
+        await _clearDefaultCustomShopAccount();
+      }
       await _saveQuoteOrderAddLog(log);
       if (!mounted) return;
       final resultMessage = _playAutoOrderAddResultMessage(
@@ -4157,36 +4234,210 @@ class _PlayAutoQuoteOrderAddScreenState
   }
 
   Future<void> _ensureAutoSubmitShopAccount(String apiKey) async {
-    if (_customShopCodeController.text.trim().isNotEmpty &&
-        _customShopIdController.text.trim().isNotEmpty) {
-      return;
-    }
-
     final token = await _ensureToken(apiKey);
     final response = await http.get(
       _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
       headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
     );
     final shops = _readShopAccounts(response.body);
-    final usableShops = shops.where((shop) => shop.id.trim().isNotEmpty);
+    debugPrint(
+      '[PlayAuto /order/add] shops response status=${response.statusCode}',
+    );
+    _debugPrintLong(
+      '[PlayAuto /order/add] shops response body ',
+      _prettyBody(response.body),
+    );
+    debugPrint(
+      '[PlayAuto /order/add] parsed shops '
+      '${shops.map((shop) => '${shop.code}|${shop.id}|${shop.name}|custom=${shop.isCustomInput}').join(', ')}',
+    );
+    final manualShop = _manualCustomShopAccount();
+    if (manualShop != null) {
+      final regularShop = _matchingRegularShop(manualShop, shops);
+      if (regularShop == null) {
+        if (!mounted) return;
+        setState(() {
+          _shops = _withManualCustomShopAccount(shops);
+          _selectedShop = manualShop;
+        });
+        debugPrint(
+          '[PlayAuto /order/add] selected saved custom shop '
+          'custom_shop_cd=${manualShop.code} '
+          'custom_shop_id=${manualShop.id}',
+        );
+        return;
+      }
+      debugPrint(
+        '[PlayAuto /order/add] saved shop is regular shop '
+        'custom_shop_cd=${manualShop.code} '
+        'custom_shop_id=${manualShop.id} '
+        'regular=${regularShop.name}',
+      );
+      await _clearDefaultCustomShopAccount();
+    }
+
+    final usableShops = shops.where(
+      (shop) => shop.isCustomInput && shop.id.trim().isNotEmpty,
+    );
     final shop = usableShops.isEmpty ? null : usableShops.first;
+    if (shop == null && widget.autoSubmit) {
+      final enteredShop = await _showCustomShopAccountSetupDialog(
+        regularShops: shops.where((shop) => !shop.isCustomInput).toList(),
+      );
+      if (enteredShop != null) {
+        if (!mounted) return;
+        setState(() {
+          _customShopCodeController.text = enteredShop.code;
+          _customShopIdController.text = enteredShop.id;
+          _shops = _withManualCustomShopAccount(shops);
+          _selectedShop = enteredShop;
+        });
+        await _saveDefaultCustomShopAccount();
+        debugPrint(
+          '[PlayAuto /order/add] selected entered custom shop '
+          'custom_shop_cd=${enteredShop.code} '
+          'custom_shop_id=${enteredShop.id}',
+        );
+        return;
+      }
+    }
     if (shop == null) {
       throw const _PlayAutoUserMessage(
-        '플토 주문 전송 실패: 사용 가능한 쇼핑몰 계정을 찾지 못했습니다.',
+        '플토 주문 전송 실패: 직접입력 쇼핑몰 코드와 아이디를 먼저 저장해주세요.',
       );
     }
 
     if (!mounted) return;
     setState(() {
-      _shops = shops;
+      _shops = _withManualCustomShopAccount(shops);
       _selectedShop = shop;
       _customShopCodeController.text = shop.code;
       _customShopIdController.text = shop.id;
     });
+    await _saveDefaultCustomShopAccount();
+    debugPrint(
+      '[PlayAuto /order/add] selected custom shop '
+      'custom_shop_cd=${shop.code} custom_shop_id=${shop.id} name=${shop.name}',
+    );
+  }
+
+  _PlayAutoShopAccount? _matchingRegularShop(
+    _PlayAutoShopAccount target,
+    List<_PlayAutoShopAccount> shops,
+  ) {
+    for (final shop in shops) {
+      if (shop.isCustomInput) continue;
+      if (shop.code.trim() == target.code.trim()) return shop;
+    }
+    return null;
+  }
+
+  Future<_PlayAutoShopAccount?> _showCustomShopAccountSetupDialog({
+    required List<_PlayAutoShopAccount> regularShops,
+  }) async {
+    if (!mounted) return null;
+    final formKey = GlobalKey<FormState>();
+    final codeController = TextEditingController();
+    final idController = TextEditingController();
+    try {
+      return await showDialog<_PlayAutoShopAccount>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('직접입력 쇼핑몰 설정'),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '플토 주문 전송에는 직접입력 쇼핑몰의 shop_cd와 shop_id가 필요합니다.',
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: codeController,
+                    decoration: const InputDecoration(labelText: 'shop_cd'),
+                    textCapitalization: TextCapitalization.characters,
+                    validator: (value) {
+                      final text = (value ?? '').trim();
+                      if (text.isEmpty) return '필수 입력';
+                      if (regularShops.any((shop) => shop.code == text)) {
+                        return '일반 쇼핑몰 코드가 아닌 직접입력 코드를 입력해주세요.';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: idController,
+                    decoration: const InputDecoration(labelText: 'shop_id'),
+                    validator: _requiredText,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('취소'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (!(formKey.currentState?.validate() ?? false)) return;
+                  Navigator.of(dialogContext).pop(
+                    _PlayAutoShopAccount(
+                      code: codeController.text.trim(),
+                      id: idController.text.trim(),
+                      name: '직접입력',
+                      isCustomInput: true,
+                    ),
+                  );
+                },
+                child: const Text('저장 후 전송'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      codeController.dispose();
+      idController.dispose();
+    }
+  }
+
+  _PlayAutoShopAccount? _manualCustomShopAccount() {
+    final code = _customShopCodeController.text.trim();
+    final id = _customShopIdController.text.trim();
+    if (code.isEmpty || id.isEmpty) return null;
+    return _PlayAutoShopAccount(
+      code: code,
+      id: id,
+      name: '직접입력',
+      isCustomInput: true,
+    );
+  }
+
+  List<_PlayAutoShopAccount> _withManualCustomShopAccount(
+    List<_PlayAutoShopAccount> shops,
+  ) {
+    final manual = _manualCustomShopAccount();
+    if (manual == null) return shops;
+    final merged = <String, _PlayAutoShopAccount>{
+      for (final shop in shops) shop.key: shop,
+      manual.key: manual,
+    }.values.toList();
+    merged.sort((a, b) => a.label.compareTo(b.label));
+    return merged;
   }
 
   void _debugPrintPlayAutoOrderAddRequest(Map<String, Object?> requestBody) {
     debugPrint('[PlayAuto /order/add] request amount summary');
+    debugPrint(
+      '[PlayAuto /order/add] request shop '
+      'custom_shop_cd=${requestBody['custom_shop_cd']} '
+      'custom_shop_id=${requestBody['custom_shop_id']}',
+    );
     for (final line in widget.lines) {
       final qty = _linePlayAutoSaleCount(line);
       final lineAmount = _linePlayAutoLineAmount(line);
@@ -4526,6 +4777,13 @@ class _PlayAutoQuoteOrderAddScreenState
     return false;
   }
 
+  bool _isInvalidCustomShopResponse(String body) {
+    return body.contains('"e2056"') ||
+        body.contains("'e2056'") ||
+        body.contains('"e2058"') ||
+        body.contains("'e2058'");
+  }
+
   Map<String, Object?> _buildRequestBody() {
     final nowText = _formatDateTime(DateTime.now());
     final shopCode = _customShopCodeController.text.trim();
@@ -4659,6 +4917,7 @@ class _PlayAutoQuoteOrderAddScreenState
     Map<String, _PlayAutoShopAccount> accounts, {
     String inheritedCode = '',
     String inheritedName = '',
+    bool inheritedCustomInput = false,
   }) {
     if (node is List) {
       for (final child in node) {
@@ -4667,6 +4926,7 @@ class _PlayAutoQuoteOrderAddScreenState
           accounts,
           inheritedCode: inheritedCode,
           inheritedName: inheritedName,
+          inheritedCustomInput: inheritedCustomInput,
         );
       }
       return;
@@ -4675,7 +4935,17 @@ class _PlayAutoQuoteOrderAddScreenState
     final map = node.map((key, value) => MapEntry(key.toString(), value));
     final code = _pickStringFromMap(
       map,
-      const ['site_code', 'shop_cd', 'shop_code', 'mall_code', 'code'],
+      const [
+        'custom_shop_cd',
+        'customShopCd',
+        'custom_shop_code',
+        'customShopCode',
+        'site_code',
+        'shop_cd',
+        'shop_code',
+        'mall_code',
+        'code',
+      ],
       fallback: inheritedCode,
     );
     final name = _pickStringFromMap(
@@ -4701,15 +4971,28 @@ class _PlayAutoQuoteOrderAddScreenState
       'login_id',
     ]);
     if (code.isNotEmpty) {
-      final account = _PlayAutoShopAccount(code: code, id: id, name: name);
-      accounts[account.key] = account;
+      final account = _PlayAutoShopAccount(
+        code: code,
+        id: id,
+        name: name,
+        isCustomInput: inheritedCustomInput || _isCustomInputShopMap(map),
+      );
+      final existing = accounts[account.key];
+      accounts[account.key] = existing == null
+          ? account
+          : account.copyWith(
+              isCustomInput: account.isCustomInput || existing.isCustomInput,
+            );
     }
     for (final entry in map.entries) {
+      final childInheritedCustomInput =
+          inheritedCustomInput || _looksLikeCustomInputKey(entry.key);
       _collectShopAccounts(
         entry.value,
         accounts,
         inheritedCode: _looksLikeShopCode(entry.key) ? entry.key : code,
         inheritedName: name,
+        inheritedCustomInput: childInheritedCustomInput,
       );
     }
   }
@@ -4730,6 +5013,28 @@ class _PlayAutoQuoteOrderAddScreenState
 
   bool _looksLikeShopCode(String value) {
     return RegExp(r'^[A-Z]\d{3}$').hasMatch(value.trim());
+  }
+
+  bool _isCustomInputShopMap(Map<String, Object?> map) {
+    if (map.keys.any(_looksLikeCustomInputKey)) {
+      return true;
+    }
+    final name = _pickStringFromMap(map, const [
+      'site_name',
+      'shop_name',
+      'mall_name',
+      'name',
+      'custom_shop_name',
+    ]);
+    return name.contains('직접입력') || name.toLowerCase().contains('custom');
+  }
+
+  bool _looksLikeCustomInputKey(String key) {
+    final lower = key.toLowerCase();
+    return lower.contains('custom_shop') ||
+        lower.contains('customshop') ||
+        lower.contains('direct_shop') ||
+        lower.contains('directshop');
   }
 
   String? _readToken(String body) {
@@ -8320,19 +8625,32 @@ class _PlayAutoShopAccount {
     required this.code,
     required this.id,
     required this.name,
+    this.isCustomInput = false,
   });
 
   final String code;
   final String id;
   final String name;
+  final bool isCustomInput;
+
+  _PlayAutoShopAccount copyWith({
+    bool? isCustomInput,
+  }) =>
+      _PlayAutoShopAccount(
+        code: code,
+        id: id,
+        name: name,
+        isCustomInput: isCustomInput ?? this.isCustomInput,
+      );
 
   String get key => '$code::$id';
 
   String get title => name.isEmpty ? '쇼핑몰명 없음' : name;
 
   String get label {
-    if (id.isEmpty) return '$title · $code';
-    return '$title · $code · $id';
+    final prefix = isCustomInput ? '직접입력 · ' : '';
+    if (id.isEmpty) return '$prefix$title · $code';
+    return '$prefix$title · $code · $id';
   }
 }
 
