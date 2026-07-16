@@ -2013,6 +2013,20 @@ String _formatTarotDate(DateTime date) {
   return '${date.month}월 ${date.day}일';
 }
 
+String _formatWon(double value) {
+  final rounded = value.round().abs().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < rounded.length; i++) {
+    final remaining = rounded.length - i;
+    buffer.write(rounded[i]);
+    if (remaining > 1 && remaining % 3 == 1) {
+      buffer.write(',');
+    }
+  }
+  final sign = value < 0 ? '-' : '';
+  return '$sign$buffer원';
+}
+
 class _SummaryPanel extends StatelessWidget {
   final int itemCount;
   final int totalQty;
@@ -2243,7 +2257,7 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
 
   Widget _buildCompact(BuildContext context) {
     return SizedBox(
-      height: 118,
+      height: 152,
       child: Column(
         children: [
           _buildHeader(context),
@@ -2253,9 +2267,20 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
               children: [
                 Expanded(
                   flex: 7,
-                  child: _SpeechBubble(
-                    text: _compactMessages[_compactMessageIndex],
-                    compact: true,
+                  child: Column(
+                    children: [
+                      _TodayBusinessMetrics(
+                        summary: widget.todaySummary,
+                        compact: true,
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: _SpeechBubble(
+                          text: _compactMessages[_compactMessageIndex],
+                          compact: true,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -2358,6 +2383,156 @@ class _SpeechBubble extends StatelessWidget {
   }
 }
 
+class _TodayBusinessMetrics extends StatelessWidget {
+  final TodayActivitySummary summary;
+  final bool compact;
+
+  const _TodayBusinessMetrics({
+    required this.summary,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = [
+      _TodayBusinessMetricData(
+        label: '신규주문',
+        value: '${summary.newOrders}개',
+        color: const Color(0xFF6A7AF5),
+      ),
+      _TodayBusinessMetricData(
+        label: '오늘 매출',
+        value: _formatWon(summary.todaySales),
+        color: const Color(0xFF2F9F70),
+      ),
+      _TodayBusinessMetricData(
+        label: '이달 매출',
+        value: _formatWon(summary.monthSales),
+        color: const Color(0xFF7756E7),
+      ),
+      _TodayBusinessMetricData(
+        label: '오늘 발주',
+        value: '${summary.purchases}개',
+        color: const Color(0xFFED8A3D),
+      ),
+      _TodayBusinessMetricData(
+        label: '오늘 지출',
+        value: _formatWon(summary.todayExpenses),
+        color: const Color(0xFFD95858),
+      ),
+    ];
+
+    if (compact) {
+      return SizedBox(
+        height: 54,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: metrics.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) {
+            final metric = metrics[index];
+            return SizedBox(
+              width: 104,
+              child: _TodayBusinessMetric(
+                label: metric.label,
+                value: metric.value,
+                color: metric.color,
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = constraints.maxWidth >= 520
+            ? (constraints.maxWidth - 16) / 3
+            : (constraints.maxWidth - 8) / 2;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final metric in metrics)
+              SizedBox(
+                width: itemWidth,
+                child: _TodayBusinessMetric(
+                  label: metric.label,
+                  value: metric.value,
+                  color: metric.color,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TodayBusinessMetricData {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _TodayBusinessMetricData({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+}
+
+class _TodayBusinessMetric extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _TodayBusinessMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFF17151C),
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _TodayActivityPanel extends StatelessWidget {
   final TodayActivitySummary summary;
   final VoidCallback onOpenOrders;
@@ -2438,8 +2613,15 @@ class _TodayActivityPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE9E2F5)),
       ),
-      child: lines.isEmpty
-          ? const Padding(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: _TodayBusinessMetrics(summary: summary),
+          ),
+          const Divider(height: 1),
+          if (lines.isEmpty)
+            const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 18),
               child: Text(
                 '오늘은 아직 기록된 활동이 없어요. 첫 기록을 남겨볼까요?',
@@ -2450,7 +2632,8 @@ class _TodayActivityPanel extends StatelessWidget {
                 ),
               ),
             )
-          : Column(
+          else
+            Column(
               children: [
                 for (var i = 0; i < lines.length; i++)
                   _TodayActivityRow(
@@ -2459,6 +2642,8 @@ class _TodayActivityPanel extends StatelessWidget {
                   ),
               ],
             ),
+        ],
+      ),
     );
   }
 }

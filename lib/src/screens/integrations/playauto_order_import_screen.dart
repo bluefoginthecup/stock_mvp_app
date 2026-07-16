@@ -76,6 +76,34 @@ String _playAutoOrderIdentityKey(_PlayAutoOrderPreview order) {
   ].join('::'));
 }
 
+bool _samePlayAutoOrder(
+  _PlayAutoOrderPreview left,
+  _PlayAutoOrderPreview right,
+) {
+  final leftKeys = {
+    left.bundleNo.trim(),
+    left.uniq.trim(),
+    left.orderNo.trim(),
+  }.where((value) => value.isNotEmpty && value != '-').toSet();
+  final rightKeys = {
+    right.bundleNo.trim(),
+    right.uniq.trim(),
+    right.orderNo.trim(),
+  };
+  if (rightKeys.any(leftKeys.contains)) return true;
+  return _playAutoOrderIdentityKey(left) == _playAutoOrderIdentityKey(right);
+}
+
+_PlayAutoOrderPreview? _findMatchingOrderPreview(
+  _PlayAutoOrderPreview original,
+  List<_PlayAutoOrderPreview> orders,
+) {
+  for (final order in orders) {
+    if (_samePlayAutoOrder(order, original)) return order;
+  }
+  return null;
+}
+
 bool _isPlayAutoFreshOrderStatus(String status) {
   return status.contains('신규') || status.contains('결제완료');
 }
@@ -87,7 +115,7 @@ class PlayAutoOrderImportScreen extends StatefulWidget {
 
   const PlayAutoOrderImportScreen.orderView({super.key})
       : orderViewOnly = true,
-        fulfillmentMode = false;
+        fulfillmentMode = true;
 
   const PlayAutoOrderImportScreen.fulfillment({super.key})
       : orderViewOnly = true,
@@ -116,6 +144,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       'playauto_auto_sync_interval_minutes_v1';
   static const _autoSyncLastRunKey = 'playauto_auto_sync_last_run_v1';
   static const _knownOrderKeysKey = 'playauto_known_order_keys_v1';
+  static const _defaultOrderCollectionAction = 'ScrapOrderAndConfirmDoit';
   static const _tokenLifetime = Duration(hours: 24);
 
   final _baseUrlController = TextEditingController(
@@ -136,7 +165,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
   String? _loadingMessage;
   var _credentialsLoaded = false;
   var _autoFetchedOrderView = false;
-  var _workAction = 'ScrapOrder';
+  var _workAction = _defaultOrderCollectionAction;
   List<_PlayAutoOrderPreview> _orders = const [];
   List<_PlayAutoShopAccount> _shopAccounts = const [];
   List<_PlayAutoQuoteOrderAddLog> _quoteOrderAddLogs = const [];
@@ -403,6 +432,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       final sdate = _sdateController.text.trim();
       final edate = _edateController.text.trim();
       final length = int.tryParse(_lengthController.text.trim()) ?? 100;
+      final collection = await _runDefaultOrderCollectionBeforeFetch();
       final result = await _fetchOrdersFromPlayAuto(
         sdate: sdate,
         edate: edate,
@@ -419,18 +449,22 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       setState(() {
         _orders = result.orders;
         _statusCode = result.statusCode;
-        _result = result.body;
+        _result = [
+          if (collection != null) collection.body,
+          if (collection != null) '',
+          result.body,
+        ].join('\n');
         _lastAutoSyncAt = now;
         _newOrderBadgeCount = freshCount;
       });
       if (newOrders.isNotEmpty) {
         await _PlayAutoOrderNotificationService.showNewOrders(
           count: newOrders.length,
-          badgeCount: freshCount,
+          badgeCount: newOrders.length,
           sampleTitle: newOrders.first.productName,
         );
       } else {
-        await _PlayAutoOrderNotificationService.showBadgeOnly(freshCount);
+        await _PlayAutoOrderNotificationService.showBadgeOnly(0);
       }
     } on _PlayAutoUserMessage catch (e) {
       if (!mounted) return;
@@ -441,6 +475,81 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     } finally {
       if (mounted) setState(() => _autoSyncRunning = false);
     }
+  }
+
+  Future<_PlayAutoCollectionRunResult?>
+      _runDefaultOrderCollectionBeforeFetch() async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) return null;
+
+    final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+    if (tokenResult.response != null) {
+      throw _PlayAutoUserMessage(tokenResult.response!.body);
+    }
+    final token = tokenResult.token!;
+
+    var shops = _shopAccounts;
+    if (shops.isEmpty) {
+      shops = await _fetchShopAccountsInternal(apiKey: apiKey, token: token);
+      if (mounted) {
+        setState(() {
+          _shopAccounts = shops;
+          _selectedShopAccountKeys = {
+            for (final shop in shops)
+              if (shop.id.trim().isNotEmpty) shop.key,
+          };
+          _syncManualTargetFields();
+        });
+      }
+    }
+
+    final targets = shops
+        .where((shop) => shop.id.trim().isNotEmpty)
+        .map((shop) => _PlayAutoWorkTarget(code: shop.code, id: shop.id))
+        .toList();
+    if (targets.isEmpty) {
+      throw const _PlayAutoUserMessage(
+        '자동 동기화할 쇼핑몰 아이디를 찾지 못했습니다. 쇼핑몰 목록을 확인해주세요.',
+      );
+    }
+
+    final registered = await _registerOrderCollectionWorkInternal(
+      apiKey: apiKey,
+      token: token,
+      targets: targets,
+      action: _defaultOrderCollectionAction,
+    );
+    if (mounted) {
+      setState(() => _lastWorkNos = registered.workNos);
+    }
+
+    _PlayAutoResponse? workResult;
+    if (registered.workNos.isNotEmpty) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      workResult = await _fetchWorkResultsInternal(
+        apiKey: apiKey,
+        token: token,
+        workNos: registered.workNos,
+      );
+    }
+
+    return _PlayAutoCollectionRunResult(
+      statusCode: workResult?.statusCode ?? registered.response.statusCode,
+      body: [
+        '자동 동기화 주문 수집',
+        '작업: 발주확인 후 주문 수집',
+        '대상 쇼핑몰 ${targets.length}개',
+        if (registered.workNos.isNotEmpty)
+          '작업번호 ${registered.workNos.join(', ')}',
+        '',
+        registered.response.body,
+        if (workResult != null) ...[
+          '',
+          '작업 결과',
+          workResult.body,
+        ],
+      ].join('\n'),
+    );
   }
 
   Future<void> _seedKnownOrderKeysIfNeeded() async {
@@ -748,24 +857,30 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         if (tokenResult.response != null) return tokenResult.response!;
         final token = tokenResult.token!;
 
-        final response = await http.get(
+        final rawResponse = await http.get(
           _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
           headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
         );
-        final shops = _readShopAccounts(response.body);
+        final shops = _readShopAccounts(rawResponse.body);
         if (mounted) {
           setState(() {
             _shopAccounts = shops;
-            _selectedShopAccountKeys = {
+            final selected = {
               for (final key in _selectedShopAccountKeys)
                 if (shops.any((shop) => shop.key == key)) key,
             };
-            if (shops.length == 1) _toggleShopAccount(shops.first, true);
+            _selectedShopAccountKeys = selected.isEmpty
+                ? {
+                    for (final shop in shops)
+                      if (shop.id.trim().isNotEmpty) shop.key,
+                  }
+                : selected;
+            _syncManualTargetFields();
           });
         }
 
         return _PlayAutoResponse(
-          statusCode: response.statusCode,
+          statusCode: rawResponse.statusCode,
           body: [
             '불러온 쇼핑몰 ${shops.length}건',
             if (shops.isEmpty) '응답 구조에서 쇼핑몰 코드를 찾지 못했습니다.',
@@ -774,13 +889,24 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
             'GET /shops?used=true',
             '',
             '응답',
-            _prettyBody(response.body),
+            _prettyBody(rawResponse.body),
           ].join('\n'),
         );
       },
       clearOrders: false,
       loadingMessage: 'PlayAuto 쇼핑몰 목록을 불러오고 있습니다.',
     );
+  }
+
+  Future<List<_PlayAutoShopAccount>> _fetchShopAccountsInternal({
+    required String apiKey,
+    required String token,
+  }) async {
+    final response = await http.get(
+      _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
+      headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+    );
+    return _readShopAccounts(response.body);
   }
 
   Future<void> _registerOrderCollectionWork() async {
@@ -808,67 +934,85 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         if (tokenResult.response != null) return tokenResult.response!;
         final token = tokenResult.token!;
 
-        final groupedTargets = _groupWorkTargetsByCode(workTargets);
-        final responses = <String>[];
-        final workNos = <String>{};
-        int? statusCode;
-
-        for (var index = 0; index < groupedTargets.length; index += 1) {
-          final entry = groupedTargets.entries.elementAt(index);
-          final requestBody = <String, Object?>{
-            'act': _workAction,
-            'params': {
-              'site_code': entry.key,
-              'site_id': entry.value.toList(),
-            },
-          };
-
-          final response = await http.post(
-            _endpoint('/work/addWork/v1.2'),
-            headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
-            body: jsonEncode(requestBody),
-          );
-          statusCode ??= response.statusCode;
-          workNos.addAll(_readWorkNos(response.body));
-          responses.add(
-            [
-              '쇼핑몰 코드 ${entry.key}',
-              'HTTP ${response.statusCode}',
-              '요청 바디',
-              const JsonEncoder.withIndent('  ').convert(requestBody),
-              '',
-              '응답',
-              _prettyBody(response.body),
-            ].join('\n'),
-          );
-
-          if (index < groupedTargets.length - 1) {
-            await Future<void>.delayed(const Duration(seconds: 1));
-          }
-        }
+        final result = await _registerOrderCollectionWorkInternal(
+          apiKey: apiKey,
+          token: token,
+          targets: workTargets,
+          action: _workAction,
+        );
 
         if (mounted) {
-          setState(() {
-            _lastWorkNos = workNos.toList();
-          });
+          setState(() => _lastWorkNos = result.workNos);
         }
 
-        return _PlayAutoResponse(
-          statusCode: statusCode,
-          body: [
-            if (workNos.isNotEmpty) ...[
-              '등록된 작업번호',
-              workNos.join(', '),
-              '',
-            ],
-            '등록 요청 ${groupedTargets.length}건',
-            '',
-            responses.join('\n\n'),
-          ].join('\n'),
-        );
+        return result.response;
       },
       clearOrders: false,
       loadingMessage: 'PlayAuto에 주문 수집 작업을 등록하고 있습니다.',
+    );
+  }
+
+  Future<_PlayAutoWorkRegistrationResult> _registerOrderCollectionWorkInternal({
+    required String apiKey,
+    required String token,
+    required List<_PlayAutoWorkTarget> targets,
+    required String action,
+  }) async {
+    final groupedTargets = _groupWorkTargetsByCode(targets);
+    final responses = <String>[];
+    final workNos = <String>{};
+    int? statusCode;
+
+    for (var index = 0; index < groupedTargets.length; index += 1) {
+      final entry = groupedTargets.entries.elementAt(index);
+      final requestBody = <String, Object?>{
+        'act': action,
+        'params': {
+          'site_code': entry.key,
+          'site_id': entry.value.toList(),
+        },
+      };
+
+      final response = await http.post(
+        _endpoint('/work/addWork/v1.2'),
+        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+        body: jsonEncode(requestBody),
+      );
+      statusCode ??= response.statusCode;
+      workNos.addAll(_readWorkNos(response.body));
+      responses.add(
+        [
+          '쇼핑몰 코드 ${entry.key}',
+          'HTTP ${response.statusCode}',
+          '요청 바디',
+          const JsonEncoder.withIndent('  ').convert(requestBody),
+          '',
+          '응답',
+          _prettyBody(response.body),
+        ].join('\n'),
+      );
+
+      if (index < groupedTargets.length - 1) {
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+    }
+
+    final response = _PlayAutoResponse(
+      statusCode: statusCode,
+      body: [
+        if (workNos.isNotEmpty) ...[
+          '등록된 작업번호',
+          workNos.join(', '),
+          '',
+        ],
+        '등록 요청 ${groupedTargets.length}건',
+        '',
+        responses.join('\n\n'),
+      ].join('\n'),
+    );
+    return _PlayAutoWorkRegistrationResult(
+      response: response,
+      workNos: workNos.toList(),
     );
   }
 
@@ -889,26 +1033,10 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         if (tokenResult.response != null) return tokenResult.response!;
         final token = tokenResult.token!;
 
-        final responses = <String>[];
-        int? statusCode;
-        for (final workNo in _lastWorkNos) {
-          final response = await http.get(
-            _endpoint('/work/$workNo'),
-            headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
-          );
-          statusCode ??= response.statusCode;
-          responses.add(
-            [
-              '작업번호 $workNo',
-              'HTTP ${response.statusCode}',
-              _prettyBody(response.body),
-            ].join('\n'),
-          );
-        }
-
-        return _PlayAutoResponse(
-          statusCode: statusCode,
-          body: responses.join('\n\n'),
+        return _fetchWorkResultsInternal(
+          apiKey: apiKey,
+          token: token,
+          workNos: _lastWorkNos,
         );
       },
       clearOrders: false,
@@ -958,6 +1086,34 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<_PlayAutoResponse> _fetchWorkResultsInternal({
+    required String apiKey,
+    required String token,
+    required List<String> workNos,
+  }) async {
+    final responses = <String>[];
+    int? statusCode;
+    for (final workNo in workNos) {
+      final response = await http.get(
+        _endpoint('/work/$workNo'),
+        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+      );
+      statusCode ??= response.statusCode;
+      responses.add(
+        [
+          '작업번호 $workNo',
+          'HTTP ${response.statusCode}',
+          _prettyBody(response.body),
+        ].join('\n'),
+      );
+    }
+
+    return _PlayAutoResponse(
+      statusCode: statusCode,
+      body: responses.join('\n\n'),
+    );
   }
 
   Future<_TokenReadyResult> _ensureTokenForOrderFetch(String apiKey) async {
@@ -1015,6 +1171,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
           endDate: _edateController.text.trim(),
           length: int.tryParse(_lengthController.text.trim()) ?? 100,
           onFetchOrders: _fetchOrdersForPreview,
+          onFetchOrderDetail: _fetchOrderDetailFromPlayAuto,
           fulfillmentMode: widget.fulfillmentMode,
           onInstruction: _requestShipmentInstruction,
           onSetInvoice: _requestSetInvoice,
@@ -1062,6 +1219,34 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         _prettyBody(response.body),
       ].join('\n'),
     );
+  }
+
+  Future<_PlayAutoOrderPreview?> _fetchOrderDetailFromPlayAuto(
+    _PlayAutoOrderPreview order,
+  ) async {
+    final apiKey = _apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      throw const _PlayAutoUserMessage('API Key를 입력해주세요.');
+    }
+    final uniq = order.uniq.trim();
+    if (uniq.isEmpty) return null;
+
+    final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+    if (tokenResult.response != null) {
+      throw _PlayAutoUserMessage(tokenResult.response!.body);
+    }
+    final token = tokenResult.token!;
+    final response = await http.get(
+      _endpoint('/order/$uniq'),
+      headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw _PlayAutoUserMessage(
+        '주문 상세 조회 실패: HTTP ${response.statusCode}',
+      );
+    }
+    final orders = _readOrders(response.body);
+    return _findMatchingOrderPreview(order, orders);
   }
 
   Future<_PlayAutoResponse> _requestSetInvoice(
@@ -1287,9 +1472,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     }
     if (result.orders.isNotEmpty) {
       await _storeKnownOrderKeys(result.orders);
-      await _PlayAutoOrderNotificationService.showBadgeOnly(
-        _freshOrderCount(result.orders),
-      );
+      await _PlayAutoOrderNotificationService.showBadgeOnly(0);
     }
     return result;
   }
@@ -1726,6 +1909,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         endDate: _edateController.text.trim(),
         length: int.tryParse(_lengthController.text.trim()) ?? 100,
         onFetchOrders: _fetchOrdersForPreview,
+        onFetchOrderDetail: _fetchOrderDetailFromPlayAuto,
         fulfillmentMode: widget.fulfillmentMode,
         onInstruction: _requestShipmentInstruction,
         onSetInvoice: _requestSetInvoice,
@@ -1743,10 +1927,6 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
           title: Row(
             children: [
               const Text('플토'),
-              if (_newOrderBadgeCount > 0) ...[
-                const SizedBox(width: 6),
-                _PlayAutoNewOrderBadge(count: _newOrderBadgeCount),
-              ],
               const SizedBox(width: 14),
               Expanded(
                 child: TabBar(
@@ -1782,6 +1962,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
                   endDate: _edateController.text.trim(),
                   length: int.tryParse(_lengthController.text.trim()) ?? 100,
                   onFetchOrders: _fetchOrdersForPreview,
+                  onFetchOrderDetail: _fetchOrderDetailFromPlayAuto,
                   fulfillmentMode: true,
                   embedded: true,
                   onInstruction: _requestShipmentInstruction,
@@ -2425,35 +2606,12 @@ class _PlayAutoLoadingBanner extends StatelessWidget {
   }
 }
 
-class _PlayAutoNewOrderBadge extends StatelessWidget {
-  const _PlayAutoNewOrderBadge({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: Colors.redAccent,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-            ),
-      ),
-    );
-  }
-}
-
 class _PlayAutoOrderNotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
+  static const MethodChannel _badgeChannel = MethodChannel(
+    'chalstock/app_badge',
+  );
   static var _initialized = false;
   static var _unavailable = false;
 
@@ -2518,6 +2676,7 @@ class _PlayAutoOrderNotificationService {
       ),
       payload: 'playauto_orders',
     );
+    await _setNativeBadgeCount(badgeCount);
   }
 
   static Future<void> showBadgeOnly(int badgeCount) async {
@@ -2526,6 +2685,7 @@ class _PlayAutoOrderNotificationService {
     if (!Platform.isIOS && !Platform.isMacOS) return;
     await _requestPermissionsIfNeeded();
     final normalizedBadgeCount = math.max(0, badgeCount);
+    await _setNativeBadgeCount(normalizedBadgeCount);
     await _notifications.show(
       220716,
       null,
@@ -2547,6 +2707,20 @@ class _PlayAutoOrderNotificationService {
     );
     if (normalizedBadgeCount == 0) {
       await _notifications.cancel(220716);
+    }
+  }
+
+  static Future<void> _setNativeBadgeCount(int badgeCount) async {
+    if (!Platform.isIOS && !Platform.isMacOS) return;
+    try {
+      await _badgeChannel.invokeMethod<void>(
+        'setBadgeCount',
+        {'count': math.max(0, badgeCount)},
+      );
+    } on MissingPluginException {
+      // Older installed builds will pick this up after a full rebuild.
+    } catch (e) {
+      debugPrint('PlayAuto app badge update failed: $e');
     }
   }
 
@@ -2573,6 +2747,7 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     required this.endDate,
     required this.length,
     required this.onFetchOrders,
+    required this.onFetchOrderDetail,
     required this.fulfillmentMode,
     this.embedded = false,
     required this.onInstruction,
@@ -2591,6 +2766,8 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     required int length,
     bool forceRefresh,
   }) onFetchOrders;
+  final Future<_PlayAutoOrderPreview?> Function(_PlayAutoOrderPreview order)
+      onFetchOrderDetail;
   final bool fulfillmentMode;
   final bool embedded;
   final Future<_PlayAutoResponse> Function(_PlayAutoOrderPreview order)
@@ -2782,6 +2959,58 @@ class _PlayAutoAddressEntry {
   }
 }
 
+class PlayAutoDeliveryAddressEntry {
+  final String title;
+  final String address;
+  final String source;
+  final String? contactName;
+  final String? phone;
+
+  const PlayAutoDeliveryAddressEntry({
+    required this.title,
+    required this.address,
+    required this.source,
+    this.contactName,
+    this.phone,
+  });
+
+  _PlayAutoAddressEntry get _internal => _PlayAutoAddressEntry(
+        title: title,
+        address: address,
+        source: source,
+        contactName: contactName,
+        phone: phone,
+      );
+
+  static PlayAutoDeliveryAddressEntry _fromInternal(
+    _PlayAutoAddressEntry entry,
+  ) =>
+      PlayAutoDeliveryAddressEntry(
+        title: entry.title,
+        address: entry.address,
+        source: entry.source,
+        contactName: entry.contactName,
+        phone: entry.phone,
+      );
+}
+
+Future<PlayAutoDeliveryAddressEntry?> showPlayAutoAddressBookSheet(
+  BuildContext context, {
+  required List<PlayAutoDeliveryAddressEntry> entries,
+  required String initialQuery,
+}) async {
+  final selected = await showModalBottomSheet<_PlayAutoAddressEntry>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => _PlayAutoAddressBookSheet(
+      entries: entries.map((entry) => entry._internal).toList(),
+      initialQuery: initialQuery,
+    ),
+  );
+  if (selected == null) return null;
+  return PlayAutoDeliveryAddressEntry._fromInternal(selected);
+}
+
 class _PlayAutoAddressBookSheet extends StatefulWidget {
   final List<_PlayAutoAddressEntry> entries;
   final String initialQuery;
@@ -2945,6 +3174,31 @@ class _DaumPostcodeResult {
     if (roadAddress.trim().isNotEmpty) return roadAddress.trim();
     return jibunAddress.trim();
   }
+}
+
+class PlayAutoPostcodeResult {
+  final String zonecode;
+  final String address;
+
+  const PlayAutoPostcodeResult({
+    required this.zonecode,
+    required this.address,
+  });
+}
+
+Future<PlayAutoPostcodeResult?> showPlayAutoPostcodeSearchSheet(
+  BuildContext context,
+) async {
+  final selected = await showModalBottomSheet<_DaumPostcodeResult>(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => const _DaumPostcodeSheet(),
+  );
+  if (selected == null) return null;
+  return PlayAutoPostcodeResult(
+    zonecode: selected.zonecode,
+    address: selected.address,
+  );
 }
 
 class _DaumPostcodeSheet extends StatefulWidget {
@@ -3218,10 +3472,12 @@ class PlayAutoQuoteOrderAddScreen extends StatefulWidget {
     super.key,
     required this.quote,
     required this.lines,
+    this.autoSubmit = false,
   });
 
   final Quote quote;
   final List<QuoteLine> lines;
+  final bool autoSubmit;
 
   @override
   State<PlayAutoQuoteOrderAddScreen> createState() =>
@@ -3240,6 +3496,7 @@ class _PlayAutoQuoteOrderAddScreenState
       _PlayAutoOrderImportScreenState._tokenIssuedAtKey;
   static const _quoteOrderAddLogKey =
       _PlayAutoOrderImportScreenState._quoteOrderAddLogKey;
+  static const _quoteOrderAddDraftKey = 'playauto_quote_order_add_draft';
   static const _tokenLifetime = _PlayAutoOrderImportScreenState._tokenLifetime;
 
   final _formKey = GlobalKey<FormState>();
@@ -3273,6 +3530,9 @@ class _PlayAutoQuoteOrderAddScreenState
   _PlayAutoShopAccount? _selectedShop;
   Map<String, String> _lineSkus = const {};
   List<_PlayAutoAddressEntry> _addressEntries = const [];
+  Timer? _draftSaveTimer;
+  var _draftReady = false;
+  var _autoSubmitStarted = false;
 
   @override
   void initState() {
@@ -3287,14 +3547,46 @@ class _PlayAutoQuoteOrderAddScreenState
         : '$firstLineName 외 ${widget.lines.length - 1}건';
     _shippingCostController.text =
         widget.quote.shippingCost.clamp(0, double.infinity).toStringAsFixed(0);
-    _loadSavedCredentials();
-    _loadLineSkus();
-    _loadAddressEntries();
-    _loadQuoteCustomerDefaults();
+    _receiverNameController.text =
+        (widget.quote.deliveryName ?? '').trim().isNotEmpty
+            ? widget.quote.deliveryName!.trim()
+            : customerName;
+    _receiverPhoneController.text = widget.quote.deliveryPhone ?? '';
+    if (_orderPhoneController.text.trim().isEmpty &&
+        (widget.quote.deliveryPhone ?? '').trim().isNotEmpty) {
+      _orderPhoneController.text = widget.quote.deliveryPhone!.trim();
+    }
+    _zipController.text = widget.quote.deliveryZip ?? '';
+    _address1Controller.text = widget.quote.deliveryAddress1 ?? '';
+    _address2Controller.text = widget.quote.deliveryAddress2 ?? '';
+    _shipMessageController.text = widget.quote.deliveryMemo ?? '';
+    for (final controller in _draftControllers) {
+      controller.addListener(_scheduleSaveDraft);
+    }
+    unawaited(_bootstrap());
+  }
+
+  Future<void> _bootstrap() async {
+    await _loadSavedCredentials();
+    await _loadLineSkus();
+    await _loadAddressEntries();
+    await _loadQuoteCustomerDefaults();
+    await _loadSavedDraft();
+    if (widget.autoSubmit && mounted && !_autoSubmitStarted) {
+      _autoSubmitStarted = true;
+      await _submit();
+    }
   }
 
   @override
   void dispose() {
+    _draftSaveTimer?.cancel();
+    if (_draftReady) {
+      unawaited(_saveDraft());
+    }
+    for (final controller in _draftControllers) {
+      controller.removeListener(_scheduleSaveDraft);
+    }
     _baseUrlController.dispose();
     _apiKeyController.dispose();
     _authenticationKeyController.dispose();
@@ -3313,6 +3605,130 @@ class _PlayAutoQuoteOrderAddScreenState
     _shopOrderNoController.dispose();
     _shopSaleNameController.dispose();
     super.dispose();
+  }
+
+  List<TextEditingController> get _draftControllers => [
+        _customShopCodeController,
+        _customShopIdController,
+        _orderNameController,
+        _orderPhoneController,
+        _receiverNameController,
+        _receiverPhoneController,
+        _zipController,
+        _address1Controller,
+        _address2Controller,
+        _shipMessageController,
+        _shippingCostController,
+        _shopOrderNoController,
+        _shopSaleNameController,
+      ];
+
+  String get _draftStorageKey => '$_quoteOrderAddDraftKey:${widget.quote.id}';
+
+  void _scheduleSaveDraft() {
+    if (!_draftReady) return;
+    _draftSaveTimer?.cancel();
+    _draftSaveTimer = Timer(const Duration(milliseconds: 600), () {
+      unawaited(_saveDraft());
+    });
+  }
+
+  Future<void> _loadSavedDraft() async {
+    try {
+      final text = await _storage.read(key: _draftStorageKey);
+      if (text == null || text.trim().isEmpty) {
+        _draftReady = true;
+        return;
+      }
+      final decoded = jsonDecode(text);
+      if (decoded is! Map || !mounted) {
+        _draftReady = true;
+        return;
+      }
+      setState(() {
+        _customShopCodeController.text =
+            (decoded['customShopCode'] ?? '').toString();
+        _customShopIdController.text =
+            (decoded['customShopId'] ?? '').toString();
+        _orderNameController.text = (decoded['orderName'] ?? '').toString();
+        _orderPhoneController.text = (decoded['orderPhone'] ?? '').toString();
+        if (_receiverNameController.text.trim().isEmpty) {
+          _receiverNameController.text =
+              (decoded['receiverName'] ?? '').toString();
+        }
+        if (_receiverPhoneController.text.trim().isEmpty) {
+          _receiverPhoneController.text =
+              (decoded['receiverPhone'] ?? '').toString();
+        }
+        if (_zipController.text.trim().isEmpty) {
+          _zipController.text = (decoded['zip'] ?? '').toString();
+        }
+        if (_address1Controller.text.trim().isEmpty) {
+          _address1Controller.text = (decoded['address1'] ?? '').toString();
+        }
+        if (_address2Controller.text.trim().isEmpty) {
+          _address2Controller.text = (decoded['address2'] ?? '').toString();
+        }
+        if (_shipMessageController.text.trim().isEmpty) {
+          _shipMessageController.text =
+              (decoded['shipMessage'] ?? '').toString();
+        }
+        _shippingCostController.text =
+            (decoded['shippingCost'] ?? '').toString();
+        _shopOrderNoController.text = (decoded['shopOrderNo'] ?? '').toString();
+        _shopSaleNameController.text =
+            (decoded['shopSaleName'] ?? '').toString();
+      });
+    } catch (e) {
+      debugPrint('[PlayAuto /order/add] draft load failed: $e');
+    } finally {
+      _draftReady = true;
+    }
+  }
+
+  Future<void> _saveDraft() async {
+    try {
+      await _storage.write(
+        key: _draftStorageKey,
+        value: jsonEncode({
+          'customShopCode': _customShopCodeController.text,
+          'customShopId': _customShopIdController.text,
+          'orderName': _orderNameController.text,
+          'orderPhone': _orderPhoneController.text,
+          'receiverName': _receiverNameController.text,
+          'receiverPhone': _receiverPhoneController.text,
+          'zip': _zipController.text,
+          'address1': _address1Controller.text,
+          'address2': _address2Controller.text,
+          'shipMessage': _shipMessageController.text,
+          'shippingCost': _shippingCostController.text,
+          'shopOrderNo': _shopOrderNoController.text,
+          'shopSaleName': _shopSaleNameController.text,
+          'savedAt': DateTime.now().toIso8601String(),
+        }),
+      );
+    } on MissingPluginException {
+      // 보안 저장소가 준비되지 않은 개발 빌드에서는 조용히 건너뛴다.
+    } catch (e) {
+      debugPrint('[PlayAuto /order/add] draft save failed: $e');
+    }
+  }
+
+  Future<void> _saveQuoteDeliveryFromForm() async {
+    try {
+      await context.read<QuoteRepo>().updateQuote(
+            widget.quote.copyWith(
+              deliveryName: _receiverNameController.text.trim(),
+              deliveryPhone: _receiverPhoneController.text.trim(),
+              deliveryZip: _zipController.text.trim(),
+              deliveryAddress1: _address1Controller.text.trim(),
+              deliveryAddress2: _address2Controller.text.trim(),
+              deliveryMemo: _shipMessageController.text.trim(),
+            ),
+          );
+    } catch (e) {
+      debugPrint('[PlayAuto /order/add] quote delivery save failed: $e');
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -3596,12 +4012,20 @@ class _PlayAutoQuoteOrderAddScreenState
   Future<void> _submit() async {
     if (widget.lines.isEmpty) {
       _showSnack('플토 주문으로 보낼 견적 품목이 없습니다.');
+      if (widget.autoSubmit && mounted) {
+        Navigator.of(context).pop('플토 주문으로 보낼 견적 품목이 없습니다.');
+      }
       return;
     }
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!widget.autoSubmit && !(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
     final apiKey = _apiKeyController.text.trim();
     if (apiKey.isEmpty) {
       _showSnack('API Key를 입력해주세요.');
+      if (widget.autoSubmit && mounted) {
+        Navigator.of(context).pop('API Key를 입력해주세요.');
+      }
       return;
     }
 
@@ -3610,6 +4034,17 @@ class _PlayAutoQuoteOrderAddScreenState
       _result = null;
     });
     try {
+      if (widget.autoSubmit) {
+        await _ensureAutoSubmitShopAccount(apiKey);
+        final validationMessage = _autoSubmitValidationMessage();
+        if (validationMessage != null) {
+          _showSnack(validationMessage);
+          if (mounted) Navigator.of(context).pop(validationMessage);
+          return;
+        }
+      }
+      await _saveDraft();
+      await _saveQuoteDeliveryFromForm();
       final token = await _ensureToken(apiKey);
       final requestBody = _buildRequestBody();
       _debugPrintPlayAutoOrderAddRequest(requestBody);
@@ -3653,36 +4088,33 @@ class _PlayAutoQuoteOrderAddScreenState
       );
       await _saveQuoteOrderAddLog(log);
       if (!mounted) return;
+      final resultMessage = _playAutoOrderAddResultMessage(
+        success: success,
+        statusCode: response.statusCode,
+        responseBody: response.body,
+      );
       setState(() {
         _lastCreatedOrderNoText = createdOrderNoText;
         _lastCreatedAt = createdAt;
-        _result = [
-          success ? '플토 주문 등록 요청 완료' : '플토 주문 등록 응답 확인 필요',
-          'HTTP ${response.statusCode}',
-          '',
-          '전송 금액 요약',
-          _playAutoAmountSummary(),
-          '',
-          '요청 바디',
-          const JsonEncoder.withIndent('  ').convert(requestBody),
-          '',
-          '응답',
-          responseText,
-          if (createdOrderDetails != null) ...[
-            '',
-            '생성 주문 상세 확인',
-            createdOrderDetails,
-          ],
-        ].join('\n');
+        _result = success
+            ? [
+                resultMessage,
+                if (createdOrderNoText?.isNotEmpty == true)
+                  '주문번호 $createdOrderNoText',
+                if (createdOrderDetails != null) createdOrderDetails,
+              ].join('\n')
+            : resultMessage;
       });
-      _showSnack(
-        success ? '플토 주문 등록 요청을 보냈습니다.' : '플토 응답을 확인해주세요.',
-      );
+      _showSnack(resultMessage);
+      if (widget.autoSubmit && mounted) {
+        Navigator.of(context).pop(resultMessage);
+      }
     } on _PlayAutoUserMessage catch (e) {
       if (!mounted) return;
       debugPrint(
           '[PlayAuto /order/add] user-message quote=${widget.quote.id} $e');
       _showSnack(e.message);
+      if (widget.autoSubmit && mounted) Navigator.of(context).pop(e.message);
     } catch (e) {
       if (!mounted) return;
       debugPrint('[PlayAuto /order/add] exception quote=${widget.quote.id} $e');
@@ -3697,9 +4129,60 @@ class _PlayAutoQuoteOrderAddScreenState
         ),
       );
       _showSnack('플토 주문 등록 실패: $e');
+      if (widget.autoSubmit && mounted) {
+        Navigator.of(context).pop('플토 주문 등록 실패: $e');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String? _autoSubmitValidationMessage() {
+    final missing = <String>[
+      if (_apiKeyController.text.trim().isEmpty) 'API Key',
+      if (_customShopCodeController.text.trim().isEmpty) 'shop_cd',
+      if (_customShopIdController.text.trim().isEmpty) 'shop_id',
+      if (_shopOrderNoController.text.trim().isEmpty) '플토 주문번호',
+      if (_shopSaleNameController.text.trim().isEmpty) '주문상품명',
+      if (_orderNameController.text.trim().isEmpty) '주문자명',
+      if (_orderPhoneController.text.trim().isEmpty) '주문자 연락처',
+      if (_receiverNameController.text.trim().isEmpty) '수령자명',
+      if (_receiverPhoneController.text.trim().isEmpty) '수령자 연락처',
+      if (_zipController.text.trim().isEmpty) '우편번호',
+      if (_address1Controller.text.trim().isEmpty) '주소',
+      if (_shippingCostController.text.trim().isEmpty) '배송비',
+    ];
+    if (missing.isEmpty) return null;
+    return '플토 주문 전송에 필요한 값이 없습니다: ${missing.join(', ')}';
+  }
+
+  Future<void> _ensureAutoSubmitShopAccount(String apiKey) async {
+    if (_customShopCodeController.text.trim().isNotEmpty &&
+        _customShopIdController.text.trim().isNotEmpty) {
+      return;
+    }
+
+    final token = await _ensureToken(apiKey);
+    final response = await http.get(
+      _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
+      headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+    );
+    final shops = _readShopAccounts(response.body);
+    final usableShops = shops.where((shop) => shop.id.trim().isNotEmpty);
+    final shop = usableShops.isEmpty ? null : usableShops.first;
+    if (shop == null) {
+      throw const _PlayAutoUserMessage(
+        '플토 주문 전송 실패: 사용 가능한 쇼핑몰 계정을 찾지 못했습니다.',
+      );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _shops = shops;
+      _selectedShop = shop;
+      _customShopCodeController.text = shop.code;
+      _customShopIdController.text = shop.id;
+    });
   }
 
   void _debugPrintPlayAutoOrderAddRequest(Map<String, Object?> requestBody) {
@@ -3920,6 +4403,98 @@ class _PlayAutoQuoteOrderAddScreenState
     return '${flattened.substring(0, 180)}...';
   }
 
+  String _playAutoOrderAddResultMessage({
+    required bool success,
+    required int statusCode,
+    required String responseBody,
+  }) {
+    final reason = _playAutoOrderAddShortReason(responseBody);
+    if (success) {
+      if (reason.isEmpty || reason == '성공') return '플토 주문 등록 완료';
+      return '플토 주문 등록 완료: $reason';
+    }
+    final fallback = 'HTTP $statusCode';
+    return '플토 주문 등록 실패: ${reason.isEmpty ? fallback : reason}';
+  }
+
+  String _playAutoOrderAddShortReason(String body) {
+    final decoded = _tryDecodePlayAutoJson(body);
+    final fromJson = _findPlayAutoReason(decoded);
+    if (fromJson.isNotEmpty) return fromJson;
+
+    for (final key in const [
+      'results',
+      'result',
+      'message',
+      'msg',
+      'error',
+      'error_message',
+      'reason',
+    ]) {
+      final match = RegExp(
+        '"$key"\\s*:\\s*"([^"]+)"',
+        caseSensitive: false,
+      ).firstMatch(body);
+      if (match != null) return _shortenPlayAutoReason(match.group(1) ?? '');
+    }
+
+    if (body.contains('성공')) return '성공';
+    if (body.contains('실패')) return _shortenPlayAutoReason(body);
+    return '';
+  }
+
+  Object? _tryDecodePlayAutoJson(String body) {
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      final start = body.indexOf('{');
+      final end = body.lastIndexOf('}');
+      if (start < 0 || end <= start) return null;
+      try {
+        return jsonDecode(body.substring(start, end + 1));
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  String _findPlayAutoReason(Object? node) {
+    if (node is Map) {
+      for (final key in const [
+        'error_message',
+        'error_msg',
+        'message',
+        'msg',
+        'reason',
+        'result',
+        'results',
+        'error',
+      ]) {
+        final value = node[key];
+        if (value is String && value.trim().isNotEmpty) {
+          return _shortenPlayAutoReason(value);
+        }
+      }
+      for (final value in node.values) {
+        final found = _findPlayAutoReason(value);
+        if (found.isNotEmpty) return found;
+      }
+    }
+    if (node is List) {
+      for (final value in node) {
+        final found = _findPlayAutoReason(value);
+        if (found.isNotEmpty) return found;
+      }
+    }
+    return '';
+  }
+
+  String _shortenPlayAutoReason(String value) {
+    final compact = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.length <= 80) return compact;
+    return '${compact.substring(0, 80)}...';
+  }
+
   bool _playAutoBodyHasError(String body) {
     try {
       return _jsonContainsError(jsonDecode(body));
@@ -3990,28 +4565,10 @@ class _PlayAutoQuoteOrderAddScreenState
             'shop_cost_price': 0,
             'shop_supply_price': 0,
             'sale_cnt': _linePlayAutoSaleCount(line),
-            if ((_lineSkus[line.id] ?? '').trim().isNotEmpty)
-              'sku_cd': _lineSkus[line.id]!.trim(),
             'pack_unit': 1,
           },
       ],
     };
-  }
-
-  String _playAutoAmountSummary() {
-    final lines = widget.lines.map((line) {
-      final qty = _linePlayAutoSaleCount(line);
-      final lineAmount = _linePlayAutoLineAmount(line);
-      return '${line.name}: 전송금액 $lineAmount / 수량 $qty';
-    }).join('\n');
-    final goodsTotal = widget.lines.fold<int>(
-      0,
-      (sum, line) => sum + _linePlayAutoLineAmount(line),
-    );
-    return [
-      lines,
-      '상품합계: $goodsTotal',
-    ].where((line) => line.trim().isNotEmpty).join('\n');
   }
 
   int _linePlayAutoSaleCount(QuoteLine line) {
@@ -4305,6 +4862,21 @@ class _PlayAutoQuoteOrderAddScreenState
 
   @override
   Widget build(BuildContext context) {
+    if (widget.autoSubmit) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('플토 주문 전송')),
+        body: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('플토 주문을 전송하고 있습니다'),
+            ],
+          ),
+        ),
+      );
+    }
     final totals = QuoteTotals.fromLines(
       quote: widget.quote,
       lines: widget.lines,
@@ -5004,7 +5576,6 @@ class _PlayAutoOrderPreviewScreenState
   var _loadingMappings = false;
   var _runningAction = false;
   var _cacheNotice = '캐시 조회는 저장된 주문을 먼저 보여주고, 동기화는 PlayAuto에서 새로 가져옵니다.';
-  String? _lastFulfillmentActionLog;
   String? _selectedShopName;
   _PlayAutoFulfillmentStage _stage = _PlayAutoFulfillmentStage.all;
 
@@ -5017,6 +5588,7 @@ class _PlayAutoOrderPreviewScreenState
     _lengthController = TextEditingController(text: widget.length.toString());
     _loadMappings();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _PlayAutoOrderNotificationService.showBadgeOnly(0);
       if (!mounted || _orders.isNotEmpty) return;
       _fetchOrders(forceRefresh: false);
     });
@@ -5086,26 +5658,6 @@ class _PlayAutoOrderPreviewScreenState
                   if (_runningAction) ...[
                     const SizedBox(height: 8),
                     const LinearProgressIndicator(),
-                  ],
-                  if (_lastFulfillmentActionLog != null) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: scheme.outlineVariant),
-                        borderRadius: BorderRadius.circular(8),
-                        color: scheme.surfaceContainerHighest
-                            .withValues(alpha: 0.35),
-                      ),
-                      child: SelectableText(
-                        _lastFulfillmentActionLog!,
-                        style: const TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
                   ],
                 ],
                 if (_loadingMappings) ...[
@@ -5251,6 +5803,7 @@ class _PlayAutoOrderPreviewScreenState
                   onInstruction: () => _runFulfillmentAction(
                     label: '출고지시',
                     request: () => widget.onInstruction(order),
+                    refreshOrder: order,
                   ),
                   onOpenPrintPreview: () => _openPrintPreview(order),
                   onRegisterInvoice: () => _openInvoiceDialog(order),
@@ -5327,23 +5880,13 @@ class _PlayAutoOrderPreviewScreenState
     required String label,
     required Future<_PlayAutoResponse> Function() request,
     bool refreshAfter = false,
+    _PlayAutoOrderPreview? refreshOrder,
   }) async {
-    setState(() {
-      _runningAction = true;
-      _lastFulfillmentActionLog = null;
-    });
+    setState(() => _runningAction = true);
     try {
       final response = await request();
       if (!mounted) return;
       final ok = _playAutoResponseSucceeded(response);
-      setState(() {
-        _lastFulfillmentActionLog = [
-          '$label 응답',
-          if (response.statusCode != null) 'HTTP ${response.statusCode}',
-          '',
-          response.body,
-        ].join('\n');
-      });
       debugPrint(
         [
           '[PlayAuto fulfillment]',
@@ -5353,22 +5896,45 @@ class _PlayAutoOrderPreviewScreenState
           'body=${_compactDebugText(response.body)}',
         ].join(' '),
       );
-      _showSnack(ok ? '$label 요청을 보냈습니다.' : '$label 응답을 확인해주세요.');
-      if (refreshAfter) {
+      _showSnack(_playAutoActionSnack(label, response, ok: ok));
+      if (ok && refreshOrder != null) {
+        await _refreshSingleOrder(refreshOrder);
+      } else if (refreshAfter) {
         await _fetchOrders(forceRefresh: true);
       }
     } on _PlayAutoUserMessage catch (e) {
       if (!mounted) return;
-      setState(() => _lastFulfillmentActionLog = '$label 실패\n\n${e.message}');
       debugPrint('[PlayAuto fulfillment] $label user-message ${e.message}');
       _showSnack(e.message);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _lastFulfillmentActionLog = '$label 실패\n\n$e');
       debugPrint('[PlayAuto fulfillment] $label exception $e');
       _showSnack('$label 실패: $e');
     } finally {
       if (mounted) setState(() => _runningAction = false);
+    }
+  }
+
+  Future<void> _refreshSingleOrder(_PlayAutoOrderPreview order) async {
+    if (order.uniq.trim().isEmpty) {
+      await _fetchOrders(forceRefresh: true);
+      return;
+    }
+
+    await Future<void>.delayed(const Duration(seconds: 1));
+    try {
+      final latest = await widget.onFetchOrderDetail(order);
+      if (!mounted || latest == null) return;
+      setState(() {
+        _orders = [
+          for (final existing in _orders)
+            if (_samePlayAutoOrder(existing, order)) latest else existing,
+        ];
+        _cacheNotice =
+            '주문 1건 갱신 · ${_PlayAutoOrderFetchResult.formatNoticeTime(DateTime.now())}';
+      });
+    } catch (e) {
+      debugPrint('[PlayAuto fulfillment] single order refresh failed $e');
     }
   }
 
@@ -5445,19 +6011,8 @@ class _PlayAutoOrderPreviewScreenState
     _PlayAutoOrderPreview original,
     List<_PlayAutoOrderPreview> syncedOrders,
   ) {
-    final originalKeys = {
-      original.bundleNo.trim(),
-      original.uniq.trim(),
-      original.orderNo.trim(),
-    }.where((value) => value.isNotEmpty && value != '-').toSet();
-    for (final order in syncedOrders) {
-      final keys = {
-        order.bundleNo.trim(),
-        order.uniq.trim(),
-        order.orderNo.trim(),
-      };
-      if (keys.any(originalKeys.contains)) return order;
-    }
+    final matched = _findMatchingOrderPreview(original, syncedOrders);
+    if (matched != null) return matched;
     final originalGroup = _playAutoOrderGroupKey(original);
     for (final order in syncedOrders) {
       if (_playAutoOrderGroupKey(order) == originalGroup &&
@@ -5475,6 +6030,101 @@ class _PlayAutoOrderPreviewScreenState
     final compact = text.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (compact.length <= 260) return compact;
     return '${compact.substring(0, 260)}...';
+  }
+
+  String _playAutoActionSnack(
+    String label,
+    _PlayAutoResponse response, {
+    required bool ok,
+  }) {
+    final reason = _playAutoShortReason(response.body);
+    if (ok) {
+      if (reason.isEmpty || reason == '성공') return '$label 완료';
+      return '$label 완료: $reason';
+    }
+
+    final fallback = response.statusCode == null
+        ? '응답을 확인해주세요.'
+        : 'HTTP ${response.statusCode}';
+    return '$label 실패: ${reason.isEmpty ? fallback : reason}';
+  }
+
+  String _playAutoShortReason(String body) {
+    final decoded = _tryDecodeJsonObject(body);
+    final fromJson = _findPlayAutoReason(decoded);
+    if (fromJson.isNotEmpty) return fromJson;
+
+    for (final key in const [
+      'results',
+      'result',
+      'message',
+      'msg',
+      'error',
+      'error_message',
+      'reason',
+    ]) {
+      final match = RegExp(
+        '"$key"\\s*:\\s*"([^"]+)"',
+        caseSensitive: false,
+      ).firstMatch(body);
+      if (match != null) return _shortenReason(match.group(1) ?? '');
+    }
+
+    if (body.contains('성공')) return '성공';
+    if (body.contains('실패')) return _shortenReason(body);
+    return '';
+  }
+
+  Object? _tryDecodeJsonObject(String body) {
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      final start = body.indexOf('{');
+      final end = body.lastIndexOf('}');
+      if (start < 0 || end <= start) return null;
+      try {
+        return jsonDecode(body.substring(start, end + 1));
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  String _findPlayAutoReason(Object? node) {
+    if (node is Map) {
+      for (final key in const [
+        'error_message',
+        'error_msg',
+        'message',
+        'msg',
+        'reason',
+        'result',
+        'results',
+        'error',
+      ]) {
+        final value = node[key];
+        if (value is String && value.trim().isNotEmpty) {
+          return _shortenReason(value);
+        }
+      }
+      for (final value in node.values) {
+        final found = _findPlayAutoReason(value);
+        if (found.isNotEmpty) return found;
+      }
+    }
+    if (node is List) {
+      for (final value in node) {
+        final found = _findPlayAutoReason(value);
+        if (found.isNotEmpty) return found;
+      }
+    }
+    return '';
+  }
+
+  String _shortenReason(String value) {
+    final compact = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.length <= 80) return compact;
+    return '${compact.substring(0, 80)}...';
   }
 
   bool _playAutoResponseSucceeded(_PlayAutoResponse response) {
@@ -8307,17 +8957,37 @@ class _PlayAutoOrderFetchResult {
 
   String get notice {
     if (noticeOverride != null) return noticeOverride!;
-    final time = fetchedAt == null ? '' : ' · ${_formatNoticeTime(fetchedAt!)}';
+    final time = fetchedAt == null ? '' : ' · ${formatNoticeTime(fetchedAt!)}';
     return fromCache ? '캐시 사용$time' : 'PlayAuto API 호출$time';
   }
 
-  static String _formatNoticeTime(DateTime date) {
+  static String formatNoticeTime(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     return '$month-$day $hour:$minute';
   }
+}
+
+class _PlayAutoCollectionRunResult {
+  const _PlayAutoCollectionRunResult({
+    required this.statusCode,
+    required this.body,
+  });
+
+  final int? statusCode;
+  final String body;
+}
+
+class _PlayAutoWorkRegistrationResult {
+  const _PlayAutoWorkRegistrationResult({
+    required this.response,
+    required this.workNos,
+  });
+
+  final _PlayAutoResponse response;
+  final List<String> workNos;
 }
 
 class _PlayAutoQuoteOrderAddLog {

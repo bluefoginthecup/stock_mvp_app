@@ -14,6 +14,10 @@ class DashboardActivityService {
 
   DateTime _dayStart(DateTime day) => DateTime(day.year, day.month, day.day);
 
+  DateTime _monthStart(DateTime day) => DateTime(day.year, day.month);
+
+  DateTime _nextMonth(DateTime day) => DateTime(day.year, day.month + 1);
+
   bool _isSameDay(DateTime value, DateTime day) {
     return value.year == day.year &&
         value.month == day.month &&
@@ -26,6 +30,12 @@ class DashboardActivityService {
     return _isSameDay(parsed, day);
   }
 
+  bool _isInRangeText(String value, DateTime start, DateTime end) {
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return false;
+    return !parsed.isBefore(start) && parsed.isBefore(end);
+  }
+
   Future<int> _safeCount(Future<int> Function() count) async {
     try {
       return await count();
@@ -34,23 +44,92 @@ class DashboardActivityService {
     }
   }
 
+  Future<double> _safeAmount(Future<double> Function() amount) async {
+    try {
+      return await amount();
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<double> _orderSalesAmount(Iterable<OrderRow> orders) async {
+    final orderIds = orders.map((order) => order.id).toSet();
+    if (orderIds.isEmpty) return 0;
+
+    final lines = (await (db.select(db.orderLines)
+              ..where((t) => t.isDeleted.equals(false)))
+            .get())
+        .where((line) => orderIds.contains(line.orderId))
+        .toList();
+    if (lines.isEmpty) return 0;
+
+    final items = await db.select(db.items).get();
+    final salePriceByItem = {
+      for (final item in items) item.id: item.defaultSalePrice ?? 0,
+    };
+
+    return lines.fold<double>(
+      0,
+      (sum, line) => sum + line.qty * (salePriceByItem[line.itemId] ?? 0),
+    );
+  }
+
+  Future<double> _purchaseExpenseAmount(
+      Iterable<PurchaseOrderRow> orders) async {
+    final orderList = orders.toList(growable: false);
+    final orderIds = orderList.map((order) => order.id).toSet();
+    if (orderIds.isEmpty) return 0;
+
+    final lines = (await (db.select(db.purchaseLines)
+              ..where((t) => t.isDeleted.equals(false)))
+            .get())
+        .where((line) => orderIds.contains(line.orderId))
+        .toList();
+    final lineTotal = lines.fold<double>(
+      0,
+      (sum, line) => sum + line.totalAmount,
+    );
+    final orderCosts = orderList.fold<double>(
+      0,
+      (sum, order) => sum + order.shippingCost + order.extraCost,
+    );
+    return lineTotal + orderCosts;
+  }
+
   Future<TodayActivitySummary> loadTodaySummary({DateTime? day}) async {
     final target = _dayStart(day ?? DateTime.now());
+    final monthStart = _monthStart(target);
+    final nextMonth = _nextMonth(target);
+
+    final activeOrders = await (db.select(db.orders)
+          ..where((t) => t.isDeleted.equals(false)))
+        .get();
+    final activePurchases = await (db.select(db.purchaseOrders)
+          ..where((t) => t.isDeleted.equals(false)))
+        .get();
+    final todayOrders =
+        activeOrders.where((row) => _isSameDayText(row.date, target)).toList();
+    final monthlyOrders = activeOrders
+        .where((row) => _isInRangeText(row.date, monthStart, nextMonth))
+        .toList();
+    final todayPurchases = activePurchases
+        .where((row) => _isSameDayText(row.createdAt, target))
+        .toList();
 
     final newOrders = await _safeCount(() async {
-      final rows = await (db.select(db.orders)
-            ..where((t) => t.isDeleted.equals(false)))
-          .get();
-      return rows.where((row) => _isSameDayText(row.date, target)).length;
+      return todayOrders.length;
     });
 
     final purchases = await _safeCount(() async {
       // 발주 생성일을 "오늘 챙긴 발주" 기준으로 사용합니다.
-      final rows = await (db.select(db.purchaseOrders)
-            ..where((t) => t.isDeleted.equals(false)))
-          .get();
-      return rows.where((row) => _isSameDayText(row.createdAt, target)).length;
+      return todayPurchases.length;
     });
+
+    final todaySales = await _safeAmount(() => _orderSalesAmount(todayOrders));
+    final monthSales =
+        await _safeAmount(() => _orderSalesAmount(monthlyOrders));
+    final todayExpenses =
+        await _safeAmount(() => _purchaseExpenseAmount(todayPurchases));
 
     final inbound = await _safeCount(() async {
       final rows = await (db.select(db.txns)
@@ -102,6 +181,9 @@ class DashboardActivityService {
       pendingTodos: pendingTodos,
       doneTodos: doneTodos,
       inProgressWorks: inProgressWorks,
+      todaySales: todaySales,
+      monthSales: monthSales,
+      todayExpenses: todayExpenses,
     );
   }
 
@@ -131,7 +213,10 @@ class DashboardActivityService {
       onListen: () {
         subscriptions
           ..add(db.select(db.orders).watch().listen((_) => emit()))
+          ..add(db.select(db.orderLines).watch().listen((_) => emit()))
+          ..add(db.select(db.items).watch().listen((_) => emit()))
           ..add(db.select(db.purchaseOrders).watch().listen((_) => emit()))
+          ..add(db.select(db.purchaseLines).watch().listen((_) => emit()))
           ..add(db.select(db.txns).watch().listen((_) => emit()))
           ..add(db.select(db.appSchedules).watch().listen((_) => emit()))
           ..add(db.select(db.works).watch().listen((_) => emit()));

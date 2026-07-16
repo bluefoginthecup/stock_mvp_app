@@ -418,6 +418,12 @@ class Quotes extends Table {
   TextColumn get memo => text().nullable()();
   RealColumn get discountAmount => real().withDefault(const Constant(0))();
   RealColumn get shippingCost => real().withDefault(const Constant(0))();
+  TextColumn get deliveryName => text().nullable()();
+  TextColumn get deliveryPhone => text().nullable()();
+  TextColumn get deliveryZip => text().nullable()();
+  TextColumn get deliveryAddress1 => text().nullable()();
+  TextColumn get deliveryAddress2 => text().nullable()();
+  TextColumn get deliveryMemo => text().nullable()();
   IntColumn get vatType => integer().withDefault(const Constant(0))();
   IntColumn get supplierProfileId => integer().nullable()();
   TextColumn get supplierProfileName => text().nullable()();
@@ -679,7 +685,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 48; //
+  int get schemaVersion => 49; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -699,6 +705,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureProductionGuideTables();
           await _ensureStampSettingsTable();
           await _ensureBusinessProfileDocumentsTable();
+          await _ensureQuoteDeliveryColumns();
         },
         beforeOpen: (details) async {
           await _ensureSupplierRoleColumns();
@@ -709,6 +716,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureProductionGuideTables();
           await _ensureStampSettingsTable();
           await _ensureBusinessProfileDocumentsTable();
+          await _ensureQuoteDeliveryColumns();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -1041,8 +1049,21 @@ class AppDatabase extends _$AppDatabase {
               FROM stamp_settings WHERE id = 1
             ''');
           }
+          if (from < 49) {
+            await _ensureQuoteDeliveryColumns();
+          }
         },
       );
+
+  Future<void> _ensureQuoteDeliveryColumns() async {
+    await _addColumnIfMissing('quotes', 'delivery_name', 'TEXT');
+    await _addColumnIfMissing('quotes', 'delivery_phone', 'TEXT');
+    await _addColumnIfMissing('quotes', 'delivery_zip', 'TEXT');
+    await _addColumnIfMissing('quotes', 'delivery_address1', 'TEXT');
+    await _addColumnIfMissing('quotes', 'delivery_address2', 'TEXT');
+    await _addColumnIfMissing('quotes', 'delivery_memo', 'TEXT');
+  }
+
   Future<void> _backfillItemSearchKeys() async {
     final rows = await (select(items)
           ..where((t) =>
@@ -2168,6 +2189,12 @@ extension QuoteRowMapping on QuoteRow {
         memo: memo,
         discountAmount: discountAmount,
         shippingCost: shippingCost,
+        deliveryName: deliveryName,
+        deliveryPhone: deliveryPhone,
+        deliveryZip: deliveryZip,
+        deliveryAddress1: deliveryAddress1,
+        deliveryAddress2: deliveryAddress2,
+        deliveryMemo: deliveryMemo,
         vatType: QuoteVatType
             .values[vatType.clamp(0, QuoteVatType.values.length - 1)],
         supplierProfileId: supplierProfileId,
@@ -2196,6 +2223,12 @@ extension QuoteToCompanion on Quote {
         memo: Value(memo),
         discountAmount: Value(discountAmount),
         shippingCost: Value(shippingCost),
+        deliveryName: Value(deliveryName),
+        deliveryPhone: Value(deliveryPhone),
+        deliveryZip: Value(deliveryZip),
+        deliveryAddress1: Value(deliveryAddress1),
+        deliveryAddress2: Value(deliveryAddress2),
+        deliveryMemo: Value(deliveryMemo),
         vatType: Value(vatType.index),
         supplierProfileId: Value(supplierProfileId),
         supplierProfileName: Value(supplierProfileName),

@@ -15,6 +15,12 @@ class Quote {
   final String? memo;
   final double discountAmount;
   final double shippingCost;
+  final String? deliveryName;
+  final String? deliveryPhone;
+  final String? deliveryZip;
+  final String? deliveryAddress1;
+  final String? deliveryAddress2;
+  final String? deliveryMemo;
   final QuoteVatType vatType;
   final int? supplierProfileId;
   final String? supplierProfileName;
@@ -39,6 +45,12 @@ class Quote {
     this.memo,
     this.discountAmount = 0,
     this.shippingCost = 0,
+    this.deliveryName,
+    this.deliveryPhone,
+    this.deliveryZip,
+    this.deliveryAddress1,
+    this.deliveryAddress2,
+    this.deliveryMemo,
     this.vatType = QuoteVatType.exclusive,
     this.supplierProfileId,
     this.supplierProfileName,
@@ -94,6 +106,12 @@ class Quote {
     String? memo,
     double? discountAmount,
     double? shippingCost,
+    String? deliveryName,
+    String? deliveryPhone,
+    String? deliveryZip,
+    String? deliveryAddress1,
+    String? deliveryAddress2,
+    String? deliveryMemo,
     QuoteVatType? vatType,
     int? supplierProfileId,
     String? supplierProfileName,
@@ -118,6 +136,12 @@ class Quote {
         memo: memo ?? this.memo,
         discountAmount: discountAmount ?? this.discountAmount,
         shippingCost: shippingCost ?? this.shippingCost,
+        deliveryName: deliveryName ?? this.deliveryName,
+        deliveryPhone: deliveryPhone ?? this.deliveryPhone,
+        deliveryZip: deliveryZip ?? this.deliveryZip,
+        deliveryAddress1: deliveryAddress1 ?? this.deliveryAddress1,
+        deliveryAddress2: deliveryAddress2 ?? this.deliveryAddress2,
+        deliveryMemo: deliveryMemo ?? this.deliveryMemo,
         vatType: vatType ?? this.vatType,
         supplierProfileId: supplierProfileId ?? this.supplierProfileId,
         supplierProfileName: supplierProfileName ?? this.supplierProfileName,

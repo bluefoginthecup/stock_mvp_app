@@ -32,6 +32,13 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
   late final TextEditingController _memoC;
   late final TextEditingController _discountC;
   late final TextEditingController _shippingC;
+  late final TextEditingController _deliveryNameC;
+  late final TextEditingController _deliveryPhoneC;
+  late final TextEditingController _deliveryZipC;
+  late final TextEditingController _deliveryAddress1C;
+  late final TextEditingController _deliveryAddress2C;
+  late final TextEditingController _deliveryMemoC;
+  List<PlayAutoDeliveryAddressEntry> _deliveryAddressEntries = const [];
 
   @override
   void initState() {
@@ -40,7 +47,14 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
     _memoC = TextEditingController();
     _discountC = TextEditingController();
     _shippingC = TextEditingController();
+    _deliveryNameC = TextEditingController();
+    _deliveryPhoneC = TextEditingController();
+    _deliveryZipC = TextEditingController();
+    _deliveryAddress1C = TextEditingController();
+    _deliveryAddress2C = TextEditingController();
+    _deliveryMemoC = TextEditingController();
     _reload();
+    _loadDeliveryAddressEntries();
   }
 
   @override
@@ -49,6 +63,12 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
     _memoC.dispose();
     _discountC.dispose();
     _shippingC.dispose();
+    _deliveryNameC.dispose();
+    _deliveryPhoneC.dispose();
+    _deliveryZipC.dispose();
+    _deliveryAddress1C.dispose();
+    _deliveryAddress2C.dispose();
+    _deliveryMemoC.dispose();
     super.dispose();
   }
 
@@ -65,6 +85,12 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
       _memoC.text = quote?.memo ?? '';
       _discountC.text = (quote?.discountAmount ?? 0).toStringAsFixed(0);
       _shippingC.text = (quote?.shippingCost ?? 0).toStringAsFixed(0);
+      _deliveryNameC.text = quote?.deliveryName ?? '';
+      _deliveryPhoneC.text = quote?.deliveryPhone ?? '';
+      _deliveryZipC.text = quote?.deliveryZip ?? '';
+      _deliveryAddress1C.text = quote?.deliveryAddress1 ?? '';
+      _deliveryAddress2C.text = quote?.deliveryAddress2 ?? '';
+      _deliveryMemoC.text = quote?.deliveryMemo ?? '';
     });
   }
 
@@ -76,10 +102,92 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
       memo: _memoC.text.trim().isEmpty ? null : _memoC.text.trim(),
       discountAmount: double.tryParse(_discountC.text.trim()) ?? 0,
       shippingCost: double.tryParse(_shippingC.text.trim()) ?? 0,
+      deliveryName: _deliveryNameC.text.trim(),
+      deliveryPhone: _deliveryPhoneC.text.trim(),
+      deliveryZip: _deliveryZipC.text.trim(),
+      deliveryAddress1: _deliveryAddress1C.text.trim(),
+      deliveryAddress2: _deliveryAddress2C.text.trim(),
+      deliveryMemo: _deliveryMemoC.text.trim(),
     );
     await context.read<QuoteRepo>().updateQuote(updated);
     if (!mounted) return;
     setState(() => _quote = updated);
+  }
+
+  Future<void> _loadDeliveryAddressEntries() async {
+    try {
+      final repo = context.read<SupplierRepo>();
+      final suppliers = await repo.list(onlyActive: true);
+      final entries = <PlayAutoDeliveryAddressEntry>[];
+      for (final supplier in suppliers) {
+        final supplierAddress = (supplier.addr ?? '').trim();
+        if (supplierAddress.isNotEmpty) {
+          entries.add(
+            PlayAutoDeliveryAddressEntry(
+              title: supplier.name,
+              address: supplierAddress,
+              source: supplier.isCustomer ? '고객' : '거래처',
+              contactName: supplier.contactName,
+              phone: supplier.phone,
+            ),
+          );
+        }
+        final contacts = await repo.listContacts(supplier.id);
+        for (final contact in contacts) {
+          final address = (contact.address ?? '').trim();
+          if (address.isEmpty) continue;
+          entries.add(
+            PlayAutoDeliveryAddressEntry(
+              title: '${supplier.name} · ${contact.name}',
+              address: address,
+              source: contact.isPrimary ? '주 담당자' : '담당자',
+              contactName: contact.name,
+              phone: contact.phone,
+            ),
+          );
+        }
+      }
+      if (!mounted) return;
+      setState(() => _deliveryAddressEntries = entries);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _deliveryAddressEntries = const []);
+    }
+  }
+
+  Future<void> _openDeliveryAddressBook() async {
+    final selected = await showPlayAutoAddressBookSheet(
+      context,
+      entries: _deliveryAddressEntries,
+      initialQuery: _deliveryAddress1C.text.trim().isNotEmpty
+          ? _deliveryAddress1C.text.trim()
+          : _customerC.text.trim(),
+    );
+    if (selected == null) return;
+    setState(() {
+      _deliveryNameC.text = (selected.contactName ?? '').trim().isNotEmpty
+          ? selected.contactName!.trim()
+          : selected.title.split(' · ').first;
+      final phone = (selected.phone ?? '').trim();
+      if (phone.isNotEmpty) _deliveryPhoneC.text = phone;
+      _deliveryAddress1C.text = selected.address.trim();
+    });
+    await _saveHeader();
+  }
+
+  Future<void> _openDeliveryPostcodeSearch() async {
+    final selected = await showPlayAutoPostcodeSearchSheet(context);
+    if (selected == null) return;
+    setState(() {
+      _deliveryZipC.text = selected.zonecode;
+      _deliveryAddress1C.text = selected.address;
+      _deliveryAddress2C.clear();
+    });
+    await _saveHeader();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('배송지 주소를 입력했습니다. 상세주소를 확인해주세요.')),
+    );
   }
 
   Future<void> _pickCustomer() async {
@@ -274,15 +382,33 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
   Future<void> _openPlayAutoOrderAdd() async {
     await _saveHeader();
     if (!mounted || _quote == null) return;
-    await Navigator.push(
+    if (!_quoteHasPlayAutoDelivery(_quote!)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('플토 주문 전송 전에 배송지 정보를 입력해주세요.')),
+      );
+      return;
+    }
+    final result = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder: (_) => PlayAutoQuoteOrderAddScreen(
           quote: _quote!,
           lines: _lines,
+          autoSubmit: true,
         ),
       ),
     );
+    if (!mounted || result == null || result.trim().isEmpty) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result)),
+    );
+  }
+
+  bool _quoteHasPlayAutoDelivery(Quote quote) {
+    return (quote.deliveryName ?? '').trim().isNotEmpty &&
+        (quote.deliveryPhone ?? '').trim().isNotEmpty &&
+        (quote.deliveryZip ?? '').trim().isNotEmpty &&
+        (quote.deliveryAddress1 ?? '').trim().isNotEmpty;
   }
 
   String _statusText(QuoteStatus status) {
@@ -446,6 +572,98 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
             maxLines: 5,
             decoration: const InputDecoration(labelText: '메모'),
             onSubmitted: (_) => _saveHeader(),
+          ),
+          const SizedBox(height: 20),
+          Text('배송지', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _deliveryAddressEntries.isEmpty
+                              ? null
+                              : _openDeliveryAddressBook,
+                          icon: const Icon(Icons.manage_search_outlined),
+                          label: Text(
+                            _deliveryAddressEntries.isEmpty
+                                ? '불러올 고객/거래처 주소 없음'
+                                : '고객/거래처 배송지 불러오기',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _openDeliveryPostcodeSearch,
+                          icon: const Icon(Icons.travel_explore_outlined),
+                          label: const Text('배송지 주소 검색'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _deliveryNameC,
+                          decoration: const InputDecoration(labelText: '수령자'),
+                          onSubmitted: (_) => _saveHeader(),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _deliveryPhoneC,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(labelText: '연락처'),
+                          onSubmitted: (_) => _saveHeader(),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _deliveryZipC,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: '우편번호'),
+                    onSubmitted: (_) => _saveHeader(),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _deliveryAddress1C,
+                    decoration: const InputDecoration(labelText: '주소'),
+                    onSubmitted: (_) => _saveHeader(),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _deliveryAddress2C,
+                    decoration: const InputDecoration(labelText: '상세주소'),
+                    onSubmitted: (_) => _saveHeader(),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _deliveryMemoC,
+                    decoration: const InputDecoration(labelText: '배송메모'),
+                    onSubmitted: (_) => _saveHeader(),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _saveHeader,
+                      icon: const Icon(Icons.save_outlined),
+                      label: const Text('배송지 저장'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           Text('품목', style: Theme.of(context).textTheme.titleMedium),

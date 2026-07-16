@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:stockapp_mvp/src/screens/dashboard_screen.dart';
+import 'package:stockapp_mvp/src/features/fantasy_dashboard/fantasy_dashboard_screen.dart';
 import 'package:stockapp_mvp/src/features/fabric_cutting/screens/fabric_cutting_home_screen.dart';
 import 'package:stockapp_mvp/src/screens/orders/order_detail_screen.dart';
 import 'package:stockapp_mvp/src/screens/orders/order_list_screen.dart';
@@ -416,6 +417,11 @@ class _MainTabScreenState extends State<MainTabScreen> {
         label: '대시보드',
         icon: Icons.dashboard,
       ),
+      _BottomTabSpec(
+        id: 'fantasyDashboard',
+        label: '작업실',
+        icon: Icons.castle_rounded,
+      ),
       _BottomTabSpec(id: 'orders', label: '주문', icon: Icons.receipt_long),
       _BottomTabSpec(
         id: _playAutoTabId,
@@ -741,6 +747,8 @@ class _MainTabScreenState extends State<MainTabScreen> {
     switch (tabId) {
       case 'orders':
         return const OrderListScreen();
+      case 'fantasyDashboard':
+        return const FantasyDashboardScreen();
       case _playAutoTabId:
         return const PlayAutoOrderImportScreen();
       case 'stock':

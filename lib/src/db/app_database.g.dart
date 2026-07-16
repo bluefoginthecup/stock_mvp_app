@@ -8270,6 +8270,42 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
       type: DriftSqlType.double,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _deliveryNameMeta =
+      const VerificationMeta('deliveryName');
+  @override
+  late final GeneratedColumn<String> deliveryName = GeneratedColumn<String>(
+      'delivery_name', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryPhoneMeta =
+      const VerificationMeta('deliveryPhone');
+  @override
+  late final GeneratedColumn<String> deliveryPhone = GeneratedColumn<String>(
+      'delivery_phone', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryZipMeta =
+      const VerificationMeta('deliveryZip');
+  @override
+  late final GeneratedColumn<String> deliveryZip = GeneratedColumn<String>(
+      'delivery_zip', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryAddress1Meta =
+      const VerificationMeta('deliveryAddress1');
+  @override
+  late final GeneratedColumn<String> deliveryAddress1 = GeneratedColumn<String>(
+      'delivery_address1', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryAddress2Meta =
+      const VerificationMeta('deliveryAddress2');
+  @override
+  late final GeneratedColumn<String> deliveryAddress2 = GeneratedColumn<String>(
+      'delivery_address2', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _deliveryMemoMeta =
+      const VerificationMeta('deliveryMemo');
+  @override
+  late final GeneratedColumn<String> deliveryMemo = GeneratedColumn<String>(
+      'delivery_memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _vatTypeMeta =
       const VerificationMeta('vatType');
   @override
@@ -8371,6 +8407,12 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
         memo,
         discountAmount,
         shippingCost,
+        deliveryName,
+        deliveryPhone,
+        deliveryZip,
+        deliveryAddress1,
+        deliveryAddress2,
+        deliveryMemo,
         vatType,
         supplierProfileId,
         supplierProfileName,
@@ -8448,6 +8490,42 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
           _shippingCostMeta,
           shippingCost.isAcceptableOrUnknown(
               data['shipping_cost']!, _shippingCostMeta));
+    }
+    if (data.containsKey('delivery_name')) {
+      context.handle(
+          _deliveryNameMeta,
+          deliveryName.isAcceptableOrUnknown(
+              data['delivery_name']!, _deliveryNameMeta));
+    }
+    if (data.containsKey('delivery_phone')) {
+      context.handle(
+          _deliveryPhoneMeta,
+          deliveryPhone.isAcceptableOrUnknown(
+              data['delivery_phone']!, _deliveryPhoneMeta));
+    }
+    if (data.containsKey('delivery_zip')) {
+      context.handle(
+          _deliveryZipMeta,
+          deliveryZip.isAcceptableOrUnknown(
+              data['delivery_zip']!, _deliveryZipMeta));
+    }
+    if (data.containsKey('delivery_address1')) {
+      context.handle(
+          _deliveryAddress1Meta,
+          deliveryAddress1.isAcceptableOrUnknown(
+              data['delivery_address1']!, _deliveryAddress1Meta));
+    }
+    if (data.containsKey('delivery_address2')) {
+      context.handle(
+          _deliveryAddress2Meta,
+          deliveryAddress2.isAcceptableOrUnknown(
+              data['delivery_address2']!, _deliveryAddress2Meta));
+    }
+    if (data.containsKey('delivery_memo')) {
+      context.handle(
+          _deliveryMemoMeta,
+          deliveryMemo.isAcceptableOrUnknown(
+              data['delivery_memo']!, _deliveryMemoMeta));
     }
     if (data.containsKey('vat_type')) {
       context.handle(_vatTypeMeta,
@@ -8554,6 +8632,18 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
           DriftSqlType.double, data['${effectivePrefix}discount_amount'])!,
       shippingCost: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}shipping_cost'])!,
+      deliveryName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}delivery_name']),
+      deliveryPhone: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}delivery_phone']),
+      deliveryZip: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}delivery_zip']),
+      deliveryAddress1: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}delivery_address1']),
+      deliveryAddress2: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}delivery_address2']),
+      deliveryMemo: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}delivery_memo']),
       vatType: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}vat_type'])!,
       supplierProfileId: attachedDatabase.typeMapping.read(
@@ -8605,6 +8695,12 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
   final String? memo;
   final double discountAmount;
   final double shippingCost;
+  final String? deliveryName;
+  final String? deliveryPhone;
+  final String? deliveryZip;
+  final String? deliveryAddress1;
+  final String? deliveryAddress2;
+  final String? deliveryMemo;
   final int vatType;
   final int? supplierProfileId;
   final String? supplierProfileName;
@@ -8629,6 +8725,12 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       this.memo,
       required this.discountAmount,
       required this.shippingCost,
+      this.deliveryName,
+      this.deliveryPhone,
+      this.deliveryZip,
+      this.deliveryAddress1,
+      this.deliveryAddress2,
+      this.deliveryMemo,
       required this.vatType,
       this.supplierProfileId,
       this.supplierProfileName,
@@ -8661,6 +8763,24 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
     }
     map['discount_amount'] = Variable<double>(discountAmount);
     map['shipping_cost'] = Variable<double>(shippingCost);
+    if (!nullToAbsent || deliveryName != null) {
+      map['delivery_name'] = Variable<String>(deliveryName);
+    }
+    if (!nullToAbsent || deliveryPhone != null) {
+      map['delivery_phone'] = Variable<String>(deliveryPhone);
+    }
+    if (!nullToAbsent || deliveryZip != null) {
+      map['delivery_zip'] = Variable<String>(deliveryZip);
+    }
+    if (!nullToAbsent || deliveryAddress1 != null) {
+      map['delivery_address1'] = Variable<String>(deliveryAddress1);
+    }
+    if (!nullToAbsent || deliveryAddress2 != null) {
+      map['delivery_address2'] = Variable<String>(deliveryAddress2);
+    }
+    if (!nullToAbsent || deliveryMemo != null) {
+      map['delivery_memo'] = Variable<String>(deliveryMemo);
+    }
     map['vat_type'] = Variable<int>(vatType);
     if (!nullToAbsent || supplierProfileId != null) {
       map['supplier_profile_id'] = Variable<int>(supplierProfileId);
@@ -8714,6 +8834,24 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
       discountAmount: Value(discountAmount),
       shippingCost: Value(shippingCost),
+      deliveryName: deliveryName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryName),
+      deliveryPhone: deliveryPhone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryPhone),
+      deliveryZip: deliveryZip == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryZip),
+      deliveryAddress1: deliveryAddress1 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryAddress1),
+      deliveryAddress2: deliveryAddress2 == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryAddress2),
+      deliveryMemo: deliveryMemo == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryMemo),
       vatType: Value(vatType),
       supplierProfileId: supplierProfileId == null && nullToAbsent
           ? const Value.absent()
@@ -8764,6 +8902,12 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       memo: serializer.fromJson<String?>(json['memo']),
       discountAmount: serializer.fromJson<double>(json['discountAmount']),
       shippingCost: serializer.fromJson<double>(json['shippingCost']),
+      deliveryName: serializer.fromJson<String?>(json['deliveryName']),
+      deliveryPhone: serializer.fromJson<String?>(json['deliveryPhone']),
+      deliveryZip: serializer.fromJson<String?>(json['deliveryZip']),
+      deliveryAddress1: serializer.fromJson<String?>(json['deliveryAddress1']),
+      deliveryAddress2: serializer.fromJson<String?>(json['deliveryAddress2']),
+      deliveryMemo: serializer.fromJson<String?>(json['deliveryMemo']),
       vatType: serializer.fromJson<int>(json['vatType']),
       supplierProfileId: serializer.fromJson<int?>(json['supplierProfileId']),
       supplierProfileName:
@@ -8799,6 +8943,12 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       'memo': serializer.toJson<String?>(memo),
       'discountAmount': serializer.toJson<double>(discountAmount),
       'shippingCost': serializer.toJson<double>(shippingCost),
+      'deliveryName': serializer.toJson<String?>(deliveryName),
+      'deliveryPhone': serializer.toJson<String?>(deliveryPhone),
+      'deliveryZip': serializer.toJson<String?>(deliveryZip),
+      'deliveryAddress1': serializer.toJson<String?>(deliveryAddress1),
+      'deliveryAddress2': serializer.toJson<String?>(deliveryAddress2),
+      'deliveryMemo': serializer.toJson<String?>(deliveryMemo),
       'vatType': serializer.toJson<int>(vatType),
       'supplierProfileId': serializer.toJson<int?>(supplierProfileId),
       'supplierProfileName': serializer.toJson<String?>(supplierProfileName),
@@ -8828,6 +8978,12 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           Value<String?> memo = const Value.absent(),
           double? discountAmount,
           double? shippingCost,
+          Value<String?> deliveryName = const Value.absent(),
+          Value<String?> deliveryPhone = const Value.absent(),
+          Value<String?> deliveryZip = const Value.absent(),
+          Value<String?> deliveryAddress1 = const Value.absent(),
+          Value<String?> deliveryAddress2 = const Value.absent(),
+          Value<String?> deliveryMemo = const Value.absent(),
           int? vatType,
           Value<int?> supplierProfileId = const Value.absent(),
           Value<String?> supplierProfileName = const Value.absent(),
@@ -8852,6 +9008,19 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
         memo: memo.present ? memo.value : this.memo,
         discountAmount: discountAmount ?? this.discountAmount,
         shippingCost: shippingCost ?? this.shippingCost,
+        deliveryName:
+            deliveryName.present ? deliveryName.value : this.deliveryName,
+        deliveryPhone:
+            deliveryPhone.present ? deliveryPhone.value : this.deliveryPhone,
+        deliveryZip: deliveryZip.present ? deliveryZip.value : this.deliveryZip,
+        deliveryAddress1: deliveryAddress1.present
+            ? deliveryAddress1.value
+            : this.deliveryAddress1,
+        deliveryAddress2: deliveryAddress2.present
+            ? deliveryAddress2.value
+            : this.deliveryAddress2,
+        deliveryMemo:
+            deliveryMemo.present ? deliveryMemo.value : this.deliveryMemo,
         vatType: vatType ?? this.vatType,
         supplierProfileId: supplierProfileId.present
             ? supplierProfileId.value
@@ -8904,6 +9073,23 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       shippingCost: data.shippingCost.present
           ? data.shippingCost.value
           : this.shippingCost,
+      deliveryName: data.deliveryName.present
+          ? data.deliveryName.value
+          : this.deliveryName,
+      deliveryPhone: data.deliveryPhone.present
+          ? data.deliveryPhone.value
+          : this.deliveryPhone,
+      deliveryZip:
+          data.deliveryZip.present ? data.deliveryZip.value : this.deliveryZip,
+      deliveryAddress1: data.deliveryAddress1.present
+          ? data.deliveryAddress1.value
+          : this.deliveryAddress1,
+      deliveryAddress2: data.deliveryAddress2.present
+          ? data.deliveryAddress2.value
+          : this.deliveryAddress2,
+      deliveryMemo: data.deliveryMemo.present
+          ? data.deliveryMemo.value
+          : this.deliveryMemo,
       vatType: data.vatType.present ? data.vatType.value : this.vatType,
       supplierProfileId: data.supplierProfileId.present
           ? data.supplierProfileId.value
@@ -8951,6 +9137,12 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           ..write('memo: $memo, ')
           ..write('discountAmount: $discountAmount, ')
           ..write('shippingCost: $shippingCost, ')
+          ..write('deliveryName: $deliveryName, ')
+          ..write('deliveryPhone: $deliveryPhone, ')
+          ..write('deliveryZip: $deliveryZip, ')
+          ..write('deliveryAddress1: $deliveryAddress1, ')
+          ..write('deliveryAddress2: $deliveryAddress2, ')
+          ..write('deliveryMemo: $deliveryMemo, ')
           ..write('vatType: $vatType, ')
           ..write('supplierProfileId: $supplierProfileId, ')
           ..write('supplierProfileName: $supplierProfileName, ')
@@ -8980,6 +9172,12 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
         memo,
         discountAmount,
         shippingCost,
+        deliveryName,
+        deliveryPhone,
+        deliveryZip,
+        deliveryAddress1,
+        deliveryAddress2,
+        deliveryMemo,
         vatType,
         supplierProfileId,
         supplierProfileName,
@@ -9008,6 +9206,12 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           other.memo == this.memo &&
           other.discountAmount == this.discountAmount &&
           other.shippingCost == this.shippingCost &&
+          other.deliveryName == this.deliveryName &&
+          other.deliveryPhone == this.deliveryPhone &&
+          other.deliveryZip == this.deliveryZip &&
+          other.deliveryAddress1 == this.deliveryAddress1 &&
+          other.deliveryAddress2 == this.deliveryAddress2 &&
+          other.deliveryMemo == this.deliveryMemo &&
           other.vatType == this.vatType &&
           other.supplierProfileId == this.supplierProfileId &&
           other.supplierProfileName == this.supplierProfileName &&
@@ -9034,6 +9238,12 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
   final Value<String?> memo;
   final Value<double> discountAmount;
   final Value<double> shippingCost;
+  final Value<String?> deliveryName;
+  final Value<String?> deliveryPhone;
+  final Value<String?> deliveryZip;
+  final Value<String?> deliveryAddress1;
+  final Value<String?> deliveryAddress2;
+  final Value<String?> deliveryMemo;
   final Value<int> vatType;
   final Value<int?> supplierProfileId;
   final Value<String?> supplierProfileName;
@@ -9059,6 +9269,12 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     this.memo = const Value.absent(),
     this.discountAmount = const Value.absent(),
     this.shippingCost = const Value.absent(),
+    this.deliveryName = const Value.absent(),
+    this.deliveryPhone = const Value.absent(),
+    this.deliveryZip = const Value.absent(),
+    this.deliveryAddress1 = const Value.absent(),
+    this.deliveryAddress2 = const Value.absent(),
+    this.deliveryMemo = const Value.absent(),
     this.vatType = const Value.absent(),
     this.supplierProfileId = const Value.absent(),
     this.supplierProfileName = const Value.absent(),
@@ -9085,6 +9301,12 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     this.memo = const Value.absent(),
     this.discountAmount = const Value.absent(),
     this.shippingCost = const Value.absent(),
+    this.deliveryName = const Value.absent(),
+    this.deliveryPhone = const Value.absent(),
+    this.deliveryZip = const Value.absent(),
+    this.deliveryAddress1 = const Value.absent(),
+    this.deliveryAddress2 = const Value.absent(),
+    this.deliveryMemo = const Value.absent(),
     this.vatType = const Value.absent(),
     this.supplierProfileId = const Value.absent(),
     this.supplierProfileName = const Value.absent(),
@@ -9116,6 +9338,12 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     Expression<String>? memo,
     Expression<double>? discountAmount,
     Expression<double>? shippingCost,
+    Expression<String>? deliveryName,
+    Expression<String>? deliveryPhone,
+    Expression<String>? deliveryZip,
+    Expression<String>? deliveryAddress1,
+    Expression<String>? deliveryAddress2,
+    Expression<String>? deliveryMemo,
     Expression<int>? vatType,
     Expression<int>? supplierProfileId,
     Expression<String>? supplierProfileName,
@@ -9142,6 +9370,12 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       if (memo != null) 'memo': memo,
       if (discountAmount != null) 'discount_amount': discountAmount,
       if (shippingCost != null) 'shipping_cost': shippingCost,
+      if (deliveryName != null) 'delivery_name': deliveryName,
+      if (deliveryPhone != null) 'delivery_phone': deliveryPhone,
+      if (deliveryZip != null) 'delivery_zip': deliveryZip,
+      if (deliveryAddress1 != null) 'delivery_address1': deliveryAddress1,
+      if (deliveryAddress2 != null) 'delivery_address2': deliveryAddress2,
+      if (deliveryMemo != null) 'delivery_memo': deliveryMemo,
       if (vatType != null) 'vat_type': vatType,
       if (supplierProfileId != null) 'supplier_profile_id': supplierProfileId,
       if (supplierProfileName != null)
@@ -9176,6 +9410,12 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       Value<String?>? memo,
       Value<double>? discountAmount,
       Value<double>? shippingCost,
+      Value<String?>? deliveryName,
+      Value<String?>? deliveryPhone,
+      Value<String?>? deliveryZip,
+      Value<String?>? deliveryAddress1,
+      Value<String?>? deliveryAddress2,
+      Value<String?>? deliveryMemo,
       Value<int>? vatType,
       Value<int?>? supplierProfileId,
       Value<String?>? supplierProfileName,
@@ -9201,6 +9441,12 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       memo: memo ?? this.memo,
       discountAmount: discountAmount ?? this.discountAmount,
       shippingCost: shippingCost ?? this.shippingCost,
+      deliveryName: deliveryName ?? this.deliveryName,
+      deliveryPhone: deliveryPhone ?? this.deliveryPhone,
+      deliveryZip: deliveryZip ?? this.deliveryZip,
+      deliveryAddress1: deliveryAddress1 ?? this.deliveryAddress1,
+      deliveryAddress2: deliveryAddress2 ?? this.deliveryAddress2,
+      deliveryMemo: deliveryMemo ?? this.deliveryMemo,
       vatType: vatType ?? this.vatType,
       supplierProfileId: supplierProfileId ?? this.supplierProfileId,
       supplierProfileName: supplierProfileName ?? this.supplierProfileName,
@@ -9250,6 +9496,24 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     }
     if (shippingCost.present) {
       map['shipping_cost'] = Variable<double>(shippingCost.value);
+    }
+    if (deliveryName.present) {
+      map['delivery_name'] = Variable<String>(deliveryName.value);
+    }
+    if (deliveryPhone.present) {
+      map['delivery_phone'] = Variable<String>(deliveryPhone.value);
+    }
+    if (deliveryZip.present) {
+      map['delivery_zip'] = Variable<String>(deliveryZip.value);
+    }
+    if (deliveryAddress1.present) {
+      map['delivery_address1'] = Variable<String>(deliveryAddress1.value);
+    }
+    if (deliveryAddress2.present) {
+      map['delivery_address2'] = Variable<String>(deliveryAddress2.value);
+    }
+    if (deliveryMemo.present) {
+      map['delivery_memo'] = Variable<String>(deliveryMemo.value);
     }
     if (vatType.present) {
       map['vat_type'] = Variable<int>(vatType.value);
@@ -9317,6 +9581,12 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
           ..write('memo: $memo, ')
           ..write('discountAmount: $discountAmount, ')
           ..write('shippingCost: $shippingCost, ')
+          ..write('deliveryName: $deliveryName, ')
+          ..write('deliveryPhone: $deliveryPhone, ')
+          ..write('deliveryZip: $deliveryZip, ')
+          ..write('deliveryAddress1: $deliveryAddress1, ')
+          ..write('deliveryAddress2: $deliveryAddress2, ')
+          ..write('deliveryMemo: $deliveryMemo, ')
           ..write('vatType: $vatType, ')
           ..write('supplierProfileId: $supplierProfileId, ')
           ..write('supplierProfileName: $supplierProfileName, ')
@@ -19674,6 +19944,12 @@ typedef $$QuotesTableCreateCompanionBuilder = QuotesCompanion Function({
   Value<String?> memo,
   Value<double> discountAmount,
   Value<double> shippingCost,
+  Value<String?> deliveryName,
+  Value<String?> deliveryPhone,
+  Value<String?> deliveryZip,
+  Value<String?> deliveryAddress1,
+  Value<String?> deliveryAddress2,
+  Value<String?> deliveryMemo,
   Value<int> vatType,
   Value<int?> supplierProfileId,
   Value<String?> supplierProfileName,
@@ -19700,6 +19976,12 @@ typedef $$QuotesTableUpdateCompanionBuilder = QuotesCompanion Function({
   Value<String?> memo,
   Value<double> discountAmount,
   Value<double> shippingCost,
+  Value<String?> deliveryName,
+  Value<String?> deliveryPhone,
+  Value<String?> deliveryZip,
+  Value<String?> deliveryAddress1,
+  Value<String?> deliveryAddress2,
+  Value<String?> deliveryMemo,
   Value<int> vatType,
   Value<int?> supplierProfileId,
   Value<String?> supplierProfileName,
@@ -19772,6 +20054,26 @@ class $$QuotesTableFilterComposer
 
   ColumnFilters<double> get shippingCost => $composableBuilder(
       column: $table.shippingCost, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryName => $composableBuilder(
+      column: $table.deliveryName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryPhone => $composableBuilder(
+      column: $table.deliveryPhone, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryZip => $composableBuilder(
+      column: $table.deliveryZip, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryAddress1 => $composableBuilder(
+      column: $table.deliveryAddress1,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryAddress2 => $composableBuilder(
+      column: $table.deliveryAddress2,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryMemo => $composableBuilder(
+      column: $table.deliveryMemo, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get vatType => $composableBuilder(
       column: $table.vatType, builder: (column) => ColumnFilters(column));
@@ -19885,6 +20187,29 @@ class $$QuotesTableOrderingComposer
       column: $table.shippingCost,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get deliveryName => $composableBuilder(
+      column: $table.deliveryName,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deliveryPhone => $composableBuilder(
+      column: $table.deliveryPhone,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deliveryZip => $composableBuilder(
+      column: $table.deliveryZip, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deliveryAddress1 => $composableBuilder(
+      column: $table.deliveryAddress1,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deliveryAddress2 => $composableBuilder(
+      column: $table.deliveryAddress2,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get deliveryMemo => $composableBuilder(
+      column: $table.deliveryMemo,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get vatType => $composableBuilder(
       column: $table.vatType, builder: (column) => ColumnOrderings(column));
 
@@ -19972,6 +20297,24 @@ class $$QuotesTableAnnotationComposer
 
   GeneratedColumn<double> get shippingCost => $composableBuilder(
       column: $table.shippingCost, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryName => $composableBuilder(
+      column: $table.deliveryName, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryPhone => $composableBuilder(
+      column: $table.deliveryPhone, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryZip => $composableBuilder(
+      column: $table.deliveryZip, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryAddress1 => $composableBuilder(
+      column: $table.deliveryAddress1, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryAddress2 => $composableBuilder(
+      column: $table.deliveryAddress2, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryMemo => $composableBuilder(
+      column: $table.deliveryMemo, builder: (column) => column);
 
   GeneratedColumn<int> get vatType =>
       $composableBuilder(column: $table.vatType, builder: (column) => column);
@@ -20069,6 +20412,12 @@ class $$QuotesTableTableManager extends RootTableManager<
             Value<String?> memo = const Value.absent(),
             Value<double> discountAmount = const Value.absent(),
             Value<double> shippingCost = const Value.absent(),
+            Value<String?> deliveryName = const Value.absent(),
+            Value<String?> deliveryPhone = const Value.absent(),
+            Value<String?> deliveryZip = const Value.absent(),
+            Value<String?> deliveryAddress1 = const Value.absent(),
+            Value<String?> deliveryAddress2 = const Value.absent(),
+            Value<String?> deliveryMemo = const Value.absent(),
             Value<int> vatType = const Value.absent(),
             Value<int?> supplierProfileId = const Value.absent(),
             Value<String?> supplierProfileName = const Value.absent(),
@@ -20095,6 +20444,12 @@ class $$QuotesTableTableManager extends RootTableManager<
             memo: memo,
             discountAmount: discountAmount,
             shippingCost: shippingCost,
+            deliveryName: deliveryName,
+            deliveryPhone: deliveryPhone,
+            deliveryZip: deliveryZip,
+            deliveryAddress1: deliveryAddress1,
+            deliveryAddress2: deliveryAddress2,
+            deliveryMemo: deliveryMemo,
             vatType: vatType,
             supplierProfileId: supplierProfileId,
             supplierProfileName: supplierProfileName,
@@ -20121,6 +20476,12 @@ class $$QuotesTableTableManager extends RootTableManager<
             Value<String?> memo = const Value.absent(),
             Value<double> discountAmount = const Value.absent(),
             Value<double> shippingCost = const Value.absent(),
+            Value<String?> deliveryName = const Value.absent(),
+            Value<String?> deliveryPhone = const Value.absent(),
+            Value<String?> deliveryZip = const Value.absent(),
+            Value<String?> deliveryAddress1 = const Value.absent(),
+            Value<String?> deliveryAddress2 = const Value.absent(),
+            Value<String?> deliveryMemo = const Value.absent(),
             Value<int> vatType = const Value.absent(),
             Value<int?> supplierProfileId = const Value.absent(),
             Value<String?> supplierProfileName = const Value.absent(),
@@ -20147,6 +20508,12 @@ class $$QuotesTableTableManager extends RootTableManager<
             memo: memo,
             discountAmount: discountAmount,
             shippingCost: shippingCost,
+            deliveryName: deliveryName,
+            deliveryPhone: deliveryPhone,
+            deliveryZip: deliveryZip,
+            deliveryAddress1: deliveryAddress1,
+            deliveryAddress2: deliveryAddress2,
+            deliveryMemo: deliveryMemo,
             vatType: vatType,
             supplierProfileId: supplierProfileId,
             supplierProfileName: supplierProfileName,

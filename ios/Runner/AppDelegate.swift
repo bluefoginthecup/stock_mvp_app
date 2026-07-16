@@ -7,6 +7,7 @@ import WidgetKit
   private let appGroupId = "group.com.bluefog.chalstock"
   private let widgetKind = "TodayScheduleWidget"
   private var widgetChannel: FlutterMethodChannel?
+  private var appBadgeChannel: FlutterMethodChannel?
   private var pendingWidgetAction: String?
   private var widgetChannelConfigureAttempts = 0
 
@@ -17,7 +18,40 @@ import WidgetKit
     GeneratedPluginRegistrant.register(with: self)
     let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
     configureWidgetChannel()
+    configureAppBadgeChannel()
     return launched
+  }
+
+  private func configureAppBadgeChannel() {
+    guard let registrar = self.registrar(forPlugin: "ChalstockAppBadge") else {
+      return
+    }
+
+    let channel = FlutterMethodChannel(
+      name: "chalstock/app_badge",
+      binaryMessenger: registrar.messenger()
+    )
+    appBadgeChannel = channel
+
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "setBadgeCount":
+        guard
+          let arguments = call.arguments as? [String: Any],
+          let count = arguments["count"] as? Int
+        else {
+          result(FlutterError(code: "bad_args", message: "Invalid badge payload", details: nil))
+          return
+        }
+
+        DispatchQueue.main.async {
+          UIApplication.shared.applicationIconBadgeNumber = max(0, count)
+          result(nil)
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 
   private func configureWidgetChannel() {

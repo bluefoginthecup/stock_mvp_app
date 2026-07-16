@@ -6,6 +6,9 @@ class TodayActivitySummary {
   final int pendingTodos;
   final int doneTodos;
   final int inProgressWorks;
+  final double todaySales;
+  final double monthSales;
+  final double todayExpenses;
 
   const TodayActivitySummary({
     this.newOrders = 0,
@@ -15,6 +18,9 @@ class TodayActivitySummary {
     this.pendingTodos = 0,
     this.doneTodos = 0,
     this.inProgressWorks = 0,
+    this.todaySales = 0,
+    this.monthSales = 0,
+    this.todayExpenses = 0,
   });
 
   static const empty = TodayActivitySummary();
@@ -26,7 +32,10 @@ class TodayActivitySummary {
       outbound +
       pendingTodos +
       doneTodos +
-      inProgressWorks;
+      inProgressWorks +
+      todaySales.round() +
+      monthSales.round() +
+      todayExpenses.round();
 
   bool get hasActivity => total > 0;
 }
