@@ -8,6 +8,7 @@ import '../../models/calendar_event.dart';
 import 'work_detail_screen.dart';
 import '../../services/inventory_service.dart'; // ✅ 추가
 import '../../ui/common/common_calendar_view.dart';
+import '../../ui/common/selection/multi_select_bar.dart';
 import '../../utils/korean_search.dart';
 import 'widgets/work_row.dart';
 
@@ -27,6 +28,8 @@ class _WorkListScreenState extends State<WorkListScreen> {
   Timer? _debounce;
   String _query = '';
   final _controller = TextEditingController();
+  bool _selectionMode = false;
+  final Set<String> _selectedWorkIds = <String>{};
   final Set<WorkStatus> _statusFilter = {
     WorkStatus.planned,
     WorkStatus.inProgress,
@@ -116,12 +119,66 @@ class _WorkListScreenState extends State<WorkListScreen> {
     );
   }
 
-  Widget _buildStatusFilterBar() {
+  bool _isAllVisibleSelected(List<Work> visibleWorks) {
+    return visibleWorks.isNotEmpty &&
+        visibleWorks.every((w) => _selectedWorkIds.contains(w.id));
+  }
+
+  void _toggleVisibleSelection(List<Work> visibleWorks) {
+    if (visibleWorks.isEmpty) return;
+    setState(() {
+      _selectionMode = true;
+      if (_isAllVisibleSelected(visibleWorks)) {
+        for (final work in visibleWorks) {
+          _selectedWorkIds.remove(work.id);
+        }
+        if (_selectedWorkIds.isEmpty) _selectionMode = false;
+      } else {
+        _selectedWorkIds.addAll(visibleWorks.map((w) => w.id));
+      }
+    });
+  }
+
+  Widget _buildStatusFilterBar({List<Work> visibleWorks = const <Work>[]}) {
+    final allVisibleSelected = _isAllVisibleSelected(visibleWorks);
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
+          if (_selectionMode) ...[
+            IconButton(
+              tooltip: '선택 모드 종료',
+              icon: const Icon(Icons.close),
+              onPressed: _exitSelection,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(40, 36),
+                padding: const EdgeInsets.all(8),
+              ),
+            ),
+            IconButton(
+              tooltip: allVisibleSelected ? '현재 목록 전체 해제' : '현재 목록 전체 선택',
+              icon:
+                  Icon(allVisibleSelected ? Icons.deselect : Icons.select_all),
+              onPressed: visibleWorks.isEmpty
+                  ? null
+                  : () => _toggleVisibleSelection(visibleWorks),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(40, 36),
+                padding: const EdgeInsets.all(8),
+              ),
+            ),
+          ] else
+            IconButton(
+              tooltip: '멀티 선택',
+              icon: const Icon(Icons.checklist),
+              onPressed: () => _enterSelection(),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(40, 36),
+                padding: const EdgeInsets.all(8),
+              ),
+            ),
           _buildStatusFilterChip(WorkStatus.planned),
           _buildStatusFilterChip(WorkStatus.inProgress),
           _buildStatusFilterChip(WorkStatus.done),
@@ -317,12 +374,40 @@ class _WorkListScreenState extends State<WorkListScreen> {
     );
   }
 
-  Future<void> _deleteWork(Work w) async {
+  void _enterSelection([String? workId]) {
+    setState(() {
+      _selectionMode = true;
+      if (workId != null) _selectedWorkIds.add(workId);
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _selectionMode = false;
+      _selectedWorkIds.clear();
+    });
+  }
+
+  void _toggleWorkSelection(String workId) {
+    setState(() {
+      if (_selectedWorkIds.contains(workId)) {
+        _selectedWorkIds.remove(workId);
+      } else {
+        _selectedWorkIds.add(workId);
+      }
+      if (_selectedWorkIds.isEmpty) _selectionMode = false;
+    });
+  }
+
+  Future<void> _deleteSelectedWorks() async {
+    final selectedIds = _selectedWorkIds.toList(growable: false);
+    if (selectedIds.isEmpty) return;
+
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('작업 삭제'),
-        content: const Text('이 작업을 작업 목록에서 삭제할까요? 삭제된 작업은 휴지통에서 확인할 수 있어요.'),
+        title: const Text('휴지통으로 이동'),
+        content: Text('선택한 ${selectedIds.length}개 작업을 휴지통으로 보낼까요?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, false),
@@ -330,7 +415,7 @@ class _WorkListScreenState extends State<WorkListScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('삭제'),
+            child: const Text('휴지통으로 이동'),
           ),
         ],
       ),
@@ -338,10 +423,14 @@ class _WorkListScreenState extends State<WorkListScreen> {
     if (ok != true || !mounted) return;
 
     try {
-      await context.read<InventoryService>().deleteWorkSafe(w.id);
+      final inv = context.read<InventoryService>();
+      for (final id in selectedIds) {
+        await inv.deleteWorkSafe(id);
+      }
       if (!mounted) return;
+      _exitSelection();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('작업을 삭제했어요.')),
+        SnackBar(content: Text('작업 ${selectedIds.length}개를 휴지통으로 보냈어요.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -349,6 +438,22 @@ class _WorkListScreenState extends State<WorkListScreen> {
         SnackBar(content: Text('작업 삭제 실패: $e')),
       );
     }
+  }
+
+  Widget _buildSelectionBar(int totalCount) {
+    return CommonMultiSelectBar(
+      selectedCount: _selectedWorkIds.length,
+      totalCount: totalCount,
+      onClear: _exitSelection,
+      actions: [
+        MultiSelectAction(
+          icon: Icons.delete_outline,
+          tooltip: '휴지통',
+          color: Colors.redAccent,
+          onPressed: _deleteSelectedWorks,
+        ),
+      ],
+    );
   }
 
   @override
@@ -432,44 +537,51 @@ class _WorkListScreenState extends State<WorkListScreen> {
                     .toList()
                   ..sort((a, b) => b.date.compareTo(a.date));
 
-                return SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildSearchField(),
-                      _buildStatusFilterBar(),
-                      CommonCalendarView(
-                        events: events,
-                        focusedDay: _focusedDay,
-                        scrollEvents: false,
-                        expandedBuilder: (e) {
-                          final w = workById[e.refId];
-                          if (w == null) return const SizedBox.shrink();
-                          return Card(
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            child: WorkRow(
-                              w: w,
-                              onStart: (w.status == WorkStatus.planned)
-                                  ? () => inv.startWork(w.id)
-                                  : null,
-                              onDone: (w.status == WorkStatus.inProgress)
-                                  ? () => inv.completeWork(w.id)
-                                  : null,
-                              onDelete: () => _deleteWork(w),
-                              onTap: () => _openWorkDetail(w),
-                            ),
-                          );
-                        },
+                return Column(
+                  children: [
+                    _buildSearchField(),
+                    _buildStatusFilterBar(visibleWorks: list),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: CommonCalendarView(
+                          events: events,
+                          focusedDay: _focusedDay,
+                          scrollEvents: false,
+                          expandedBuilder: (e) {
+                            final w = workById[e.refId];
+                            if (w == null) return const SizedBox.shrink();
+                            return Card(
+                              margin: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              child: WorkRow(
+                                w: w,
+                                onStart: (w.status == WorkStatus.planned)
+                                    ? () => inv.startWork(w.id)
+                                    : null,
+                                onDone: (w.status == WorkStatus.inProgress)
+                                    ? () => inv.completeWork(w.id)
+                                    : null,
+                                selectionMode: _selectionMode,
+                                selected: _selectedWorkIds.contains(w.id),
+                                onTap: _selectionMode
+                                    ? () => _toggleWorkSelection(w.id)
+                                    : () => _openWorkDetail(w),
+                                onLongPress: () => _enterSelection(w.id),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                    if (_selectionMode) _buildSelectionBar(list.length),
+                  ],
                 );
               }
 
               return Column(
                 children: [
                   _buildSearchField(),
-                  _buildStatusFilterBar(),
+                  _buildStatusFilterBar(visibleWorks: list),
                   Expanded(
                     child: ListView.separated(
                       itemCount: list.length,
@@ -487,12 +599,17 @@ class _WorkListScreenState extends State<WorkListScreen> {
                           onDone: (w.status == WorkStatus.inProgress)
                               ? () => inv.completeWork(w.id)
                               : null,
-                          onDelete: () => _deleteWork(w),
-                          onTap: () => _openWorkDetail(w),
+                          selectionMode: _selectionMode,
+                          selected: _selectedWorkIds.contains(w.id),
+                          onTap: _selectionMode
+                              ? () => _toggleWorkSelection(w.id)
+                              : () => _openWorkDetail(w),
+                          onLongPress: () => _enterSelection(w.id),
                         );
                       },
                     ),
                   ),
+                  if (_selectionMode) _buildSelectionBar(list.length),
                 ],
               );
             },

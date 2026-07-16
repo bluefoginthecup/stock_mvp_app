@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/suppliers.dart';
 import '../../repos/repo_interfaces.dart';
+import '../../ui/common/supplier_picker_sheet.dart';
 
 enum _SupplierRoleTab { purchase, customer, unclassified }
 
@@ -188,6 +189,47 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
         );
     _endSelection();
     await _load();
+  }
+
+  Future<void> _mergeSelected() async {
+    final selectedIds = {..._selectedIds};
+    if (selectedIds.isEmpty) return;
+
+    final target = await showSupplierPickerSheet(
+      context,
+      title: '대표 거래처 선택',
+    );
+    if (!mounted || target == null) return;
+
+    final sourceIds = selectedIds.where((id) => id != target.id).toSet();
+    if (sourceIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('대표 거래처와 병합할 거래처를 따로 선택해주세요.')),
+      );
+      return;
+    }
+
+    final repo = context.read<SupplierRepo>();
+    final preview = await repo.previewMerge(
+      targetId: target.id,
+      sourceIds: sourceIds,
+    );
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _SupplierMergeConfirmDialog(preview: preview),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await repo.mergeInto(targetId: target.id, sourceIds: sourceIds);
+    if (!mounted) return;
+    _endSelection();
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${preview.sources.length}개 거래처를 병합했습니다.')),
+    );
   }
 
   Future<void> _openNew() async {
@@ -438,6 +480,11 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
                         : null,
                 child: const Text('현재 탭에서 제외'),
               ),
+              FilledButton.icon(
+                onPressed: _mergeSelected,
+                icon: const Icon(Icons.call_merge),
+                label: const Text('대표에 병합'),
+              ),
             ],
           ),
         ),
@@ -450,4 +497,105 @@ class _SupplierListScreenState extends State<SupplierListScreen> {
         _SupplierRoleTab.customer => '고객',
         _SupplierRoleTab.unclassified => '미분류',
       };
+}
+
+class _SupplierMergeConfirmDialog extends StatelessWidget {
+  const _SupplierMergeConfirmDialog({required this.preview});
+
+  final SupplierMergePreview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('거래처 병합'),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('대표 거래처', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 4),
+              _SupplierMergeNameRow(preview.target),
+              const SizedBox(height: 16),
+              Text('병합될 거래처', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 4),
+              ...preview.sources.map(_SupplierMergeNameRow.new),
+              const SizedBox(height: 16),
+              Text('변경될 데이터', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              _MergeCountRow(label: '발주서', count: preview.purchaseOrders),
+              _MergeCountRow(label: '견적서', count: preview.quotes),
+              _MergeCountRow(label: '아이템 기본 거래처', count: preview.items),
+              _MergeCountRow(label: '연락처', count: preview.contacts),
+              _MergeCountRow(label: '계좌', count: preview.accounts),
+              _MergeCountRow(
+                label: '배송지 연결',
+                count: preview.shippingDestinations,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '대표 거래처 정보는 유지하고, 비어 있는 항목만 병합될 거래처 값으로 보충합니다. '
+                '병합된 거래처는 비활성 처리됩니다.',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('병합 실행'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SupplierMergeNameRow extends StatelessWidget {
+  const _SupplierMergeNameRow(this.supplier);
+
+  final Supplier supplier;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = [
+      if ((supplier.phone ?? '').isNotEmpty) supplier.phone,
+      if ((supplier.addr ?? '').isNotEmpty) supplier.addr,
+    ].join(' · ');
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.business),
+      title: Text(supplier.name),
+      subtitle: subtitle.isEmpty ? null : Text(subtitle),
+    );
+  }
+}
+
+class _MergeCountRow extends StatelessWidget {
+  const _MergeCountRow({required this.label, required this.count});
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label)),
+          Text('$count건'),
+        ],
+      ),
+    );
+  }
 }

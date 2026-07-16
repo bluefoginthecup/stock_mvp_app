@@ -133,6 +133,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
   final _workShopIdsController = TextEditingController();
 
   var _loading = false;
+  String? _loadingMessage;
   var _credentialsLoaded = false;
   var _autoFetchedOrderView = false;
   var _workAction = 'ScrapOrder';
@@ -206,25 +207,29 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       return;
     }
 
-    await _runRequest(() async {
-      final result = await _requestToken(
-        apiKey: apiKey,
-        authenticationKey: authenticationKey,
-        email: email,
-        password: password,
-      );
-      final token = result.token;
-      if (token != null) {
-        await _storeIssuedToken(token, showMessage: true);
-      }
+    await _runRequest(
+      () async {
+        final result = await _requestToken(
+          apiKey: apiKey,
+          authenticationKey: authenticationKey,
+          email: email,
+          password: password,
+        );
+        final token = result.token;
+        if (token != null) {
+          await _storeIssuedToken(token, showMessage: true);
+        }
 
-      return _PlayAutoResponse(
-        statusCode: result.statusCode,
-        body: token == null
-            ? result.body
-            : '토큰 발급 성공\n\nAuthorization: Token $token\n\n${result.body}',
-      );
-    }, clearOrders: false);
+        return _PlayAutoResponse(
+          statusCode: result.statusCode,
+          body: token == null
+              ? result.body
+              : '토큰 발급 성공\n\nAuthorization: Token $token\n\n${result.body}',
+        );
+      },
+      clearOrders: false,
+      loadingMessage: 'PlayAuto 토큰을 발급하고 있습니다.',
+    );
   }
 
   Future<_TokenIssueResult> _requestToken({
@@ -737,41 +742,45 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       return;
     }
 
-    await _runRequest(() async {
-      final tokenResult = await _ensureTokenForOrderFetch(apiKey);
-      if (tokenResult.response != null) return tokenResult.response!;
-      final token = tokenResult.token!;
+    await _runRequest(
+      () async {
+        final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+        if (tokenResult.response != null) return tokenResult.response!;
+        final token = tokenResult.token!;
 
-      final response = await http.get(
-        _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
-        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
-      );
-      final shops = _readShopAccounts(response.body);
-      if (mounted) {
-        setState(() {
-          _shopAccounts = shops;
-          _selectedShopAccountKeys = {
-            for (final key in _selectedShopAccountKeys)
-              if (shops.any((shop) => shop.key == key)) key,
-          };
-          if (shops.length == 1) _toggleShopAccount(shops.first, true);
-        });
-      }
+        final response = await http.get(
+          _endpoint('/shops').replace(queryParameters: {'used': 'true'}),
+          headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+        );
+        final shops = _readShopAccounts(response.body);
+        if (mounted) {
+          setState(() {
+            _shopAccounts = shops;
+            _selectedShopAccountKeys = {
+              for (final key in _selectedShopAccountKeys)
+                if (shops.any((shop) => shop.key == key)) key,
+            };
+            if (shops.length == 1) _toggleShopAccount(shops.first, true);
+          });
+        }
 
-      return _PlayAutoResponse(
-        statusCode: response.statusCode,
-        body: [
-          '불러온 쇼핑몰 ${shops.length}건',
-          if (shops.isEmpty) '응답 구조에서 쇼핑몰 코드를 찾지 못했습니다.',
-          '',
-          '요청',
-          'GET /shops?used=true',
-          '',
-          '응답',
-          _prettyBody(response.body),
-        ].join('\n'),
-      );
-    }, clearOrders: false);
+        return _PlayAutoResponse(
+          statusCode: response.statusCode,
+          body: [
+            '불러온 쇼핑몰 ${shops.length}건',
+            if (shops.isEmpty) '응답 구조에서 쇼핑몰 코드를 찾지 못했습니다.',
+            '',
+            '요청',
+            'GET /shops?used=true',
+            '',
+            '응답',
+            _prettyBody(response.body),
+          ].join('\n'),
+        );
+      },
+      clearOrders: false,
+      loadingMessage: 'PlayAuto 쇼핑몰 목록을 불러오고 있습니다.',
+    );
   }
 
   Future<void> _registerOrderCollectionWork() async {
@@ -793,70 +802,74 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       return;
     }
 
-    await _runRequest(() async {
-      final tokenResult = await _ensureTokenForOrderFetch(apiKey);
-      if (tokenResult.response != null) return tokenResult.response!;
-      final token = tokenResult.token!;
+    await _runRequest(
+      () async {
+        final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+        if (tokenResult.response != null) return tokenResult.response!;
+        final token = tokenResult.token!;
 
-      final groupedTargets = _groupWorkTargetsByCode(workTargets);
-      final responses = <String>[];
-      final workNos = <String>{};
-      int? statusCode;
+        final groupedTargets = _groupWorkTargetsByCode(workTargets);
+        final responses = <String>[];
+        final workNos = <String>{};
+        int? statusCode;
 
-      for (var index = 0; index < groupedTargets.length; index += 1) {
-        final entry = groupedTargets.entries.elementAt(index);
-        final requestBody = <String, Object?>{
-          'act': _workAction,
-          'params': {
-            'site_code': entry.key,
-            'site_id': entry.value.toList(),
-          },
-        };
+        for (var index = 0; index < groupedTargets.length; index += 1) {
+          final entry = groupedTargets.entries.elementAt(index);
+          final requestBody = <String, Object?>{
+            'act': _workAction,
+            'params': {
+              'site_code': entry.key,
+              'site_id': entry.value.toList(),
+            },
+          };
 
-        final response = await http.post(
-          _endpoint('/work/addWork/v1.2'),
-          headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
-          body: jsonEncode(requestBody),
-        );
-        statusCode ??= response.statusCode;
-        workNos.addAll(_readWorkNos(response.body));
-        responses.add(
-          [
-            '쇼핑몰 코드 ${entry.key}',
-            'HTTP ${response.statusCode}',
-            '요청 바디',
-            const JsonEncoder.withIndent('  ').convert(requestBody),
+          final response = await http.post(
+            _endpoint('/work/addWork/v1.2'),
+            headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+            body: jsonEncode(requestBody),
+          );
+          statusCode ??= response.statusCode;
+          workNos.addAll(_readWorkNos(response.body));
+          responses.add(
+            [
+              '쇼핑몰 코드 ${entry.key}',
+              'HTTP ${response.statusCode}',
+              '요청 바디',
+              const JsonEncoder.withIndent('  ').convert(requestBody),
+              '',
+              '응답',
+              _prettyBody(response.body),
+            ].join('\n'),
+          );
+
+          if (index < groupedTargets.length - 1) {
+            await Future<void>.delayed(const Duration(seconds: 1));
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            _lastWorkNos = workNos.toList();
+          });
+        }
+
+        return _PlayAutoResponse(
+          statusCode: statusCode,
+          body: [
+            if (workNos.isNotEmpty) ...[
+              '등록된 작업번호',
+              workNos.join(', '),
+              '',
+            ],
+            '등록 요청 ${groupedTargets.length}건',
             '',
-            '응답',
-            _prettyBody(response.body),
+            responses.join('\n\n'),
           ].join('\n'),
         );
-
-        if (index < groupedTargets.length - 1) {
-          await Future<void>.delayed(const Duration(seconds: 1));
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _lastWorkNos = workNos.toList();
-        });
-      }
-
-      return _PlayAutoResponse(
-        statusCode: statusCode,
-        body: [
-          if (workNos.isNotEmpty) ...[
-            '등록된 작업번호',
-            workNos.join(', '),
-            '',
-          ],
-          '등록 요청 ${groupedTargets.length}건',
-          '',
-          responses.join('\n\n'),
-        ].join('\n'),
-      );
-    }, clearOrders: false);
+      },
+      clearOrders: false,
+      loadingMessage: 'PlayAuto에 주문 수집 작업을 등록하고 있습니다.',
+    );
   }
 
   Future<void> _fetchLastWorkResult() async {
@@ -870,33 +883,37 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       return;
     }
 
-    await _runRequest(() async {
-      final tokenResult = await _ensureTokenForOrderFetch(apiKey);
-      if (tokenResult.response != null) return tokenResult.response!;
-      final token = tokenResult.token!;
+    await _runRequest(
+      () async {
+        final tokenResult = await _ensureTokenForOrderFetch(apiKey);
+        if (tokenResult.response != null) return tokenResult.response!;
+        final token = tokenResult.token!;
 
-      final responses = <String>[];
-      int? statusCode;
-      for (final workNo in _lastWorkNos) {
-        final response = await http.get(
-          _endpoint('/work/$workNo'),
-          headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
-        );
-        statusCode ??= response.statusCode;
-        responses.add(
-          [
-            '작업번호 $workNo',
-            'HTTP ${response.statusCode}',
-            _prettyBody(response.body),
-          ].join('\n'),
-        );
-      }
+        final responses = <String>[];
+        int? statusCode;
+        for (final workNo in _lastWorkNos) {
+          final response = await http.get(
+            _endpoint('/work/$workNo'),
+            headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+          );
+          statusCode ??= response.statusCode;
+          responses.add(
+            [
+              '작업번호 $workNo',
+              'HTTP ${response.statusCode}',
+              _prettyBody(response.body),
+            ].join('\n'),
+          );
+        }
 
-      return _PlayAutoResponse(
-        statusCode: statusCode,
-        body: responses.join('\n\n'),
-      );
-    }, clearOrders: false);
+        return _PlayAutoResponse(
+          statusCode: statusCode,
+          body: responses.join('\n\n'),
+        );
+      },
+      clearOrders: false,
+      loadingMessage: 'PlayAuto 주문 수집 결과를 확인하고 있습니다.',
+    );
     if (mounted) {
       await _refreshOrdersAfterCollection();
     }
@@ -1352,9 +1369,11 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
   Future<void> _runRequest(
     Future<_PlayAutoResponse> Function() request, {
     bool clearOrders = true,
+    String loadingMessage = 'PlayAuto 요청을 처리하고 있습니다.',
   }) async {
     setState(() {
       _loading = true;
+      _loadingMessage = loadingMessage;
       _statusCode = null;
       _result = null;
       if (clearOrders) _orders = const [];
@@ -1372,7 +1391,10 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       setState(() => _result = '요청 실패\n\n$e');
     } finally {
       if (mounted) {
-        setState(() => _loading = false);
+        setState(() {
+          _loading = false;
+          _loadingMessage = null;
+        });
       }
     }
   }
@@ -1765,19 +1787,22 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
           child: TabBarView(
             children: [
-              _PlayAutoOrderPreviewScreen(
-                orders: _orders,
-                startDate: _sdateController.text.trim(),
-                endDate: _edateController.text.trim(),
-                length: int.tryParse(_lengthController.text.trim()) ?? 100,
-                onFetchOrders: _fetchOrdersForPreview,
-                fulfillmentMode: true,
-                embedded: true,
-                onInstruction: _requestShipmentInstruction,
-                onSetInvoice: _requestSetInvoice,
-                onCompleteInvoice: _requestCompleteInvoice,
-                onSendInvoice: _requestSendInvoice,
-              ),
+              if (!_credentialsLoaded)
+                const Center(child: CircularProgressIndicator())
+              else
+                _PlayAutoOrderPreviewScreen(
+                  orders: _orders,
+                  startDate: _sdateController.text.trim(),
+                  endDate: _edateController.text.trim(),
+                  length: int.tryParse(_lengthController.text.trim()) ?? 100,
+                  onFetchOrders: _fetchOrdersForPreview,
+                  fulfillmentMode: true,
+                  embedded: true,
+                  onInstruction: _requestShipmentInstruction,
+                  onSetInvoice: _requestSetInvoice,
+                  onCompleteInvoice: _requestCompleteInvoice,
+                  onSendInvoice: _requestSendInvoice,
+                ),
               ListView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
@@ -1793,6 +1818,12 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
                           color: scheme.onSurfaceVariant,
                         ),
                   ),
+                  if (_loading) ...[
+                    const SizedBox(height: 12),
+                    _PlayAutoLoadingBanner(
+                      message: _loadingMessage ?? 'PlayAuto 요청을 처리하고 있습니다.',
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   TextField(
                     controller: _baseUrlController,
@@ -2228,14 +2259,26 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
                       FilledButton.icon(
                         onPressed:
                             _loading ? null : _registerOrderCollectionWork,
-                        icon: const Icon(Icons.play_arrow_outlined),
+                        icon: _loading
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.play_arrow_outlined),
                         label: const Text('쇼핑몰 주문 수집'),
                       ),
                       OutlinedButton.icon(
                         onPressed: _loading || _lastWorkNos.isEmpty
                             ? null
                             : _fetchLastWorkResult,
-                        icon: const Icon(Icons.fact_check_outlined),
+                        icon: _loading
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.fact_check_outlined),
                         label: Text(
                           _lastWorkNos.isEmpty
                               ? '결과 확인'
@@ -2304,6 +2347,47 @@ class _AutoSyncStatusChip extends StatelessWidget {
           Icon(icon, size: 15, color: scheme.onSurfaceVariant),
           const SizedBox(width: 5),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlayAutoLoadingBanner extends StatelessWidget {
+  const _PlayAutoLoadingBanner({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.28),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        children: [
+          SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: scheme.primary,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
         ],
       ),
     );

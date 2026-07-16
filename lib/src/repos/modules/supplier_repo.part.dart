@@ -136,6 +136,161 @@ mixin SupplierRepoMixin on _RepoCore implements SupplierRepo {
   }
 
   @override
+  Future<SupplierMergePreview> previewMerge({
+    required String targetId,
+    required Set<String> sourceIds,
+  }) async {
+    final normalizedSourceIds = sourceIds.where((id) => id != targetId).toSet();
+    final target = await get(targetId);
+    if (target == null) {
+      throw ArgumentError('병합할 대표 거래처를 찾을 수 없습니다.');
+    }
+    final sources = <Supplier>[];
+    for (final id in normalizedSourceIds) {
+      final supplier = await get(id);
+      if (supplier != null) sources.add(supplier);
+    }
+    if (sources.length != normalizedSourceIds.length) {
+      throw ArgumentError('병합할 거래처 중 찾을 수 없는 항목이 있습니다.');
+    }
+
+    return SupplierMergePreview(
+      target: target,
+      sources: sources,
+      purchaseOrders: await _countSupplierReferences(
+        'purchase_orders',
+        'supplier_id',
+        normalizedSourceIds,
+      ),
+      quotes: await _countSupplierReferences(
+        'quotes',
+        'customer_id',
+        normalizedSourceIds,
+      ),
+      items: await _countSupplierReferences(
+        'items',
+        'default_supplier_uid',
+        normalizedSourceIds,
+      ),
+      contacts: await _countSupplierReferences(
+        'supplier_contacts',
+        'supplier_id',
+        normalizedSourceIds,
+      ),
+      accounts: await _countSupplierReferences(
+        'supplier_accounts',
+        'supplier_id',
+        normalizedSourceIds,
+      ),
+      shippingDestinations: await _countSupplierReferences(
+        'supplier_shipping_destinations',
+        'supplier_id',
+        normalizedSourceIds,
+      ),
+    );
+  }
+
+  @override
+  Future<void> mergeInto({
+    required String targetId,
+    required Set<String> sourceIds,
+  }) async {
+    final normalizedSourceIds = sourceIds.where((id) => id != targetId).toSet();
+    if (normalizedSourceIds.isEmpty) return;
+
+    await db.transaction(() async {
+      final preview = await previewMerge(
+        targetId: targetId,
+        sourceIds: normalizedSourceIds,
+      );
+      final now = DateTime.now();
+      final target = _mergeSupplierFields(preview.target, preview.sources, now);
+      await upsert(target);
+
+      final placeholders =
+          List.filled(normalizedSourceIds.length, '?').join(', ');
+      final values = normalizedSourceIds.toList();
+
+      await db.customStatement(
+        '''
+        UPDATE purchase_orders
+        SET supplier_id = ?, supplier_name = ?, updated_at = ?
+        WHERE supplier_id IN ($placeholders)
+        ''',
+        [targetId, target.name, now.toIso8601String(), ...values],
+      );
+      await db.customStatement(
+        '''
+        UPDATE quotes
+        SET customer_id = ?, customer_name = ?, updated_at = ?
+        WHERE customer_id IN ($placeholders)
+        ''',
+        [targetId, target.name, now.toIso8601String(), ...values],
+      );
+      await db.customStatement(
+        '''
+        UPDATE items
+        SET default_supplier_uid = ?, supplier_name = ?
+        WHERE default_supplier_uid IN ($placeholders)
+        ''',
+        [targetId, target.name, ...values],
+      );
+      await db.customStatement(
+        '''
+        UPDATE supplier_contacts
+        SET supplier_id = ?
+        WHERE supplier_id IN ($placeholders)
+        ''',
+        [targetId, ...values],
+      );
+      await db.customStatement(
+        '''
+        UPDATE supplier_accounts
+        SET supplier_id = ?
+        WHERE supplier_id IN ($placeholders)
+        ''',
+        [targetId, ...values],
+      );
+      await db.customStatement(
+        '''
+        INSERT OR IGNORE INTO supplier_shipping_destinations (
+          supplier_id, shipping_destination_id, is_default, created_at, updated_at
+        )
+        SELECT ?, shipping_destination_id, 0, created_at, ?
+        FROM supplier_shipping_destinations
+        WHERE supplier_id IN ($placeholders)
+        ''',
+        [targetId, now.toIso8601String(), ...values],
+      );
+      await db.customStatement(
+        '''
+        DELETE FROM supplier_shipping_destinations
+        WHERE supplier_id IN ($placeholders)
+        ''',
+        values,
+      );
+
+      for (final source in preview.sources) {
+        await db.customStatement(
+          '''
+          UPDATE suppliers
+          SET is_active = 0, updated_at = ?, memo = ?
+          WHERE id = ?
+          ''',
+          [
+            now.toIso8601String(),
+            _appendMemo(
+              source.memo,
+              '병합됨: ${target.name} (${target.id})로 이동',
+            ),
+            source.id,
+          ],
+        );
+      }
+    });
+  }
+
+  @override
   Future<List<SupplierContact>> listContacts(String supplierId) async {
     final rows = await db.customSelect(
       '''
@@ -254,6 +409,77 @@ mixin SupplierRepoMixin on _RepoCore implements SupplierRepo {
       createdAt: DateTime.parse(data['created_at'] as String),
       updatedAt: DateTime.parse(data['updated_at'] as String),
     );
+  }
+
+  Future<int> _countSupplierReferences(
+    String table,
+    String column,
+    Set<String> ids,
+  ) async {
+    if (ids.isEmpty) return 0;
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    final row = await db
+        .customSelect(
+          'SELECT COUNT(*) AS c FROM $table WHERE $column IN ($placeholders)',
+          variables: ids.map((id) => Variable<String>(id)).toList(),
+        )
+        .getSingle();
+    return row.data['c'] as int? ?? 0;
+  }
+
+  Supplier _mergeSupplierFields(
+    Supplier target,
+    List<Supplier> sources,
+    DateTime now,
+  ) {
+    String? firstValue(String? Function(Supplier supplier) pick) {
+      for (final source in sources) {
+        final value = pick(source)?.trim();
+        if (value != null && value.isNotEmpty) return value;
+      }
+      return null;
+    }
+
+    String? fill(String? current, String? fallback) {
+      final trimmed = current?.trim();
+      if (trimmed != null && trimmed.isNotEmpty) return current;
+      return fallback;
+    }
+
+    final mergeLines =
+        sources.map((source) => '- ${source.name} (${source.id})').join('\n');
+    final mergedMemo = _appendMemo(
+      target.memo,
+      '거래처 병합 이력\n$mergeLines',
+    );
+
+    return target.copyWith(
+      contactName: fill(target.contactName, firstValue((s) => s.contactName)),
+      phone: fill(target.phone, firstValue((s) => s.phone)),
+      email: fill(target.email, firstValue((s) => s.email)),
+      addr: fill(target.addr, firstValue((s) => s.addr)),
+      memo: mergedMemo,
+      fax: fill(target.fax, firstValue((s) => s.fax)),
+      businessNumber:
+          fill(target.businessNumber, firstValue((s) => s.businessNumber)),
+      representative:
+          fill(target.representative, firstValue((s) => s.representative)),
+      businessType:
+          fill(target.businessType, firstValue((s) => s.businessType)),
+      businessItem:
+          fill(target.businessItem, firstValue((s) => s.businessItem)),
+      isActive: true,
+      isPurchaseSupplier:
+          target.isPurchaseSupplier || sources.any((s) => s.isPurchaseSupplier),
+      isCustomer: target.isCustomer || sources.any((s) => s.isCustomer),
+      updatedAt: now,
+    );
+  }
+
+  String _appendMemo(String? memo, String addition) {
+    final base = memo?.trim();
+    if (base == null || base.isEmpty) return addition;
+    return '$base\n\n$addition';
   }
 
   SupplierContact _supplierContactFromRow(QueryRow row) {

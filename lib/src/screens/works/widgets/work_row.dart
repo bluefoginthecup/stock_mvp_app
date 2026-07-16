@@ -14,16 +14,20 @@ class WorkRow extends StatelessWidget {
   final Work w;
   final VoidCallback? onStart;
   final VoidCallback? onDone;
-  final VoidCallback? onDelete;
   final VoidCallback? onTap; // 상세 이동 (옵션)
+  final VoidCallback? onLongPress;
+  final bool selectionMode;
+  final bool selected;
 
   const WorkRow({
     super.key,
     required this.w,
     this.onStart,
     this.onDone,
-    this.onDelete,
     this.onTap,
+    this.onLongPress,
+    this.selectionMode = false,
+    this.selected = false,
   });
 
   Future<
@@ -95,23 +99,14 @@ class WorkRow extends StatelessWidget {
           action = const Icon(Icons.check, color: Colors.green);
         }
 
-        final trailing = onDelete == null
-            ? action
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (action != null) action,
-                  IconButton(
-                    tooltip: '작업 삭제',
-                    icon: const Icon(Icons.delete_outline),
-                    color: Colors.redAccent,
-                    onPressed: onDelete,
-                  ),
-                ],
-              );
-
         return ListTile(
           // "$itemName   x${w.qty}" → 플레이스홀더 키
+          leading: selectionMode
+              ? Checkbox(
+                  value: selected,
+                  onChanged: (_) => onTap?.call(),
+                )
+              : null,
 
           title: Row(
             children: [
@@ -137,12 +132,13 @@ class WorkRow extends StatelessWidget {
               Text(context.t.work_row_item_short(shortId(w.itemId))),
             ],
           ),
-          trailing: trailing,
+          trailing: selectionMode ? null : action,
           dense: true,
           visualDensity: VisualDensity.compact,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           onTap: onTap,
+          onLongPress: onLongPress,
         );
       },
     );

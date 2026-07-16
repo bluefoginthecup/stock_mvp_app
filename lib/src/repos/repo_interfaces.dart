@@ -20,6 +20,36 @@ import '../models/folder_node.dart';
 import 'package:flutter/foundation.dart'; // ChangeNotifier
 import '../models/trash_entry.dart';
 
+class SupplierMergePreview {
+  const SupplierMergePreview({
+    required this.target,
+    required this.sources,
+    required this.purchaseOrders,
+    required this.quotes,
+    required this.items,
+    required this.contacts,
+    required this.accounts,
+    required this.shippingDestinations,
+  });
+
+  final Supplier target;
+  final List<Supplier> sources;
+  final int purchaseOrders;
+  final int quotes;
+  final int items;
+  final int contacts;
+  final int accounts;
+  final int shippingDestinations;
+
+  int get totalReferences =>
+      purchaseOrders +
+      quotes +
+      items +
+      contacts +
+      accounts +
+      shippingDestinations;
+}
+
 /// 공통 규칙:
 /// - 모든 Repo는 비동기(Future) 시그니처를 기본으로 함.
 /// - "표준 인터페이스"는 최소 메서드만 강제.
@@ -372,6 +402,14 @@ abstract class SupplierRepo {
     Set<String> ids, {
     bool? isPurchaseSupplier,
     bool? isCustomer,
+  });
+  Future<SupplierMergePreview> previewMerge({
+    required String targetId,
+    required Set<String> sourceIds,
+  });
+  Future<void> mergeInto({
+    required String targetId,
+    required Set<String> sourceIds,
   });
 
   Future<List<SupplierContact>> listContacts(String supplierId);
