@@ -639,8 +639,235 @@ mixin ItemRepoMixin on _RepoCore implements ItemRepo {
     notifyListeners();
   }
 
+  @override
+  Future<ItemMergePreview> previewItemMerge({
+    required String targetId,
+    required Set<String> sourceIds,
+  }) async {
+    final normalizedSourceIds = sourceIds.where((id) => id != targetId).toSet();
+    final target = await getItem(targetId);
+    if (target == null) {
+      throw ArgumentError('병합할 대표 아이템을 찾을 수 없습니다.');
+    }
+    final sources = <Item>[];
+    for (final id in normalizedSourceIds) {
+      final item = await getItem(id);
+      if (item != null) sources.add(item);
+    }
+    if (sources.length != normalizedSourceIds.length) {
+      throw ArgumentError('병합할 아이템 중 찾을 수 없는 항목이 있습니다.');
+    }
+
+    return ItemMergePreview(
+      target: target,
+      sources: sources,
+      purchaseLines: await _countItemReferences(
+        'purchase_lines',
+        'item_id',
+        normalizedSourceIds,
+      ),
+      quoteLines: await _countItemReferences(
+        'quote_lines',
+        'item_id',
+        normalizedSourceIds,
+      ),
+      txns: await _countItemReferences('txns', 'item_id', normalizedSourceIds),
+      orderLines: await _countItemReferences(
+        'order_lines',
+        'item_id',
+        normalizedSourceIds,
+      ),
+      works:
+          await _countItemReferences('works', 'item_id', normalizedSourceIds),
+      lots: await _countItemReferences('lots', 'item_id', normalizedSourceIds),
+      priceHistories: await _countItemReferences(
+        'item_price_histories',
+        'item_id',
+        normalizedSourceIds,
+      ),
+      images: await _countItemReferences(
+        'item_images',
+        'item_id',
+        normalizedSourceIds,
+      ),
+      productionGuides: await _countItemReferences(
+        'item_production_guides',
+        'item_id',
+        normalizedSourceIds,
+      ),
+      bomReferences: await _countBomItemReferences(normalizedSourceIds),
+    );
+  }
+
+  @override
+  Future<void> mergeItemsInto({
+    required String targetId,
+    required Set<String> sourceIds,
+  }) async {
+    final normalizedSourceIds = sourceIds.where((id) => id != targetId).toSet();
+    if (normalizedSourceIds.isEmpty) return;
+
+    await db.transaction(() async {
+      final preview = await previewItemMerge(
+        targetId: targetId,
+        sourceIds: normalizedSourceIds,
+      );
+      if (!preview.canMerge) {
+        throw StateError('BOM에서 사용 중인 아이템은 먼저 BOM을 정리해야 병합할 수 있습니다.');
+      }
+
+      final now = DateTime.now().toIso8601String();
+      await _appendTargetItemMergeHistory(
+        targetId: targetId,
+        sources: preview.sources,
+        mergedAt: now,
+      );
+
+      final placeholders =
+          List.filled(normalizedSourceIds.length, '?').join(', ');
+      final values = normalizedSourceIds.toList();
+      for (final table in const [
+        'purchase_lines',
+        'quote_lines',
+        'txns',
+        'order_lines',
+        'works',
+        'lots',
+        'item_price_histories',
+        'item_images',
+        'item_production_guides',
+      ]) {
+        await db.customStatement(
+          'UPDATE $table SET item_id = ? WHERE item_id IN ($placeholders)',
+          [targetId, ...values],
+        );
+      }
+
+      for (final source in preview.sources) {
+        await _markMergedSourceItemDeleted(
+          sourceId: source.id,
+          target: preview.target,
+          mergedAt: now,
+        );
+        _itemsById.remove(source.id);
+        _stockCache.remove(source.id);
+      }
+    });
+
+    final fresh = await getItem(targetId);
+    if (fresh != null) _cacheItem(fresh);
+    notifyListeners();
+  }
+
   Future<void> toggleFavorite(String itemId, bool value) =>
       setFavorite(itemId: itemId, value: value);
+
+  Future<int> _countItemReferences(
+    String table,
+    String column,
+    Set<String> ids,
+  ) async {
+    if (ids.isEmpty) return 0;
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    final row = await db
+        .customSelect(
+          'SELECT COUNT(*) AS c FROM $table WHERE $column IN ($placeholders)',
+          variables: ids.map((id) => Variable<String>(id)).toList(),
+        )
+        .getSingle();
+    return row.data['c'] as int? ?? 0;
+  }
+
+  Future<int> _countBomItemReferences(Set<String> ids) async {
+    if (ids.isEmpty) return 0;
+    final placeholders = List.filled(ids.length, '?').join(', ');
+    final variables = ids.map((id) => Variable<String>(id)).toList();
+    final row = await db.customSelect(
+      '''
+          SELECT COUNT(*) AS c
+          FROM bom_rows
+          WHERE parent_item_id IN ($placeholders)
+             OR component_item_id IN ($placeholders)
+          ''',
+      variables: [...variables, ...variables],
+    ).getSingle();
+    return row.data['c'] as int? ?? 0;
+  }
+
+  Future<void> _appendTargetItemMergeHistory({
+    required String targetId,
+    required List<Item> sources,
+    required String mergedAt,
+  }) async {
+    final row = await (db.select(db.items)..where((t) => t.id.equals(targetId)))
+        .getSingleOrNull();
+    if (row == null) return;
+    final extra = _decodeItemExtra(row.extra);
+    final existing = extra['mergedItems'];
+    final mergedItems = existing is List ? [...existing] : <Object?>[];
+    for (final source in sources) {
+      mergedItems.add({
+        'id': source.id,
+        'name': source.name,
+        'displayName': source.displayName,
+        'sku': source.sku,
+        'unit': source.unit,
+        'qtyAtMerge': source.qty,
+        'folder': source.folder,
+        'subfolder': source.subfolder,
+        'subsubfolder': source.subsubfolder,
+        'mergedAt': mergedAt,
+      });
+    }
+    extra['mergedItems'] = mergedItems;
+    extra['lastMergedAt'] = mergedAt;
+
+    await (db.update(db.items)..where((t) => t.id.equals(targetId))).write(
+      ItemsCompanion(extra: Value(jsonEncode(extra))),
+    );
+  }
+
+  Future<void> _markMergedSourceItemDeleted({
+    required String sourceId,
+    required Item target,
+    required String mergedAt,
+  }) async {
+    final row = await (db.select(db.items)..where((t) => t.id.equals(sourceId)))
+        .getSingleOrNull();
+    if (row == null) return;
+    final path = await (db.select(db.itemPaths)
+          ..where((t) => t.itemId.equals(sourceId)))
+        .getSingleOrNull();
+    final extra = _decodeItemExtra(row.extra);
+    extra.addAll({
+      'l1Id': path?.l1Id,
+      'l2Id': path?.l2Id,
+      'l3Id': path?.l3Id,
+      'mergedIntoItemId': target.id,
+      'mergedIntoItemName': target.displayName ?? target.name,
+      'mergedAt': mergedAt,
+    });
+
+    await (db.update(db.items)..where((t) => t.id.equals(sourceId))).write(
+      ItemsCompanion(
+        isDeleted: const Value(true),
+        deletedAt: Value(mergedAt),
+        extra: Value(jsonEncode(extra)),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _decodeItemExtra(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) return {...decoded};
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    } catch (_) {
+      // Keep malformed legacy extra from breaking merge.
+    }
+    return <String, dynamic>{};
+  }
 
   @override
   Stream<List<Item>> watchItems({

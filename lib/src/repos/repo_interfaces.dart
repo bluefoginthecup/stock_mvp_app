@@ -50,6 +50,38 @@ class SupplierMergePreview {
       shippingDestinations;
 }
 
+class ItemMergePreview {
+  const ItemMergePreview({
+    required this.target,
+    required this.sources,
+    required this.purchaseLines,
+    required this.quoteLines,
+    required this.txns,
+    required this.orderLines,
+    required this.works,
+    required this.lots,
+    required this.priceHistories,
+    required this.images,
+    required this.productionGuides,
+    required this.bomReferences,
+  });
+
+  final Item target;
+  final List<Item> sources;
+  final int purchaseLines;
+  final int quoteLines;
+  final int txns;
+  final int orderLines;
+  final int works;
+  final int lots;
+  final int priceHistories;
+  final int images;
+  final int productionGuides;
+  final int bomReferences;
+
+  bool get canMerge => bomReferences == 0;
+}
+
 /// 공통 규칙:
 /// - 모든 Repo는 비동기(Future) 시그니처를 기본으로 함.
 /// - "표준 인터페이스"는 최소 메서드만 강제.
@@ -136,6 +168,14 @@ abstract class ItemRepo {
   Future<void> setDefaultSupplierBulk({
     required List<String> ids,
     required Supplier supplier,
+  });
+  Future<ItemMergePreview> previewItemMerge({
+    required String targetId,
+    required Set<String> sourceIds,
+  });
+  Future<void> mergeItemsInto({
+    required String targetId,
+    required Set<String> sourceIds,
   });
 
   /// 실시간 목록(폴더/검색/필터/재귀)

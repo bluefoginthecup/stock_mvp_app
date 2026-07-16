@@ -1025,18 +1025,6 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     );
   }
 
-  void _openPlayAutoOrderCalendar() {
-    if (_orders.isEmpty) {
-      _showSnack('먼저 캐시 조회 또는 동기화로 주문을 불러와주세요.');
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _PlayAutoOrderCalendarScreen(orders: _orders),
-      ),
-    );
-  }
-
   Future<_PlayAutoResponse> _requestShipmentInstruction(
     _PlayAutoOrderPreview order,
   ) async {
@@ -1747,7 +1735,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     }
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           toolbarHeight: 52,
@@ -1767,6 +1755,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
                   indicatorSize: TabBarIndicatorSize.label,
                   labelPadding: const EdgeInsets.symmetric(horizontal: 10),
                   tabs: const [
+                    Tab(height: 38, text: '달력'),
                     Tab(height: 38, text: '주문'),
                     Tab(height: 38, text: '계정'),
                   ],
@@ -1774,19 +1763,16 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
               ),
             ],
           ),
-          actions: [
-            IconButton(
-              tooltip: '주문 달력',
-              onPressed: _openPlayAutoOrderCalendar,
-              icon: const Icon(Icons.calendar_month_outlined),
-            ),
-          ],
         ),
         body: GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
           child: TabBarView(
             children: [
+              _PlayAutoOrderCalendarScreen(
+                orders: _orders,
+                embedded: true,
+              ),
               if (!_credentialsLoaded)
                 const Center(child: CircularProgressIndicator())
               else
@@ -2295,26 +2281,71 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
                     ),
                   if (_result != null) ...[
                     const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border:
-                            Border.all(color: Theme.of(context).dividerColor),
-                        borderRadius: BorderRadius.circular(8),
-                        color: scheme.surfaceContainerHighest
-                            .withValues(alpha: 0.35),
-                      ),
-                      child: SelectableText(
-                        _result!,
-                        style: const TextStyle(
-                            fontFamily: 'monospace', fontSize: 12),
-                      ),
-                    ),
+                    _PlayAutoResultBox(text: _result!),
                   ],
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayAutoResultBox extends StatefulWidget {
+  const _PlayAutoResultBox({required this.text});
+
+  final String text;
+
+  @override
+  State<_PlayAutoResultBox> createState() => _PlayAutoResultBoxState();
+}
+
+class _PlayAutoResultBoxState extends State<_PlayAutoResultBox> {
+  final _verticalController = ScrollController();
+  final _horizontalController = ScrollController();
+
+  @override
+  void dispose() {
+    _verticalController.dispose();
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      height: 280,
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(8),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      ),
+      child: Scrollbar(
+        controller: _verticalController,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _verticalController,
+          primary: false,
+          padding: const EdgeInsets.all(12),
+          child: Scrollbar(
+            controller: _horizontalController,
+            thumbVisibility: true,
+            notificationPredicate: (notification) =>
+                notification.metrics.axis == Axis.horizontal,
+            child: SingleChildScrollView(
+              controller: _horizontalController,
+              primary: false,
+              scrollDirection: Axis.horizontal,
+              child: SelectableText(
+                widget.text,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+            ),
           ),
         ),
       ),
@@ -2580,32 +2611,39 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
 }
 
 class _PlayAutoOrderCalendarScreen extends StatelessWidget {
-  const _PlayAutoOrderCalendarScreen({required this.orders});
+  const _PlayAutoOrderCalendarScreen({
+    required this.orders,
+    this.embedded = false,
+  });
 
   final List<_PlayAutoOrderPreview> orders;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context) {
     final events = _calendarEvents;
     final focusedDay = _focusedDay(events);
+    final body = events.isEmpty
+        ? const Center(child: Text('날짜가 있는 주문이 없습니다.'))
+        : CommonCalendarView(
+            events: events,
+            focusedDay: focusedDay,
+            expandedBuilder: (event) {
+              final index = int.tryParse(event.refId);
+              if (index == null || index < 0 || index >= orders.length) {
+                return const SizedBox.shrink();
+              }
+              return _PlayAutoCalendarOrderTile(order: orders[index]);
+            },
+          );
+
+    if (embedded) return body;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('플토 주문 달력'),
       ),
-      body: events.isEmpty
-          ? const Center(child: Text('날짜가 있는 주문이 없습니다.'))
-          : CommonCalendarView(
-              events: events,
-              focusedDay: focusedDay,
-              expandedBuilder: (event) {
-                final index = int.tryParse(event.refId);
-                if (index == null || index < 0 || index >= orders.length) {
-                  return const SizedBox.shrink();
-                }
-                return _PlayAutoCalendarOrderTile(order: orders[index]);
-              },
-            ),
+      body: body,
     );
   }
 

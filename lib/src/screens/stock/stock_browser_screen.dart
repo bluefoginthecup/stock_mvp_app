@@ -16,6 +16,7 @@ import '../../ui/common/entity_actions.dart';
 import 'stock_item_detail_screen.dart';
 import '../../services/export_service.dart';
 import '../../ui/common/qty_set_sheet.dart';
+import '../../ui/common/item_picker_sheet.dart';
 import '../../ui/common/supplier_picker_sheet.dart';
 import '../../repos/repo_interfaces.dart';
 import '../../ui/common/selection/item_selection_controller.dart';
@@ -686,6 +687,13 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
         },
       ),
       MultiSelectAction(
+        icon: Icons.call_merge,
+        tooltip: '대표 아이템에 병합',
+        onPressed: () async {
+          await _mergeSelectedItems(context, sel);
+        },
+      ),
+      MultiSelectAction(
         icon: Icons.drive_file_move,
         tooltip: '이동',
         onPressed: () async {
@@ -943,6 +951,64 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     );
   }
 
+  Future<void> _mergeSelectedItems(
+    BuildContext context,
+    ItemSelectionController sel,
+  ) async {
+    final sourceIds = sel.selectedItems.toSet();
+    if (sourceIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('아이템을 선택해야 병합할 수 있어요.')),
+      );
+      return;
+    }
+
+    final repo = context.read<ItemRepo>();
+    final targetId = await showItemPickerSheet(
+      context,
+      title: '대표 아이템 선택',
+    );
+    if (targetId == null) return;
+
+    final mergeSourceIds = sourceIds.where((id) => id != targetId).toSet();
+    if (mergeSourceIds.isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('대표 아이템과 병합할 아이템을 따로 선택해주세요.')),
+      );
+      return;
+    }
+
+    final preview = await repo.previewItemMerge(
+      targetId: targetId,
+      sourceIds: mergeSourceIds,
+    );
+    if (!context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ItemMergeConfirmDialog(preview: preview),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      await repo.mergeItemsInto(targetId: targetId, sourceIds: mergeSourceIds);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('아이템 병합 실패: $e')),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+    sel.exit();
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${preview.sources.length}개 아이템을 병합했습니다.')),
+    );
+  }
+
   //------빌드 스택 위드 리스트 ------//
 
   Widget _buildStackWithList(
@@ -1030,5 +1096,138 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
       // 멀티선택 해제(선택 상태로 점프하면 UX 혼동 생김)
       sel.exit();
     });
+  }
+}
+
+class _ItemMergeConfirmDialog extends StatelessWidget {
+  const _ItemMergeConfirmDialog({required this.preview});
+
+  final ItemMergePreview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('아이템 병합'),
+      content: SizedBox(
+        width: 460,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('대표 아이템', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 4),
+              _ItemMergeNameRow(item: preview.target),
+              const SizedBox(height: 16),
+              Text('병합될 아이템', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 4),
+              ...preview.sources.map((item) => _ItemMergeNameRow(item: item)),
+              const SizedBox(height: 16),
+              Text('변경될 데이터', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 8),
+              _ItemMergeCountRow(label: '발주 라인', count: preview.purchaseLines),
+              _ItemMergeCountRow(label: '견적 라인', count: preview.quoteLines),
+              _ItemMergeCountRow(label: '입출고', count: preview.txns),
+              _ItemMergeCountRow(label: '주문 라인', count: preview.orderLines),
+              _ItemMergeCountRow(label: '작업', count: preview.works),
+              _ItemMergeCountRow(label: '로트', count: preview.lots),
+              _ItemMergeCountRow(
+                label: '가격 이력',
+                count: preview.priceHistories,
+              ),
+              _ItemMergeCountRow(label: '이미지', count: preview.images),
+              _ItemMergeCountRow(
+                label: '제작 가이드',
+                count: preview.productionGuides,
+              ),
+              _ItemMergeCountRow(
+                label: 'BOM 참조',
+                count: preview.bomReferences,
+                highlight: preview.bomReferences > 0,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '대표 아이템의 이름, SKU, 단위, 재고, BOM은 그대로 유지합니다. '
+                '병합될 아이템의 현재고는 더하지 않고, 병합된 아이템은 휴지통으로 이동합니다.',
+                style: theme.textTheme.bodySmall,
+              ),
+              if (!preview.canMerge) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'BOM에서 사용 중인 아이템은 병합할 수 없습니다. BOM을 먼저 정리해주세요.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.error,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed:
+              preview.canMerge ? () => Navigator.pop(context, true) : null,
+          child: const Text('병합 실행'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ItemMergeNameRow extends StatelessWidget {
+  const _ItemMergeNameRow({required this.item});
+
+  final Item item;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = item.displayName?.trim().isNotEmpty == true
+        ? item.displayName!
+        : item.name;
+    final subtitle = [
+      if (item.sku.trim().isNotEmpty) item.sku,
+      '단위: ${item.unit}',
+      '현재고: ${item.qty}',
+    ].join(' · ');
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.inventory_2_outlined),
+      title: Text(title),
+      subtitle: Text(subtitle),
+    );
+  }
+}
+
+class _ItemMergeCountRow extends StatelessWidget {
+  const _ItemMergeCountRow({
+    required this.label,
+    required this.count,
+    this.highlight = false,
+  });
+
+  final String label;
+  final int count;
+  final bool highlight;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = highlight ? Theme.of(context).colorScheme.error : null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: TextStyle(color: color))),
+          Text('$count건', style: TextStyle(color: color)),
+        ],
+      ),
+    );
   }
 }
