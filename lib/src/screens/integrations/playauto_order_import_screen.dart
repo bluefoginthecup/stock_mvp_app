@@ -3821,14 +3821,6 @@ class _PlayAutoQuoteOrderAddScreenState
     }
   }
 
-  Future<void> _saveDefaultCustomShopAccount() async {
-    final code = _customShopCodeController.text.trim();
-    final id = _customShopIdController.text.trim();
-    if (code.isEmpty || id.isEmpty) return;
-    await _storage.write(key: _customShopCodeKey, value: code);
-    await _storage.write(key: _customShopIdKey, value: id);
-  }
-
   Future<void> _clearDefaultCustomShopAccount() async {
     _customShopCodeController.clear();
     _customShopIdController.clear();
@@ -4217,8 +4209,6 @@ class _PlayAutoQuoteOrderAddScreenState
   String? _autoSubmitValidationMessage() {
     final missing = <String>[
       if (_apiKeyController.text.trim().isEmpty) 'API Key',
-      if (_customShopCodeController.text.trim().isEmpty) 'shop_cd',
-      if (_customShopIdController.text.trim().isEmpty) 'shop_id',
       if (_shopOrderNoController.text.trim().isEmpty) '플토 주문번호',
       if (_shopSaleNameController.text.trim().isEmpty) '주문상품명',
       if (_orderNameController.text.trim().isEmpty) '주문자명',
@@ -4240,8 +4230,6 @@ class _PlayAutoQuoteOrderAddScreenState
       headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
     );
     final shops = _readShopAccounts(response.body);
-    final allShopCodes = await _fetchAllShopCodes(apiKey: apiKey, token: token);
-    final defaultCustomShopCode = _findDirectInputShopCode(allShopCodes);
     debugPrint(
       '[PlayAuto /order/add] shops response status=${response.statusCode}',
     );
@@ -4252,10 +4240,6 @@ class _PlayAutoQuoteOrderAddScreenState
     debugPrint(
       '[PlayAuto /order/add] parsed shops '
       '${shops.map((shop) => '${shop.code}|${shop.id}|${shop.name}|custom=${shop.isCustomInput}').join(', ')}',
-    );
-    debugPrint(
-      '[PlayAuto /order/add] all shop codes '
-      '${allShopCodes.map((shop) => '${shop.code}|${shop.name}|custom=${shop.isCustomInput}').join(', ')}',
     );
     final manualShop = _manualCustomShopAccount();
     if (manualShop != null) {
@@ -4281,50 +4265,14 @@ class _PlayAutoQuoteOrderAddScreenState
       );
       await _clearDefaultCustomShopAccount();
     }
-
-    final usableShops = shops.where(
-      (shop) => shop.isCustomInput && shop.id.trim().isNotEmpty,
-    );
-    final shop = usableShops.isEmpty ? null : usableShops.first;
-    if (shop == null && widget.autoSubmit) {
-      final enteredShop = await _showCustomShopAccountSetupDialog(
-        regularShops: shops.where((shop) => !shop.isCustomInput).toList(),
-        initialCode: defaultCustomShopCode,
-      );
-      if (enteredShop != null) {
-        if (!mounted) return;
-        setState(() {
-          _customShopCodeController.text = enteredShop.code;
-          _customShopIdController.text = enteredShop.id;
-          _shops = _withManualCustomShopAccount(shops);
-          _selectedShop = enteredShop;
-        });
-        await _saveDefaultCustomShopAccount();
-        debugPrint(
-          '[PlayAuto /order/add] selected entered custom shop '
-          'custom_shop_cd=${enteredShop.code} '
-          'custom_shop_id=${enteredShop.id}',
-        );
-        return;
-      }
-    }
-    if (shop == null) {
-      throw const _PlayAutoUserMessage(
-        '플토 주문 전송 실패: 직접입력 쇼핑몰 코드와 아이디를 먼저 저장해주세요.',
-      );
-    }
-
     if (!mounted) return;
     setState(() {
-      _shops = _withManualCustomShopAccount(shops);
-      _selectedShop = shop;
-      _customShopCodeController.text = shop.code;
-      _customShopIdController.text = shop.id;
+      _shops = shops;
+      _selectedShop = null;
     });
-    await _saveDefaultCustomShopAccount();
     debugPrint(
-      '[PlayAuto /order/add] selected custom shop '
-      'custom_shop_cd=${shop.code} custom_shop_id=${shop.id} name=${shop.name}',
+      '[PlayAuto /order/add] no custom shop selected; '
+      'custom_shop_cd/custom_shop_id will be omitted',
     );
   }
 
@@ -4337,117 +4285,6 @@ class _PlayAutoQuoteOrderAddScreenState
       if (shop.code.trim() == target.code.trim()) return shop;
     }
     return null;
-  }
-
-  Future<List<_PlayAutoShopAccount>> _fetchAllShopCodes({
-    required String apiKey,
-    required String token,
-  }) async {
-    try {
-      final response = await http.get(
-        _endpoint('/shops'),
-        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
-      );
-      debugPrint(
-        '[PlayAuto /order/add] all shops response status=${response.statusCode}',
-      );
-      _debugPrintLong(
-        '[PlayAuto /order/add] all shops response body ',
-        _prettyBody(response.body),
-      );
-      return _readShopAccounts(response.body);
-    } catch (e) {
-      debugPrint('[PlayAuto /order/add] all shops lookup failed $e');
-      return const [];
-    }
-  }
-
-  String _findDirectInputShopCode(List<_PlayAutoShopAccount> shops) {
-    final direct = shops.where((shop) => shop.isCustomInput).toList();
-    if (direct.isNotEmpty) return direct.first.code;
-
-    for (final shop in shops) {
-      final name = shop.name.replaceAll(RegExp(r'\s+'), '');
-      if (name.contains('직접') || name.toLowerCase().contains('custom')) {
-        return shop.code;
-      }
-    }
-    return '';
-  }
-
-  Future<_PlayAutoShopAccount?> _showCustomShopAccountSetupDialog({
-    required List<_PlayAutoShopAccount> regularShops,
-    String initialCode = '',
-  }) async {
-    if (!mounted) return null;
-    final formKey = GlobalKey<FormState>();
-    final codeController = TextEditingController(text: initialCode);
-    final idController = TextEditingController();
-    try {
-      return await showDialog<_PlayAutoShopAccount>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: const Text('직접입력 쇼핑몰 설정'),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '플토 주문 전송에는 직접입력 쇼핑몰의 shop_cd와 shop_id가 필요합니다.',
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: codeController,
-                    decoration: const InputDecoration(labelText: 'shop_cd'),
-                    textCapitalization: TextCapitalization.characters,
-                    validator: (value) {
-                      final text = (value ?? '').trim();
-                      if (text.isEmpty) return '필수 입력';
-                      if (regularShops.any((shop) => shop.code == text)) {
-                        return '일반 쇼핑몰 코드가 아닌 직접입력 코드를 입력해주세요.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: idController,
-                    decoration: const InputDecoration(labelText: 'shop_id'),
-                    validator: _requiredText,
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('취소'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (!(formKey.currentState?.validate() ?? false)) return;
-                  Navigator.of(dialogContext).pop(
-                    _PlayAutoShopAccount(
-                      code: codeController.text.trim(),
-                      id: idController.text.trim(),
-                      name: '직접입력',
-                      isCustomInput: true,
-                    ),
-                  );
-                },
-                child: const Text('저장 후 전송'),
-              ),
-            ],
-          );
-        },
-      );
-    } finally {
-      codeController.dispose();
-      idController.dispose();
-    }
   }
 
   _PlayAutoShopAccount? _manualCustomShopAccount() {
