@@ -116,6 +116,14 @@ import WidgetKit
       action = "memo"
     case "stock":
       action = "stock"
+    case "works":
+      if url.path == "/detail" {
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let id = components?.queryItems?.first(where: { $0.name == "id" })?.value
+        action = id == nil ? nil : "work:\(id!)"
+      } else {
+        action = "works"
+      }
     case "schedules":
       if url.path == "/new" {
         action = "newSchedule"

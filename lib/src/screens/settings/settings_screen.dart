@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -31,6 +30,7 @@ import '/src/services/restore_rollback_service.dart';
 import '/src/services/revenuecat_purchase_service.dart';
 import '/src/services/storage_usage_service.dart';
 import '/src/services/stamp_image_service.dart';
+import '/src/services/system_seed_service.dart';
 import 'cloud_backup_list_screen.dart';
 // ⬆️ 여기에는 enum SeedPart와 UnifiedSeedImporter가 이미 포함되어 있어야 합니다.
 
@@ -700,6 +700,42 @@ class _DataSettingsScreen extends StatelessWidget {
                 );
                 exit(0);
               }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.cleaning_services_outlined),
+            title: const Text('예시 데이터 삭제'),
+            subtitle: const Text('예시 아이템, 주문, 발주, 견적, 작업 내역을 정리합니다'),
+            onTap: () async {
+              final ok = await showDialog<bool>(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('예시 데이터 삭제'),
+                  content: const Text(
+                    '앱에 기본으로 들어간 예시 아이템, 주문, 발주, 견적, 작업, 입출고를 삭제합니다.\n\n'
+                    '완제품/반제품/원자재/부자재 기본 폴더는 유지합니다.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      child: const Text('취소'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      child: const Text('삭제'),
+                    ),
+                  ],
+                ),
+              );
+              if (ok != true || !context.mounted) return;
+
+              final db = context.read<AppDatabase>();
+              await runWithSpinnerMessage(() async {
+                final count = await SystemSeedService.deleteExampleData(db);
+                return count == 0
+                    ? '삭제할 예시 데이터가 없습니다'
+                    : '예시 데이터 $count건을 정리했습니다';
+              });
             },
           ),
         ],

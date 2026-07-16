@@ -31,12 +31,14 @@ class StockItemSelectTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = item.displayName ?? item.name;
     final needsReview = isNeedsRegistrationItem(item);
-    final stockText = '재고: ${item.qty} ${item.unit}'
-        '${needsReview ? ' · 정식등록 필요' : ''}';
+    final pathText = _pathText(item);
     final locationText = _locationText(locationSummary);
     final locationColor = locationSummary?.hasLocation == true
         ? Theme.of(context).colorScheme.primary
         : Colors.black45;
+    final stockChipColor = needsReview
+        ? Colors.deepOrange.shade700
+        : Theme.of(context).colorScheme.primary;
 
     return ListTile(
       leading: selectionMode
@@ -54,12 +56,20 @@ class StockItemSelectTile extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            stockText,
-            style: TextStyle(
-              fontSize: 14, // 기본 12~13 -> 14로
-              color: needsReview ? Colors.deepOrange.shade700 : Colors.black54,
-            ),
+          Row(
+            children: [
+              const Icon(Icons.account_tree_outlined,
+                  size: 14, color: Colors.black45),
+              const SizedBox(width: 2),
+              Flexible(
+                child: Text(
+                  pathText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 2),
           InkWell(
@@ -72,7 +82,7 @@ class StockItemSelectTile extends StatelessWidget {
                 const SizedBox(width: 2),
                 Flexible(
                   child: Text(
-                    locationText,
+                    '위치: $locationText',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: locationColor),
@@ -81,6 +91,18 @@ class StockItemSelectTile extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 2),
+          if (needsReview) ...[
+            const SizedBox(height: 2),
+            Text(
+              '정식등록 필요',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.deepOrange.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           if (ReorderScheduleUtils.effectiveNextReorderDate(item) != null) ...[
             const SizedBox(height: 2),
             Row(
@@ -101,12 +123,28 @@ class StockItemSelectTile extends StatelessWidget {
           ReorderBadge(item: item, dense: true),
         ],
       ),
+      trailing: selectionMode
+          ? null
+          : _StockQtyChip(
+              qty: item.qty,
+              unit: item.unit,
+              color: stockChipColor,
+            ),
       dense: true,
-      // ⭐/⋮ 제거 → trailing 없음
       onTap: selectionMode ? onTogglePick : onTap,
       onLongPress: onLongPress,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
     );
+  }
+
+  String _pathText(Item item) {
+    final names = <String>[
+      item.folder,
+      if ((item.subfolder ?? '').trim().isNotEmpty) item.subfolder!.trim(),
+      if ((item.subsubfolder ?? '').trim().isNotEmpty)
+        item.subsubfolder!.trim(),
+    ].where((name) => name.trim().isNotEmpty).toList();
+    return names.isEmpty ? '경로 없음' : names.join(' > ');
   }
 
   String _locationText(ItemLocationSummary? summary) {
@@ -122,5 +160,58 @@ class StockItemSelectTile extends StatelessWidget {
   String _formatDate(DateTime value) {
     final d = ReorderScheduleUtils.dateOnly(value);
     return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')}';
+  }
+}
+
+class _StockQtyChip extends StatelessWidget {
+  const _StockQtyChip({
+    required this.qty,
+    required this.unit,
+    required this.color,
+  });
+
+  final int qty;
+  final String unit;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 52),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.36)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$qty',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              height: 1,
+            ),
+          ),
+          if (unit.trim().isNotEmpty)
+            Text(
+              unit.trim(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color.withValues(alpha: 0.82),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                height: 1.1,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

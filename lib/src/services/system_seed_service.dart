@@ -24,14 +24,43 @@ class SystemSeedService {
 
   static Future<void> ensure(AppDatabase db) async {
     await ensureSystemRootFolders(db);
-    await ensureExampleItems(db);
-    await ensureExampleBomRows(db);
-    await ensureExampleSuppliers(db);
-    await ensureExampleOrders(db);
-    await ensureExampleQuotes(db);
-    await ensureExamplePurchaseOrders(db);
-    await ensureExampleWorks(db);
-    await ensureExampleTransactions(db);
+  }
+
+  static Future<int> deleteExampleData(AppDatabase db) async {
+    var affected = 0;
+
+    Future<void> run(String sql, [List<String> args = const []]) async {
+      affected += await db.customUpdate(sql, variables: [
+        for (final arg in args) Variable<String>(arg),
+      ]);
+    }
+
+    await db.transaction(() async {
+      await run("DELETE FROM txns WHERE id LIKE 'example_%'");
+      await run("DELETE FROM works WHERE id LIKE 'example_%'");
+      await run("DELETE FROM purchase_lines WHERE id LIKE 'example_%'");
+      await run("DELETE FROM purchase_orders WHERE id LIKE 'example_%'");
+      await run("DELETE FROM quote_lines WHERE id LIKE 'example_%'");
+      await run("DELETE FROM quotes WHERE id LIKE 'example_%'");
+      await run("DELETE FROM order_lines WHERE id LIKE 'example_%'");
+      await run("DELETE FROM orders WHERE id LIKE 'example_%'");
+      await run(
+        "DELETE FROM bom_rows WHERE parent_item_id LIKE 'system_sample_%' "
+        "OR component_item_id LIKE 'system_sample_%'",
+      );
+      await run(
+        "UPDATE items SET is_deleted = 1, deleted_at = ? "
+        "WHERE id LIKE 'system_sample_%' OR sku LIKE 'EXAMPLE-%'",
+        [DateTime.now().toIso8601String()],
+      );
+      await run(
+        "UPDATE suppliers SET is_active = 0, updated_at = ? "
+        "WHERE id LIKE 'example_supplier_%'",
+        [DateTime.now().toIso8601String()],
+      );
+    });
+
+    return affected;
   }
 
   static Future<void> ensureSystemRootFolders(AppDatabase db) async {

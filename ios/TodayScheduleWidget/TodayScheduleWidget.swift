@@ -14,13 +14,19 @@ struct TodaySchedulePayload: Decodable {
     let pendingCount: Int
     let doneCount: Int
     let schedules: [TodayScheduleItem]
+    let workPendingCount: Int?
+    let workDoneCount: Int?
+    let works: [TodayWorkItem]?
 
     static let placeholder = TodaySchedulePayload(
         dateLabel: "오늘 일정",
         updatedAtLabel: "--:--",
         pendingCount: 0,
         doneCount: 0,
-        schedules: []
+        schedules: [],
+        workPendingCount: 0,
+        workDoneCount: 0,
+        works: []
     )
 
     static func from(dictionary: [String: Any]) -> TodaySchedulePayload {
@@ -34,13 +40,26 @@ struct TodaySchedulePayload: Decodable {
                 isPinned: value["isPinned"] as? Bool ?? false
             )
         }.filter { !$0.title.isEmpty }
+        let workValues = dictionary["works"] as? [[String: Any]] ?? []
+        let works = workValues.map { value in
+            TodayWorkItem(
+                id: value["id"] as? String ?? UUID().uuidString,
+                title: value["title"] as? String ?? "",
+                status: value["status"] as? String ?? "planned",
+                qty: value["qty"] as? Int ?? 0,
+                doneQty: value["doneQty"] as? Int ?? 0
+            )
+        }.filter { !$0.title.isEmpty }
 
         return TodaySchedulePayload(
             dateLabel: dictionary["dateLabel"] as? String ?? "오늘 일정",
             updatedAtLabel: dictionary["updatedAtLabel"] as? String ?? "--:--",
             pendingCount: dictionary["pendingCount"] as? Int ?? 0,
             doneCount: dictionary["doneCount"] as? Int ?? 0,
-            schedules: items
+            schedules: items,
+            workPendingCount: dictionary["workPendingCount"] as? Int ?? 0,
+            workDoneCount: dictionary["workDoneCount"] as? Int ?? 0,
+            works: works
         )
     }
 }
@@ -51,6 +70,14 @@ struct TodayScheduleItem: Decodable, Identifiable {
     let body: String
     let status: String
     let isPinned: Bool
+}
+
+struct TodayWorkItem: Decodable, Identifiable {
+    let id: String
+    let title: String
+    let status: String
+    let qty: Int
+    let doneQty: Int
 }
 
 struct TodayScheduleProvider: TimelineProvider {
@@ -109,7 +136,10 @@ struct TodayScheduleWidgetView: View {
 
     var body: some View {
         let isLarge = family == .systemLarge
-        let visibleCount = isLarge ? 8 : 3
+        let works = entry.payload.works ?? []
+        let hasWorks = !works.isEmpty
+        let scheduleVisibleCount = isLarge ? (hasWorks ? 5 : 8) : (hasWorks ? 2 : 3)
+        let workVisibleCount = isLarge ? 3 : 2
 
         VStack(alignment: .leading, spacing: isLarge ? 12 : 10) {
             HStack(alignment: .firstTextBaseline) {
@@ -153,29 +183,57 @@ struct TodayScheduleWidgetView: View {
                     CountPill(label: "완료", count: entry.payload.doneCount, color: .green)
                 }
                 .buttonStyle(.plain)
+                Link(destination: URL(string: "chalstock://works")!) {
+                    CountPill(label: "작업", count: entry.payload.workPendingCount ?? 0, color: .blue)
+                    CountPill(label: "완료", count: entry.payload.workDoneCount ?? 0, color: .teal)
+                }
+                .buttonStyle(.plain)
                 Spacer()
             }
 
-            if entry.payload.schedules.isEmpty {
+            if entry.payload.schedules.isEmpty && !hasWorks {
                 Spacer(minLength: 0)
                 Link(destination: URL(string: "chalstock://schedules/new")!) {
                     Label("오늘 일정을 추가하세요", systemImage: "calendar.badge.plus")
                         .font(.subheadline.weight(.semibold))
                 }
                 Spacer(minLength: 0)
-            } else {
+            } else if !entry.payload.schedules.isEmpty {
                 VStack(alignment: .leading, spacing: isLarge ? 8 : 6) {
-                    ForEach(entry.payload.schedules.prefix(visibleCount)) { item in
+                    ForEach(entry.payload.schedules.prefix(scheduleVisibleCount)) { item in
                         Link(destination: URL(string: "chalstock://schedules/detail?id=\(item.id)")!) {
                             ScheduleRow(item: item)
                         }
                         .buttonStyle(.plain)
                     }
-                    if entry.payload.schedules.count > visibleCount {
-                        Text("+\(entry.payload.schedules.count - visibleCount)개 더")
+                    if entry.payload.schedules.count > scheduleVisibleCount {
+                        Text("+\(entry.payload.schedules.count - scheduleVisibleCount)개 더")
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .padding(.top, 2)
+                    }
+                }
+            }
+
+            if hasWorks {
+                VStack(alignment: .leading, spacing: isLarge ? 6 : 5) {
+                    Link(destination: URL(string: "chalstock://works")!) {
+                        Label("작업", systemImage: "hammer")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+
+                    ForEach(works.prefix(workVisibleCount)) { item in
+                        Link(destination: URL(string: "chalstock://works/detail?id=\(item.id)")!) {
+                            WorkRow(item: item)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    if works.count > workVisibleCount {
+                        Text("+\(works.count - workVisibleCount)개 작업 더")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -258,6 +316,37 @@ struct ScheduleRow: View {
                 }
             }
         }
+    }
+}
+
+struct WorkRow: View {
+    let item: TodayWorkItem
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 7) {
+            Image(systemName: item.status == "done" ? "checkmark.seal.fill" : "hammer.circle")
+                .font(.caption)
+                .foregroundStyle(item.status == "done" ? .green : .blue)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Text(progressText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private var progressText: String {
+        if item.status == "done" {
+            return "완료 \(item.doneQty)/\(item.qty)"
+        }
+        if item.status == "inProgress" {
+            return "진행중 \(item.doneQty)/\(item.qty)"
+        }
+        return "예정 \(item.doneQty)/\(item.qty)"
     }
 }
 

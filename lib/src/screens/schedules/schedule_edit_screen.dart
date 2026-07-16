@@ -103,6 +103,8 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
 
     setState(() => _saving = true);
     final repo = context.read<ScheduleRepo>();
+    final workRepo = context.read<WorkRepo>();
+    final itemRepo = context.read<ItemRepo>();
     final now = DateTime.now();
     final title = _titleController.text.trim();
     final body = _bodyController.text.trim();
@@ -135,7 +137,11 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
           ),
         );
       }
-      await ScheduleWidgetBridge.syncTodaySchedules(repo);
+      await ScheduleWidgetBridge.syncTodaySchedules(
+        repo,
+        workRepo: workRepo,
+        itemRepo: itemRepo,
+      );
 
       if (!mounted) return;
       Navigator.pop(context, true);

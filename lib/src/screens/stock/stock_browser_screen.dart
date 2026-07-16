@@ -967,6 +967,8 @@ class _StockBrowserScreenState extends State<StockBrowserScreen> {
     final targetId = await showItemPickerSheet(
       context,
       title: '대표 아이템 선택',
+      contextItemIds: sourceIds.toList(),
+      contextTitle: '병합할 아이템',
     );
     if (targetId == null) return;
 

@@ -390,6 +390,8 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
           ],
           child: ScheduleWidgetSync(
             repo: repo,
+            workRepo: repo,
+            itemRepo: repo,
             child: widget.child,
           ),
         );
