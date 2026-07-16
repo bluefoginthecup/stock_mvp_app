@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -55,6 +56,16 @@ String _playAutoOrderGroupKey(_PlayAutoOrderPreview order) {
   final date = order.orderDate.trim().isEmpty ? '-' : order.orderDate.trim();
   final customer = _normalizeSearchText(order.customerName);
   return 'playauto::date::$date::customer::$customer';
+}
+
+String _playAutoOrderDisplayGroupKey(_PlayAutoOrderPreview order) {
+  final date = order.orderDate.trim().isEmpty ? '-' : order.orderDate.trim();
+  final customer = _normalizeSearchText(order.customerName);
+  final address = _normalizeSearchText(order.address);
+  final phone = _normalizeSearchText(order.phone);
+  final shop = _normalizeSearchText(order.shopName);
+  return 'playauto::date::$date::shop::$shop::customer::$customer::'
+      'phone::$phone::address::$address';
 }
 
 String _playAutoOrderIdentityKey(_PlayAutoOrderPreview order) {
@@ -146,6 +157,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
   static const _knownOrderKeysKey = 'playauto_known_order_keys_v1';
   static const _defaultOrderCollectionAction = 'ScrapOrderAndConfirmDoit';
   static const _tokenLifetime = Duration(hours: 24);
+  static const _tokenRefreshLeadTime = Duration(minutes: 30);
 
   final _baseUrlController = TextEditingController(
     text: 'https://openapi.playauto.io/api',
@@ -160,6 +172,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
   final _lengthController = TextEditingController(text: '100');
   final _workShopCodeController = TextEditingController();
   final _workShopIdsController = TextEditingController();
+  final _pendingOrderGroupKey = ValueNotifier<String?>(null);
 
   var _loading = false;
   String? _loadingMessage;
@@ -175,9 +188,11 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
   int? _statusCode;
   DateTime? _tokenIssuedAt;
   Timer? _autoSyncTimer;
+  Timer? _tokenRefreshTimer;
   var _autoSyncEnabled = false;
   var _autoSyncIntervalMinutes = 60;
   var _autoSyncRunning = false;
+  var _tokenRefreshRunning = false;
   DateTime? _lastAutoSyncAt;
   String? _lastAutoSyncError;
   int _newOrderBadgeCount = 0;
@@ -200,6 +215,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _autoSyncTimer?.cancel();
+    _tokenRefreshTimer?.cancel();
     _baseUrlController.dispose();
     _apiKeyController.dispose();
     _authenticationKeyController.dispose();
@@ -211,6 +227,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     _lengthController.dispose();
     _workShopCodeController.dispose();
     _workShopIdsController.dispose();
+    _pendingOrderGroupKey.dispose();
     super.dispose();
   }
 
@@ -300,6 +317,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     await _saveCredentials(showMessage: false);
     if (!mounted) return;
     setState(() {});
+    _scheduleTokenAutoRefresh();
     if (showMessage) {
       _showSnack('토큰을 자동으로 입력하고 저장했습니다.');
     }
@@ -335,11 +353,13 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         }
         _credentialsLoaded = true;
       });
+      _scheduleTokenAutoRefresh();
       _scheduleOrderViewAutoFetch();
       _runDueAutoSync();
     } on MissingPluginException {
       if (!mounted) return;
       setState(() => _credentialsLoaded = true);
+      _scheduleTokenAutoRefresh();
       _scheduleOrderViewAutoFetch();
       _runDueAutoSync();
       _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
@@ -412,6 +432,84 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       Duration(minutes: _autoSyncIntervalMinutes),
       (_) => _runDueAutoSync(force: true),
     );
+  }
+
+  void _scheduleTokenAutoRefresh() {
+    _tokenRefreshTimer?.cancel();
+    _tokenRefreshTimer = null;
+
+    if (_apiKeyController.text.trim().isEmpty ||
+        _authenticationKeyController.text.trim().isEmpty) {
+      return;
+    }
+
+    final issuedAt = _tokenIssuedAt;
+    final hasToken = _tokenController.text.trim().isNotEmpty;
+    if (!hasToken || issuedAt == null) {
+      _tokenRefreshTimer = Timer(
+        Duration.zero,
+        _refreshPlayAutoTokenInBackground,
+      );
+      return;
+    }
+
+    final refreshAt = issuedAt.add(_tokenLifetime - _tokenRefreshLeadTime);
+    final delay = refreshAt.difference(DateTime.now());
+    _tokenRefreshTimer = Timer(
+      delay.isNegative ? Duration.zero : delay,
+      _refreshPlayAutoTokenInBackground,
+    );
+  }
+
+  Future<void> _refreshPlayAutoTokenInBackground() async {
+    if (_tokenRefreshRunning) return;
+    final apiKey = _apiKeyController.text.trim();
+    final authenticationKey = _authenticationKeyController.text.trim();
+    if (apiKey.isEmpty || authenticationKey.isEmpty) return;
+
+    _tokenRefreshRunning = true;
+    var refreshed = false;
+    var retryLater = false;
+    try {
+      final result = await _requestToken(
+        apiKey: apiKey,
+        authenticationKey: authenticationKey,
+      );
+      final token = result.token;
+      if (token == null) {
+        retryLater = true;
+        debugPrint(
+          '[PlayAuto token] background refresh failed '
+          'http=${result.statusCode} body=${_compactTokenDebugText(result.body)}',
+        );
+        return;
+      }
+      await _storeIssuedToken(token);
+      refreshed = true;
+      debugPrint('[PlayAuto token] background refresh success');
+    } catch (e) {
+      retryLater = true;
+      debugPrint('[PlayAuto token] background refresh exception $e');
+    } finally {
+      _tokenRefreshRunning = false;
+      if (mounted) {
+        if (refreshed) {
+          _scheduleTokenAutoRefresh();
+        } else if (retryLater) {
+          _tokenRefreshTimer?.cancel();
+          _tokenRefreshTimer = Timer(
+            const Duration(minutes: 30),
+            _refreshPlayAutoTokenInBackground,
+          );
+        }
+      }
+    }
+  }
+
+  String _compactTokenDebugText(String text) {
+    final compact = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (compact.length <= 180) return compact;
+    return '${compact.substring(0, 180)}...';
   }
 
   Future<void> _runDueAutoSync({bool force = false}) async {
@@ -646,6 +744,7 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
       }
       if (showMessage) _showSnack('플토 인증 정보를 저장했습니다.');
       if (mounted) setState(() {});
+      _scheduleTokenAutoRefresh();
       _runDueAutoSync();
     } on MissingPluginException {
       _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
@@ -666,6 +765,8 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         _tokenController.clear();
         _tokenIssuedAt = null;
       });
+      _tokenRefreshTimer?.cancel();
+      _tokenRefreshTimer = null;
       _showSnack('저장된 플토 인증 정보를 삭제했습니다.');
     } on MissingPluginException {
       _showSnack('보안 저장소가 아직 준비되지 않았습니다. 앱을 다시 실행해주세요.');
@@ -1118,7 +1219,9 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
 
   Future<_TokenReadyResult> _ensureTokenForOrderFetch(String apiKey) async {
     final currentToken = _tokenController.text.trim();
-    if (currentToken.isNotEmpty && !_isSavedTokenExpired) {
+    if (currentToken.isNotEmpty &&
+        !_isSavedTokenExpired &&
+        !_isSavedTokenNearRefresh) {
       return _TokenReadyResult(token: currentToken);
     }
 
@@ -1582,19 +1685,26 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     return DateTime.now().difference(issuedAt) >= _tokenLifetime;
   }
 
+  bool get _isSavedTokenNearRefresh {
+    final issuedAt = _tokenIssuedAt;
+    if (issuedAt == null || _tokenController.text.trim().isEmpty) return true;
+    final refreshAt = issuedAt.add(_tokenLifetime - _tokenRefreshLeadTime);
+    return !DateTime.now().isBefore(refreshAt);
+  }
+
   String get _tokenHelperText {
     final issuedAt = _tokenIssuedAt;
     if (issuedAt == null) {
-      return '토큰은 24시간 유효하며, 주문 조회 시 필요하면 자동으로 다시 발급됩니다.';
+      return '토큰은 24시간 유효하며, 인증키가 저장돼 있으면 앱이 자동으로 발급합니다.';
     }
     final expiresAt = issuedAt.add(_tokenLifetime);
     final remaining = expiresAt.difference(DateTime.now());
     if (remaining.isNegative) {
-      return '저장된 토큰이 만료됐습니다. 다음 주문 조회 때 자동으로 다시 발급됩니다.';
+      return '저장된 토큰이 만료됐습니다. 인증키가 저장돼 있으면 앱이 자동으로 다시 발급합니다.';
     }
     final hours = remaining.inHours;
     final minutes = remaining.inMinutes.remainder(60);
-    return '저장된 토큰 사용 중 · 약 $hours시간 $minutes분 남음';
+    return '저장된 토큰 사용 중 · 약 $hours시간 $minutes분 남음 · 만료 30분 전 자동 갱신';
   }
 
   String? _readToken(String body) {
@@ -1935,6 +2045,88 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
     );
   }
 
+  Future<void> _openPlayAutoAuthDialog() async {
+    if (!mounted) return;
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, bottomInset + 16),
+          child: ListView(
+            shrinkWrap: true,
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              Text(
+                'PlayAuto 인증 정보',
+                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '출고지시에는 유효한 토큰이 필요합니다. 솔루션 인증키를 저장하면 토큰을 자동 발급합니다.',
+                style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                      color:
+                          Theme.of(sheetContext).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _apiKeyController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'API Key',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _authenticationKeyController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: '솔루션 인증키',
+                  helperText: '토큰 만료 시 자동으로 새 토큰을 발급하는 데 사용합니다.',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _tokenController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: '발급 토큰',
+                  helperText: _tokenHelperText,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    child: const Text('닫기'),
+                  ),
+                  const Spacer(),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('저장'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (saved != true || !mounted) return;
+    await _saveCredentials(showMessage: false);
+    _showSnack('플토 인증 정보를 저장했습니다. 다시 실행해주세요.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -1957,558 +2149,570 @@ class _PlayAutoOrderImportScreenState extends State<PlayAutoOrderImportScreen>
         onSetInvoice: _requestSetInvoice,
         onCompleteInvoice: _requestCompleteInvoice,
         onSendInvoice: _requestSendInvoice,
+        onAuthRequired: _openPlayAutoAuthDialog,
       );
     }
 
     return DefaultTabController(
       length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          toolbarHeight: 52,
-          titleSpacing: 12,
-          title: Row(
-            children: [
-              const Text('플토'),
-              const SizedBox(width: 14),
-              Expanded(
-                child: TabBar(
-                  onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                  dividerHeight: 0,
-                  indicatorSize: TabBarIndicatorSize.label,
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 10),
-                  tabs: const [
-                    Tab(height: 38, text: '달력'),
-                    Tab(height: 38, text: '주문'),
-                    Tab(height: 38, text: '계정'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        body: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: TabBarView(
-            children: [
-              _PlayAutoOrderCalendarScreen(
-                orders: _orders,
-                embedded: true,
-              ),
-              if (!_credentialsLoaded)
-                const Center(child: CircularProgressIndicator())
-              else
-                _PlayAutoOrderPreviewScreen(
-                  orders: _orders,
-                  startDate: _sdateController.text.trim(),
-                  endDate: _edateController.text.trim(),
-                  length: int.tryParse(_lengthController.text.trim()) ?? 100,
-                  onFetchOrders: _fetchOrdersForPreview,
-                  onFetchOrderDetail: _fetchOrderDetailFromPlayAuto,
-                  fulfillmentMode: true,
-                  embedded: true,
-                  onInstruction: _requestShipmentInstruction,
-                  onSetInvoice: _requestSetInvoice,
-                  onCompleteInvoice: _requestCompleteInvoice,
-                  onSendInvoice: _requestSendInvoice,
-                ),
-              ListView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (!_credentialsLoaded) ...[
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: 12),
-                  ],
-                  Text(
-                    'PlayAuto 토큰 발급, 주문 수집, 견적 주문 전송 로그를 확인합니다.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                  ),
-                  if (_loading) ...[
-                    const SizedBox(height: 12),
-                    _PlayAutoLoadingBanner(
-                      message: _loadingMessage ?? 'PlayAuto 요청을 처리하고 있습니다.',
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _baseUrlController,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(
-                      labelText: 'OpenAPI Base URL',
-                      helperText:
-                          '문서와 계정 설정에 따라 /api 포함 여부가 다를 수 있어 수정 가능하게 둡니다.',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _apiKeyController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'API Key',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _authenticationKeyController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: '솔루션 인증키',
-                      helperText: '이 값을 입력하면 이메일/비밀번호 없이 토큰 발급을 시도합니다.',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: '이메일',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: '비밀번호',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
+      child: Builder(
+        builder: (tabContext) => Scaffold(
+          appBar: AppBar(
+            toolbarHeight: 52,
+            titleSpacing: 12,
+            title: Row(
+              children: [
+                const Text('플토'),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: TabBar(
+                    onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                    dividerHeight: 0,
+                    indicatorSize: TabBarIndicatorSize.label,
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+                    tabs: const [
+                      Tab(height: 38, text: '달력'),
+                      Tab(height: 38, text: '주문'),
+                      Tab(height: 38, text: '계정'),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _tokenController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: '발급 토큰',
-                      helperText: _tokenHelperText,
-                      border: const OutlineInputBorder(),
-                    ),
+                ),
+              ],
+            ),
+          ),
+          body: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: TabBarView(
+              children: [
+                _PlayAutoOrderCalendarScreen(
+                  orders: _orders,
+                  embedded: true,
+                  onOpenOrderGroup: (groupKey) {
+                    DefaultTabController.of(tabContext).animateTo(1);
+                    _pendingOrderGroupKey.value = null;
+                    _pendingOrderGroupKey.value = groupKey;
+                  },
+                ),
+                if (!_credentialsLoaded)
+                  const Center(child: CircularProgressIndicator())
+                else
+                  _PlayAutoOrderPreviewScreen(
+                    orders: _orders,
+                    startDate: _sdateController.text.trim(),
+                    endDate: _edateController.text.trim(),
+                    length: int.tryParse(_lengthController.text.trim()) ?? 100,
+                    onFetchOrders: _fetchOrdersForPreview,
+                    onFetchOrderDetail: _fetchOrderDetailFromPlayAuto,
+                    fulfillmentMode: true,
+                    embedded: true,
+                    onInstruction: _requestShipmentInstruction,
+                    onSetInvoice: _requestSetInvoice,
+                    onCompleteInvoice: _requestCompleteInvoice,
+                    onSendInvoice: _requestSendInvoice,
+                    onAuthRequired: _openPlayAutoAuthDialog,
+                    focusGroupKeyListenable: _pendingOrderGroupKey,
                   ),
-                  const SizedBox(height: 16),
-                  Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(color: scheme.outlineVariant),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('자동 동기화'),
-                            subtitle: Text(
-                              '앱이 켜져 있을 때 PlayAuto 주문을 주기적으로 확인합니다.',
-                              style: TextStyle(color: scheme.onSurfaceVariant),
-                            ),
-                            value: _autoSyncEnabled,
-                            onChanged:
-                                _credentialsLoaded ? _setAutoSyncEnabled : null,
+                ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    if (!_credentialsLoaded) ...[
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 12),
+                    ],
+                    Text(
+                      'PlayAuto 토큰 발급, 주문 수집, 견적 주문 전송 로그를 확인합니다.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
                           ),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<int>(
-                            value: _autoSyncIntervalMinutes,
+                    ),
+                    if (_loading) ...[
+                      const SizedBox(height: 12),
+                      _PlayAutoLoadingBanner(
+                        message: _loadingMessage ?? 'PlayAuto 요청을 처리하고 있습니다.',
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _baseUrlController,
+                      keyboardType: TextInputType.url,
+                      decoration: const InputDecoration(
+                        labelText: 'OpenAPI Base URL',
+                        helperText:
+                            '문서와 계정 설정에 따라 /api 포함 여부가 다를 수 있어 수정 가능하게 둡니다.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _apiKeyController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'API Key',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _authenticationKeyController,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: '솔루션 인증키',
+                        helperText: '이 값을 입력하면 이메일/비밀번호 없이 토큰 발급을 시도합니다.',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
                             decoration: const InputDecoration(
-                              labelText: '동기화 간격',
+                              labelText: '이메일',
                               border: OutlineInputBorder(),
                             ),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 30,
-                                child: Text('30분마다'),
-                              ),
-                              DropdownMenuItem(
-                                value: 60,
-                                child: Text('1시간마다'),
-                              ),
-                              DropdownMenuItem(
-                                value: 120,
-                                child: Text('2시간마다'),
-                              ),
-                              DropdownMenuItem(
-                                value: 360,
-                                child: Text('6시간마다'),
-                              ),
-                            ],
-                            onChanged: _autoSyncEnabled
-                                ? (value) {
-                                    if (value != null) {
-                                      _setAutoSyncInterval(value);
-                                    }
-                                  }
-                                : null,
                           ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 10,
-                            runSpacing: 6,
-                            children: [
-                              _AutoSyncStatusChip(
-                                icon: Icons.notifications_active_outlined,
-                                label: '신규 $_newOrderBadgeCount',
-                              ),
-                              _AutoSyncStatusChip(
-                                icon: Icons.history_outlined,
-                                label: '마지막 ${_lastAutoSyncText()}',
-                              ),
-                              if (_autoSyncEnabled)
-                                _AutoSyncStatusChip(
-                                  icon: Icons.schedule_outlined,
-                                  label: '다음 ${_nextAutoSyncText()}',
-                                ),
-                              if (_autoSyncRunning)
-                                const _AutoSyncStatusChip(
-                                  icon: Icons.sync_outlined,
-                                  label: '동기화 중',
-                                ),
-                            ],
-                          ),
-                          if (_lastAutoSyncError != null) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              '최근 자동 동기화 실패: $_lastAutoSyncError',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(color: scheme.error),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _passwordController,
+                            obscureText: true,
+                            decoration: const InputDecoration(
+                              labelText: '비밀번호',
+                              border: OutlineInputBorder(),
                             ),
-                          ],
-                        ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _tokenController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: '발급 토큰',
+                        helperText: _tokenHelperText,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      FilledButton.icon(
-                        onPressed: _loading ? null : _issueToken,
-                        icon: _loading
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.vpn_key_outlined),
-                        label: const Text('토큰 발급 테스트'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _loading ? null : _openOrderPreview,
-                        icon: const Icon(Icons.view_agenda_outlined),
-                        label: Text(
-                          _orders.isEmpty
-                              ? '주문 보기'
-                              : '주문 보기 ${_orders.length}건',
-                        ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _loading ? null : () => _saveCredentials(),
-                        icon: const Icon(Icons.save_outlined),
-                        label: const Text('인증 정보 저장'),
-                      ),
-                      TextButton.icon(
-                        onPressed: _loading ? null : _clearSavedCredentials,
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('저장 정보 삭제'),
-                      ),
-                    ],
-                  ),
-                  if (_quoteOrderAddLogs.isNotEmpty) ...[
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     Card(
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: BorderSide(color: scheme.outlineVariant),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Text(
-                                  '최근 견적 주문 전송',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('자동 동기화'),
+                              subtitle: Text(
+                                '앱이 켜져 있을 때 PlayAuto 주문을 주기적으로 확인합니다.',
+                                style:
+                                    TextStyle(color: scheme.onSurfaceVariant),
+                              ),
+                              value: _autoSyncEnabled,
+                              onChanged: _credentialsLoaded
+                                  ? _setAutoSyncEnabled
+                                  : null,
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<int>(
+                              value: _autoSyncIntervalMinutes,
+                              decoration: const InputDecoration(
+                                labelText: '동기화 간격',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 30,
+                                  child: Text('30분마다'),
                                 ),
-                                const Spacer(),
-                                TextButton.icon(
-                                  onPressed: _clearQuoteOrderAddLogs,
-                                  icon: const Icon(Icons.delete_outline),
-                                  label: const Text('지우기'),
+                                DropdownMenuItem(
+                                  value: 60,
+                                  child: Text('1시간마다'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 120,
+                                  child: Text('2시간마다'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 360,
+                                  child: Text('6시간마다'),
                                 ),
                               ],
+                              onChanged: _autoSyncEnabled
+                                  ? (value) {
+                                      if (value != null) {
+                                        _setAutoSyncInterval(value);
+                                      }
+                                    }
+                                  : null,
                             ),
-                            const SizedBox(height: 4),
-                            for (final log in _quoteOrderAddLogs.take(5))
-                              ListTile(
-                                dense: true,
-                                contentPadding: EdgeInsets.zero,
-                                leading: Icon(
-                                  log.success
-                                      ? Icons.check_circle_outline
-                                      : Icons.error_outline,
-                                  color:
-                                      log.success ? Colors.green : Colors.red,
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 6,
+                              children: [
+                                _AutoSyncStatusChip(
+                                  icon: Icons.notifications_active_outlined,
+                                  label: '신규 $_newOrderBadgeCount',
                                 ),
-                                title: Text(
-                                  log.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                _AutoSyncStatusChip(
+                                  icon: Icons.history_outlined,
+                                  label: '마지막 ${_lastAutoSyncText()}',
                                 ),
-                                subtitle: Text(
-                                  [
-                                    _formatDateTime(log.sentAt),
-                                    if (log.statusCode != null)
-                                      'HTTP ${log.statusCode}',
-                                    log.message,
-                                  ].join(' · '),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                if (_autoSyncEnabled)
+                                  _AutoSyncStatusChip(
+                                    icon: Icons.schedule_outlined,
+                                    label: '다음 ${_nextAutoSyncText()}',
+                                  ),
+                                if (_autoSyncRunning)
+                                  const _AutoSyncStatusChip(
+                                    icon: Icons.sync_outlined,
+                                    label: '동기화 중',
+                                  ),
+                              ],
+                            ),
+                            if (_lastAutoSyncError != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                '최근 자동 동기화 실패: $_lastAutoSyncError',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: scheme.error),
                               ),
+                            ],
                           ],
                         ),
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 24),
-                  Text(
-                    '주문 수집 작업',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '쇼핑몰에서 PlayAuto로 주문 수집 또는 상태 동기화를 실행합니다. 수집 후 다음 주문 조회는 PlayAuto에서 새로 받아 캐시에 반영합니다.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        FilledButton.icon(
+                          onPressed: _loading ? null : _issueToken,
+                          icon: _loading
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.vpn_key_outlined),
+                          label: const Text('토큰 발급 테스트'),
                         ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _workAction,
-                    decoration: const InputDecoration(
-                      labelText: '수집 작업',
-                      border: OutlineInputBorder(),
+                        OutlinedButton.icon(
+                          onPressed: _loading ? null : _openOrderPreview,
+                          icon: const Icon(Icons.view_agenda_outlined),
+                          label: Text(
+                            _orders.isEmpty
+                                ? '주문 보기'
+                                : '주문 보기 ${_orders.length}건',
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _loading ? null : () => _saveCredentials(),
+                          icon: const Icon(Icons.save_outlined),
+                          label: const Text('인증 정보 저장'),
+                        ),
+                        TextButton.icon(
+                          onPressed: _loading ? null : _clearSavedCredentials,
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('저장 정보 삭제'),
+                        ),
+                      ],
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'ScrapOrder',
-                        child: Text('발주확인된 주문 수집'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'ScrapOrderConfirmList',
-                        child: Text('결제완료 주문 수집'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'ScrapOrderAndConfirmDoit',
-                        child: Text('발주확인 후 주문 수집'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'SyncOrderState',
-                        child: Text('주문동기화'),
-                      ),
-                    ],
-                    onChanged: _loading
-                        ? null
-                        : (value) {
-                            if (value == null) return;
-                            setState(() => _workAction = value);
-                          },
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _loading ? null : _fetchShopAccounts,
-                        icon: const Icon(Icons.storefront_outlined),
-                        label: const Text('쇼핑몰 목록 불러오기'),
-                      ),
-                      if (_shopAccounts.isNotEmpty)
-                        Text(
-                          '${_shopAccounts.length}개 쇼핑몰 불러옴',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
+                    if (_quoteOrderAddLogs.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    '최근 견적 주문 전송',
+                                    style:
+                                        Theme.of(context).textTheme.titleMedium,
                                   ),
+                                  const Spacer(),
+                                  TextButton.icon(
+                                    onPressed: _clearQuoteOrderAddLogs,
+                                    icon: const Icon(Icons.delete_outline),
+                                    label: const Text('지우기'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              for (final log in _quoteOrderAddLogs.take(5))
+                                ListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: Icon(
+                                    log.success
+                                        ? Icons.check_circle_outline
+                                        : Icons.error_outline,
+                                    color:
+                                        log.success ? Colors.green : Colors.red,
+                                  ),
+                                  title: Text(
+                                    log.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    [
+                                      _formatDateTime(log.sentAt),
+                                      if (log.statusCode != null)
+                                        'HTTP ${log.statusCode}',
+                                      log.message,
+                                    ].join(' · '),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
+                      ),
                     ],
-                  ),
-                  if (_shopAccounts.isNotEmpty) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      '주문 수집 작업',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '쇼핑몰에서 PlayAuto로 주문 수집 또는 상태 동기화를 실행합니다. 수집 후 다음 주문 조회는 PlayAuto에서 새로 받아 캐시에 반영합니다.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _workAction,
+                      decoration: const InputDecoration(
+                        labelText: '수집 작업',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'ScrapOrder',
+                          child: Text('발주확인된 주문 수집'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ScrapOrderConfirmList',
+                          child: Text('결제완료 주문 수집'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ScrapOrderAndConfirmDoit',
+                          child: Text('발주확인 후 주문 수집'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'SyncOrderState',
+                          child: Text('주문동기화'),
+                        ),
+                      ],
+                      onChanged: _loading
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              setState(() => _workAction = value);
+                            },
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: _loading ? null : _fetchShopAccounts,
+                          icon: const Icon(Icons.storefront_outlined),
+                          label: const Text('쇼핑몰 목록 불러오기'),
+                        ),
+                        if (_shopAccounts.isNotEmpty)
+                          Text(
+                            '${_shopAccounts.length}개 쇼핑몰 불러옴',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                          ),
+                      ],
+                    ),
+                    if (_shopAccounts.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Text(
+                            '선택 ${_selectedShopAccountKeys.length}개',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                          const Spacer(),
+                          TextButton.icon(
+                            onPressed: _loading
+                                ? null
+                                : () {
+                                    setState(() {
+                                      _selectAllShopAccounts(
+                                        _selectedShopAccountKeys.length !=
+                                            _shopAccounts.length,
+                                      );
+                                    });
+                                  },
+                            icon: Icon(
+                              _selectedShopAccountKeys.length ==
+                                      _shopAccounts.length
+                                  ? Icons.check_box_outlined
+                                  : Icons.select_all_outlined,
+                            ),
+                            label: Text(
+                              _selectedShopAccountKeys.length ==
+                                      _shopAccounts.length
+                                  ? '전체 해제'
+                                  : '전체 선택',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        constraints: const BoxConstraints(maxHeight: 260),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: scheme.outlineVariant),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: _shopAccounts.length,
+                          separatorBuilder: (_, __) =>
+                              Divider(height: 1, color: scheme.outlineVariant),
+                          itemBuilder: (context, index) {
+                            final shop = _shopAccounts[index];
+                            final selected =
+                                _selectedShopAccountKeys.contains(shop.key);
+                            return CheckboxListTile(
+                              value: selected,
+                              enabled: !_loading,
+                              dense: true,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text(
+                                shop.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                shop.id.isEmpty
+                                    ? '${shop.code} · 쇼핑몰 아이디 필요'
+                                    : '${shop.code} · ${shop.id}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onChanged: (value) {
+                                setState(() =>
+                                    _toggleShopAccount(shop, value ?? false));
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Text(
-                          '선택 ${_selectedShopAccountKeys.length}개',
-                          style: Theme.of(context).textTheme.labelLarge,
-                        ),
-                        const Spacer(),
-                        TextButton.icon(
-                          onPressed: _loading
-                              ? null
-                              : () {
-                                  setState(() {
-                                    _selectAllShopAccounts(
-                                      _selectedShopAccountKeys.length !=
-                                          _shopAccounts.length,
-                                    );
-                                  });
-                                },
-                          icon: Icon(
-                            _selectedShopAccountKeys.length ==
-                                    _shopAccounts.length
-                                ? Icons.check_box_outlined
-                                : Icons.select_all_outlined,
+                        SizedBox(
+                          width: 150,
+                          child: TextField(
+                            controller: _workShopCodeController,
+                            decoration: const InputDecoration(
+                              labelText: '쇼핑몰 코드',
+                              hintText: '예: A001',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
-                          label: Text(
-                            _selectedShopAccountKeys.length ==
-                                    _shopAccounts.length
-                                ? '전체 해제'
-                                : '전체 선택',
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _workShopIdsController,
+                            minLines: 1,
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              labelText: '쇼핑몰 아이디',
+                              hintText: '여러 개면 쉼표 또는 줄바꿈',
+                              border: OutlineInputBorder(),
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 260),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: scheme.outlineVariant),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: _shopAccounts.length,
-                        separatorBuilder: (_, __) =>
-                            Divider(height: 1, color: scheme.outlineVariant),
-                        itemBuilder: (context, index) {
-                          final shop = _shopAccounts[index];
-                          final selected =
-                              _selectedShopAccountKeys.contains(shop.key);
-                          return CheckboxListTile(
-                            value: selected,
-                            enabled: !_loading,
-                            dense: true,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            title: Text(
-                              shop.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              shop.id.isEmpty
-                                  ? '${shop.code} · 쇼핑몰 아이디 필요'
-                                  : '${shop.code} · ${shop.id}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onChanged: (value) {
-                              setState(() =>
-                                  _toggleShopAccount(shop, value ?? false));
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 150,
-                        child: TextField(
-                          controller: _workShopCodeController,
-                          decoration: const InputDecoration(
-                            labelText: '쇼핑몰 코드',
-                            hintText: '예: A001',
-                            border: OutlineInputBorder(),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        FilledButton.icon(
+                          onPressed:
+                              _loading ? null : _registerOrderCollectionWork,
+                          icon: _loading
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.play_arrow_outlined),
+                          label: const Text('쇼핑몰 주문 수집'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _loading || _lastWorkNos.isEmpty
+                              ? null
+                              : _fetchLastWorkResult,
+                          icon: _loading
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.fact_check_outlined),
+                          label: Text(
+                            _lastWorkNos.isEmpty
+                                ? '결과 확인'
+                                : '결과 확인 ${_lastWorkNos.length}건',
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _workShopIdsController,
-                          minLines: 1,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: '쇼핑몰 아이디',
-                            hintText: '여러 개면 쉼표 또는 줄바꿈',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      FilledButton.icon(
-                        onPressed:
-                            _loading ? null : _registerOrderCollectionWork,
-                        icon: _loading
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.play_arrow_outlined),
-                        label: const Text('쇼핑몰 주문 수집'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _loading || _lastWorkNos.isEmpty
-                            ? null
-                            : _fetchLastWorkResult,
-                        icon: _loading
-                            ? const SizedBox.square(
-                                dimension: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.fact_check_outlined),
-                        label: Text(
-                          _lastWorkNos.isEmpty
-                              ? '결과 확인'
-                              : '결과 확인 ${_lastWorkNos.length}건',
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (_statusCode != null)
-                    Text(
-                      'HTTP $_statusCode',
-                      style: Theme.of(context).textTheme.titleSmall,
+                      ],
                     ),
-                  if (_result != null) ...[
-                    const SizedBox(height: 8),
-                    _PlayAutoResultBox(text: _result!),
+                    const SizedBox(height: 16),
+                    if (_statusCode != null)
+                      Text(
+                        'HTTP $_statusCode',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    if (_result != null) ...[
+                      const SizedBox(height: 8),
+                      _PlayAutoResultBox(text: _result!),
+                    ],
                   ],
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2796,6 +3000,8 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
     required this.onSetInvoice,
     required this.onCompleteInvoice,
     required this.onSendInvoice,
+    this.onAuthRequired,
+    this.focusGroupKeyListenable,
   });
 
   final List<_PlayAutoOrderPreview> orders;
@@ -2823,6 +3029,8 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
       onCompleteInvoice;
   final Future<_PlayAutoResponse> Function(_PlayAutoOrderPreview order)
       onSendInvoice;
+  final Future<void> Function()? onAuthRequired;
+  final ValueListenable<String?>? focusGroupKeyListenable;
 
   @override
   State<_PlayAutoOrderPreviewScreen> createState() =>
@@ -2832,15 +3040,18 @@ class _PlayAutoOrderPreviewScreen extends StatefulWidget {
 class _PlayAutoOrderCalendarScreen extends StatelessWidget {
   const _PlayAutoOrderCalendarScreen({
     required this.orders,
+    this.onOpenOrderGroup,
     this.embedded = false,
   });
 
   final List<_PlayAutoOrderPreview> orders;
+  final ValueChanged<String>? onOpenOrderGroup;
   final bool embedded;
 
   @override
   Widget build(BuildContext context) {
-    final events = _calendarEvents;
+    final groups = _groupOrders(orders);
+    final events = _calendarEvents(groups);
     final focusedDay = _focusedDay(events);
     final body = events.isEmpty
         ? const Center(child: Text('날짜가 있는 주문이 없습니다.'))
@@ -2849,10 +3060,15 @@ class _PlayAutoOrderCalendarScreen extends StatelessWidget {
             focusedDay: focusedDay,
             expandedBuilder: (event) {
               final index = int.tryParse(event.refId);
-              if (index == null || index < 0 || index >= orders.length) {
+              if (index == null || index < 0 || index >= groups.length) {
                 return const SizedBox.shrink();
               }
-              return _PlayAutoCalendarOrderTile(order: orders[index]);
+              return _PlayAutoCalendarOrderTile(
+                group: groups[index],
+                onTap: onOpenOrderGroup == null
+                    ? null
+                    : () => onOpenOrderGroup!(groups[index].key),
+              );
             },
           );
 
@@ -2866,10 +3082,11 @@ class _PlayAutoOrderCalendarScreen extends StatelessWidget {
     );
   }
 
-  List<CalendarEvent> get _calendarEvents {
+  List<CalendarEvent> _calendarEvents(List<_PlayAutoOrderGroup> groups) {
     final events = <CalendarEvent>[];
-    for (var i = 0; i < orders.length; i += 1) {
-      final order = orders[i];
+    for (var i = 0; i < groups.length; i += 1) {
+      final group = groups[i];
+      final order = group.first;
       final date = order.sortDate;
       if (date == null) continue;
       events.add(
@@ -2879,12 +3096,12 @@ class _PlayAutoOrderCalendarScreen extends StatelessWidget {
           title: order.customerName,
           subtitle: [
             order.shopName,
-            order.productName,
-            '${order.quantity}개',
+            '${group.lines.length}품목',
+            '${group.totalQuantity}개',
             if (order.status.isNotEmpty) order.status,
           ].where((value) => value.trim().isNotEmpty).join(' · '),
           refId: '$i',
-          searchText: order.searchText,
+          searchText: group.searchText,
           colorValue: _playAutoCalendarStatusColor(order.status).toARGB32(),
         ),
       );
@@ -2897,19 +3114,42 @@ class _PlayAutoOrderCalendarScreen extends StatelessWidget {
     final sorted = [...events]..sort((a, b) => b.date.compareTo(a.date));
     return sorted.first.date;
   }
+
+  List<_PlayAutoOrderGroup> _groupOrders(List<_PlayAutoOrderPreview> orders) {
+    final groups = <String, List<_PlayAutoOrderPreview>>{};
+    for (final order in orders) {
+      final key = _playAutoOrderDisplayGroupKey(order);
+      groups.putIfAbsent(key, () => []).add(order);
+    }
+    final result = groups.entries
+        .map((entry) => _PlayAutoOrderGroup(key: entry.key, lines: entry.value))
+        .toList();
+    result.sort((a, b) {
+      final byDate = (b.first.sortDate ?? DateTime(0))
+          .compareTo(a.first.sortDate ?? DateTime(0));
+      if (byDate != 0) return byDate;
+      return a.first.customerName.compareTo(b.first.customerName);
+    });
+    return result;
+  }
 }
 
 class _PlayAutoCalendarOrderTile extends StatelessWidget {
-  const _PlayAutoCalendarOrderTile({required this.order});
+  const _PlayAutoCalendarOrderTile({
+    required this.group,
+    this.onTap,
+  });
 
-  final _PlayAutoOrderPreview order;
+  final _PlayAutoOrderGroup group;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final order = group.first;
     final scheme = Theme.of(context).colorScheme;
     final statusColor = _playAutoCalendarStatusColor(order.status);
-    final amountText = order.amount > 0
-        ? '${NumberFormat('#,##0').format(order.amount)} 원'
+    final amountText = group.totalAmount > 0
+        ? '${NumberFormat('#,##0').format(group.totalAmount)} 원'
         : '-';
 
     return Card(
@@ -2920,46 +3160,76 @@ class _PlayAutoCalendarOrderTile extends StatelessWidget {
         side: BorderSide(color: statusColor.withValues(alpha: 0.38)),
       ),
       color: statusColor.withValues(alpha: 0.12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              order.productName,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w800,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${group.lines.length}품목 · ${group.totalQuantity}개',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            color: scheme.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
                   ),
-            ),
-            if (order.optionName.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                order.optionName,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
+                  if (onTap != null) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.chevron_right,
+                      color: scheme.primary,
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              for (final line in group.lines.take(4))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text(
+                    '- ${line.productName}'
+                    '${line.optionName.isEmpty ? '' : ' / ${line.optionName}'}'
+                    ' x ${line.quantity}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              if (group.lines.length > 4)
+                Text(
+                  '외 ${group.lines.length - 4}품목',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _InfoChip(
+                      icon: Icons.storefront_outlined, text: order.shopName),
+                  _InfoChip(
+                      icon: Icons.person_outline, text: order.customerName),
+                  _InfoChip(
+                      icon: Icons.local_offer_outlined, text: order.status),
+                  _InfoChip(
+                    icon: Icons.inventory_2_outlined,
+                    text: '${group.totalQuantity}개',
+                  ),
+                  _InfoChip(icon: Icons.payments_outlined, text: amountText),
+                ],
               ),
             ],
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: [
-                _InfoChip(
-                    icon: Icons.storefront_outlined, text: order.shopName),
-                _InfoChip(icon: Icons.person_outline, text: order.customerName),
-                _InfoChip(icon: Icons.local_offer_outlined, text: order.status),
-                _InfoChip(
-                  icon: Icons.inventory_2_outlined,
-                  text: '${order.quantity}개',
-                ),
-                _InfoChip(icon: Icons.payments_outlined, text: amountText),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -5750,6 +6020,7 @@ class _PlayAutoOrderPreviewScreenState
   final _searchController = TextEditingController();
   final _mappingService = PlayAutoItemMappingService();
   final _orderLinkService = PlayAutoOrderLinkService();
+  final _groupCardKeys = <String, GlobalKey>{};
   late final TextEditingController _startDateController;
   late final TextEditingController _endDateController;
   late final TextEditingController _lengthController;
@@ -5763,6 +6034,7 @@ class _PlayAutoOrderPreviewScreenState
   var _runningAction = false;
   var _cacheNotice = '캐시 조회는 저장된 주문을 먼저 보여주고, 동기화는 PlayAuto에서 새로 가져옵니다.';
   String? _selectedShopName;
+  String? _focusedGroupKey;
   _PlayAutoFulfillmentStage _stage = _PlayAutoFulfillmentStage.all;
 
   @override
@@ -5773,6 +6045,7 @@ class _PlayAutoOrderPreviewScreenState
     _endDateController = TextEditingController(text: widget.endDate);
     _lengthController = TextEditingController(text: widget.length.toString());
     _loadMappings();
+    widget.focusGroupKeyListenable?.addListener(_handleFocusGroupKeyChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _PlayAutoOrderNotificationService.showBadgeOnly(0);
       if (!mounted || _orders.isNotEmpty) return;
@@ -5782,6 +6055,7 @@ class _PlayAutoOrderPreviewScreenState
 
   @override
   void dispose() {
+    widget.focusGroupKeyListenable?.removeListener(_handleFocusGroupKeyChanged);
     _scrollController.dispose();
     _searchController.dispose();
     _startDateController.dispose();
@@ -5793,6 +6067,11 @@ class _PlayAutoOrderPreviewScreenState
   @override
   void didUpdateWidget(covariant _PlayAutoOrderPreviewScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusGroupKeyListenable != widget.focusGroupKeyListenable) {
+      oldWidget.focusGroupKeyListenable
+          ?.removeListener(_handleFocusGroupKeyChanged);
+      widget.focusGroupKeyListenable?.addListener(_handleFocusGroupKeyChanged);
+    }
     if (!identical(oldWidget.orders, widget.orders)) {
       setState(() => _orders = widget.orders);
     }
@@ -5802,6 +6081,7 @@ class _PlayAutoOrderPreviewScreenState
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final filteredOrders = _filteredOrders;
+    final filteredGroups = _groupOrders(filteredOrders);
     final totalQty =
         filteredOrders.fold<int>(0, (sum, order) => sum + order.quantity);
     final shopNames = _shopNames;
@@ -5821,7 +6101,7 @@ class _PlayAutoOrderPreviewScreenState
                   endDateController: _endDateController,
                   lengthController: _lengthController,
                   loading: _loadingOrders,
-                  orderCount: filteredOrders.length,
+                  orderCount: filteredGroups.length,
                   totalQty: totalQty,
                   matchedCount: _matchedCount(filteredOrders),
                   needsMappingCount: _needsMappingCount(filteredOrders),
@@ -5951,37 +6231,42 @@ class _PlayAutoOrderPreviewScreenState
             ),
           ),
         ),
-        if (filteredOrders.isEmpty)
+        if (filteredGroups.isEmpty)
           const SliverFillRemaining(
             hasScrollBody: false,
             child: Center(child: Text('조건에 맞는 주문이 없습니다.')),
           )
         else
           SliverList.separated(
-            itemCount: filteredOrders.length,
+            itemCount: filteredGroups.length,
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
-              final order = filteredOrders[index];
+              final group = filteredGroups[index];
+              final order = group.first;
+              final cardKey =
+                  _groupCardKeys.putIfAbsent(group.key, GlobalKey.new);
               return Padding(
+                key: cardKey,
                 padding: EdgeInsets.fromLTRB(
                   16,
                   index == 0 ? 4 : 0,
                   16,
-                  index == filteredOrders.length - 1 ? 20 : 0,
+                  index == filteredGroups.length - 1 ? 20 : 0,
                 ),
-                child: _PlayAutoOrderCard(
-                  order: order,
+                child: _PlayAutoOrderGroupCard(
+                  group: group,
                   statusColor: _statusColor(scheme, order.status),
-                  mapping: _mappings[_playAutoMappingKey(order)],
-                  matchedItem: _matchedItemFor(order),
-                  stockStatus: _stockStatusFor(order),
-                  orderLink: _orderLinks[_playAutoOrderGroupKey(order)],
-                  onTapProduct: () => _openMappingSheet(order),
-                  onClearMapping: () => _clearMapping(order),
-                  onOpenOrCreateOrder: () => _openOrCreateChalstockOrder(order),
-                  onOpenMatchedItem: () {
-                    final itemId =
-                        _mappings[_playAutoMappingKey(order)]?.itemId;
+                  highlighted: _focusedGroupKey == group.key,
+                  orderLink: _playAutoOrderLinkFor(order),
+                  mappingFor: (line) => _mappings[_playAutoMappingKey(line)],
+                  matchedItemFor: _matchedItemFor,
+                  stockStatusFor: _stockStatusFor,
+                  onTapProduct: _openMappingSheet,
+                  onClearMapping: _clearMapping,
+                  onOpenOrCreateOrder: () =>
+                      _openOrCreateChalstockOrder(order, group.lines),
+                  onOpenMatchedItem: (line) {
+                    final itemId = _mappings[_playAutoMappingKey(line)]?.itemId;
                     if (itemId != null) _openMatchedItem(itemId);
                   },
                   fulfillmentMode: widget.fulfillmentMode,
@@ -5991,7 +6276,10 @@ class _PlayAutoOrderPreviewScreenState
                     request: () => widget.onInstruction(order),
                     refreshOrder: order,
                   ),
-                  onOpenPrintPreview: () => _openPrintPreview(order),
+                  onOpenPrintPreview: () => _openPrintPreview(
+                    order,
+                    lines: group.lines,
+                  ),
                   onRegisterInvoice: () => _openInvoiceDialog(order),
                   onSendInvoice: () => _sendInvoiceAfterSync(order),
                 ),
@@ -6024,7 +6312,7 @@ class _PlayAutoOrderPreviewScreenState
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('플토 주문 ${filteredOrders.length}건'),
+            Text('플토 주문 ${filteredGroups.length}건'),
             Text(
               '${_startDateController.text} ~ ${_endDateController.text}',
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
@@ -6036,6 +6324,61 @@ class _PlayAutoOrderPreviewScreenState
       ),
       body: bodyWithScrollTop,
     );
+  }
+
+  List<_PlayAutoOrderGroup> _groupOrders(List<_PlayAutoOrderPreview> orders) {
+    final groups = <String, List<_PlayAutoOrderPreview>>{};
+    for (final order in orders) {
+      final key = _playAutoOrderDisplayGroupKey(order);
+      groups.putIfAbsent(key, () => []).add(order);
+    }
+    final result = groups.entries
+        .map((entry) => _PlayAutoOrderGroup(key: entry.key, lines: entry.value))
+        .toList();
+    result.sort((a, b) {
+      final byDate = (b.first.sortDate ?? DateTime(0))
+          .compareTo(a.first.sortDate ?? DateTime(0));
+      if (byDate != 0) return byDate;
+      return a.first.customerName.compareTo(b.first.customerName);
+    });
+    return result;
+  }
+
+  void _handleFocusGroupKeyChanged() {
+    final groupKey = widget.focusGroupKeyListenable?.value;
+    if (groupKey == null || groupKey.isEmpty) return;
+    _focusOrderGroup(groupKey);
+  }
+
+  void _focusOrderGroup(String groupKey) {
+    final exists = _orders.any(
+      (order) => _playAutoOrderDisplayGroupKey(order) == groupKey,
+    );
+    if (!exists) {
+      _showSnack('해당 플토 주문을 현재 조회 목록에서 찾지 못했습니다.');
+      return;
+    }
+
+    setState(() {
+      _focusedGroupKey = groupKey;
+      _selectedShopName = null;
+      if (_query.isNotEmpty) {
+        _query = '';
+        _searchController.clear();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final context = _groupCardKeys[groupKey]?.currentContext;
+      if (context == null) return;
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+        alignment: 0.12,
+      );
+    });
   }
 
   void _scrollToTop() {
@@ -6054,7 +6397,7 @@ class _PlayAutoOrderPreviewScreenState
           _selectedShopName == null || order.shopName == _selectedShopName;
       if (!shopMatches) return false;
       if (widget.fulfillmentMode &&
-          !_stage.matches(order, _orderLinks[_playAutoOrderGroupKey(order)])) {
+          !_stage.matches(order, _playAutoOrderLinkFor(order))) {
         return false;
       }
       if (normalizedQuery.isEmpty) return true;
@@ -6083,6 +6426,9 @@ class _PlayAutoOrderPreviewScreenState
         ].join(' '),
       );
       _showSnack(_playAutoActionSnack(label, response, ok: ok));
+      if (!ok && _needsPlayAutoAuth(response.body)) {
+        await widget.onAuthRequired?.call();
+      }
       if (ok && refreshOrder != null) {
         await _refreshSingleOrder(refreshOrder);
       } else if (refreshAfter) {
@@ -6235,6 +6581,10 @@ class _PlayAutoOrderPreviewScreenState
     return '$label 실패: ${reason.isEmpty ? fallback : reason}';
   }
 
+  bool _needsPlayAutoAuth(String body) {
+    return body.contains('토큰 자동 발급 불가') || body.contains('솔루션 인증키');
+  }
+
   String _playAutoShortReason(String body) {
     final decoded = _tryDecodeJsonObject(body);
     final fromJson = _findPlayAutoReason(decoded);
@@ -6362,16 +6712,21 @@ class _PlayAutoOrderPreviewScreenState
     );
   }
 
-  void _openPrintPreview(_PlayAutoOrderPreview order) {
-    final groupKey = _playAutoOrderGroupKey(order);
-    final lines = _orders
-        .where((candidate) => _playAutoOrderGroupKey(candidate) == groupKey)
-        .toList();
+  void _openPrintPreview(
+    _PlayAutoOrderPreview order, {
+    List<_PlayAutoOrderPreview>? lines,
+  }) {
+    final grouped = lines ??
+        _orders
+            .where((candidate) =>
+                _playAutoOrderDisplayGroupKey(candidate) ==
+                _playAutoOrderDisplayGroupKey(order))
+            .toList();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => _PlayAutoOrderPrintPreviewScreen(
           order: order,
-          lines: lines.isEmpty ? [order] : lines,
+          lines: grouped.isEmpty ? [order] : grouped,
         ),
       ),
     );
@@ -6435,6 +6790,11 @@ class _PlayAutoOrderPreviewScreenState
     );
   }
 
+  PlayAutoOrderLink? _playAutoOrderLinkFor(_PlayAutoOrderPreview order) {
+    return _orderLinks[_playAutoOrderDisplayGroupKey(order)] ??
+        _orderLinks[_playAutoOrderGroupKey(order)];
+  }
+
   Future<void> _loadMappings() async {
     if (_orders.isEmpty) {
       setState(() {
@@ -6450,9 +6810,10 @@ class _PlayAutoOrderPreviewScreenState
       final mappings = await _mappingService.listByKeys(
         _orders.map(_playAutoMappingKey),
       );
-      final orderLinks = await _orderLinkService.listByOrderNos(
-        _orders.map(_playAutoOrderGroupKey),
-      );
+      final orderLinks = await _orderLinkService.listByOrderNos([
+        ..._orders.map(_playAutoOrderDisplayGroupKey),
+        ..._orders.map(_playAutoOrderGroupKey),
+      ]);
       final itemIds = mappings.values
           .where((mapping) => mapping.isConfirmed)
           .map((mapping) => mapping.itemId)
@@ -6584,17 +6945,22 @@ class _PlayAutoOrderPreviewScreenState
 
   Future<void> _openOrCreateChalstockOrder(
     _PlayAutoOrderPreview order,
+    List<_PlayAutoOrderPreview> groupLines,
   ) async {
-    final groupKey = _playAutoOrderGroupKey(order);
-    final existing = _orderLinks[groupKey];
+    final groupKey = _playAutoOrderDisplayGroupKey(order);
+    final existing =
+        _orderLinks[groupKey] ?? _orderLinks[_playAutoOrderGroupKey(order)];
     if (existing != null) {
       _openChalstockOrder(existing.orderId);
       return;
     }
 
-    final grouped = _orders
-        .where((candidate) => _playAutoOrderGroupKey(candidate) == groupKey)
-        .toList();
+    final grouped = groupLines.isEmpty
+        ? _orders
+            .where((candidate) =>
+                _playAutoOrderDisplayGroupKey(candidate) == groupKey)
+            .toList()
+        : groupLines;
     if (grouped.isEmpty) return;
 
     final missing = grouped.where((line) {
@@ -6880,8 +7246,13 @@ class _PlayAutoSummaryBand extends StatelessWidget {
 
   int _stageCount(_PlayAutoFulfillmentStage stage) {
     return orders
-        .where((order) =>
-            stage.matches(order, orderLinks[_playAutoOrderGroupKey(order)]))
+        .where(
+          (order) => stage.matches(
+            order,
+            orderLinks[_playAutoOrderDisplayGroupKey(order)] ??
+                orderLinks[_playAutoOrderGroupKey(order)],
+          ),
+        )
         .length;
   }
 }
@@ -7150,14 +7521,15 @@ class _OrderQueryPanel extends StatelessWidget {
   }
 }
 
-class _PlayAutoOrderCard extends StatelessWidget {
-  const _PlayAutoOrderCard({
-    required this.order,
+class _PlayAutoOrderGroupCard extends StatelessWidget {
+  const _PlayAutoOrderGroupCard({
+    required this.group,
     required this.statusColor,
-    required this.mapping,
-    required this.matchedItem,
-    required this.stockStatus,
+    required this.highlighted,
     required this.orderLink,
+    required this.mappingFor,
+    required this.matchedItemFor,
+    required this.stockStatusFor,
     required this.onTapProduct,
     required this.onClearMapping,
     required this.onOpenOrCreateOrder,
@@ -7170,16 +7542,18 @@ class _PlayAutoOrderCard extends StatelessWidget {
     required this.onSendInvoice,
   });
 
-  final _PlayAutoOrderPreview order;
+  final _PlayAutoOrderGroup group;
   final Color statusColor;
-  final PlayAutoItemMapping? mapping;
-  final Item? matchedItem;
-  final _PlayAutoStockStatus? stockStatus;
+  final bool highlighted;
   final PlayAutoOrderLink? orderLink;
-  final VoidCallback onTapProduct;
-  final VoidCallback onClearMapping;
+  final PlayAutoItemMapping? Function(_PlayAutoOrderPreview line) mappingFor;
+  final Item? Function(_PlayAutoOrderPreview line) matchedItemFor;
+  final _PlayAutoStockStatus? Function(_PlayAutoOrderPreview line)
+      stockStatusFor;
+  final ValueChanged<_PlayAutoOrderPreview> onTapProduct;
+  final ValueChanged<_PlayAutoOrderPreview> onClearMapping;
   final VoidCallback onOpenOrCreateOrder;
-  final VoidCallback onOpenMatchedItem;
+  final ValueChanged<_PlayAutoOrderPreview> onOpenMatchedItem;
   final bool fulfillmentMode;
   final bool actionRunning;
   final VoidCallback onInstruction;
@@ -7190,13 +7564,19 @@ class _PlayAutoOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final linked = mapping?.isConfirmed == true;
-    final needsAttention = _needsAttentionBeforeSent;
+    final order = group.first;
+    final allMapped = group.lines.every(
+      (line) => mappingFor(line)?.isConfirmed == true,
+    );
+    final needsAttention = group.needsAttentionBeforeSent;
     final cardColor = needsAttention
         ? const Color(0xFFFFFBEA)
         : Theme.of(context).cardTheme.color;
-    final borderColor =
-        needsAttention ? const Color(0xFFE5D19B) : scheme.outlineVariant;
+    final borderColor = highlighted
+        ? scheme.primary
+        : needsAttention
+            ? const Color(0xFFE5D19B)
+            : scheme.outlineVariant;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -7205,7 +7585,7 @@ class _PlayAutoOrderCard extends StatelessWidget {
       color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: borderColor),
+        side: BorderSide(color: borderColor, width: highlighted ? 1.8 : 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -7216,63 +7596,40 @@ class _PlayAutoOrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: InkWell(
-                    onTap: onTapProduct,
-                    onLongPress: linked ? onClearMapping : null,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 2,
-                        vertical: 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.customerName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 5),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 5,
                         children: [
-                          Text(
-                            order.productName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  color: scheme.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                          _InfoChip(
+                            icon: Icons.inventory_2_outlined,
+                            text: '${group.lines.length}품목',
                           ),
-                          if (order.optionName.isNotEmpty) ...[
-                            const SizedBox(height: 5),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    order.optionName,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: scheme.onSurfaceVariant),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                _OrderQuantityBadge(quantity: order.quantity),
-                              ],
+                          _InfoChip(
+                            icon: Icons.format_list_numbered,
+                            text: '${group.totalQuantity}개',
+                          ),
+                          if (group.totalAmount > 0)
+                            _InfoChip(
+                              icon: Icons.payments_outlined,
+                              text:
+                                  '${NumberFormat('#,##0').format(group.totalAmount)}원',
                             ),
-                          ] else ...[
-                            const SizedBox(height: 5),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child:
-                                  _OrderQuantityBadge(quantity: order.quantity),
-                            ),
-                          ],
                         ],
                       ),
-                    ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -7280,12 +7637,10 @@ class _PlayAutoOrderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     _StatusPill(label: order.status, color: statusColor),
-                    if (mapping?.isConfirmed == true) ...[
-                      const SizedBox(height: 6),
-                      _StockStatusPill(status: stockStatus),
+                    if (allMapped) ...[
                       const SizedBox(height: 6),
                       ActionChip(
-                        label: const Text('찰스톡 주문'),
+                        label: Text(orderLink == null ? '찰스톡 주문' : '주문 열기'),
                         onPressed: onOpenOrCreateOrder,
                         visualDensity: VisualDensity.compact,
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -7306,20 +7661,11 @@ class _PlayAutoOrderCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (mapping?.isConfirmed == true) ...[
-              const SizedBox(height: 10),
-              _MatchedItemRow(
-                itemId: mapping!.itemId!,
-                item: matchedItem,
-                stockStatus: stockStatus,
-                onTap: onOpenMatchedItem,
-              ),
-            ],
             if (fulfillmentMode) ...[
               const SizedBox(height: 10),
-              _FulfillmentActionBar(
+              _FulfillmentGroupActionBar(
                 order: order,
-                mapping: mapping,
+                canCreateOrder: allMapped,
                 actionRunning: actionRunning,
                 onInstruction: onInstruction,
                 onOpenPrintPreview: onOpenPrintPreview,
@@ -7341,7 +7687,6 @@ class _PlayAutoOrderCard extends StatelessWidget {
                   icon: Icons.storefront_outlined,
                   text: order.shopName,
                 ),
-                _InfoChip(icon: Icons.person_outline, text: order.customerName),
               ],
             ),
             const SizedBox(height: 12),
@@ -7361,6 +7706,24 @@ class _PlayAutoOrderCard extends StatelessWidget {
             ],
             if (order.address.isNotEmpty) ...[
               _MutedLine(label: '주소', value: order.address, maxLines: 2),
+              const SizedBox(height: 10),
+            ] else
+              const SizedBox(height: 4),
+            for (var i = 0; i < group.lines.length; i += 1) ...[
+              if (i > 0) ...[
+                const SizedBox(height: 8),
+                Divider(height: 1, color: scheme.outlineVariant),
+                const SizedBox(height: 8),
+              ],
+              _PlayAutoOrderLineRow(
+                order: group.lines[i],
+                mapping: mappingFor(group.lines[i]),
+                matchedItem: matchedItemFor(group.lines[i]),
+                stockStatus: stockStatusFor(group.lines[i]),
+                onTapProduct: () => onTapProduct(group.lines[i]),
+                onClearMapping: () => onClearMapping(group.lines[i]),
+                onOpenMatchedItem: () => onOpenMatchedItem(group.lines[i]),
+              ),
             ],
           ],
         ),
@@ -7369,7 +7732,7 @@ class _PlayAutoOrderCard extends StatelessWidget {
   }
 
   String get _displayTel {
-    for (final value in [order.receiverTel, order.ordererTel]) {
+    for (final value in [group.first.receiverTel, group.first.ordererTel]) {
       final trimmed = value.trim();
       if (trimmed.isNotEmpty) return trimmed;
     }
@@ -7377,61 +7740,115 @@ class _PlayAutoOrderCard extends StatelessWidget {
   }
 
   String get _displayMobile {
-    for (final value in [order.receiverMobile, order.ordererMobile]) {
+    for (final value in [
+      group.first.receiverMobile,
+      group.first.ordererMobile,
+    ]) {
       final trimmed = value.trim();
       if (trimmed.isNotEmpty) return trimmed;
     }
     return '';
   }
-
-  bool get _needsAttentionBeforeSent {
-    final status = order.status;
-    return !(status.contains('출고완료') ||
-        status.contains('배송중') ||
-        status.contains('배송완료') ||
-        status.contains('구매결정'));
-  }
 }
 
-enum _PlayAutoFulfillmentStage {
-  all('전체'),
-  fresh('신규'),
-  ready('출고대기'),
-  chalstock('작업등록'),
-  invoice('운송장출력'),
-  sent('전송완료'),
-  shipping('배송중'),
-  done('완료');
-
-  const _PlayAutoFulfillmentStage(this.label);
-
-  final String label;
-
-  bool matches(
-    _PlayAutoOrderPreview order,
-    PlayAutoOrderLink? orderLink,
-  ) {
-    final status = order.status;
-    return switch (this) {
-      _PlayAutoFulfillmentStage.all => true,
-      _PlayAutoFulfillmentStage.fresh =>
-        status.contains('신규') || status.contains('결제완료'),
-      _PlayAutoFulfillmentStage.ready =>
-        status.contains('출고대기') || status.contains('출고보류'),
-      _PlayAutoFulfillmentStage.chalstock => orderLink != null,
-      _PlayAutoFulfillmentStage.invoice => status.contains('운송장출력'),
-      _PlayAutoFulfillmentStage.sent => status.contains('출고완료'),
-      _PlayAutoFulfillmentStage.shipping => status.contains('배송중'),
-      _PlayAutoFulfillmentStage.done =>
-        status.contains('배송완료') || status.contains('구매결정'),
-    };
-  }
-}
-
-class _FulfillmentActionBar extends StatelessWidget {
-  const _FulfillmentActionBar({
+class _PlayAutoOrderLineRow extends StatelessWidget {
+  const _PlayAutoOrderLineRow({
     required this.order,
     required this.mapping,
+    required this.matchedItem,
+    required this.stockStatus,
+    required this.onTapProduct,
+    required this.onClearMapping,
+    required this.onOpenMatchedItem,
+  });
+
+  final _PlayAutoOrderPreview order;
+  final PlayAutoItemMapping? mapping;
+  final Item? matchedItem;
+  final _PlayAutoStockStatus? stockStatus;
+  final VoidCallback onTapProduct;
+  final VoidCallback onClearMapping;
+  final VoidCallback onOpenMatchedItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final linked = mapping?.isConfirmed == true;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: onTapProduct,
+          onLongPress: linked ? onClearMapping : null,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.productName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      if (order.optionName.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          order.optionName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _OrderQuantityBadge(quantity: order.quantity),
+                    if (mapping?.isConfirmed == true) ...[
+                      const SizedBox(height: 6),
+                      _StockStatusPill(status: stockStatus),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (mapping?.isConfirmed == true) ...[
+          const SizedBox(height: 8),
+          _MatchedItemRow(
+            itemId: mapping!.itemId!,
+            item: matchedItem,
+            stockStatus: stockStatus,
+            onTap: onOpenMatchedItem,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _FulfillmentGroupActionBar extends StatelessWidget {
+  const _FulfillmentGroupActionBar({
+    required this.order,
+    required this.canCreateOrder,
     required this.actionRunning,
     required this.onInstruction,
     required this.onOpenPrintPreview,
@@ -7441,7 +7858,7 @@ class _FulfillmentActionBar extends StatelessWidget {
   });
 
   final _PlayAutoOrderPreview order;
-  final PlayAutoItemMapping? mapping;
+  final bool canCreateOrder;
   final bool actionRunning;
   final VoidCallback onInstruction;
   final VoidCallback onOpenPrintPreview;
@@ -7455,7 +7872,6 @@ class _FulfillmentActionBar extends StatelessWidget {
     final isFresh = status.contains('신규') || status.contains('결제완료');
     final isReady = status.contains('출고대기') || status.contains('출고보류');
     final hasInvoice = order.invoiceNo.isNotEmpty || status.contains('운송장출력');
-    final canCreateOrder = mapping?.isConfirmed == true;
 
     return Wrap(
       spacing: 6,
@@ -7498,6 +7914,41 @@ class _FulfillmentActionBar extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+enum _PlayAutoFulfillmentStage {
+  all('전체'),
+  fresh('신규'),
+  ready('출고대기'),
+  chalstock('작업등록'),
+  invoice('운송장출력'),
+  sent('전송완료'),
+  shipping('배송중'),
+  done('완료');
+
+  const _PlayAutoFulfillmentStage(this.label);
+
+  final String label;
+
+  bool matches(
+    _PlayAutoOrderPreview order,
+    PlayAutoOrderLink? orderLink,
+  ) {
+    final status = order.status;
+    return switch (this) {
+      _PlayAutoFulfillmentStage.all => true,
+      _PlayAutoFulfillmentStage.fresh =>
+        status.contains('신규') || status.contains('결제완료'),
+      _PlayAutoFulfillmentStage.ready =>
+        status.contains('출고대기') || status.contains('출고보류'),
+      _PlayAutoFulfillmentStage.chalstock => orderLink != null,
+      _PlayAutoFulfillmentStage.invoice => status.contains('운송장출력'),
+      _PlayAutoFulfillmentStage.sent => status.contains('출고완료'),
+      _PlayAutoFulfillmentStage.shipping => status.contains('배송중'),
+      _PlayAutoFulfillmentStage.done =>
+        status.contains('배송완료') || status.contains('구매결정'),
+    };
   }
 }
 
@@ -9125,6 +9576,35 @@ class _PlayAutoOrderPreview {
         DateTime.tryParse(
             normalized.substring(0, normalized.length.clamp(0, 10)));
   }
+}
+
+class _PlayAutoOrderGroup {
+  const _PlayAutoOrderGroup({
+    required this.key,
+    required this.lines,
+  });
+
+  final String key;
+  final List<_PlayAutoOrderPreview> lines;
+
+  _PlayAutoOrderPreview get first => lines.first;
+
+  int get totalQuantity =>
+      lines.fold<int>(0, (sum, line) => sum + line.quantity);
+
+  int get totalAmount => lines.fold<int>(0, (sum, line) => sum + line.amount);
+
+  String get searchText => _normalizeSearchText(
+        lines.map((line) => line.searchText).join(' '),
+      );
+
+  bool get needsAttentionBeforeSent => lines.any((line) {
+        final status = line.status;
+        return !(status.contains('출고완료') ||
+            status.contains('배송중') ||
+            status.contains('배송완료') ||
+            status.contains('구매결정'));
+      });
 }
 
 class _PlayAutoResponse {

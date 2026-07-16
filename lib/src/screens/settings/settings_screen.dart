@@ -75,9 +75,9 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _SettingsMenuCard(
-            icon: Icons.card_giftcard_rounded,
-            title: '작업실 선물',
-            subtitle: '선물 도착 시간과 텍스트 카드 보관함',
+            icon: Icons.menu_book_rounded,
+            title: '찰떡이의 일기장',
+            subtitle: '일기 도착 시간과 작업실 이야기 보관함',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const _DailyGiftHomeScreen()),
             ),
@@ -94,14 +94,14 @@ class _DailyGiftHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('작업실 선물')),
+      appBar: AppBar(title: const Text('찰떡이의 일기장')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _SettingsMenuCard(
             icon: Icons.schedule_rounded,
-            title: '선물 시간',
-            subtitle: '매일 몇 시에 선물을 받을지 정합니다',
+            title: '일기 시간',
+            subtitle: '매일 몇 시에 찰떡이 이야기가 도착할지 정합니다',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => const DailyGiftSettingsScreen(),
@@ -110,9 +110,9 @@ class _DailyGiftHomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _SettingsMenuCard(
-            icon: Icons.inventory_2_outlined,
-            title: '선물 보관함',
-            subtitle: '받은 텍스트 카드 선물을 모아봅니다',
+            icon: Icons.menu_book_outlined,
+            title: '일기장',
+            subtitle: '찰떡이와 이웃들의 작업실 기록을 모아봅니다',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const DailyGiftBoxScreen()),
             ),

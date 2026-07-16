@@ -52,6 +52,7 @@ import 'services/dashboard_purchase_stats_service.dart';
 import 'services/db_auto_backup_service.dart';
 import 'services/entitlement_service.dart';
 import 'services/export_service.dart';
+import 'features/daily_gift/daily_gift_dialog.dart';
 import 'features/daily_gift/daily_gift_service.dart';
 import 'services/folder_service.dart';
 import 'services/inventory_service.dart';
@@ -127,6 +128,8 @@ class _StockMaterialApp extends StatefulWidget {
 
 class _StockMaterialAppState extends State<_StockMaterialApp>
     with WidgetsBindingObserver {
+  bool _showingDailyGiftDialog = false;
+
   @override
   void initState() {
     super.initState();
@@ -174,8 +177,15 @@ class _StockMaterialAppState extends State<_StockMaterialApp>
       final service = DailyGiftService();
       final settings = await service.loadSettings();
       await service.scheduleReminder(settings);
-      await service.grantTodayIfDue();
+      final gift = await service.grantTodayIfDue();
+      if (gift == null || _showingDailyGiftDialog) return;
+      final context = widget.rootNavKey.currentContext;
+      if (context == null || !context.mounted) return;
+      _showingDailyGiftDialog = true;
+      await showDailyGiftDialog(context, gift);
+      _showingDailyGiftDialog = false;
     } catch (e) {
+      _showingDailyGiftDialog = false;
       debugPrint('DailyGift sync failed: $e');
     }
   }

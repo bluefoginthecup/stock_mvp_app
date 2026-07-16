@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'daily_gift_dialog.dart';
 import 'daily_gift_service.dart';
 
 class DailyGiftBoxScreen extends StatefulWidget {
@@ -21,7 +22,12 @@ class _DailyGiftBoxScreenState extends State<DailyGiftBoxScreen> {
   }
 
   Future<List<DailyGift>> _load() async {
-    await _service.grantTodayIfDue();
+    final gift = await _service.grantTodayIfDue();
+    if (gift != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showDailyGiftDialog(context, gift, allowOpenBox: false);
+      });
+    }
     return _service.loadGifts(grantIfDue: false);
   }
 
@@ -33,7 +39,7 @@ class _DailyGiftBoxScreenState extends State<DailyGiftBoxScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('선물 보관함')),
+      appBar: AppBar(title: const Text('찰떡이의 일기장')),
       body: FutureBuilder<List<DailyGift>>(
         future: _future,
         builder: (context, snapshot) {
@@ -49,17 +55,17 @@ class _DailyGiftBoxScreenState extends State<DailyGiftBoxScreen> {
                 padding: const EdgeInsets.all(24),
                 children: const [
                   SizedBox(height: 80),
-                  Icon(Icons.inventory_2_outlined, size: 56),
+                  Icon(Icons.menu_book_outlined, size: 56),
                   SizedBox(height: 16),
                   Center(
                     child: Text(
-                      '아직 받은 선물이 없어요.',
+                      '아직 도착한 일기가 없어요.',
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                   ),
                   SizedBox(height: 8),
                   Center(
-                    child: Text('선물 시간을 켜두면 하루에 한 번 카드가 쌓입니다.'),
+                    child: Text('일기 시간을 켜두면 하루에 한 번 카드가 쌓입니다.'),
                   ),
                 ],
               ),
@@ -73,7 +79,10 @@ class _DailyGiftBoxScreenState extends State<DailyGiftBoxScreen> {
               itemCount: gifts.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (context, index) {
-                return _GiftCard(gift: gifts[index]);
+                return _GiftCard(
+                  gift: gifts[index],
+                  onCommentSaved: _refresh,
+                );
               },
             ),
           );
@@ -85,8 +94,58 @@ class _DailyGiftBoxScreenState extends State<DailyGiftBoxScreen> {
 
 class _GiftCard extends StatelessWidget {
   final DailyGift gift;
+  final Future<void> Function() onCommentSaved;
 
-  const _GiftCard({required this.gift});
+  const _GiftCard({
+    required this.gift,
+    required this.onCommentSaved,
+  });
+
+  Future<void> _editComment(BuildContext context) async {
+    final controller = TextEditingController(text: gift.userComment);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('나의 한마디'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            minLines: 3,
+            maxLines: 5,
+            decoration: const InputDecoration(
+              hintText: '오늘 이 일기에 남기고 싶은 말을 적어보세요.',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(''),
+              child: const Text('비우기'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(controller.text),
+              child: const Text('저장'),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null) return;
+
+    await DailyGiftService().saveUserComment(gift.id, result);
+    await onCommentSaved();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('나의 한마디를 저장했어요.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +161,11 @@ class _GiftCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.card_giftcard_rounded),
+                Icon(
+                  gift.hasGift
+                      ? Icons.card_giftcard_rounded
+                      : Icons.menu_book_rounded,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -117,8 +180,15 @@ class _GiftCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(gift.description),
             const SizedBox(height: 12),
+            _UserCommentBox(
+              comment: gift.userComment,
+              onTap: () => _editComment(context),
+            ),
+            const SizedBox(height: 12),
             Text(
-              '$sourceDate의 선물 · $date 받음',
+              gift.hasGift
+                  ? '$sourceDate의 배달 · $date 받음'
+                  : '$sourceDate의 일기 · $date 도착',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context)
                         .colorScheme
@@ -127,6 +197,77 @@ class _GiftCard extends StatelessWidget {
                   ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UserCommentBox extends StatelessWidget {
+  final String comment;
+  final VoidCallback onTap;
+
+  const _UserCommentBox({
+    required this.comment,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasComment = comment.trim().isNotEmpty;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.7),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                hasComment
+                    ? Icons.mode_comment_rounded
+                    : Icons.add_comment_outlined,
+                size: 18,
+                color: scheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '나의 한마디',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasComment ? comment.trim() : '이 일기에 한마디 남기기',
+                      style: TextStyle(
+                        color: hasComment
+                            ? scheme.onSurface
+                            : scheme.onSurface.withValues(alpha: 0.56),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.edit_rounded, size: 18, color: scheme.primary),
+            ],
+          ),
         ),
       ),
     );

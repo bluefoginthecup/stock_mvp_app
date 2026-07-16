@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'daily_gift_dialog.dart';
 import 'daily_gift_service.dart';
 
 class DailyGiftSettingsScreen extends StatefulWidget {
@@ -30,7 +31,9 @@ class _DailyGiftSettingsScreenState extends State<DailyGiftSettingsScreen> {
       _settings = settings;
       _loading = false;
     });
-    if (gift != null) _showGiftSnack(gift);
+    if (gift != null) {
+      await showDailyGiftDialog(context, gift);
+    }
   }
 
   Future<void> _save(DailyGiftSettings settings) async {
@@ -45,7 +48,9 @@ class _DailyGiftSettingsScreenState extends State<DailyGiftSettingsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('선물 시간을 ${settings.timeLabel}로 저장했어요.')),
     );
-    if (gift != null) _showGiftSnack(gift);
+    if (gift != null) {
+      await showDailyGiftDialog(context, gift);
+    }
   }
 
   Future<void> _toggleEnabled(bool value) async {
@@ -66,13 +71,7 @@ class _DailyGiftSettingsScreenState extends State<DailyGiftSettingsScreen> {
   Future<void> _grantTestGift() async {
     final gift = await _service.grantTestGift();
     if (!mounted) return;
-    _showGiftSnack(gift);
-  }
-
-  void _showGiftSnack(DailyGift gift) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${gift.title}을(를) 받았어요.')),
-    );
+    await showDailyGiftDialog(context, gift);
   }
 
   @override
@@ -90,16 +89,16 @@ class _DailyGiftSettingsScreenState extends State<DailyGiftSettingsScreen> {
                   child: SwitchListTile(
                     value: _settings.enabled,
                     onChanged: _saving ? null : _toggleEnabled,
-                    secondary: const Icon(Icons.card_giftcard_rounded),
-                    title: const Text('매일 선물 받기'),
-                    subtitle: const Text('정한 시간이 지나면 오늘의 작업실 선물이 도착해요.'),
+                    secondary: const Icon(Icons.menu_book_rounded),
+                    title: const Text('찰떡이의 일기 받기'),
+                    subtitle: const Text('정한 시간이 지나면 찰떡이의 작업실 이야기가 도착해요.'),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.schedule_rounded),
-                    title: const Text('선물 도착 시간'),
+                    title: const Text('일기 도착 시간'),
                     subtitle: Text(_settings.timeLabel),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     enabled: !_saving,
@@ -112,7 +111,7 @@ class _DailyGiftSettingsScreenState extends State<DailyGiftSettingsScreen> {
                   child: const Padding(
                     padding: EdgeInsets.all(16),
                     child: Text(
-                      '앱이 백그라운드에서 항상 실행되지는 않기 때문에, 선물은 앱을 열거나 보관함에 들어올 때 오늘 시간이 지났는지 확인한 뒤 한 번만 지급됩니다.',
+                      '앱이 백그라운드에서 항상 실행되지는 않기 때문에, 찰떡이의 일기는 앱을 열거나 보관함에 들어올 때 오늘 시간이 지났는지 확인한 뒤 한 번만 도착합니다.',
                     ),
                   ),
                 ),
@@ -120,7 +119,7 @@ class _DailyGiftSettingsScreenState extends State<DailyGiftSettingsScreen> {
                 OutlinedButton.icon(
                   onPressed: _saving ? null : _grantTestGift,
                   icon: const Icon(Icons.bolt_rounded),
-                  label: const Text('테스트 선물 받기'),
+                  label: const Text('테스트 일기 받기'),
                 ),
               ],
             ),
