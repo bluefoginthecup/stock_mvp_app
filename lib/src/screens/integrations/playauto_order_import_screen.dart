@@ -4240,6 +4240,8 @@ class _PlayAutoQuoteOrderAddScreenState
       headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
     );
     final shops = _readShopAccounts(response.body);
+    final allShopCodes = await _fetchAllShopCodes(apiKey: apiKey, token: token);
+    final defaultCustomShopCode = _findDirectInputShopCode(allShopCodes);
     debugPrint(
       '[PlayAuto /order/add] shops response status=${response.statusCode}',
     );
@@ -4250,6 +4252,10 @@ class _PlayAutoQuoteOrderAddScreenState
     debugPrint(
       '[PlayAuto /order/add] parsed shops '
       '${shops.map((shop) => '${shop.code}|${shop.id}|${shop.name}|custom=${shop.isCustomInput}').join(', ')}',
+    );
+    debugPrint(
+      '[PlayAuto /order/add] all shop codes '
+      '${allShopCodes.map((shop) => '${shop.code}|${shop.name}|custom=${shop.isCustomInput}').join(', ')}',
     );
     final manualShop = _manualCustomShopAccount();
     if (manualShop != null) {
@@ -4283,6 +4289,7 @@ class _PlayAutoQuoteOrderAddScreenState
     if (shop == null && widget.autoSubmit) {
       final enteredShop = await _showCustomShopAccountSetupDialog(
         regularShops: shops.where((shop) => !shop.isCustomInput).toList(),
+        initialCode: defaultCustomShopCode,
       );
       if (enteredShop != null) {
         if (!mounted) return;
@@ -4332,12 +4339,49 @@ class _PlayAutoQuoteOrderAddScreenState
     return null;
   }
 
+  Future<List<_PlayAutoShopAccount>> _fetchAllShopCodes({
+    required String apiKey,
+    required String token,
+  }) async {
+    try {
+      final response = await http.get(
+        _endpoint('/shops'),
+        headers: _authorizedJsonHeaders(apiKey: apiKey, token: token),
+      );
+      debugPrint(
+        '[PlayAuto /order/add] all shops response status=${response.statusCode}',
+      );
+      _debugPrintLong(
+        '[PlayAuto /order/add] all shops response body ',
+        _prettyBody(response.body),
+      );
+      return _readShopAccounts(response.body);
+    } catch (e) {
+      debugPrint('[PlayAuto /order/add] all shops lookup failed $e');
+      return const [];
+    }
+  }
+
+  String _findDirectInputShopCode(List<_PlayAutoShopAccount> shops) {
+    final direct = shops.where((shop) => shop.isCustomInput).toList();
+    if (direct.isNotEmpty) return direct.first.code;
+
+    for (final shop in shops) {
+      final name = shop.name.replaceAll(RegExp(r'\s+'), '');
+      if (name.contains('직접') || name.toLowerCase().contains('custom')) {
+        return shop.code;
+      }
+    }
+    return '';
+  }
+
   Future<_PlayAutoShopAccount?> _showCustomShopAccountSetupDialog({
     required List<_PlayAutoShopAccount> regularShops,
+    String initialCode = '',
   }) async {
     if (!mounted) return null;
     final formKey = GlobalKey<FormState>();
-    final codeController = TextEditingController();
+    final codeController = TextEditingController(text: initialCode);
     final idController = TextEditingController();
     try {
       return await showDialog<_PlayAutoShopAccount>(
