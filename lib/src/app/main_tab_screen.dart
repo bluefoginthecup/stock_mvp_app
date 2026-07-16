@@ -9,6 +9,7 @@ import 'package:stockapp_mvp/src/features/fantasy_dashboard/fantasy_dashboard_sc
 import 'package:stockapp_mvp/src/features/fabric_cutting/screens/fabric_cutting_home_screen.dart';
 import 'package:stockapp_mvp/src/screens/orders/order_detail_screen.dart';
 import 'package:stockapp_mvp/src/screens/orders/order_list_screen.dart';
+import 'package:stockapp_mvp/src/screens/orders/sales_calendar_screen.dart';
 import 'package:stockapp_mvp/src/screens/stock/stock_browser_screen.dart';
 import 'package:stockapp_mvp/src/screens/stock/stock_item_detail_screen.dart';
 import 'package:stockapp_mvp/src/screens/txns/txn_list_screen.dart';
@@ -843,6 +844,9 @@ class _MainTabScreenState extends State<MainTabScreen> {
             break;
           case '/cart':
             screen = const CartScreen();
+            break;
+          case '/sales-calendar':
+            screen = const SalesCalendarScreen();
             break;
           case '/quotes':
             screen = const QuoteListScreen();

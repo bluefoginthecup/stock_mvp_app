@@ -25,6 +25,8 @@ class TodayActivitySummary {
 
   static const empty = TodayActivitySummary();
 
+  int get todayOrders => newOrders;
+
   int get total =>
       newOrders +
       purchases +

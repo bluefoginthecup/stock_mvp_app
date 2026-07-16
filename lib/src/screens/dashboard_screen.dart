@@ -481,6 +481,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onHideSection: _hideDashboardSection,
                         onToggleSectionCollapsed:
                             _toggleDashboardSectionCollapsed,
+                        onOpenSalesCalendar: () => context
+                            .read<MainTabController>()
+                            .openShellRoute('/sales-calendar'),
                         onEnterEditMode: () {
                           if (!_editingDashboard) {
                             setState(() => _editingDashboard = true);
@@ -725,6 +728,7 @@ class _DashboardContent extends StatelessWidget {
   final ReorderCallback onSectionReorder;
   final ValueChanged<_DashboardSectionType> onHideSection;
   final ValueChanged<_DashboardSectionType> onToggleSectionCollapsed;
+  final VoidCallback onOpenSalesCalendar;
   final VoidCallback onEnterEditMode;
 
   const _DashboardContent({
@@ -746,6 +750,7 @@ class _DashboardContent extends StatelessWidget {
     required this.onSectionReorder,
     required this.onHideSection,
     required this.onToggleSectionCollapsed,
+    required this.onOpenSalesCalendar,
     required this.onEnterEditMode,
   });
 
@@ -872,6 +877,7 @@ class _DashboardContent extends StatelessWidget {
           onOpenWorks: () => context.read<MainTabController>().setIndex(4),
           onOpenPurchases: () => context.read<MainTabController>().setIndex(5),
           onOpenSchedules: onOpenSchedules,
+          onOpenSalesCalendar: onOpenSalesCalendar,
         );
       case _DashboardSectionType.tarot:
         return const _TodayTarotCard();
@@ -2113,6 +2119,7 @@ class _ChalstockAssistantCard extends StatefulWidget {
   final VoidCallback onOpenWorks;
   final VoidCallback onOpenPurchases;
   final VoidCallback onOpenSchedules;
+  final VoidCallback onOpenSalesCalendar;
 
   const _ChalstockAssistantCard({
     required this.lowCount,
@@ -2122,6 +2129,7 @@ class _ChalstockAssistantCard extends StatefulWidget {
     required this.onOpenWorks,
     required this.onOpenPurchases,
     required this.onOpenSchedules,
+    required this.onOpenSalesCalendar,
   });
 
   @override
@@ -2272,6 +2280,7 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
                       _TodayBusinessMetrics(
                         summary: widget.todaySummary,
                         compact: true,
+                        onTodaySalesTap: widget.onOpenSalesCalendar,
                       ),
                       const SizedBox(height: 8),
                       Expanded(
@@ -2329,6 +2338,7 @@ class _ChalstockAssistantCardState extends State<_ChalstockAssistantCard> {
           onOpenWorks: widget.onOpenWorks,
           onOpenPurchases: widget.onOpenPurchases,
           onOpenSchedules: widget.onOpenSchedules,
+          onOpenSalesCalendar: widget.onOpenSalesCalendar,
         ),
         const SizedBox(height: 12),
         const _TipPanel(),
@@ -2386,24 +2396,27 @@ class _SpeechBubble extends StatelessWidget {
 class _TodayBusinessMetrics extends StatelessWidget {
   final TodayActivitySummary summary;
   final bool compact;
+  final VoidCallback? onTodaySalesTap;
 
   const _TodayBusinessMetrics({
     required this.summary,
     this.compact = false,
+    this.onTodaySalesTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final metrics = [
       _TodayBusinessMetricData(
-        label: '신규주문',
-        value: '${summary.newOrders}개',
+        label: '오늘의 주문',
+        value: '${summary.todayOrders}개',
         color: const Color(0xFF6A7AF5),
       ),
       _TodayBusinessMetricData(
         label: '오늘 매출',
         value: _formatWon(summary.todaySales),
         color: const Color(0xFF2F9F70),
+        onTap: onTodaySalesTap,
       ),
       _TodayBusinessMetricData(
         label: '이달 매출',
@@ -2437,6 +2450,7 @@ class _TodayBusinessMetrics extends StatelessWidget {
                 label: metric.label,
                 value: metric.value,
                 color: metric.color,
+                onTap: metric.onTap,
               ),
             );
           },
@@ -2460,6 +2474,7 @@ class _TodayBusinessMetrics extends StatelessWidget {
                   label: metric.label,
                   value: metric.value,
                   color: metric.color,
+                  onTap: metric.onTap,
                 ),
               ),
           ],
@@ -2473,11 +2488,13 @@ class _TodayBusinessMetricData {
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _TodayBusinessMetricData({
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 }
 
@@ -2485,16 +2502,18 @@ class _TodayBusinessMetric extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _TodayBusinessMetric({
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    final child = DecoratedBox(
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
@@ -2530,6 +2549,15 @@ class _TodayBusinessMetric extends StatelessWidget {
         ),
       ),
     );
+    if (onTap == null) return child;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: child,
+      ),
+    );
   }
 }
 
@@ -2540,6 +2568,7 @@ class _TodayActivityPanel extends StatelessWidget {
   final VoidCallback onOpenWorks;
   final VoidCallback onOpenPurchases;
   final VoidCallback onOpenSchedules;
+  final VoidCallback onOpenSalesCalendar;
 
   const _TodayActivityPanel({
     required this.summary,
@@ -2548,15 +2577,16 @@ class _TodayActivityPanel extends StatelessWidget {
     required this.onOpenWorks,
     required this.onOpenPurchases,
     required this.onOpenSchedules,
+    required this.onOpenSalesCalendar,
   });
 
   List<_TodayActivityLine> _lines() {
     final lines = <_TodayActivityLine>[];
-    if (summary.newOrders > 0) {
+    if (summary.todayOrders > 0) {
       lines.add(_TodayActivityLine(
         icon: Icons.assignment_rounded,
         color: const Color(0xFF6A7AF5),
-        text: '오늘 새 주문이 ${summary.newOrders}개 들어왔어요 🐶',
+        text: '오늘 주문이 ${summary.todayOrders}개 있어요 🐶',
         onTap: onOpenOrders,
       ));
     }
@@ -2617,7 +2647,10 @@ class _TodayActivityPanel extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: _TodayBusinessMetrics(summary: summary),
+            child: _TodayBusinessMetrics(
+              summary: summary,
+              onTodaySalesTap: onOpenSalesCalendar,
+            ),
           ),
           const Divider(height: 1),
           if (lines.isEmpty)

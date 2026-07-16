@@ -128,8 +128,7 @@ class _GiftCard extends StatelessWidget {
               child: const Text('비우기'),
             ),
             FilledButton(
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(controller.text),
+              onPressed: () => Navigator.of(dialogContext).pop(controller.text),
               child: const Text('저장'),
             ),
           ],

@@ -6,17 +6,18 @@ import '../db/app_database.dart';
 import '../models/app_schedule.dart';
 import '../models/today_activity_summary.dart';
 import '../models/types.dart';
+import 'playauto_sales_service.dart';
 
 class DashboardActivityService {
   final AppDatabase db;
+  final PlayAutoSalesService playAutoSales;
 
-  const DashboardActivityService(this.db);
+  const DashboardActivityService(
+    this.db, {
+    this.playAutoSales = const PlayAutoSalesService(),
+  });
 
   DateTime _dayStart(DateTime day) => DateTime(day.year, day.month, day.day);
-
-  DateTime _monthStart(DateTime day) => DateTime(day.year, day.month);
-
-  DateTime _nextMonth(DateTime day) => DateTime(day.year, day.month + 1);
 
   bool _isSameDay(DateTime value, DateTime day) {
     return value.year == day.year &&
@@ -28,12 +29,6 @@ class DashboardActivityService {
     final parsed = DateTime.tryParse(value);
     if (parsed == null) return false;
     return _isSameDay(parsed, day);
-  }
-
-  bool _isInRangeText(String value, DateTime start, DateTime end) {
-    final parsed = DateTime.tryParse(value);
-    if (parsed == null) return false;
-    return !parsed.isBefore(start) && parsed.isBefore(end);
   }
 
   Future<int> _safeCount(Future<int> Function() count) async {
@@ -50,28 +45,6 @@ class DashboardActivityService {
     } catch (_) {
       return 0;
     }
-  }
-
-  Future<double> _orderSalesAmount(Iterable<OrderRow> orders) async {
-    final orderIds = orders.map((order) => order.id).toSet();
-    if (orderIds.isEmpty) return 0;
-
-    final lines = (await (db.select(db.orderLines)
-              ..where((t) => t.isDeleted.equals(false)))
-            .get())
-        .where((line) => orderIds.contains(line.orderId))
-        .toList();
-    if (lines.isEmpty) return 0;
-
-    final items = await db.select(db.items).get();
-    final salePriceByItem = {
-      for (final item in items) item.id: item.defaultSalePrice ?? 0,
-    };
-
-    return lines.fold<double>(
-      0,
-      (sum, line) => sum + line.qty * (salePriceByItem[line.itemId] ?? 0),
-    );
   }
 
   Future<double> _purchaseExpenseAmount(
@@ -98,26 +71,18 @@ class DashboardActivityService {
 
   Future<TodayActivitySummary> loadTodaySummary({DateTime? day}) async {
     final target = _dayStart(day ?? DateTime.now());
-    final monthStart = _monthStart(target);
-    final nextMonth = _nextMonth(target);
 
-    final activeOrders = await (db.select(db.orders)
-          ..where((t) => t.isDeleted.equals(false)))
-        .get();
     final activePurchases = await (db.select(db.purchaseOrders)
           ..where((t) => t.isDeleted.equals(false)))
         .get();
-    final todayOrders =
-        activeOrders.where((row) => _isSameDayText(row.date, target)).toList();
-    final monthlyOrders = activeOrders
-        .where((row) => _isInRangeText(row.date, monthStart, nextMonth))
-        .toList();
+    final sales = await playAutoSales.loadSnapshot();
+    final todaySalesDay = sales.dayOf(target);
     final todayPurchases = activePurchases
         .where((row) => _isSameDayText(row.createdAt, target))
         .toList();
 
     final newOrders = await _safeCount(() async {
-      return todayOrders.length;
+      return todaySalesDay?.orderCount ?? 0;
     });
 
     final purchases = await _safeCount(() async {
@@ -125,9 +90,8 @@ class DashboardActivityService {
       return todayPurchases.length;
     });
 
-    final todaySales = await _safeAmount(() => _orderSalesAmount(todayOrders));
-    final monthSales =
-        await _safeAmount(() => _orderSalesAmount(monthlyOrders));
+    final todaySales = todaySalesDay?.amount ?? 0;
+    final monthSales = sales.monthAmount(target);
     final todayExpenses =
         await _safeAmount(() => _purchaseExpenseAmount(todayPurchases));
 
@@ -191,6 +155,7 @@ class DashboardActivityService {
     final target = day ?? DateTime.now();
     late final StreamController<TodayActivitySummary> controller;
     final subscriptions = <StreamSubscription>[];
+    Timer? refreshTimer;
     var queued = false;
 
     Future<void> emit() async {
@@ -221,8 +186,12 @@ class DashboardActivityService {
           ..add(db.select(db.appSchedules).watch().listen((_) => emit()))
           ..add(db.select(db.works).watch().listen((_) => emit()));
         emit();
+        refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+          emit();
+        });
       },
       onCancel: () async {
+        refreshTimer?.cancel();
         for (final sub in subscriptions) {
           await sub.cancel();
         }

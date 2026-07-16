@@ -7521,7 +7521,7 @@ class _OrderQueryPanel extends StatelessWidget {
   }
 }
 
-class _PlayAutoOrderGroupCard extends StatelessWidget {
+class _PlayAutoOrderGroupCard extends StatefulWidget {
   const _PlayAutoOrderGroupCard({
     required this.group,
     required this.statusColor,
@@ -7562,17 +7562,25 @@ class _PlayAutoOrderGroupCard extends StatelessWidget {
   final VoidCallback onSendInvoice;
 
   @override
+  State<_PlayAutoOrderGroupCard> createState() =>
+      _PlayAutoOrderGroupCardState();
+}
+
+class _PlayAutoOrderGroupCardState extends State<_PlayAutoOrderGroupCard> {
+  var _detailsExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final order = group.first;
-    final allMapped = group.lines.every(
-      (line) => mappingFor(line)?.isConfirmed == true,
+    final order = widget.group.first;
+    final allMapped = widget.group.lines.every(
+      (line) => widget.mappingFor(line)?.isConfirmed == true,
     );
-    final needsAttention = group.needsAttentionBeforeSent;
+    final needsAttention = widget.group.needsAttentionBeforeSent;
     final cardColor = needsAttention
         ? const Color(0xFFFFFBEA)
         : Theme.of(context).cardTheme.color;
-    final borderColor = highlighted
+    final borderColor = widget.highlighted
         ? scheme.primary
         : needsAttention
             ? const Color(0xFFE5D19B)
@@ -7585,7 +7593,10 @@ class _PlayAutoOrderGroupCard extends StatelessWidget {
       color: cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: borderColor, width: highlighted ? 1.8 : 1),
+        side: BorderSide(
+          color: borderColor,
+          width: widget.highlighted ? 1.8 : 1,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -7608,121 +7619,105 @@ class _PlayAutoOrderGroupCard extends StatelessWidget {
                                   fontWeight: FontWeight.w800,
                                 ),
                       ),
-                      const SizedBox(height: 5),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 5,
-                        children: [
-                          _InfoChip(
-                            icon: Icons.inventory_2_outlined,
-                            text: '${group.lines.length}품목',
-                          ),
-                          _InfoChip(
-                            icon: Icons.format_list_numbered,
-                            text: '${group.totalQuantity}개',
-                          ),
-                          if (group.totalAmount > 0)
-                            _InfoChip(
-                              icon: Icons.payments_outlined,
-                              text:
-                                  '${NumberFormat('#,##0').format(group.totalAmount)}원',
-                            ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _StatusPill(label: order.status, color: statusColor),
-                    if (allMapped) ...[
-                      const SizedBox(height: 6),
-                      ActionChip(
-                        label: Text(orderLink == null ? '찰스톡 주문' : '주문 열기'),
-                        onPressed: onOpenOrCreateOrder,
-                        visualDensity: VisualDensity.compact,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
-                        side: BorderSide(
-                          color: scheme.primary.withValues(alpha: 0.35),
-                        ),
-                        backgroundColor:
-                            scheme.primaryContainer.withValues(alpha: 0.24),
-                        labelStyle:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: scheme.primary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                      ),
-                    ],
-                  ],
-                ),
               ],
             ),
-            if (fulfillmentMode) ...[
+            if (widget.fulfillmentMode) ...[
               const SizedBox(height: 10),
               _FulfillmentGroupActionBar(
                 order: order,
+                statusColor: widget.statusColor,
                 canCreateOrder: allMapped,
-                actionRunning: actionRunning,
-                onInstruction: onInstruction,
-                onOpenPrintPreview: onOpenPrintPreview,
-                onOpenOrCreateOrder: onOpenOrCreateOrder,
-                onRegisterInvoice: onRegisterInvoice,
-                onSendInvoice: onSendInvoice,
+                actionRunning: widget.actionRunning,
+                onInstruction: widget.onInstruction,
+                onOpenPrintPreview: widget.onOpenPrintPreview,
+                onOpenOrCreateOrder: widget.onOpenOrCreateOrder,
+                onRegisterInvoice: widget.onRegisterInvoice,
+                onSendInvoice: widget.onSendInvoice,
+                detailsExpanded: _detailsExpanded,
+                onToggleDetails: () {
+                  setState(() => _detailsExpanded = !_detailsExpanded);
+                },
               ),
             ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
-              children: [
-                _InfoChip(
-                  icon: Icons.calendar_today_outlined,
-                  text: order.orderDate,
-                ),
-                _InfoChip(
-                  icon: Icons.storefront_outlined,
-                  text: order.shopName,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Divider(height: 1, color: scheme.outlineVariant),
-            const SizedBox(height: 10),
-            if (order.invoiceNo.isNotEmpty) ...[
-              _DeliveryTrackingRow(order: order),
-              const SizedBox(height: 6),
-            ],
-            if (_displayTel.isNotEmpty) ...[
-              _MutedLine(label: '전화번호', value: _displayTel),
-              const SizedBox(height: 6),
-            ],
-            if (_displayMobile.isNotEmpty) ...[
-              _MutedLine(label: '휴대폰번호', value: _displayMobile),
-              const SizedBox(height: 6),
-            ],
-            if (order.address.isNotEmpty) ...[
-              _MutedLine(label: '주소', value: order.address, maxLines: 2),
+            if (_detailsExpanded) ...[
               const SizedBox(height: 10),
-            ] else
-              const SizedBox(height: 4),
-            for (var i = 0; i < group.lines.length; i += 1) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.65),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        _InfoChip(
+                          icon: Icons.calendar_today_outlined,
+                          text: order.orderDate,
+                        ),
+                        _InfoChip(
+                          icon: Icons.storefront_outlined,
+                          text: order.shopName,
+                        ),
+                      ],
+                    ),
+                    if (order.invoiceNo.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _DeliveryTrackingRow(order: order),
+                    ],
+                    if (_displayTel.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _MutedLine(label: '전화번호', value: _displayTel),
+                    ],
+                    if (_displayMobile.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _MutedLine(label: '휴대폰번호', value: _displayMobile),
+                    ],
+                    if (order.address.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _MutedLine(
+                          label: '주소', value: order.address, maxLines: 3),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Text(
+              order.productName,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            for (var i = 0; i < widget.group.lines.length; i += 1) ...[
               if (i > 0) ...[
                 const SizedBox(height: 8),
                 Divider(height: 1, color: scheme.outlineVariant),
                 const SizedBox(height: 8),
               ],
               _PlayAutoOrderLineRow(
-                order: group.lines[i],
-                mapping: mappingFor(group.lines[i]),
-                matchedItem: matchedItemFor(group.lines[i]),
-                stockStatus: stockStatusFor(group.lines[i]),
-                onTapProduct: () => onTapProduct(group.lines[i]),
-                onClearMapping: () => onClearMapping(group.lines[i]),
-                onOpenMatchedItem: () => onOpenMatchedItem(group.lines[i]),
+                order: widget.group.lines[i],
+                mapping: widget.mappingFor(widget.group.lines[i]),
+                matchedItem: widget.matchedItemFor(widget.group.lines[i]),
+                stockStatus: widget.stockStatusFor(widget.group.lines[i]),
+                onTapProduct: () => widget.onTapProduct(widget.group.lines[i]),
+                onClearMapping: () =>
+                    widget.onClearMapping(widget.group.lines[i]),
+                onOpenMatchedItem: () =>
+                    widget.onOpenMatchedItem(widget.group.lines[i]),
               ),
             ],
           ],
@@ -7732,7 +7727,10 @@ class _PlayAutoOrderGroupCard extends StatelessWidget {
   }
 
   String get _displayTel {
-    for (final value in [group.first.receiverTel, group.first.ordererTel]) {
+    for (final value in [
+      widget.group.first.receiverTel,
+      widget.group.first.ordererTel,
+    ]) {
       final trimmed = value.trim();
       if (trimmed.isNotEmpty) return trimmed;
     }
@@ -7741,8 +7739,8 @@ class _PlayAutoOrderGroupCard extends StatelessWidget {
 
   String get _displayMobile {
     for (final value in [
-      group.first.receiverMobile,
-      group.first.ordererMobile,
+      widget.group.first.receiverMobile,
+      widget.group.first.ordererMobile,
     ]) {
       final trimmed = value.trim();
       if (trimmed.isNotEmpty) return trimmed;
@@ -7751,7 +7749,7 @@ class _PlayAutoOrderGroupCard extends StatelessWidget {
   }
 }
 
-class _PlayAutoOrderLineRow extends StatelessWidget {
+class _PlayAutoOrderLineRow extends StatefulWidget {
   const _PlayAutoOrderLineRow({
     required this.order,
     required this.mapping,
@@ -7771,76 +7769,155 @@ class _PlayAutoOrderLineRow extends StatelessWidget {
   final VoidCallback onOpenMatchedItem;
 
   @override
+  State<_PlayAutoOrderLineRow> createState() => _PlayAutoOrderLineRowState();
+}
+
+class _PlayAutoOrderLineRowState extends State<_PlayAutoOrderLineRow> {
+  var _mappingExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final linked = mapping?.isConfirmed == true;
+    final linked = widget.mapping?.isConfirmed == true;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
-          onTap: onTapProduct,
-          onLongPress: linked ? onClearMapping : null,
+          onTap: widget.onTapProduct,
+          onLongPress: linked ? widget.onClearMapping : null,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
-            child: Row(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.productName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                Text(
+                  widget.order.optionName.isEmpty
+                      ? '옵션명 없음'
+                      : widget.order.optionName,
+                  softWrap: true,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant,
                       ),
-                      if (order.optionName.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          order.optionName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                        ),
-                      ],
-                    ],
-                  ),
                 ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 5,
+                  runSpacing: 5,
                   children: [
-                    _OrderQuantityBadge(quantity: order.quantity),
-                    if (mapping?.isConfirmed == true) ...[
-                      const SizedBox(height: 6),
-                      _StockStatusPill(status: stockStatus),
-                    ],
+                    _LineTinyChip(
+                      label: '${widget.order.quantity}',
+                      color: scheme.tertiary,
+                      backgroundColor:
+                          scheme.tertiaryContainer.withValues(alpha: 0.62),
+                    ),
+                    _LineTinyChip(
+                      label: _lineStockLabel,
+                      color: _lineStockColor(scheme),
+                      backgroundColor:
+                          _lineStockColor(scheme).withValues(alpha: 0.1),
+                    ),
+                    if (widget.mapping?.isConfirmed == true)
+                      _LineTinyChip(
+                        label: '매칭',
+                        icon: _mappingExpanded
+                            ? Icons.expand_less
+                            : Icons.chevron_right,
+                        color: scheme.primary,
+                        backgroundColor:
+                            scheme.primaryContainer.withValues(alpha: 0.22),
+                        onTap: () {
+                          setState(() => _mappingExpanded = !_mappingExpanded);
+                        },
+                      ),
                   ],
                 ),
               ],
             ),
           ),
         ),
-        if (mapping?.isConfirmed == true) ...[
+        if (widget.mapping?.isConfirmed == true && _mappingExpanded) ...[
           const SizedBox(height: 8),
           _MatchedItemRow(
-            itemId: mapping!.itemId!,
-            item: matchedItem,
-            stockStatus: stockStatus,
-            onTap: onOpenMatchedItem,
+            itemId: widget.mapping!.itemId!,
+            item: widget.matchedItem,
+            stockStatus: widget.stockStatus,
+            onTap: widget.onOpenMatchedItem,
           ),
         ],
       ],
+    );
+  }
+
+  String get _lineStockLabel {
+    final status = widget.stockStatus;
+    if (status == null) return '확인';
+    return status.isAvailable ? '가능' : '부족';
+  }
+
+  Color _lineStockColor(ColorScheme scheme) {
+    final status = widget.stockStatus;
+    if (status == null) return scheme.outline;
+    return status.isAvailable ? Colors.blue.shade700 : scheme.error;
+  }
+}
+
+class _LineTinyChip extends StatelessWidget {
+  const _LineTinyChip({
+    required this.label,
+    required this.color,
+    required this.backgroundColor,
+    this.icon,
+    this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final Color backgroundColor;
+  final IconData? icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      height: 28,
+      constraints: const BoxConstraints(minWidth: 44),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.34)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          if (icon != null) ...[
+            const SizedBox(width: 2),
+            Icon(icon, size: 15, color: color),
+          ],
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: content,
+      ),
     );
   }
 }
@@ -7848,6 +7925,7 @@ class _PlayAutoOrderLineRow extends StatelessWidget {
 class _FulfillmentGroupActionBar extends StatelessWidget {
   const _FulfillmentGroupActionBar({
     required this.order,
+    required this.statusColor,
     required this.canCreateOrder,
     required this.actionRunning,
     required this.onInstruction,
@@ -7855,9 +7933,12 @@ class _FulfillmentGroupActionBar extends StatelessWidget {
     required this.onOpenOrCreateOrder,
     required this.onRegisterInvoice,
     required this.onSendInvoice,
+    required this.detailsExpanded,
+    required this.onToggleDetails,
   });
 
   final _PlayAutoOrderPreview order;
+  final Color statusColor;
   final bool canCreateOrder;
   final bool actionRunning;
   final VoidCallback onInstruction;
@@ -7865,6 +7946,8 @@ class _FulfillmentGroupActionBar extends StatelessWidget {
   final VoidCallback onOpenOrCreateOrder;
   final VoidCallback onRegisterInvoice;
   final VoidCallback onSendInvoice;
+  final bool detailsExpanded;
+  final VoidCallback onToggleDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -7877,6 +7960,13 @@ class _FulfillmentGroupActionBar extends StatelessWidget {
       spacing: 6,
       runSpacing: 6,
       children: [
+        _StatusPill(label: order.status, color: statusColor),
+        _SmallActionChip(
+          label: '주문 열기',
+          icon: Icons.open_in_new,
+          disabled: actionRunning,
+          onPressed: onOpenOrCreateOrder,
+        ),
         if (isFresh)
           _SmallActionChip(
             label: '출고지시',
@@ -7912,6 +8002,12 @@ class _FulfillmentGroupActionBar extends StatelessWidget {
             disabled: actionRunning,
             onPressed: onSendInvoice,
           ),
+        _IconActionChip(
+          icon: detailsExpanded ? Icons.expand_less : Icons.info_outline,
+          tooltip: '주문 상세',
+          disabled: actionRunning,
+          onPressed: onToggleDetails,
+        ),
       ],
     );
   }
@@ -7986,21 +8082,36 @@ class _SmallActionChip extends StatelessWidget {
   }
 }
 
-class _StockStatusPill extends StatelessWidget {
-  const _StockStatusPill({required this.status});
+class _IconActionChip extends StatelessWidget {
+  const _IconActionChip({
+    required this.icon,
+    required this.tooltip,
+    required this.disabled,
+    required this.onPressed,
+  });
 
-  final _PlayAutoStockStatus? status;
+  final IconData icon;
+  final String tooltip;
+  final bool disabled;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    if (status == null) {
-      return _StatusPill(label: '재고 확인중', color: scheme.outline);
-    }
-    if (status!.isAvailable) {
-      return _StatusPill(label: '출고 가능', color: Colors.blue.shade700);
-    }
-    return _StatusPill(label: '재고 부족', color: scheme.error);
+    return Tooltip(
+      message: tooltip,
+      child: ActionChip(
+        avatar: Icon(icon, size: 18),
+        label: const SizedBox.shrink(),
+        onPressed: disabled ? null : onPressed,
+        visualDensity: VisualDensity.compact,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        labelPadding: EdgeInsets.zero,
+        side: BorderSide(color: scheme.outlineVariant),
+        backgroundColor: scheme.surface.withValues(alpha: 0.92),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    );
   }
 }
 
@@ -8516,33 +8627,6 @@ Future<void> _sharePlayAutoOrderPreviewPdf(
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('주문서 PDF 내보내기에 실패했습니다: $e')),
-    );
-  }
-}
-
-class _OrderQuantityBadge extends StatelessWidget {
-  const _OrderQuantityBadge({required this.quantity});
-
-  final int quantity;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-      decoration: BoxDecoration(
-        color: scheme.tertiaryContainer.withValues(alpha: 0.78),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: scheme.tertiary.withValues(alpha: 0.36)),
-      ),
-      child: Text(
-        '$quantity개',
-        maxLines: 1,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: scheme.onTertiaryContainer,
-              fontWeight: FontWeight.w900,
-            ),
-      ),
     );
   }
 }
