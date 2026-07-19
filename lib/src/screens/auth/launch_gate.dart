@@ -427,7 +427,11 @@ class _CloudAutoBackupRunnerState extends State<_CloudAutoBackupRunner>
         entitlementService: context.read<EntitlementService>(),
       );
       final result = await service.runIfDue();
-      debugPrint('☁️ CloudAutoBackup startup: ${result.message}');
+      const verboseCloudBackupLogs =
+          bool.fromEnvironment('CHALSTOCK_VERBOSE_CLOUD_BACKUP_LOGS');
+      if (verboseCloudBackupLogs) {
+        debugPrint('CloudAutoBackup startup: ${result.message}');
+      }
     } finally {
       _running = false;
     }

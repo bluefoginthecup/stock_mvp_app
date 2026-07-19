@@ -289,9 +289,12 @@ class _AccountDataScopeState extends State<_AccountDataScope> {
     await DbAutoBackupService.createPreMigrationBackup();
 
     final db = AppDatabase();
-    debugPrint('DB schemaVersion: ${db.schemaVersion}');
-    debugPrint(
-        'DB path: ${(await const AppPathService().stockDatabaseFile()).path}');
+    const verboseDbLogs = bool.fromEnvironment('CHALSTOCK_VERBOSE_DB_LOGS');
+    if (verboseDbLogs) {
+      debugPrint('DB schemaVersion: ${db.schemaVersion}');
+      debugPrint(
+          'DB path: ${(await const AppPathService().stockDatabaseFile()).path}');
+    }
 
     await DbAutoBackupService.run();
 

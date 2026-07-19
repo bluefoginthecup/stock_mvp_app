@@ -1696,7 +1696,10 @@ LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final file = await const AppPathService().stockDatabaseFile();
 
-    debugPrint("DB path: ${file.path}");
+    const verboseDbLogs = bool.fromEnvironment('CHALSTOCK_VERBOSE_DB_LOGS');
+    if (verboseDbLogs) {
+      debugPrint("DB path: ${file.path}");
+    }
 
     return NativeDatabase(
       file,

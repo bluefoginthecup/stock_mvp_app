@@ -40,6 +40,9 @@ class RevenueCatPackageOption {
 }
 
 class RevenueCatPurchaseService {
+  static const _verboseLogs =
+      bool.fromEnvironment('CHALSTOCK_VERBOSE_REVENUECAT_LOGS');
+
   static const proEntitlementId = 'pro';
   static const cloudBackupEntitlementId = 'cloud_backup';
   static const _proEntitlementIds = {
@@ -78,7 +81,9 @@ class RevenueCatPurchaseService {
       throw const RevenueCatNotConfiguredException();
     }
 
-    await rc.Purchases.setLogLevel(rc.LogLevel.debug);
+    await rc.Purchases.setLogLevel(
+      _verboseLogs ? rc.LogLevel.debug : rc.LogLevel.warn,
+    );
     if (await rc.Purchases.isConfigured) {
       final currentUserId = await rc.Purchases.appUserID;
       if (currentUserId != uid) {
@@ -248,10 +253,12 @@ class RevenueCatPurchaseService {
       activeSubscriptions,
       _isCloudBackupProductId,
     );
-    debugPrint(
-      'RevenueCat activeSubscriptions=$activeSubscriptions '
-      'activeEntitlements=${entitlements.entries.where((entry) => entry.value.isActive).map((entry) => entry.key).toList()}',
-    );
+    if (_verboseLogs) {
+      debugPrint(
+        'RevenueCat activeSubscriptions=$activeSubscriptions '
+        'activeEntitlements=${entitlements.entries.where((entry) => entry.value.isActive).map((entry) => entry.key).toList()}',
+      );
+    }
     final proActive =
         _isAnyEntitlementActive(entitlements, _proEntitlementIds) ||
             activeProProductId != null;

@@ -6016,6 +6016,8 @@ String _safePrintFileName(String value) {
 class _PlayAutoOrderPreviewScreenState
     extends State<_PlayAutoOrderPreviewScreen> {
   static const _uuid = Uuid();
+  static const _fulfillmentGroupOrderKey =
+      'playauto_fulfillment_group_order_v1';
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   final _mappingService = PlayAutoItemMappingService();
@@ -6035,6 +6037,7 @@ class _PlayAutoOrderPreviewScreenState
   var _cacheNotice = '캐시 조회는 저장된 주문을 먼저 보여주고, 동기화는 PlayAuto에서 새로 가져옵니다.';
   String? _selectedShopName;
   String? _focusedGroupKey;
+  List<String> _fulfillmentGroupOrder = const [];
   _PlayAutoFulfillmentStage _stage = _PlayAutoFulfillmentStage.all;
 
   @override
@@ -6045,12 +6048,30 @@ class _PlayAutoOrderPreviewScreenState
     _endDateController = TextEditingController(text: widget.endDate);
     _lengthController = TextEditingController(text: widget.length.toString());
     _loadMappings();
+    _loadFulfillmentGroupOrder();
     widget.focusGroupKeyListenable?.addListener(_handleFocusGroupKeyChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _PlayAutoOrderNotificationService.showBadgeOnly(0);
       if (!mounted || _orders.isNotEmpty) return;
       _fetchOrders(forceRefresh: false);
     });
+  }
+
+  Future<void> _loadFulfillmentGroupOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _fulfillmentGroupOrder =
+          prefs.getStringList(_fulfillmentGroupOrderKey) ?? const [];
+    });
+  }
+
+  Future<void> _saveFulfillmentGroupOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _fulfillmentGroupOrderKey,
+      _fulfillmentGroupOrder,
+    );
   }
 
   @override
@@ -6237,24 +6258,34 @@ class _PlayAutoOrderPreviewScreenState
             child: Center(child: Text('조건에 맞는 주문이 없습니다.')),
           )
         else
-          SliverList.separated(
+          SliverReorderableList(
             itemCount: filteredGroups.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            onReorder: (oldIndex, newIndex) {
+              _reorderFulfillmentGroups(filteredGroups, oldIndex, newIndex);
+            },
             itemBuilder: (context, index) {
               final group = filteredGroups[index];
               final order = group.first;
               final cardKey =
                   _groupCardKeys.putIfAbsent(group.key, GlobalKey.new);
-              return Padding(
+              final precedingAttentionCount = filteredGroups
+                  .take(index)
+                  .where((group) => group.needsAttentionBeforeSent)
+                  .length;
+              final queueNumber = group.needsAttentionBeforeSent
+                  ? precedingAttentionCount + 1
+                  : null;
+              final card = Padding(
                 key: cardKey,
                 padding: EdgeInsets.fromLTRB(
                   16,
                   index == 0 ? 4 : 0,
                   16,
-                  index == filteredGroups.length - 1 ? 20 : 0,
+                  index == filteredGroups.length - 1 ? 20 : 8,
                 ),
                 child: _PlayAutoOrderGroupCard(
                   group: group,
+                  queueNumber: queueNumber,
                   statusColor: _statusColor(scheme, order.status),
                   highlighted: _focusedGroupKey == group.key,
                   orderLink: _playAutoOrderLinkFor(order),
@@ -6283,6 +6314,12 @@ class _PlayAutoOrderPreviewScreenState
                   onRegisterInvoice: () => _openInvoiceDialog(order),
                   onSendInvoice: () => _sendInvoiceAfterSync(order),
                 ),
+              );
+              if (!group.needsAttentionBeforeSent) return card;
+              return ReorderableDelayedDragStartListener(
+                key: ValueKey('drag_${group.key}'),
+                index: index,
+                child: card,
               );
             },
           ),
@@ -6335,13 +6372,79 @@ class _PlayAutoOrderPreviewScreenState
     final result = groups.entries
         .map((entry) => _PlayAutoOrderGroup(key: entry.key, lines: entry.value))
         .toList();
-    result.sort((a, b) {
-      final byDate = (b.first.sortDate ?? DateTime(0))
-          .compareTo(a.first.sortDate ?? DateTime(0));
-      if (byDate != 0) return byDate;
-      return a.first.customerName.compareTo(b.first.customerName);
-    });
+    result.sort(_comparePlayAutoOrderGroups);
     return result;
+  }
+
+  int _comparePlayAutoOrderGroups(
+    _PlayAutoOrderGroup a,
+    _PlayAutoOrderGroup b,
+  ) {
+    final aNeedsAttention = a.needsAttentionBeforeSent;
+    final bNeedsAttention = b.needsAttentionBeforeSent;
+    if (aNeedsAttention != bNeedsAttention) {
+      return aNeedsAttention ? -1 : 1;
+    }
+
+    if (aNeedsAttention && bNeedsAttention) {
+      final aOrder = _fulfillmentGroupOrder.indexOf(a.key);
+      final bOrder = _fulfillmentGroupOrder.indexOf(b.key);
+      if (aOrder != -1 && bOrder != -1 && aOrder != bOrder) {
+        return aOrder.compareTo(bOrder);
+      }
+      if (aOrder != -1) return -1;
+      if (bOrder != -1) return 1;
+    }
+
+    final byDate = (b.first.sortDate ?? DateTime(0))
+        .compareTo(a.first.sortDate ?? DateTime(0));
+    if (byDate != 0) return byDate;
+    return a.first.customerName.compareTo(b.first.customerName);
+  }
+
+  void _reorderFulfillmentGroups(
+    List<_PlayAutoOrderGroup> visibleGroups,
+    int oldIndex,
+    int newIndex,
+  ) {
+    if (!widget.fulfillmentMode ||
+        oldIndex < 0 ||
+        oldIndex >= visibleGroups.length) {
+      return;
+    }
+    if (newIndex > oldIndex) newIndex -= 1;
+
+    final moving = visibleGroups[oldIndex];
+    if (!moving.needsAttentionBeforeSent) return;
+
+    final visibleWithoutMoving =
+        visibleGroups.where((group) => group.key != moving.key).toList();
+    final targetIndex = newIndex.clamp(0, visibleWithoutMoving.length);
+    final insertAttentionIndex = visibleWithoutMoving
+        .take(targetIndex)
+        .where((group) => group.needsAttentionBeforeSent)
+        .length;
+    final visibleAttentionKeys = visibleGroups
+        .where((group) => group.needsAttentionBeforeSent)
+        .map((group) => group.key)
+        .toList();
+
+    visibleAttentionKeys.remove(moving.key);
+    visibleAttentionKeys.insert(
+      insertAttentionIndex.clamp(0, visibleAttentionKeys.length),
+      moving.key,
+    );
+
+    final visibleAttentionKeySet = visibleAttentionKeys.toSet();
+    setState(() {
+      _fulfillmentGroupOrder = [
+        ...visibleAttentionKeys,
+        ..._fulfillmentGroupOrder.where(
+          (key) => !visibleAttentionKeySet.contains(key),
+        ),
+      ];
+    });
+    _saveFulfillmentGroupOrder();
   }
 
   void _handleFocusGroupKeyChanged() {
@@ -7524,6 +7627,7 @@ class _OrderQueryPanel extends StatelessWidget {
 class _PlayAutoOrderGroupCard extends StatefulWidget {
   const _PlayAutoOrderGroupCard({
     required this.group,
+    required this.queueNumber,
     required this.statusColor,
     required this.highlighted,
     required this.orderLink,
@@ -7543,6 +7647,7 @@ class _PlayAutoOrderGroupCard extends StatefulWidget {
   });
 
   final _PlayAutoOrderGroup group;
+  final int? queueNumber;
   final Color statusColor;
   final bool highlighted;
   final PlayAutoOrderLink? orderLink;
@@ -7606,6 +7711,10 @@ class _PlayAutoOrderGroupCardState extends State<_PlayAutoOrderGroupCard> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (widget.queueNumber != null) ...[
+                  _FulfillmentQueueBadge(number: widget.queueNumber!),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -7917,6 +8026,34 @@ class _LineTinyChip extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: content,
+      ),
+    );
+  }
+}
+
+class _FulfillmentQueueBadge extends StatelessWidget {
+  const _FulfillmentQueueBadge({required this.number});
+
+  final int number;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 26,
+      constraints: const BoxConstraints(minWidth: 34),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7D97A),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD4B457)),
+      ),
+      child: Text(
+        '$number',
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: const Color(0xFF4B3A0A),
+              fontWeight: FontWeight.w900,
+            ),
       ),
     );
   }

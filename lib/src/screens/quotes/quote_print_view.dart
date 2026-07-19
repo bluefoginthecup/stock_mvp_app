@@ -40,6 +40,7 @@ class QuotePrintView extends StatelessWidget {
               context,
               captureKey: captureKey,
               quote: quote,
+              pixelRatio: 2,
             ),
           ),
         ],
@@ -56,8 +57,7 @@ class QuotePrintView extends StatelessWidget {
                 builder: (documents) => _QuotePage(
                   quote: quote,
                   lines: lines,
-                  stampBytes:
-                      documents[BusinessDocumentKind.stamp]?.bytes,
+                  stampBytes: documents[BusinessDocumentKind.stamp]?.bytes,
                 ),
               ),
             ),
@@ -224,6 +224,7 @@ class QuotePrintViewMobile extends StatelessWidget {
               context,
               captureKey: captureKey,
               quote: quote,
+              pixelRatio: 1,
             ),
           ),
         ],
@@ -240,8 +241,7 @@ class QuotePrintViewMobile extends StatelessWidget {
                 builder: (documents) => _QuoteMobilePage(
                   quote: quote,
                   lines: lines,
-                  stampBytes:
-                      documents[BusinessDocumentKind.stamp]?.bytes,
+                  stampBytes: documents[BusinessDocumentKind.stamp]?.bytes,
                 ),
               ),
             ),
@@ -357,8 +357,7 @@ class _QuoteMobilePage extends StatelessWidget {
 
 class _BusinessDocumentsLoadedPage extends StatelessWidget {
   final int profileId;
-  final Widget Function(
-          Map<BusinessDocumentKind, BusinessDocument> documents)
+  final Widget Function(Map<BusinessDocumentKind, BusinessDocument> documents)
       builder;
 
   const _BusinessDocumentsLoadedPage({
@@ -647,10 +646,41 @@ String _money(double value) => NumberFormat('#,##0').format(value);
 double _quoteLineUnitSupplyPrice(QuoteLine line) =>
     line.qty == 0 ? 0 : (line.supplyAmount / line.qty).roundToDouble();
 
+List<image_lib.Image> _quoteImagesForMessageShare(image_lib.Image source) {
+  const maxLongSide = 8192;
+  const maxSliceHeight = 3200;
+  final longSide = source.width > source.height ? source.width : source.height;
+  final resized = longSide <= maxLongSide
+      ? source
+      : source.width >= source.height
+          ? image_lib.copyResize(source, width: maxLongSide)
+          : image_lib.copyResize(source, height: maxLongSide);
+
+  if (resized.height <= maxSliceHeight) {
+    return [resized];
+  }
+
+  final slices = <image_lib.Image>[];
+  for (var y = 0; y < resized.height; y += maxSliceHeight) {
+    final sliceHeight = (y + maxSliceHeight > resized.height)
+        ? resized.height - y
+        : maxSliceHeight;
+    slices.add(image_lib.copyCrop(
+      resized,
+      x: 0,
+      y: y,
+      width: resized.width,
+      height: sliceHeight,
+    ));
+  }
+  return slices;
+}
+
 Future<void> _shareQuoteJpg(
   BuildContext context, {
   required GlobalKey captureKey,
   required Quote quote,
+  required double pixelRatio,
 }) async {
   final box = context.findRenderObject() as RenderBox?;
   try {
@@ -660,41 +690,53 @@ Future<void> _shareQuoteJpg(
     final selectedKinds = await _selectShareDocuments(context, documents);
     if (selectedKinds == null || !context.mounted) return;
 
+    await WidgetsBinding.instance.endOfFrame;
     final boundary =
         captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) throw StateError('견적서 이미지를 만들 수 없습니다.');
-    final captured = await boundary.toImage(pixelRatio: 2);
+    if (boundary.debugNeedsPaint) {
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    final captured = await boundary.toImage(pixelRatio: pixelRatio);
     final byteData = await captured.toByteData(format: ui.ImageByteFormat.png);
     final pngBytes = byteData?.buffer.asUint8List();
     if (pngBytes == null) throw StateError('견적서 이미지 변환에 실패했습니다.');
     final decoded = image_lib.decodePng(pngBytes);
     if (decoded == null) throw StateError('견적서 이미지 인코딩에 실패했습니다.');
-    final jpgBytes = image_lib.encodeJpg(decoded, quality: 88);
-    final tempDir = await getTemporaryDirectory();
+    final quoteImages = _quoteImagesForMessageShare(decoded);
     final subject =
         '견적서_${_safeFileName(quote.customerName)}_${DateFormat('yyyyMMdd').format(quote.quoteDate)}';
-    final outFile = File('${tempDir.path}/$subject.jpg');
-    await outFile.writeAsBytes(jpgBytes, flush: true);
-    final shareFiles = <XFile>[
-      XFile(outFile.path, mimeType: 'image/jpeg', name: '$subject.jpg'),
-    ];
+    final tempDir = await getTemporaryDirectory();
+    final shareDir = await tempDir.createTemp('${_safeFileName(subject)}_');
+    final shareFiles = <XFile>[];
+    final fileNameOverrides = <String>[];
+    for (var i = 0; i < quoteImages.length; i++) {
+      final pageSuffix = quoteImages.length == 1 ? '' : '_${i + 1}';
+      final fileName = _prefixedFileName(i + 1, '$subject$pageSuffix.jpg');
+      final jpgBytes = image_lib.encodeJpg(quoteImages[i], quality: 82);
+      final file = File('${shareDir.path}/$fileName');
+      await file.writeAsBytes(jpgBytes, flush: true);
+      shareFiles.add(XFile(file.path, mimeType: 'image/jpeg'));
+      fileNameOverrides.add(fileName);
+    }
+    var attachmentIndex = quoteImages.length + 1;
     for (final kind in selectedKinds) {
       final document = documents[kind];
       if (document == null) continue;
-      final fileName = _safeFileName(document.fileName);
-      final attachment = File('${tempDir.path}/$fileName');
-      await attachment.writeAsBytes(document.bytes, flush: true);
-      shareFiles.add(XFile(
-        attachment.path,
-        mimeType: document.mimeType,
-        name: fileName,
-      ));
+      final fileName = _prefixedFileName(
+        attachmentIndex++,
+        _safeFileName(document.fileName),
+      );
+      shareFiles
+          .add(XFile.fromData(document.bytes, mimeType: document.mimeType));
+      fileNameOverrides.add(fileName);
     }
     await Share.shareXFiles(
       shareFiles,
       subject: subject,
       sharePositionOrigin:
           box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+      fileNameOverrides: fileNameOverrides,
     );
   } catch (e) {
     if (!context.mounted) return;
@@ -760,5 +802,13 @@ Future<Set<BusinessDocumentKind>?> _selectShareDocuments(
 
 String _safeFileName(String value) {
   final trimmed = value.trim().isEmpty ? '거래처미지정' : value.trim();
-  return trimmed.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+  return trimmed
+      .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+      .replaceAll(RegExp(r'\s+'), '_');
+}
+
+String _prefixedFileName(int index, String fileName) {
+  final safeName = _safeFileName(fileName);
+  final padded = index.toString().padLeft(2, '0');
+  return '${padded}_$safeName';
 }

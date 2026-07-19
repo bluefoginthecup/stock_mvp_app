@@ -46,6 +46,13 @@ class ReorderReminderService {
     }
   }
 
+  static Future<void> requestPermissionsIfNeeded() async {
+    if (kIsWeb) return;
+    await initialize();
+    if (!_initialized) return;
+    await _requestPermissionsIfNeeded();
+  }
+
   static Future<void> rescheduleForItem(Item item) async {
     await initialize();
     if (!_initialized) return;
@@ -72,7 +79,7 @@ class ReorderReminderService {
     if (!scheduled.isAfter(now)) return;
 
     try {
-      await _requestPermissionsIfNeeded();
+      await requestPermissionsIfNeeded();
     } catch (e) {
       debugPrint('ReorderReminder permission request failed: $e');
     }

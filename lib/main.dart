@@ -19,6 +19,7 @@ Future<void> main() async {
   );
   await DailyGiftService.initialize();
   await ReorderReminderService.initialize();
+  await ReorderReminderService.requestPermissionsIfNeeded();
 
   // Provider 경고 끄기 (필요 시)
   Provider.debugCheckInvalidValueType = null;
@@ -34,8 +35,10 @@ Future<void> main() async {
     ),
   );
 
-  // ✅ 로그인 세션 디버깅용
-  FirebaseAuth.instance.authStateChanges().listen((user) {
-    debugPrint('🔥 FirebaseAuth user: ${user?.uid}');
-  });
+  const verboseAuthLogs = bool.fromEnvironment('CHALSTOCK_VERBOSE_AUTH_LOGS');
+  if (verboseAuthLogs) {
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      debugPrint('FirebaseAuth user: ${user?.uid}');
+    });
+  }
 }
