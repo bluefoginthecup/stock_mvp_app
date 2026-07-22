@@ -13,34 +13,114 @@ import 'package:share_plus/share_plus.dart';
 import '../../models/buyer_profile.dart';
 import '../../models/quote.dart';
 import '../../models/quote_line.dart';
+import '../../repos/repo_interfaces.dart';
 import '../../db/app_database.dart';
 import '../../services/business_document_service.dart';
 
-class QuotePrintView extends StatelessWidget {
+enum QuoteDocumentType {
+  quote(
+    title: '견적서',
+    pageTitle: '견 적 서',
+    dateLabel: '견적일',
+    statement: '아래와 같이 견적합니다.',
+    showsValidity: true,
+  ),
+  delivery(
+    title: '납품서',
+    pageTitle: '납 품 서',
+    dateLabel: '납품일',
+    statement: '아래와 같이 납품합니다.',
+    showsValidity: false,
+  ),
+  transactionStatement(
+    title: '거래명세서',
+    pageTitle: '거 래 명 세 서',
+    dateLabel: '납품일',
+    statement: '아래와 같이 계산합니다.',
+    showsValidity: false,
+  );
+
+  const QuoteDocumentType({
+    required this.title,
+    required this.pageTitle,
+    required this.dateLabel,
+    required this.statement,
+    required this.showsValidity,
+  });
+
+  final String title;
+  final String pageTitle;
+  final String dateLabel;
+  final String statement;
+  final bool showsValidity;
+}
+
+class QuotePrintView extends StatefulWidget {
   final Quote quote;
   final List<QuoteLine> lines;
+  final QuoteDocumentType documentType;
 
   const QuotePrintView({
     super.key,
     required this.quote,
     required this.lines,
+    this.documentType = QuoteDocumentType.quote,
   });
 
   @override
+  State<QuotePrintView> createState() => _QuotePrintViewState();
+}
+
+class _QuotePrintViewState extends State<QuotePrintView> {
+  final GlobalKey _captureKey = GlobalKey();
+  late DateTime _documentDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _documentDate = widget.quote.deliveryDate ?? widget.quote.quoteDate;
+  }
+
+  Future<void> _selectDocumentDate() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _documentDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: '납품일 선택',
+      cancelText: '취소',
+      confirmText: '확인',
+    );
+    if (selected == null || !mounted) return;
+    await context.read<QuoteRepo>().updateQuote(
+          widget.quote.copyWith(deliveryDate: selected),
+        );
+    if (!mounted) return;
+    setState(() => _documentDate = selected);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final captureKey = GlobalKey();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('견적서'),
+        title: Text(widget.documentType.title),
         actions: [
+          if (widget.documentType != QuoteDocumentType.quote)
+            IconButton(
+              tooltip: '납품일 선택',
+              icon: const Icon(Icons.calendar_month_outlined),
+              onPressed: _selectDocumentDate,
+            ),
           IconButton(
             tooltip: 'JPG 공유',
             icon: const Icon(Icons.ios_share),
             onPressed: () => _shareQuoteJpg(
               context,
-              captureKey: captureKey,
-              quote: quote,
+              captureKey: _captureKey,
+              quote: widget.quote,
               pixelRatio: 2,
+              documentType: widget.documentType,
+              documentDate: _documentDate,
             ),
           ),
         ],
@@ -51,13 +131,15 @@ class QuotePrintView extends StatelessWidget {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: RepaintBoundary(
-              key: captureKey,
+              key: _captureKey,
               child: _BusinessDocumentsLoadedPage(
-                profileId: quote.supplierProfileId ?? 1,
+                profileId: widget.quote.supplierProfileId ?? 1,
                 builder: (documents) => _QuotePage(
-                  quote: quote,
-                  lines: lines,
+                  quote: widget.quote,
+                  lines: widget.lines,
                   stampBytes: documents[BusinessDocumentKind.stamp]?.bytes,
+                  documentType: widget.documentType,
+                  documentDate: _documentDate,
                 ),
               ),
             ),
@@ -72,11 +154,15 @@ class _QuotePage extends StatelessWidget {
   final Quote quote;
   final List<QuoteLine> lines;
   final Uint8List? stampBytes;
+  final QuoteDocumentType documentType;
+  final DateTime documentDate;
 
   const _QuotePage({
     required this.quote,
     required this.lines,
     required this.stampBytes,
+    required this.documentType,
+    required this.documentDate,
   });
 
   @override
@@ -95,10 +181,13 @@ class _QuotePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              '견 적 서',
+            Text(
+              documentType.pageTitle,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 36),
             Row(
@@ -113,8 +202,12 @@ class _QuotePage extends StatelessWidget {
                           quote.customerName.trim().isEmpty
                               ? '거래처 미지정'
                               : quote.customerName),
-                      _infoLine('견적일', dateFmt.format(quote.quoteDate)),
-                      if (quote.validUntil != null)
+                      _infoLine(
+                        documentType.dateLabel,
+                        dateFmt.format(documentDate),
+                      ),
+                      if (documentType.showsValidity &&
+                          quote.validUntil != null)
                         _infoLine('유효기간', dateFmt.format(quote.validUntil!)),
                     ],
                   ),
@@ -129,7 +222,7 @@ class _QuotePage extends StatelessWidget {
             const SizedBox(height: 8),
             _profileInfoTable(supplier, stampBytes: stampBytes),
             const SizedBox(height: 24),
-            const Text('아래와 같이 견적합니다.'),
+            Text(documentType.statement),
             const SizedBox(height: 16),
             Table(
               columnWidths: const {
@@ -188,11 +281,12 @@ class _QuotePage extends StatelessWidget {
               Text(quote.memo!.trim()),
             ],
             const Spacer(),
-            const Text(
-              '상기 견적은 유효기간 및 품목 조건에 따라 변동될 수 있습니다.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12),
-            ),
+            if (documentType.showsValidity)
+              const Text(
+                '상기 견적은 유효기간 및 품목 조건에 따라 변동될 수 있습니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12),
+              ),
           ],
         ),
       ),
@@ -681,6 +775,8 @@ Future<void> _shareQuoteJpg(
   required GlobalKey captureKey,
   required Quote quote,
   required double pixelRatio,
+  QuoteDocumentType documentType = QuoteDocumentType.quote,
+  DateTime? documentDate,
 }) async {
   final box = context.findRenderObject() as RenderBox?;
   try {
@@ -693,19 +789,25 @@ Future<void> _shareQuoteJpg(
     await WidgetsBinding.instance.endOfFrame;
     final boundary =
         captureKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-    if (boundary == null) throw StateError('견적서 이미지를 만들 수 없습니다.');
+    if (boundary == null) {
+      throw StateError('${documentType.title} 이미지를 만들 수 없습니다.');
+    }
     if (boundary.debugNeedsPaint) {
       await WidgetsBinding.instance.endOfFrame;
     }
     final captured = await boundary.toImage(pixelRatio: pixelRatio);
     final byteData = await captured.toByteData(format: ui.ImageByteFormat.png);
     final pngBytes = byteData?.buffer.asUint8List();
-    if (pngBytes == null) throw StateError('견적서 이미지 변환에 실패했습니다.');
+    if (pngBytes == null) {
+      throw StateError('${documentType.title} 이미지 변환에 실패했습니다.');
+    }
     final decoded = image_lib.decodePng(pngBytes);
-    if (decoded == null) throw StateError('견적서 이미지 인코딩에 실패했습니다.');
+    if (decoded == null) {
+      throw StateError('${documentType.title} 이미지 인코딩에 실패했습니다.');
+    }
     final quoteImages = _quoteImagesForMessageShare(decoded);
     final subject =
-        '견적서_${_safeFileName(quote.customerName)}_${DateFormat('yyyyMMdd').format(quote.quoteDate)}';
+        '${documentType.title}_${_safeFileName(quote.customerName)}_${DateFormat('yyyyMMdd').format(documentDate ?? quote.quoteDate)}';
     final tempDir = await getTemporaryDirectory();
     final shareDir = await tempDir.createTemp('${_safeFileName(subject)}_');
     final shareFiles = <XFile>[];
@@ -741,7 +843,7 @@ Future<void> _shareQuoteJpg(
   } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('견적서 JPG 내보내기에 실패했습니다: $e')),
+      SnackBar(content: Text('${documentType.title} JPG 내보내기에 실패했습니다: $e')),
     );
   }
 }

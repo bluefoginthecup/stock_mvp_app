@@ -10,6 +10,7 @@ class Quote {
   final String customerName;
   final String? customerId;
   final DateTime quoteDate;
+  final DateTime? deliveryDate;
   final DateTime? validUntil;
   final QuoteStatus status;
   final String? memo;
@@ -40,6 +41,7 @@ class Quote {
     required this.customerName,
     this.customerId,
     required this.quoteDate,
+    this.deliveryDate,
     this.validUntil,
     this.status = QuoteStatus.draft,
     this.memo,
@@ -101,6 +103,7 @@ class Quote {
     String? customerName,
     String? customerId,
     DateTime? quoteDate,
+    DateTime? deliveryDate,
     DateTime? validUntil,
     QuoteStatus? status,
     String? memo,
@@ -131,6 +134,7 @@ class Quote {
         customerName: customerName ?? this.customerName,
         customerId: customerId ?? this.customerId,
         quoteDate: quoteDate ?? this.quoteDate,
+        deliveryDate: deliveryDate ?? this.deliveryDate,
         validUntil: validUntil ?? this.validUntil,
         status: status ?? this.status,
         memo: memo ?? this.memo,

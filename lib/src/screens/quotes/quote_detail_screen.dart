@@ -366,17 +366,25 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
     if (mounted) await _reload();
   }
 
-  Future<void> _openPrint({required bool mobile}) async {
+  Future<void> _openPrint({
+    required bool mobile,
+    QuoteDocumentType documentType = QuoteDocumentType.quote,
+  }) async {
     await _saveHeader();
     if (!mounted || _quote == null) return;
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => mobile
             ? QuotePrintViewMobile(quote: _quote!, lines: _lines)
-            : QuotePrintView(quote: _quote!, lines: _lines),
+            : QuotePrintView(
+                quote: _quote!,
+                lines: _lines,
+                documentType: documentType,
+              ),
       ),
     );
+    if (mounted) await _reload();
   }
 
   Future<void> _openPlayAutoOrderAdd() async {
@@ -460,10 +468,32 @@ class _QuoteDetailScreenState extends State<QuoteDetailScreen> {
           PopupMenuButton<String>(
             tooltip: '견적서 보기',
             icon: const Icon(Icons.article_outlined),
-            onSelected: (value) => _openPrint(mobile: value == 'mobile'),
+            onSelected: (value) {
+              switch (value) {
+                case 'mobile':
+                  _openPrint(mobile: true);
+                case 'delivery':
+                  _openPrint(
+                    mobile: false,
+                    documentType: QuoteDocumentType.delivery,
+                  );
+                case 'transactionStatement':
+                  _openPrint(
+                    mobile: false,
+                    documentType: QuoteDocumentType.transactionStatement,
+                  );
+                default:
+                  _openPrint(mobile: false);
+              }
+            },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'a4', child: Text('A4 견적서 보기')),
               PopupMenuItem(value: 'mobile', child: Text('모바일용 견적서 보기')),
+              PopupMenuItem(value: 'delivery', child: Text('A4 납품서 보기')),
+              PopupMenuItem(
+                value: 'transactionStatement',
+                child: Text('A4 거래명세서 보기'),
+              ),
             ],
           ),
           PopupMenuButton<QuoteStatus>(

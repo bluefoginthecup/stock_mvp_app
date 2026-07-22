@@ -413,6 +413,7 @@ class Quotes extends Table {
   TextColumn get customerName => text()();
   TextColumn get customerId => text().nullable()();
   TextColumn get quoteDate => text()();
+  TextColumn get deliveryDate => text().nullable()();
   TextColumn get validUntil => text().nullable()();
   TextColumn get status => text()();
   TextColumn get memo => text().nullable()();
@@ -678,14 +679,17 @@ class AppDatabase extends _$AppDatabase {
   }
 
   static Future<void> closeInstance() async {
-    if (_instance != null) {
-      await _instance!.close();
-      _instance = null;
-    }
+    // Detach first. dispose() callers intentionally don't await this method,
+    // and a hot restart/auth rebuild can request a database while the old
+    // connection is still closing. Keeping the closing instance published
+    // makes AppDatabase() return a connection that can never be reopened.
+    final instance = _instance;
+    _instance = null;
+    if (instance != null) await instance.close();
   }
 
   @override
-  int get schemaVersion => 49; //
+  int get schemaVersion => 50; //
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -706,6 +710,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureStampSettingsTable();
           await _ensureBusinessProfileDocumentsTable();
           await _ensureQuoteDeliveryColumns();
+          await _ensureQuoteDeliveryDateColumn();
         },
         beforeOpen: (details) async {
           await _ensureSupplierRoleColumns();
@@ -717,6 +722,7 @@ class AppDatabase extends _$AppDatabase {
           await _ensureStampSettingsTable();
           await _ensureBusinessProfileDocumentsTable();
           await _ensureQuoteDeliveryColumns();
+          await _ensureQuoteDeliveryDateColumn();
         },
         onUpgrade: (m, from, to) async {
           // v1 → v2: Orders.deletedAt 추가
@@ -1052,6 +1058,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 49) {
             await _ensureQuoteDeliveryColumns();
           }
+          if (from < 50) {
+            await _ensureQuoteDeliveryDateColumn();
+          }
         },
       );
 
@@ -1062,6 +1071,10 @@ class AppDatabase extends _$AppDatabase {
     await _addColumnIfMissing('quotes', 'delivery_address1', 'TEXT');
     await _addColumnIfMissing('quotes', 'delivery_address2', 'TEXT');
     await _addColumnIfMissing('quotes', 'delivery_memo', 'TEXT');
+  }
+
+  Future<void> _ensureQuoteDeliveryDateColumn() async {
+    await _addColumnIfMissing('quotes', 'delivery_date', 'TEXT');
   }
 
   Future<void> _backfillItemSearchKeys() async {
@@ -1677,7 +1690,9 @@ class AppDatabase extends _$AppDatabase {
   Future<void> resetDatabase() async {
     final db = this;
 
-    // DB 닫기
+    // Publish the reset before awaiting close for the same reason as
+    // closeInstance(): no caller should receive this closing connection.
+    if (identical(_instance, db)) _instance = null;
     await db.close();
 
     final file = await const AppPathService().stockDatabaseFile();
@@ -1685,9 +1700,6 @@ class AppDatabase extends _$AppDatabase {
     if (await file.exists()) {
       await file.delete();
     }
-
-    // singleton 초기화
-    _instance = null;
   }
 }
 
@@ -2184,6 +2196,8 @@ extension QuoteRowMapping on QuoteRow {
         customerName: customerName,
         customerId: customerId,
         quoteDate: DateTime.parse(quoteDate),
+        deliveryDate:
+            deliveryDate == null ? null : DateTime.parse(deliveryDate!),
         validUntil: validUntil == null ? null : DateTime.parse(validUntil!),
         status: QuoteStatus.values.firstWhere(
           (e) => e.name == status,
@@ -2221,6 +2235,7 @@ extension QuoteToCompanion on Quote {
         customerName: Value(customerName),
         customerId: Value(customerId),
         quoteDate: Value(quoteDate.toIso8601String()),
+        deliveryDate: Value(deliveryDate?.toIso8601String()),
         validUntil: Value(validUntil?.toIso8601String()),
         status: Value(status.name),
         memo: Value(memo),

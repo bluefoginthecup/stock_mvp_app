@@ -8238,6 +8238,12 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
   late final GeneratedColumn<String> quoteDate = GeneratedColumn<String>(
       'quote_date', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _deliveryDateMeta =
+      const VerificationMeta('deliveryDate');
+  @override
+  late final GeneratedColumn<String> deliveryDate = GeneratedColumn<String>(
+      'delivery_date', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _validUntilMeta =
       const VerificationMeta('validUntil');
   @override
@@ -8402,6 +8408,7 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
         customerName,
         customerId,
         quoteDate,
+        deliveryDate,
         validUntil,
         status,
         memo,
@@ -8462,6 +8469,12 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
           quoteDate.isAcceptableOrUnknown(data['quote_date']!, _quoteDateMeta));
     } else if (isInserting) {
       context.missing(_quoteDateMeta);
+    }
+    if (data.containsKey('delivery_date')) {
+      context.handle(
+          _deliveryDateMeta,
+          deliveryDate.isAcceptableOrUnknown(
+              data['delivery_date']!, _deliveryDateMeta));
     }
     if (data.containsKey('valid_until')) {
       context.handle(
@@ -8622,6 +8635,8 @@ class $QuotesTable extends Quotes with TableInfo<$QuotesTable, QuoteRow> {
           .read(DriftSqlType.string, data['${effectivePrefix}customer_id']),
       quoteDate: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}quote_date'])!,
+      deliveryDate: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}delivery_date']),
       validUntil: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}valid_until']),
       status: attachedDatabase.typeMapping
@@ -8690,6 +8705,7 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
   final String customerName;
   final String? customerId;
   final String quoteDate;
+  final String? deliveryDate;
   final String? validUntil;
   final String status;
   final String? memo;
@@ -8720,6 +8736,7 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       required this.customerName,
       this.customerId,
       required this.quoteDate,
+      this.deliveryDate,
       this.validUntil,
       required this.status,
       this.memo,
@@ -8754,6 +8771,9 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       map['customer_id'] = Variable<String>(customerId);
     }
     map['quote_date'] = Variable<String>(quoteDate);
+    if (!nullToAbsent || deliveryDate != null) {
+      map['delivery_date'] = Variable<String>(deliveryDate);
+    }
     if (!nullToAbsent || validUntil != null) {
       map['valid_until'] = Variable<String>(validUntil);
     }
@@ -8827,6 +8847,9 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           ? const Value.absent()
           : Value(customerId),
       quoteDate: Value(quoteDate),
+      deliveryDate: deliveryDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deliveryDate),
       validUntil: validUntil == null && nullToAbsent
           ? const Value.absent()
           : Value(validUntil),
@@ -8897,6 +8920,7 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       customerName: serializer.fromJson<String>(json['customerName']),
       customerId: serializer.fromJson<String?>(json['customerId']),
       quoteDate: serializer.fromJson<String>(json['quoteDate']),
+      deliveryDate: serializer.fromJson<String?>(json['deliveryDate']),
       validUntil: serializer.fromJson<String?>(json['validUntil']),
       status: serializer.fromJson<String>(json['status']),
       memo: serializer.fromJson<String?>(json['memo']),
@@ -8938,6 +8962,7 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       'customerName': serializer.toJson<String>(customerName),
       'customerId': serializer.toJson<String?>(customerId),
       'quoteDate': serializer.toJson<String>(quoteDate),
+      'deliveryDate': serializer.toJson<String?>(deliveryDate),
       'validUntil': serializer.toJson<String?>(validUntil),
       'status': serializer.toJson<String>(status),
       'memo': serializer.toJson<String?>(memo),
@@ -8973,6 +8998,7 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           String? customerName,
           Value<String?> customerId = const Value.absent(),
           String? quoteDate,
+          Value<String?> deliveryDate = const Value.absent(),
           Value<String?> validUntil = const Value.absent(),
           String? status,
           Value<String?> memo = const Value.absent(),
@@ -9003,6 +9029,8 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
         customerName: customerName ?? this.customerName,
         customerId: customerId.present ? customerId.value : this.customerId,
         quoteDate: quoteDate ?? this.quoteDate,
+        deliveryDate:
+            deliveryDate.present ? deliveryDate.value : this.deliveryDate,
         validUntil: validUntil.present ? validUntil.value : this.validUntil,
         status: status ?? this.status,
         memo: memo.present ? memo.value : this.memo,
@@ -9063,6 +9091,9 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
       customerId:
           data.customerId.present ? data.customerId.value : this.customerId,
       quoteDate: data.quoteDate.present ? data.quoteDate.value : this.quoteDate,
+      deliveryDate: data.deliveryDate.present
+          ? data.deliveryDate.value
+          : this.deliveryDate,
       validUntil:
           data.validUntil.present ? data.validUntil.value : this.validUntil,
       status: data.status.present ? data.status.value : this.status,
@@ -9132,6 +9163,7 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           ..write('customerName: $customerName, ')
           ..write('customerId: $customerId, ')
           ..write('quoteDate: $quoteDate, ')
+          ..write('deliveryDate: $deliveryDate, ')
           ..write('validUntil: $validUntil, ')
           ..write('status: $status, ')
           ..write('memo: $memo, ')
@@ -9167,6 +9199,7 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
         customerName,
         customerId,
         quoteDate,
+        deliveryDate,
         validUntil,
         status,
         memo,
@@ -9201,6 +9234,7 @@ class QuoteRow extends DataClass implements Insertable<QuoteRow> {
           other.customerName == this.customerName &&
           other.customerId == this.customerId &&
           other.quoteDate == this.quoteDate &&
+          other.deliveryDate == this.deliveryDate &&
           other.validUntil == this.validUntil &&
           other.status == this.status &&
           other.memo == this.memo &&
@@ -9233,6 +9267,7 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
   final Value<String> customerName;
   final Value<String?> customerId;
   final Value<String> quoteDate;
+  final Value<String?> deliveryDate;
   final Value<String?> validUntil;
   final Value<String> status;
   final Value<String?> memo;
@@ -9264,6 +9299,7 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     this.customerName = const Value.absent(),
     this.customerId = const Value.absent(),
     this.quoteDate = const Value.absent(),
+    this.deliveryDate = const Value.absent(),
     this.validUntil = const Value.absent(),
     this.status = const Value.absent(),
     this.memo = const Value.absent(),
@@ -9296,6 +9332,7 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     required String customerName,
     this.customerId = const Value.absent(),
     required String quoteDate,
+    this.deliveryDate = const Value.absent(),
     this.validUntil = const Value.absent(),
     required String status,
     this.memo = const Value.absent(),
@@ -9333,6 +9370,7 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     Expression<String>? customerName,
     Expression<String>? customerId,
     Expression<String>? quoteDate,
+    Expression<String>? deliveryDate,
     Expression<String>? validUntil,
     Expression<String>? status,
     Expression<String>? memo,
@@ -9365,6 +9403,7 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       if (customerName != null) 'customer_name': customerName,
       if (customerId != null) 'customer_id': customerId,
       if (quoteDate != null) 'quote_date': quoteDate,
+      if (deliveryDate != null) 'delivery_date': deliveryDate,
       if (validUntil != null) 'valid_until': validUntil,
       if (status != null) 'status': status,
       if (memo != null) 'memo': memo,
@@ -9405,6 +9444,7 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       Value<String>? customerName,
       Value<String?>? customerId,
       Value<String>? quoteDate,
+      Value<String?>? deliveryDate,
       Value<String?>? validUntil,
       Value<String>? status,
       Value<String?>? memo,
@@ -9436,6 +9476,7 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
       customerName: customerName ?? this.customerName,
       customerId: customerId ?? this.customerId,
       quoteDate: quoteDate ?? this.quoteDate,
+      deliveryDate: deliveryDate ?? this.deliveryDate,
       validUntil: validUntil ?? this.validUntil,
       status: status ?? this.status,
       memo: memo ?? this.memo,
@@ -9481,6 +9522,9 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
     }
     if (quoteDate.present) {
       map['quote_date'] = Variable<String>(quoteDate.value);
+    }
+    if (deliveryDate.present) {
+      map['delivery_date'] = Variable<String>(deliveryDate.value);
     }
     if (validUntil.present) {
       map['valid_until'] = Variable<String>(validUntil.value);
@@ -9576,6 +9620,7 @@ class QuotesCompanion extends UpdateCompanion<QuoteRow> {
           ..write('customerName: $customerName, ')
           ..write('customerId: $customerId, ')
           ..write('quoteDate: $quoteDate, ')
+          ..write('deliveryDate: $deliveryDate, ')
           ..write('validUntil: $validUntil, ')
           ..write('status: $status, ')
           ..write('memo: $memo, ')
@@ -19939,6 +19984,7 @@ typedef $$QuotesTableCreateCompanionBuilder = QuotesCompanion Function({
   required String customerName,
   Value<String?> customerId,
   required String quoteDate,
+  Value<String?> deliveryDate,
   Value<String?> validUntil,
   required String status,
   Value<String?> memo,
@@ -19971,6 +20017,7 @@ typedef $$QuotesTableUpdateCompanionBuilder = QuotesCompanion Function({
   Value<String> customerName,
   Value<String?> customerId,
   Value<String> quoteDate,
+  Value<String?> deliveryDate,
   Value<String?> validUntil,
   Value<String> status,
   Value<String?> memo,
@@ -20038,6 +20085,9 @@ class $$QuotesTableFilterComposer
 
   ColumnFilters<String> get quoteDate => $composableBuilder(
       column: $table.quoteDate, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get deliveryDate => $composableBuilder(
+      column: $table.deliveryDate, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get validUntil => $composableBuilder(
       column: $table.validUntil, builder: (column) => ColumnFilters(column));
@@ -20170,6 +20220,10 @@ class $$QuotesTableOrderingComposer
   ColumnOrderings<String> get quoteDate => $composableBuilder(
       column: $table.quoteDate, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get deliveryDate => $composableBuilder(
+      column: $table.deliveryDate,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<String> get validUntil => $composableBuilder(
       column: $table.validUntil, builder: (column) => ColumnOrderings(column));
 
@@ -20282,6 +20336,9 @@ class $$QuotesTableAnnotationComposer
 
   GeneratedColumn<String> get quoteDate =>
       $composableBuilder(column: $table.quoteDate, builder: (column) => column);
+
+  GeneratedColumn<String> get deliveryDate => $composableBuilder(
+      column: $table.deliveryDate, builder: (column) => column);
 
   GeneratedColumn<String> get validUntil => $composableBuilder(
       column: $table.validUntil, builder: (column) => column);
@@ -20407,6 +20464,7 @@ class $$QuotesTableTableManager extends RootTableManager<
             Value<String> customerName = const Value.absent(),
             Value<String?> customerId = const Value.absent(),
             Value<String> quoteDate = const Value.absent(),
+            Value<String?> deliveryDate = const Value.absent(),
             Value<String?> validUntil = const Value.absent(),
             Value<String> status = const Value.absent(),
             Value<String?> memo = const Value.absent(),
@@ -20439,6 +20497,7 @@ class $$QuotesTableTableManager extends RootTableManager<
             customerName: customerName,
             customerId: customerId,
             quoteDate: quoteDate,
+            deliveryDate: deliveryDate,
             validUntil: validUntil,
             status: status,
             memo: memo,
@@ -20471,6 +20530,7 @@ class $$QuotesTableTableManager extends RootTableManager<
             required String customerName,
             Value<String?> customerId = const Value.absent(),
             required String quoteDate,
+            Value<String?> deliveryDate = const Value.absent(),
             Value<String?> validUntil = const Value.absent(),
             required String status,
             Value<String?> memo = const Value.absent(),
@@ -20503,6 +20563,7 @@ class $$QuotesTableTableManager extends RootTableManager<
             customerName: customerName,
             customerId: customerId,
             quoteDate: quoteDate,
+            deliveryDate: deliveryDate,
             validUntil: validUntil,
             status: status,
             memo: memo,
